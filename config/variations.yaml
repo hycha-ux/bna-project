@@ -9,14 +9,86 @@ country:
   west: "Caucasian"
 
 age:
-  20s: "in their early to mid 20s"
+  late_teens: "around 18-19 years old"
+  early_20s: "in their early 20s"
+  late_20s: "in their late 20s"
   30s: "in their 30s"
   40s: "in their 40s"
   50s: "in their 50s"
+  60s: "in their 60s"
 
 gender:
   female: "woman"
   male: "man"
+
+# ── 인물 세부 축 (대량생산 시 얼굴 반복 방지의 핵심) ──
+face_shape:
+  oval: "oval face"
+  round: "round face with soft cheeks"
+  square: "square jaw, angular face"
+  long: "long narrow face"
+  heart: "heart-shaped face, wider forehead"
+
+skin_tone:
+  fair: "fair skin"
+  light: "light skin with slight yellow undertone"
+  medium: "medium skin tone"
+  tan: "tan skin"
+  deep: "deep skin tone"
+
+skin_condition:
+  clear: "mostly clear skin with a few small blemishes"
+  freckles: "light freckles across nose and cheeks"
+  moles: "a couple of small moles on the face"
+  acne_marks: "faint acne scars on cheeks"
+  redness: "slightly reddish cheeks"
+  oily: "slightly oily T-zone"
+
+body_type:
+  slim: "slim build"
+  average: "average build"
+  full: "fuller face and neck"
+
+hair_style:
+  long_straight: "long straight hair"
+  long_wavy: "long wavy hair"
+  bob: "chin-length bob"
+  short: "short hair"
+  ponytail: "hair tied in a ponytail"
+  bun: "hair in a loose bun"
+  buzz: "very short buzz cut"
+  bangs: "medium hair with bangs"
+
+hair_color:
+  black: "black hair"
+  dark_brown: "dark brown hair"
+  brown: "brown hair"
+  light_brown: "light brown dyed hair"
+  ash: "ash-toned dyed hair"
+  grey: "some grey hair"
+
+eyes:
+  monolid: "monolid eyes"
+  double: "double eyelids"
+  hooded: "hooded eyes"
+  deep_set: "deep-set eyes"
+
+extras:
+  none: ""
+  glasses: "wearing thin-frame glasses"
+  glasses_thick: "wearing thick black-frame glasses"
+  earrings: "small earrings"
+  beard_light: "light stubble"
+  beard_full: "short full beard"
+  mask_chin: "face mask pulled down to the chin"
+  makeup_light: "light everyday makeup"
+  makeup_none: "no makeup"
+  tired: "slightly tired look, faint dark circles"
+
+# 성별에 따라 제외되는 옵션
+gender_exclusions:
+  female: {extras: [beard_light, beard_full], hair_style: [buzz]}
+  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs]}
 
 background:
   clinic: "plain light clinic wall"
@@ -57,6 +129,8 @@ quality:
 # 모드별 사용 제약
 mode_rules:
   clinical:
+    extras: [none, glasses, glasses_thick, beard_light, beard_full, makeup_none, tired]  # 임상은 액세서리·화장 제외
+    hair_style: [ponytail, bun, short, buzz]                                             # 머리 묶음 규정
     background: [clinic]
     angle: [front, three_quarter, side]
     lighting: [ring, window]

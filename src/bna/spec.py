@@ -11,17 +11,33 @@ def load(name):
     return yaml.safe_load((CFG / name).read_text(encoding="utf-8"))
 
 
+PERSON_AXES = ["country", "age", "gender", "face_shape", "skin_tone", "skin_condition", "body_type",
+               "hair_style", "hair_color", "eyes", "extras"]
+SCENE_AXES = ["background", "angle", "lighting", "color", "quality"]
+
+
+def person_description(variation: dict) -> str:
+    f = {k: variation[k]["text"] for k in PERSON_AXES}
+    parts = [f"{f['country']} {f['gender']} {f['age']}", f["face_shape"], f["skin_tone"], f["skin_condition"],
+             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["extras"]]
+    return ", ".join(p for p in parts if p)
+
+
 def sample_variation(mode: str, seed=None) -> dict:
     rng = random.Random(seed)
     v = load("variations.yaml")
     rules = v.get("mode_rules", {}).get(mode, {})
     picked = {}
     compat = v.get("background_lighting", {})
-    for axis in ["country", "age", "gender", "background", "angle", "lighting", "color", "quality"]:
+    excl = v.get("gender_exclusions", {})
+    for axis in PERSON_AXES + SCENE_AXES:
         options = v[axis]
         allowed = rules.get(axis) or list(options)
         if axis == "lighting" and picked["background"]["key"] in compat:
             allowed = [k for k in allowed if k in compat[picked["background"]["key"]]] or allowed
+        if "gender" in picked:
+            banned = excl.get(picked["gender"]["key"], {}).get(axis, [])
+            allowed = [k for k in allowed if k not in banned] or allowed
         key = rng.choice(allowed)
         picked[axis] = {"key": key, "text": options[key]}
     return picked
@@ -40,7 +56,8 @@ def build_prompts(treatment: str, mode: str, variation: dict) -> dict:
         scene = ". ".join([angle, r["camera"], r["distance"], r["lighting"], r["background"], r["subject_setup"], r["processing"]]) + "."
     else:
         scene = f'{fields["angle"]}, {fields["background"]}. {fields["lighting"]}. {fields["color"]}. {fields["quality"]}.'
-    before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(scene=scene, mode_extra=mode_extra, **fields)
+    before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
+        person=person_description(variation), scene=scene, mode_extra=mode_extra, **fields)
     after = (CFG / "prompts/after.md").read_text(encoding="utf-8").format(after_change=t["after_change"].strip())
     return {"treatment": treatment, "mode": mode, "variation": variation,
             "before_prompt": " ".join(before.split()), "after_prompt": " ".join(after.split())}

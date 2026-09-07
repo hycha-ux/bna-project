@@ -23,5 +23,7 @@ outputs/         생성 결과 (git 제외)
 ## 시작
 ```bash
 cp .env.example .env   # 키 입력
-python -m src.bna.cli --treatment nasolabial --mode selfie --count 4
+python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 100 --plan          # 변주 분포 확인
+python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 4 --dry-run       # 프롬프트만
+python3 -m src.bna.cli --treatment nasolabial --mode clinical --count 30 --fix country=korea --fix gender=female
 ```

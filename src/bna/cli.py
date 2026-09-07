@@ -1,6 +1,7 @@
 import argparse, json, uuid
 from pathlib import Path
-from .spec import sample_variation, build_prompts, ROOT
+from .spec import build_prompts, ROOT
+from .planner import plan_batch, distribution
 
 
 def main():
@@ -10,11 +11,17 @@ def main():
     p.add_argument("--count", type=int, default=1)
     p.add_argument("--seed", type=int)
     p.add_argument("--dry-run", action="store_true", help="이미지 생성 없이 프롬프트만 출력")
+    p.add_argument("--plan", action="store_true", help="배치 변주 분포만 출력")
+    p.add_argument("--fix", action="append", default=[], help="축 고정 예: --fix gender=female --fix country=korea")
     a = p.parse_args()
 
-    for i in range(a.count):
-        seed = None if a.seed is None else a.seed + i
-        spec = build_prompts(a.treatment, a.mode, sample_variation(a.mode, seed))
+    fixed = dict(f.split("=", 1) for f in a.fix)
+    plans = plan_batch(a.mode, a.count, a.seed, fixed)
+    if a.plan:
+        print(json.dumps(distribution(plans), ensure_ascii=False, indent=1)); return
+
+    for variation in plans:
+        spec = build_prompts(a.treatment, a.mode, variation)
         spec["id"] = uuid.uuid4().hex[:8]
         if a.dry_run:
             print(json.dumps(spec, ensure_ascii=False, indent=2))
