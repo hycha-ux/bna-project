@@ -14,10 +14,11 @@
 [워커 풀]    조합마다 아래를 병렬 실행 (동시 N건)
      │   ① 프롬프트 조립 (레이어 합성)
      │   ② Before 생성            provider.generate
-     │   ③ After 편집              provider.edit(before, after_prompt)   ← 새로 그리지 않음
+     │   ③ After 생성              임상: provider.edit(before)  셀카: provider.generate(ref=before, 드리프트된 장면)
+│                             두 경우 모두 identity_lock 삽입, Before 이미지를 참조로 사용
      │   ④ 자동 검수 (3단)
      │        a. 구조 검사: 얼굴 검출 · 랜드마크 정렬 오차 · 시술 부위 프레임 내 포함 여부
-     │        b. 비전 채점: 7항목 0~10 (손·피부·머리카락·동일성·드리프트·효과·AI티)
+     │        b. 비전 채점: 7항목 0~10 (손·피부·머리카락·동일성·드리프트·효과·AI티) · 동일성은 하드 페일
      │        c. 중복 검사: 얼굴 임베딩으로 배치 내 유사 인물 제거
      │   ⑤ 판정: 미달 → ②부터 최대 3회 재시도
      ▼
@@ -36,7 +37,7 @@
 | 4 | 피부·리얼리티 | 모공·솜털·잡티 유지, 리터칭 금지 | 동일 + 폰 카메라 처리 특성 |
 | 5 | 모드 지시 | 무표정·머리 묶음·노메이크업·헤어밴드·가운 | 자연 표정, 손 없는 구도 기본 |
 | 6 | 금지 | 화보 접미, 뷰티 필터, 대칭, 스튜디오 보케 | 동일 |
-| — | After 편집 | 시술별 `after_change` + 그 외 변경 금지 | 동일 |
+| — | After | identity_lock + `after_change` + 그 외 변경 금지 | identity_lock + 드리프트된 장면·헤어 + `after_change` |
 
 브랜드 톤(prompf DB)은 사진 프롬프트에 넣지 않는다. 갤러리 UI와 최종 카드 디자인 단계에서만 사용.
 
@@ -67,7 +68,7 @@ config/
   treatments.yaml      시술 정의: 부위, 변화, 허용 각도
   variations.yaml      변주 축 + 모드별 제약
   clinical_rig.yaml    임상 촬영 리그 고정 프로파일
-  prompts/             before.md / after.md / mode_extra.yaml
+  prompts/             before.md / identity_lock.md / after_clinical.md / after_selfie.md / mode_extra.yaml
   qa_checklist.yaml    비전 채점 항목 · 구조 검사 임계값
   pricing.yaml         프로바이더 단가
   brand/onlif.json     브랜드 DB (갤러리 톤용)
@@ -88,8 +89,8 @@ outputs/{batch_id}/    결과 (git 제외)
 class Provider:
     name: str
     concurrency: int
-    def generate(prompt, aspect, seed=None) -> Image
-    def edit(image, prompt, mask=None) -> Image      # 원본 보존 우선
+    def edit(image, prompt, mask=None) -> Image      # 임상: 원본 보존 우선
+    def generate(prompt, aspect, ref=None) -> Image   # 셀카 After: ref=Before (인물 참조)
     def qa(before, after, checklist) -> dict         # {item: 0-10, notes}
 ```
 역할 가설: Before = Higgsfield 또는 Gemini · After 편집 = Gemini · 채점 = Gemini/GPT. 스파이크로 확정.
@@ -115,5 +116,5 @@ item:  item_id, batch_id, variation{축}, before_prompt, after_prompt,
 ## 9. 미결정
 1. 축 가중치 (모든 축 균등 vs 실제 고객층 비율 반영, 예: 한국 여성 30대 비중 확대)
 2. 정렬 오차 임계값 (초안 2%)과 비전 채점 임계값(7/10)의 비용 균형
-3. 마스크 편집 지원 모델 유무에 따른 After 생성 방식 분기
+3. 셀카 After의 인물 참조 생성 지원 여부(모델별)와 동일성 유지력 → 스파이크 최우선 검증
 4. 광고 심의상 생성 이미지 표기 방식

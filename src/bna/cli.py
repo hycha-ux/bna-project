@@ -20,8 +20,8 @@ def main():
     if a.plan:
         print(json.dumps(distribution(plans), ensure_ascii=False, indent=1)); return
 
-    for variation in plans:
-        spec = build_prompts(a.treatment, a.mode, variation)
+    for i, variation in enumerate(plans):
+        spec = build_prompts(a.treatment, a.mode, variation, None if a.seed is None else a.seed * 1000 + i)
         spec["id"] = uuid.uuid4().hex[:8]
         if a.dry_run:
             print(json.dumps(spec, ensure_ascii=False, indent=2))

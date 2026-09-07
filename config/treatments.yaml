@@ -6,7 +6,7 @@ nasolabial:            # 팔자주름 — 1순위
   region: nasolabial folds (both sides)
   after_change: >
     nasolabial folds visibly softened and shallower, skin around the mouth smoother,
-    same facial structure, no change to lips, nose, or expression.
+    same facial structure, no change to lips or nose.
   modes: [clinical, selfie]
   angles_clinical: [front, three_quarter]
 

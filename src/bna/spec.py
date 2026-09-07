@@ -43,10 +43,31 @@ def sample_variation(mode: str, seed=None) -> dict:
     return picked
 
 
-def build_prompts(treatment: str, mode: str, variation: dict) -> dict:
+def drift_after(variation: dict, mode: str, rng) -> dict:
+    """셀카 모드: After 촬영 상황을 확률적으로 바꾼다 (이목구비 축은 절대 건드리지 않음)."""
+    v = load("variations.yaml")
+    probs = v.get("after_drift", {}).get(mode, {})
+    compat, excl = v.get("background_lighting", {}), v.get("gender_exclusions", {})
+    after = {k: dict(val) for k, val in variation.items()}
+    banned = excl.get(variation["gender"]["key"], {})
+    for axis, p in probs.items():
+        if rng.random() >= p:
+            continue
+        opts = [k for k in v[axis] if k != variation[axis]["key"] and k not in banned.get(axis, [])]
+        if axis == "lighting" and after["background"]["key"] in compat:
+            opts = [k for k in opts if k in compat[after["background"]["key"]]] or opts
+        if opts:
+            k = rng.choice(opts); after[axis] = {"key": k, "text": v[axis][k]}
+    if after["background"]["key"] in compat and after["lighting"]["key"] not in compat[after["background"]["key"]]:
+        k = rng.choice(compat[after["background"]["key"]]); after["lighting"] = {"key": k, "text": v["lighting"][k]}
+    return after
+
+
+def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict:
     t = load("treatments.yaml")[treatment]
     if mode not in t["modes"]:
         raise ValueError(f"{treatment} does not support mode {mode}")
+    rng = random.Random(seed)
     mode_extra = load("prompts/mode_extra.yaml")[mode].strip()
     fields = {k: v["text"] for k, v in variation.items()}
     if mode == "clinical":
@@ -58,6 +79,19 @@ def build_prompts(treatment: str, mode: str, variation: dict) -> dict:
         scene = f'{fields["angle"]}, {fields["background"]}. {fields["lighting"]}. {fields["color"]}. {fields["quality"]}.'
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
         person=person_description(variation), scene=scene, mode_extra=mode_extra, **fields)
-    after = (CFG / "prompts/after.md").read_text(encoding="utf-8").format(after_change=t["after_change"].strip())
-    return {"treatment": treatment, "mode": mode, "variation": variation,
+    identity = (CFG / "prompts/identity_lock.md").read_text(encoding="utf-8").strip()
+    change = t["after_change"].strip()
+    if mode == "clinical":
+        after_var = variation
+        after = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=change)
+    else:
+        after_var = drift_after(variation, mode, rng)
+        a = {k: val["text"] for k, val in after_var.items()}
+        after_scene = f'{a["angle"]}, {a["background"]}. {a["lighting"]}. {a["color"]}. {a["quality"]}.'
+        after_hair = f'{a["hair_color"]}, {a["hair_style"]}' + (f', {a["extras"]}' if a["extras"] else "")
+        after = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
+            identity_lock=identity, after_scene=after_scene, after_hair=after_hair, after_change=change)
+    changed = [k for k in after_var if after_var[k]["key"] != variation[k]["key"]]
+    return {"treatment": treatment, "mode": mode, "variation": variation, "after_variation": after_var,
+            "after_changed_axes": changed, "generation": "edit" if mode == "clinical" else "identity_reference",
             "before_prompt": " ".join(before.split()), "after_prompt": " ".join(after.split())}

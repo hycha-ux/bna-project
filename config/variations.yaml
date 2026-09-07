@@ -147,3 +147,16 @@ background_lighting:
   outdoor: [window, backlit]
   car: [window, backlit, night]
   bathroom: [fluorescent, ring]
+
+# 셀카 모드 After 드리프트: Before 대비 달라져도 되는 축과 확률. 이목구비는 항상 고정.
+after_drift:
+  selfie:
+    background: 0.7
+    lighting: 0.7
+    angle: 0.5
+    color: 0.5
+    quality: 0.3
+    hair_style: 0.4
+    hair_color: 0.15
+    extras: 0.5
+  clinical: {}
