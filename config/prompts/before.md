@@ -1,4 +1,5 @@
-Realistic unedited photo of a {person}. Close-up of the face.
+Realistic unedited photo of a {person}.
+{before_condition}
 {scene}
 Real skin with visible pores, faint peach fuzz, minor blemishes, slight redness and natural asymmetry; individual hair strands; natural expression.
 {mode_extra}

@@ -7,6 +7,25 @@
 nasolabial:
   name_ko: 팔자주름
   region: nasolabial folds (both sides)
+  # Before 상태 (페르소나형, 강도 3단계). 실측: 주름 '묘사'보다 사람 '규정'이 먹힘 (lang-ab-0907)
+  before_severity: [mild, moderate, marked]
+  # 강도별 최소 나이 (인물 축의 age 가 이보다 어리면 한 단계 낮춤). 성별·나이는 인물 축이 담당하므로 문장에 안 적음
+  severity_min_age: {mild: late_20s, moderate: 30s, marked: 40s}
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The skin is generally fine, but a faint
+      nasolabial line is starting to show on each side: a soft crease from the nose toward the
+      mouth, visible in this light but not deep. Do not make the face look younger or more
+      polished than this; do not exaggerate the line either.
+    moderate: >
+      This person has never had any aesthetic treatment and the face shows honest age: clearly
+      visible nasolabial folds from the sides of the nose to the corners of the mouth with a light
+      shadow in the crease, slight loss of mid-face volume. Otherwise ordinary, healthy skin.
+      Do not make the face look younger, rested or more attractive than described.
+    marked: >
+      This person has never had any aesthetic treatment. Pronounced, deep nasolabial folds casting
+      a clear shadow, a slightly sagging front cheek, faint marionette lines and a tired under-eye
+      area. Do not make the face look younger, rested or more attractive than described.
   after_change: 'nasolabial folds visibly softened and shallower, skin around the mouth smoother, same
     facial structure, no change to lips or nose.
 
@@ -23,6 +42,7 @@ nasolabial:
   - moderate
   timeline:
   - immediate
+  - 1w
   - 2w
 skinbooster_embo:
   name_ko: 스킨부스터 엠보

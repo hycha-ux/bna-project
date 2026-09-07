@@ -2,8 +2,43 @@ clinical: >
   Clinical before-and-after documentation style: subject centered, neutral expression,
   hair pulled back, no makeup, shoulders square to camera.
 selfie: >
-  Casual phone selfie framing; no hands or phone visible in frame. Slightly off-center
-  composition, minor motion blur acceptable.
+  This is a photo a patient took of themselves to send to a clinic and show a skin concern,
+  the kind of photo posted in a treatment review app. It was not taken to look good: no posing,
+  no smile, the problem area is pushed close to the lens and fills the frame, composition is
+  off-center and careless, the phone is not visible. Minor motion blur, slight overexposure or
+  a color cast are acceptable and typical.
 selfie_with_hand: >
   Casual selfie taken with a phone held in one hand; hand and phone edge partially visible
   with anatomically correct fingers (five fingers, natural grip). Slight motion blur acceptable.
+
+# After 셀카: 같은 날 vs 다른 날 (경과 시점에 따라 spec.build_prompts 가 선택)
+after_day:
+  same: >
+    This photo is taken later the same day, right after the procedure, at the clinic or on the way
+    home, not at home like the reference. The clothes are different from the reference: she is
+    dressed for going out, not in home clothes. The hair is not the same: pushed back or flattened
+    from the procedure, and the loose strands do not match the reference. The camera angle is only
+    roughly similar: the head is turned a few degrees more or less, the phone is a little higher or
+    lower and slightly tilted, the crop is looser or tighter, so it is clearly a separate snapshot.
+  different: >
+    This photo is taken on a different day, about one to two weeks later. Everything about the
+    situation is different from the reference: different clothes, different room and background,
+    different light and time of day. The hair is styled differently (tied up, tucked behind the ear,
+    or falling on the other side) and the loose strands do not match the reference at all.
+    The camera angle is only roughly similar: the head is turned noticeably more or less than in the
+    reference, the phone height and tilt are different, the crop is looser or tighter.
+    Only the face itself is the same person.
+
+# After 셀카: 피부 상태 잠금 (시점별). 직후는 시술 부위 외 결점이 같은 자리에 있어야 "같은 날"로 읽힘
+skin_state:
+  same: >
+    Skin state lock: this is the same day, so the skin is in exactly the same condition as the
+    reference except for the treated area. Every pimple, blemish, red spot, dry patch and mole from
+    the reference appears in the same position, same size and same stage; nothing has healed and
+    nothing new has appeared. Same oily shine pattern on the nose and cheekbones. Do not clean up,
+    move or redistribute any skin imperfection outside the treated area.
+  different: >
+    Skin state: it is one to two weeks later, so temporary skin marks may have changed naturally.
+    Moles and permanent marks stay in the same positions; pimples and red spots from the reference
+    may have faded or healed, and one or two small new blemishes may appear elsewhere. The skin
+    remains real and untouched, not cleaner or smoother overall than the reference.

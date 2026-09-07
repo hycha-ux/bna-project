@@ -97,6 +97,11 @@ background:
   outdoor: "outdoor street, daytime"
   car: "inside a car, seat visible"
   bathroom: "bathroom mirror, tiles and shelf visible"
+  # ── 시술 직후 After 전용 (after_immediate 로만 진입) ──
+  clinic_waiting: "clinic waiting room, sofa and reception desk blurred behind"
+  clinic_mirror: "mirror selfie in a clinic restroom or elevator, mirror frame visible"
+  clinic_bed: "lying or sitting on a treatment bed, paper sheet and clinic curtain visible"
+  car_after: "inside a car just after leaving the clinic, headrest and window visible"
 
 angle:
   front: "straight frontal view"
@@ -104,6 +109,45 @@ angle:
   side: "side profile"
   selfie_high: "handheld selfie from slightly above, arm extended"
   selfie_low: "handheld selfie from slightly below"
+  # ── 셀카 전용 (레퍼런스: 후기 사진은 정면이 드묾) ──
+  selfie_3q: "handheld phone photo, face turned about 45 degrees away from the camera"
+  selfie_side: "handheld phone photo, near side profile, one cheek and the jawline facing the camera"
+  chin_up: "phone held below eye level, chin lifted, looking slightly down at the phone"
+  tilted: "head tilted to one side, camera not level, slightly crooked horizon"
+
+# 각도 이웃: After 는 Before 와 '비슷하되 똑같지 않은' 각도로만 이동 (로봇처럼 동일한 각도 방지)
+angle_neighbors:
+  front: [selfie_high, selfie_low, tilted]
+  selfie_high: [front, tilted, selfie_3q]
+  selfie_low: [front, chin_up, tilted]
+  selfie_3q: [tilted, selfie_high, selfie_side]
+  selfie_side: [selfie_3q, chin_up]
+  chin_up: [selfie_low, selfie_side]
+  tilted: [front, selfie_3q, selfie_high]
+
+# 프레이밍: 화면에 얼굴이 얼마나·어디가 들어오나 (셀카 전용 축. 임상은 full_face 고정)
+framing:
+  full_face: "the whole face fills the frame"
+  forehead_cut: "very close, forehead cut off by the top edge, chin near the bottom edge"
+  lower_face: "only the lower half of the face is in frame: nose, cheeks, mouth and chin, eyes out of frame"
+  one_cheek: "extreme close-up of one cheek and the side of the nose, the rest of the face outside the frame"
+  nose_to_neck: "framed from the nose down to the neck and collar, mouth and jaw centered"
+
+# 생활 맥락: 옷·소품·머리 (셀카 전용 축. 임상은 none 고정)
+context:
+  none: ""
+  pajamas: "wearing patterned pajamas"
+  home_tee: "wearing a plain home t-shirt"
+  towel_headband: "hair pushed back with a towel headband, skincare just applied"
+  cap: "wearing a baseball cap, brim shadow on the forehead"
+  necklace: "thin necklace visible at the collar"
+  hair_in_face: "loose hair strands falling across the cheek and jaw"
+  finger_on_cheek: "one finger pressing or pointing at the cheek to show the area"
+  # ── 시술 직후 After 전용 ──
+  outing_top: "wearing an everyday outing top (knit, blouse or jacket), clearly not home clothes"
+  clinic_headband: "hair pushed back with a clinic headband, hairline slightly messy"
+  hair_flat_after: "hair flattened and messy from lying on the treatment bed, tucked behind one ear"
+  cotton_pad: "a small cotton pad or dot of ointment still on the treated area"
 
 lighting:
   ring: "ring light, even soft frontal light with catchlights"
@@ -111,6 +155,8 @@ lighting:
   fluorescent: "indoor fluorescent ceiling light, slightly greenish"
   night: "dim indoor night lighting, warm lamp"
   backlit: "backlit against a bright window, face slightly underexposed"
+  ceiling_harsh: "harsh overhead ceiling light, shiny oily highlights on the nose and cheekbones, uneven exposure"
+  mixed: "mixed light, warm lamp on one side and cool daylight on the other, slight color cast"
 
 color:
   neutral: "neutral color balance"
@@ -125,6 +171,7 @@ quality:
   mid: "mid-range phone camera, slight softness"
   old: "older smartphone, visible noise and lower dynamic range"
   front_cam: "low-resolution front camera, slight grain"
+  app_upload: "phone photo re-uploaded to a review app, jpeg compression artifacts, slightly soft"
 
 # 모드별 사용 제약
 mode_rules:
@@ -136,30 +183,64 @@ mode_rules:
     lighting: [ring, window]
     color: [neutral]
     quality: [flagship]
+    framing: [full_face]
+    context: [none]
   selfie:
     background: [home, cafe, outdoor, car, bathroom]
-    angle: [selfie_high, selfie_low, front]
+    angle: [selfie_3q, selfie_side, chin_up, tilted, selfie_high, selfie_low, front]
+    lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed]   # 링라이트 제외 (스튜디오 느낌)
+    color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외
+    quality: [mid, old, front_cam, app_upload]                               # flagship 제외
+  # 임상: 프레이밍·맥락은 고정
 
 # 배경별 호환 조명 (셀카 모드). 배경을 먼저 뽑고 조명은 이 목록 안에서만 선택.
 background_lighting:
-  home: [window, fluorescent, night, ring]
-  cafe: [window, fluorescent, backlit]
+  home: [window, fluorescent, night, ring, ceiling_harsh, mixed]
+  cafe: [window, fluorescent, backlit, mixed]
   outdoor: [window, backlit]
-  car: [window, backlit, night]
-  bathroom: [fluorescent, ring]
+  car: [window, backlit, night, mixed]
+  bathroom: [fluorescent, ring, ceiling_harsh]
+  clinic_waiting: [fluorescent, window, mixed]
+  clinic_mirror: [fluorescent, ceiling_harsh]
+  clinic_bed: [fluorescent, ceiling_harsh, ring]
+  car_after: [window, backlit, mixed]
 
 # 셀카 모드 After 드리프트: Before 대비 달라져도 되는 축과 확률. 이목구비는 항상 고정.
+# 경과 시점(timeline)별로 다르다:
+#   immediate = 시술 당일 → 같은 옷·같은 머리·같은 장소 (몇 시간 뒤). 각도·프레이밍만 조금 다름
+#   1w/2w/4w  = 다른 날   → 옷·머리·배경·조명 전부 달라야 "다른 날 찍은 사진"으로 읽힘
 after_drift:
   selfie:
-    background: 0.7
-    lighting: 0.7
-    angle: 0.5
-    color: 0.5
-    quality: 0.3
-    hair_style: 0.4
-    hair_color: 0.15
-    extras: 0.5
+    immediate:             # 배경·맥락은 아래 after_immediate 로 강제 교체되므로 확률 1.0
+      background: 1.0
+      lighting: 1.0
+      angle: 0.8
+      framing: 0.6
+      color: 0.3
+      quality: 0.3
+      hair_style: 0.3
+      hair_color: 0.0
+      extras: 0.3
+      context: 1.0
+    later:                 # 1w, 2w, 4w 공통
+      background: 0.9
+      lighting: 0.8
+      angle: 0.7
+      framing: 0.6
+      color: 0.5
+      quality: 0.4
+      hair_style: 0.7
+      hair_color: 0.15
+      extras: 0.6
+      context: 0.9
   clinical: {}
+
+# 시술 직후 After 는 "집에서 찍은 Before" 와 다른 장소·옷이어야 자연스럽다:
+# 병원 대기실·거울·시술 베드·병원 나온 직후 차 안, 외출복 또는 시술용 헤어밴드.
+after_immediate:
+  selfie:
+    background: [clinic_waiting, clinic_mirror, clinic_bed, car_after]
+    context: [outing_top, clinic_headband, hair_flat_after, cotton_pad]
 
 # 축 가중치 (균형 샘플링 시 옵션별 등장 비율). 미지정 옵션은 1.
 # 실제 고객층 반영: 한국 여성 비중 확대.
@@ -167,6 +248,9 @@ weights:
   country: {korea: 5, japan: 1, china: 1, sea: 1, west: 1}       # 한국 ≈ 55%
   gender: {female: 3, male: 1}                                   # 여성 75%
   age: {late_teens: 1, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
+  # 셀카: 정면은 드물게, 부분 크롭 우세 (레퍼런스 후기 사진 비율 반영)
+  angle: {front: 1, selfie_high: 1, selfie_low: 1, selfie_3q: 3, selfie_side: 2, chin_up: 2, tilted: 2}
+  framing: {full_face: 1, forehead_cut: 2, lower_face: 3, one_cheek: 2, nose_to_neck: 2}
 
 output:
   aspect: "4:5"
