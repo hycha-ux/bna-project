@@ -8,6 +8,7 @@
 - [프로젝트 브리프](docs/brief.md) — 목적, 전작(prompf) 대비 강화 포인트, 범위, 성공 기준
 - [시스템 설계](docs/architecture.md) — 흐름, 프롬프트 레이어, 모듈, 로드맵
 - [설계 검토](docs/gap-review.md) — 목표 달성을 위해 추가할 것 (우선순위)
+- [목표 점검·도구 판정](docs/gap-check-0907-teemo.md) — 빈 곳 점검(2026-09-07) + MediaPipe·InsightFace 필요성 실측
 - [사용 정책](docs/usage-policy.md) — 임시: 전부 오픈, 법무 가이드 추후
 - [파이프라인 초안](docs/pipeline.md) — 생성 단계 상세
 - [임상 촬영 리그](config/clinical_rig.yaml) — 후기용 고정 촬영 조건·정렬 임계값
