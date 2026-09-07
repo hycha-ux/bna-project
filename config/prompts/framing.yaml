@@ -1,6 +1,0 @@
-# 프레이밍. 기본은 얼굴 클로즈업, 시술별 보조 프레이밍은 treatments.yaml 의 framing 키로 지정.
-face_closeup: "tight face close-up from top of forehead to just below the chin, face filling 70-85% of the frame vertically"
-lower_face: "close-up of the lower face from nose to chin, nasolabial area centered"
-cheek_macro: "macro close-up of one cheek, skin texture clearly visible, pores in focus"
-nose_side: "close-up side profile of the nose, bridge and tip in frame"
-jawline_oblique: "three-quarter close-up of the jawline and lower cheek"

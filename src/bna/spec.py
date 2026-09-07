@@ -33,7 +33,6 @@ def build_prompts(treatment: str, mode: str, variation: dict) -> dict:
         raise ValueError(f"{treatment} does not support mode {mode}")
     mode_extra = load("prompts/mode_extra.yaml")[mode].strip()
     fields = {k: v["text"] for k, v in variation.items()}
-    framing = load("prompts/framing.yaml")[t.get("framing", ["face_closeup"])[0]]
     if mode == "clinical":
         rig = load("clinical_rig.yaml")
         r = rig["rig_default"]
@@ -41,7 +40,7 @@ def build_prompts(treatment: str, mode: str, variation: dict) -> dict:
         scene = ". ".join([angle, r["camera"], r["distance"], r["lighting"], r["background"], r["subject_setup"], r["processing"]]) + "."
     else:
         scene = f'{fields["angle"]}, {fields["background"]}. {fields["lighting"]}. {fields["color"]}. {fields["quality"]}.'
-    before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(framing=framing, scene=scene, mode_extra=mode_extra, **fields)
+    before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(scene=scene, mode_extra=mode_extra, **fields)
     after = (CFG / "prompts/after.md").read_text(encoding="utf-8").format(after_change=t["after_change"].strip())
     return {"treatment": treatment, "mode": mode, "variation": variation,
             "before_prompt": " ".join(before.split()), "after_prompt": " ".join(after.split())}

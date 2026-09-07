@@ -1,4 +1,4 @@
-Realistic unedited photo of a {country} {gender} {age}. {framing}.
+Realistic unedited photo of a {country} {gender} {age}. close-up of the face.
 {scene}
 Real skin with visible pores, faint peach fuzz, minor blemishes, slight redness and natural asymmetry; individual hair strands; natural expression.
 {mode_extra}
