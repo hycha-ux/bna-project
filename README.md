@@ -7,6 +7,7 @@
 - [요구사항](docs/requirements.md) — 시술 목록, 모드, 변주 축, 품질 기준
 - [프로젝트 브리프](docs/brief.md) — 목적, 전작(prompf) 대비 강화 포인트, 범위, 성공 기준
 - [시스템 설계](docs/architecture.md) — 흐름, 프롬프트 레이어, 모듈, 로드맵
+- [설계 검토](docs/gap-review.md) — 목표 달성을 위해 추가할 것 (우선순위)
 - [파이프라인 초안](docs/pipeline.md) — 생성 단계 상세
 - [임상 촬영 리그](config/clinical_rig.yaml) — 후기용 고정 촬영 조건·정렬 임계값
 - [시술 정의](config/treatments.yaml) — 시술별 변화 포인트와 프롬프트 규칙
