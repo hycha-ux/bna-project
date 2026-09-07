@@ -1,0 +1,67 @@
+# 변주 축. 각 항목은 프롬프트에 삽입될 영문 구문.
+# Before/After 쌍 안에서는 한 번 샘플링한 값을 그대로 공유한다.
+
+country:
+  korea: "Korean"
+  japan: "Japanese"
+  china: "Chinese"
+  sea: "Southeast Asian"
+  west: "Caucasian"
+
+age:
+  20s: "in their early to mid 20s"
+  30s: "in their 30s"
+  40s: "in their 40s"
+  50s: "in their 50s"
+
+gender:
+  female: "woman"
+  male: "man"
+
+background:
+  clinic: "plain light clinic wall"
+  home: "living room at home, slightly cluttered"
+  cafe: "cafe interior, blurred"
+  outdoor: "outdoor street, daytime"
+  car: "inside a car, seat visible"
+  bathroom: "bathroom mirror, tiles and shelf visible"
+
+angle:
+  front: "straight frontal view"
+  three_quarter: "three-quarter view"
+  side: "side profile"
+  selfie_high: "handheld selfie from slightly above, arm extended"
+  selfie_low: "handheld selfie from slightly below"
+
+lighting:
+  ring: "ring light, even soft frontal light with catchlights"
+  window: "natural window daylight from the side"
+  fluorescent: "indoor fluorescent ceiling light, slightly greenish"
+  night: "dim indoor night lighting, warm lamp"
+  backlit: "backlit against a bright window, face slightly underexposed"
+
+color:
+  neutral: "neutral color balance"
+  warm: "warm tones"
+  cool: "cool tones"
+  iphone: "typical iPhone camera processing"
+  galaxy: "typical Samsung Galaxy camera processing, slightly saturated"
+  filter: "light beauty filter, subtle"
+
+quality:
+  flagship: "sharp modern flagship smartphone photo"
+  mid: "mid-range phone camera, slight softness"
+  old: "older smartphone, visible noise and lower dynamic range"
+  front_cam: "low-resolution front camera, slight grain"
+
+# 모드별 사용 제약
+mode_rules:
+  clinical:
+    background: [clinic]
+    angle: [front, three_quarter, side]
+    lighting: [ring, window]
+    color: [neutral]
+    quality: [flagship]
+  selfie:
+    background: [home, cafe, outdoor, car, bathroom]
+    angle: [selfie_high, selfie_low, front]

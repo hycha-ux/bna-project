@@ -1,0 +1,10 @@
+# 자동 검수 항목. 비전 모델에 각 항목을 0~10 으로 채점시키고 threshold 미달 시 재생성.
+threshold: 7
+items:
+  fingers: "Hands/fingers anatomically correct: five fingers, natural joints, plausible phone grip"
+  skin_texture: "Skin has realistic pores/peach fuzz/minor imperfections, not plastic or repetitive"
+  hair: "Hair strands flow naturally, no melted or merged edges"
+  identity: "Before and After are clearly the same person (face shape, eyes, nose, features)"
+  drift: "Nothing outside the treated area changed (expression, angle, lighting, background)"
+  effect_visible: "The treatment effect is noticeable but within natural, non-exaggerated range"
+  ai_look: "Overall image does not look AI-generated (no over-symmetry, waxy glow, odd artifacts)"

@@ -1,0 +1,5 @@
+pyyaml
+python-dotenv
+google-genai
+openai
+requests

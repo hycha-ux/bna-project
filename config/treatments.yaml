@@ -1,0 +1,71 @@
+# 시술 정의. 프롬프트 조립 시 after_change 가 After 편집 지시문의 핵심.
+# 원칙: 변화는 "자연스러운 개선" 범위. 과장 금지.
+
+nasolabial:            # 팔자주름 — 1순위
+  name_ko: 팔자주름
+  region: nasolabial folds (both sides)
+  after_change: >
+    nasolabial folds visibly softened and shallower, skin around the mouth smoother,
+    same facial structure, no change to lips, nose, or expression.
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter]
+
+skinbooster_embo:      # 스킨부스터 엠보 — 2순위
+  name_ko: 스킨부스터 엠보
+  region: full face skin
+  after_change: >
+    skin looks hydrated and plump with a natural glow, fine lines reduced,
+    texture still visible (pores, tiny peach fuzz remain), no plastic smoothness.
+  modes: [clinical, selfie]
+  angles_clinical: [front]
+
+nose_lifting:
+  name_ko: 코 프팅
+  region: nose bridge and tip
+  after_change: >
+    nose bridge slightly higher and straighter, tip slightly more defined,
+    subtle change only, rest of the face identical.
+  modes: [clinical, selfie]
+  angles_clinical: [three_quarter, side]
+
+skin_redness:
+  name_ko: 스킨부스터 홍조
+  region: cheeks
+  after_change: >
+    facial redness on cheeks noticeably calmer and more even, skin tone uniform,
+    natural texture preserved.
+  modes: [clinical, selfie]
+  angles_clinical: [front]
+
+skin_pores:
+  name_ko: 스킨부스터 모공
+  region: cheeks and nose
+  after_change: >
+    enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter]
+
+lifting:
+  name_ko: 리프팅
+  region: jawline and mid-face
+  after_change: >
+    jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced,
+    same bone structure.
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter, side]
+
+filler:
+  name_ko: 필러
+  region: (specify per request) cheeks / chin / under-eye
+  after_change: >
+    treated area subtly fuller and smoother volume, natural proportions.
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter]
+
+philtrum:
+  name_ko: 인중
+  region: philtrum
+  after_change: >
+    philtrum appears slightly shorter and upper lip line more defined, subtle.
+  modes: [clinical, selfie]
+  angles_clinical: [front, side]
