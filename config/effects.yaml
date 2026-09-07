@@ -1,0 +1,9 @@
+# 효과 강도·경과 시점 문구
+effect_levels:
+  subtle: "The improvement is subtle and could be missed at a glance"
+  moderate: "The improvement is clearly noticeable but still within a natural range"
+timeline:
+  immediate: "photographed right after the procedure; faint redness or slight swelling in the treated area is acceptable"
+  1w: "photographed about one week after the procedure; treated area fully settled, very faint residual redness possible"
+  2w: "photographed about two weeks after the procedure; fully settled, no marks"
+  4w: "photographed about four weeks after the procedure; fully settled, no marks"

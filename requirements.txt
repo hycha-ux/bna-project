@@ -1,5 +1,11 @@
 pyyaml
 python-dotenv
+numpy
+pillow
 google-genai
 openai
 requests
+# 검수 (A3~A5). 설치 전에는 해당 검사가 자동 스킵됨
+mediapipe
+insightface
+onnxruntime

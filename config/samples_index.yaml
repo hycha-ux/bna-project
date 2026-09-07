@@ -1,0 +1,8 @@
+# 참조 이미지 라이브러리 색인. samples/reference/{clinical,selfie}/ 에 파일을 넣고 여기에 태그.
+# 생성 시 mode·lighting·quality 태그가 맞는 참조를 1~2장 style_refs 로 함께 입력.
+# 예:
+# - file: selfie/iphone_window_01.jpg
+#   mode: selfie
+#   tags: {lighting: window, quality: flagship, background: home}
+#   note: 실제 촬영, 상업 이용 가능 확인됨
+refs: []

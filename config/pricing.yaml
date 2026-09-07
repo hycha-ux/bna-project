@@ -1,0 +1,4 @@
+# 프로바이더 단가 (USD, 호출당). 키 수령 후 실제 요금표로 갱신.
+gemini:     {generate: 0.04, edit: 0.04, qa: 0.005}
+openai:     {generate: 0.08, edit: 0.08, qa: 0.01}
+higgsfield: {generate: 0.05, edit: 0.05, qa: 0.0}

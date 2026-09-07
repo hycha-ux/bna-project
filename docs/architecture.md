@@ -11,18 +11,20 @@
 [플래너]     균형 샘플링으로 변주 조합 N개 생성 (인물 11축 + 장면 5축, 중복 없음, 축 고르게 분포)  ← 구현됨
      │       예상 호출 수·비용 산출 → 시작 확인
      ▼
-[워커 풀]    조합마다 아래를 병렬 실행 (동시 N건)
-     │   ① 프롬프트 조립 (레이어 합성)
-     │   ② Before 생성            provider.generate
+[워커 풀]    조합마다 아래를 병렬 실행 (동시 N건)                          ← batch.py 구현됨 (프로바이더 구현 대기)
+     │   ① 프롬프트 조립 (레이어 합성 + 효과 강도·경과 시점)
+     │   ② Before 생성            provider.generate(style_refs=참조 라이브러리에서 태그 매칭)
      │   ③ After 생성              임상: provider.edit(before)  셀카: provider.generate(ref=before, 드리프트된 장면)
 │                             두 경우 모두 identity_lock 삽입, Before 이미지를 참조로 사용
+│                             임상: 랜드마크 부위 마스크 → 마스크 밖 원본 픽셀 복원 (composite)
+│   ③' 후처리                 카메라 아티팩트 (화소 축별, 세트 동일 seed)
      │   ④ 자동 검수 (3단)
      │        a. 구조 검사: 얼굴 검출 · 랜드마크 정렬 오차 · 시술 부위 프레임 내 포함 여부
      │        b. 비전 채점: 7항목 0~10 (손·피부·머리카락·동일성·드리프트·효과·AI티) · 동일성은 하드 페일
      │        c. 중복 검사: 얼굴 임베딩으로 배치 내 유사 인물 제거
      │   ⑤ 판정: 미달 → ②부터 최대 3회 재시도
      ▼
-[정리]       파일명 규칙 적용 · 배치 폴더 · manifest.csv · 통계(통과율, 호출/통과)
+[정리]       파일명 규칙 · manifest.csv · stats.json (축·항목·프롬프트 버전별 통과율, 실패 사유, 통과당 비용)
      ▼
 [갤러리]     통과작만 노출. 사람은 여기서 최종 픽 (선택)
 ```
@@ -61,27 +63,39 @@
 | 이어하기 | 배치 상태를 `state.json`에 저장. 중단 후 재실행 시 미완료 조합만 처리 |
 | 정리 | `{treatment}_{mode}_{country}{age}{gender}_{id}_{before|after}.jpg`, `manifest.csv`, `stats.json` |
 
-## 5. 모듈 구조
+## 5. 모듈 구조 (✅ 구현 · ⏳ 골격만 · ⬜ 미착수)
 
 ```
 config/
-  treatments.yaml      시술 정의: 부위, 변화, 허용 각도
-  variations.yaml      변주 축 + 모드별 제약
-  clinical_rig.yaml    임상 촬영 리그 고정 프로파일
-  prompts/             before.md / identity_lock.md / after_clinical.md / after_selfie.md / mode_extra.yaml
-  qa_checklist.yaml    비전 채점 항목 · 구조 검사 임계값
-  pricing.yaml         프로바이더 단가
+  treatments.yaml      시술 정의: 부위, 변화, mask_region, effect_levels, timeline
+  variations.yaml      변주 축 · 모드 제약 · 가중치 · After 드리프트 · 출력 비율
+  clinical_rig.yaml    임상 촬영 리그 고정 프로파일 + 정렬 임계값
+  effects.yaml         효과 강도·경과 시점 문구
+  postprocess.yaml     화소 축별 카메라 아티팩트 파라미터
+  pricing.yaml         프로바이더 단가 (키 수령 후 갱신)
+  samples_index.yaml   참조 이미지 태그 색인
+  prompts/             before / identity_lock / after_clinical / after_selfie / mode_extra
+  qa_checklist.yaml    비전 채점 항목 · hard_fail
   brand/onlif.json     브랜드 DB (갤러리 톤용)
 src/bna/
-  spec.py              프롬프트 조립                       ← 구현됨
-  planner.py           균형 샘플링, 축 고정            ← 구현됨 (비용 산출은 추후)
-  providers/           gemini / openai / higgsfield (generate · edit · qa)
-  qa/                  structure.py (랜드마크·정렬) · vision.py (채점) · dedup.py (임베딩)
-  batch.py             워커 풀, 재시도, 상태 저장, 정리
-  cli.py               배치 실행 진입점
-  api.py               UI용 FastAPI (2단계)
-web/                   UI 신규 설계 (2단계)
-outputs/{batch_id}/    결과 (git 제외)
+  spec.py         ✅  프롬프트 조립 (인물 11축, 리그, 드리프트, 효과·시점)
+  planner.py      ✅  가중 균형 샘플링, 축 고정
+  postprocess.py  ✅  카메라 아티팩트 (테스트 완료)
+  refs.py         ✅  참조 이미지 선택 (라이브러리 채우면 동작)
+  version.py      ✅  프롬프트 버전 (git + config 해시)
+  stats.py        ✅  통과율 통계, manifest
+  batch.py        ✅  워커 풀·재시도·이어하기·비용 추정 (프로바이더 구현되면 동작)
+  qa/landmarks.py ⏳  MediaPipe 랜드마크, 부위 폴리곤(초안), 마스크, 합성 — 폴리곤 시각 확인 필요
+  qa/structure.py ⏳  정렬·비율·밝기·프레임 검사 — 임계값 캘리브레이션 필요
+  qa/identity.py  ⏳  ArcFace 게이트 — 임계값 캘리브레이션 필요
+  qa/dedup.py     ⏳  임베딩 레지스트리
+  qa/vision.py    ⏳  채점 규칙 (프로바이더 qa 구현 대기)
+  providers/      ⏳  base(인터페이스·어댑터 훅) / gemini / openai_img / higgsfield — 키 수령 후 구현
+  cli.py          ✅  --plan / --dry-run / --estimate / --run
+  api.py          ⬜  UI용 (4단계)
+web/              ⬜  UI 신규 설계 (4단계)
+samples/reference/{clinical,selfie}/   참조 실사 라이브러리 (비어 있음)
+outputs/{batch_id}/  결과 · manifest.csv · stats.json · state.json (git 제외)
 ```
 
 ## 6. 프로바이더 인터페이스
@@ -118,6 +132,7 @@ item:  item_id, batch_id, variation{축}, before_prompt, after_prompt,
 - 축 가중치: 한국 5:1:1:1:1, 여성 3:1, 연령 20대 후반~40대 중심 (`config/variations.yaml` weights)
 
 ## 10. 미결정
+0. 사용 정책·지시문 검토: 현재 전부 오픈. 법무 가이드·의료진 검토는 추후 (`docs/usage-policy.md`)
 2. 정렬 오차 임계값 (초안 2%)과 비전 채점 임계값(7/10)의 비용 균형
 3. 셀카 After의 인물 참조 생성 지원 여부(모델별)와 동일성 유지력 → 스파이크 최우선 검증
 4. 광고 심의상 생성 이미지 표기 방식

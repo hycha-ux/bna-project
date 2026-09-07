@@ -80,7 +80,14 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
         person=person_description(variation), scene=scene, mode_extra=mode_extra, **fields)
     identity = (CFG / "prompts/identity_lock.md").read_text(encoding="utf-8").strip()
-    change = t["after_change"].strip()
+    eff = load("effects.yaml")
+    level = rng.choice(t.get("effect_levels", ["moderate"]))
+    when = rng.choice(t.get("timeline", ["2w"]))
+    change = f'{t["after_change"].strip()} {eff["effect_levels"][level]}.'
+    if mode == "selfie":
+        change += f' {eff["timeline"][when].capitalize()}.'
+    variation = {**variation, "effect_level": {"key": level, "text": eff["effect_levels"][level]},
+                 "timeline": {"key": when, "text": eff["timeline"][when]}}
     if mode == "clinical":
         after_var = variation
         after = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=change)

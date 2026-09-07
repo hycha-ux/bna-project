@@ -1,0 +1,7 @@
+# 카메라 아티팩트 후처리. 화소 축(quality) 키별 파라미터. Before/After 세트에 동일 seed 적용.
+profiles:
+  flagship:  {noise_sigma: 1.5, jpeg_quality: 92, chroma_shift_px: 0,   sharpen: 0.2, vignette: 0.03, hdr_tone: 0.15}
+  mid:       {noise_sigma: 3.0, jpeg_quality: 85, chroma_shift_px: 0.5, sharpen: 0.0, vignette: 0.05, hdr_tone: 0.10}
+  old:       {noise_sigma: 6.0, jpeg_quality: 72, chroma_shift_px: 1.0, sharpen: 0.0, vignette: 0.08, hdr_tone: 0.0}
+  front_cam: {noise_sigma: 5.0, jpeg_quality: 78, chroma_shift_px: 0.7, sharpen: -0.1, vignette: 0.04, hdr_tone: 0.05}
+  clinical:  {noise_sigma: 1.0, jpeg_quality: 94, chroma_shift_px: 0,   sharpen: 0.1, vignette: 0.0,  hdr_tone: 0.0}

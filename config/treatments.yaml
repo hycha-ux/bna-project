@@ -1,71 +1,162 @@
 # 시술 정의. 프롬프트 조립 시 after_change 가 After 편집 지시문의 핵심.
 # 원칙: 변화는 "자연스러운 개선" 범위. 과장 금지.
-
-nasolabial:            # 팔자주름 — 1순위
+# mask_region  : qa/landmarks.py 의 부위 폴리곤 키 (마스크 편집·합성용)
+# effect_levels: 효과 강도 축 (subtle/moderate). 프롬프트에 강도 문구 삽입
+# timeline     : 경과 시점 축. 셀카 모드에서 잔여 홍조 등 디테일에 사용
+# ※ 지시문 의료진 검토는 추후 진행 (2026-09-07 기준 미검토, 모두 오픈)
+nasolabial:
   name_ko: 팔자주름
   region: nasolabial folds (both sides)
-  after_change: >
-    nasolabial folds visibly softened and shallower, skin around the mouth smoother,
-    same facial structure, no change to lips or nose.
-  modes: [clinical, selfie]
-  angles_clinical: [front, three_quarter]
+  after_change: 'nasolabial folds visibly softened and shallower, skin around the mouth smoother, same
+    facial structure, no change to lips or nose.
 
-skinbooster_embo:      # 스킨부스터 엠보 — 2순위
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  - three_quarter
+  mask_region: nasolabial
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - immediate
+  - 2w
+skinbooster_embo:
   name_ko: 스킨부스터 엠보
   region: full face skin
-  after_change: >
-    skin looks hydrated and plump with a natural glow, fine lines reduced,
-    texture still visible (pores, tiny peach fuzz remain), no plastic smoothness.
-  modes: [clinical, selfie]
-  angles_clinical: [front]
+  after_change: 'skin looks hydrated and plump with a natural glow, fine lines reduced, texture still
+    visible (pores, tiny peach fuzz remain), no plastic smoothness.
 
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  mask_region: full_face_skin
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - 1w
+  - 4w
 nose_lifting:
   name_ko: 코 프팅
   region: nose bridge and tip
-  after_change: >
-    nose bridge slightly higher and straighter, tip slightly more defined,
-    subtle change only, rest of the face identical.
-  modes: [clinical, selfie]
-  angles_clinical: [three_quarter, side]
+  after_change: 'nose bridge slightly higher and straighter, tip slightly more defined, subtle change
+    only, rest of the face identical.
 
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - three_quarter
+  - side
+  mask_region: nose
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - immediate
+  - 2w
 skin_redness:
   name_ko: 스킨부스터 홍조
   region: cheeks
-  after_change: >
-    facial redness on cheeks noticeably calmer and more even, skin tone uniform,
-    natural texture preserved.
-  modes: [clinical, selfie]
-  angles_clinical: [front]
+  after_change: 'facial redness on cheeks noticeably calmer and more even, skin tone uniform, natural
+    texture preserved.
 
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  mask_region: cheeks
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - 2w
+  - 4w
 skin_pores:
   name_ko: 스킨부스터 모공
   region: cheeks and nose
-  after_change: >
-    enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
-  modes: [clinical, selfie]
-  angles_clinical: [front, three_quarter]
+  after_change: 'enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
 
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  - three_quarter
+  mask_region: cheeks_nose
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - 2w
+  - 4w
 lifting:
   name_ko: 리프팅
   region: jawline and mid-face
-  after_change: >
-    jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced,
-    same bone structure.
-  modes: [clinical, selfie]
-  angles_clinical: [front, three_quarter, side]
+  after_change: 'jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced, same
+    bone structure.
 
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  - three_quarter
+  - side
+  mask_region: jawline_midface
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - 2w
+  - 4w
 filler:
   name_ko: 필러
   region: (specify per request) cheeks / chin / under-eye
-  after_change: >
-    treated area subtly fuller and smoother volume, natural proportions.
-  modes: [clinical, selfie]
-  angles_clinical: [front, three_quarter]
+  after_change: 'treated area subtly fuller and smoother volume, natural proportions.
 
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  - three_quarter
+  mask_region: custom
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - immediate
+  - 2w
 philtrum:
   name_ko: 인중
   region: philtrum
-  after_change: >
-    philtrum appears slightly shorter and upper lip line more defined, subtle.
-  modes: [clinical, selfie]
-  angles_clinical: [front, side]
+  after_change: 'philtrum appears slightly shorter and upper lip line more defined, subtle.
+
+    '
+  modes:
+  - clinical
+  - selfie
+  angles_clinical:
+  - front
+  - side
+  mask_region: philtrum
+  effect_levels:
+  - subtle
+  - moderate
+  timeline:
+  - immediate
+  - 2w

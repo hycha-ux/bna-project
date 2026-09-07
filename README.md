@@ -8,6 +8,7 @@
 - [프로젝트 브리프](docs/brief.md) — 목적, 전작(prompf) 대비 강화 포인트, 범위, 성공 기준
 - [시스템 설계](docs/architecture.md) — 흐름, 프롬프트 레이어, 모듈, 로드맵
 - [설계 검토](docs/gap-review.md) — 목표 달성을 위해 추가할 것 (우선순위)
+- [사용 정책](docs/usage-policy.md) — 임시: 전부 오픈, 법무 가이드 추후
 - [파이프라인 초안](docs/pipeline.md) — 생성 단계 상세
 - [임상 촬영 리그](config/clinical_rig.yaml) — 후기용 고정 촬영 조건·정렬 임계값
 - [시술 정의](config/treatments.yaml) — 시술별 변화 포인트와 프롬프트 규칙
@@ -26,5 +27,6 @@ outputs/         생성 결과 (git 제외)
 cp .env.example .env   # 키 입력
 python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 100 --plan          # 변주 분포 확인
 python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 4 --dry-run       # 프롬프트만
-python3 -m src.bna.cli --treatment nasolabial --mode clinical --count 30 --fix country=korea --fix gender=female
+python3 -m src.bna.cli --treatment nasolabial --mode clinical --count 30 --fix country=korea --fix gender=female --estimate  # 비용 추정
+python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 50 --run                     # 실제 배치 (키 필요)
 ```
