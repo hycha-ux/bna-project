@@ -1,0 +1,33 @@
+{
+  "brand_id": "onlif",
+  "display_name": "온리프 성형외과",
+  "colors": {
+    "primary": "#CCD8E8",
+    "accent_green": "#495E43",
+    "accent_green_sub": "#607B59",
+    "accent_pink": "#FED3D0",
+    "accent_pink_sub": "#FFE3E1",
+    "bg_offwhite": "#F8F8F8",
+    "text_dark": "#383838"
+  },
+  "tone": [
+    "premium",
+    "trustworthy",
+    "natural",
+    "clean",
+    "sophisticated"
+  ],
+  "forbidden": [
+    "warm yellow cast",
+    "dark moody filter",
+    "heavy dramatic makeup",
+    "oversaturated color",
+    "harsh medical look"
+  ],
+  "typography": {
+    "primary_font": "Pretendard",
+    "english_font": "Poppins",
+    "point_font": "Sandoll BaikzongyulPen"
+  },
+  "_source": "AI-Tools/prompf HANDOFF.md 브랜드 DB 이관 (2026-09-07). 사진 프롬프트에는 미적용, 갤러리/후처리 톤 참고용."
+}
