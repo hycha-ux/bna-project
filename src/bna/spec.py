@@ -92,6 +92,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict
         after = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
             identity_lock=identity, after_scene=after_scene, after_hair=after_hair, after_change=change)
     changed = [k for k in after_var if after_var[k]["key"] != variation[k]["key"]]
-    return {"treatment": treatment, "mode": mode, "variation": variation, "after_variation": after_var,
+    return {"treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
+            "variation": variation, "after_variation": after_var,
             "after_changed_axes": changed, "generation": "edit" if mode == "clinical" else "identity_reference",
             "before_prompt": " ".join(before.split()), "after_prompt": " ".join(after.split())}

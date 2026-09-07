@@ -160,3 +160,13 @@ after_drift:
     hair_color: 0.15
     extras: 0.5
   clinical: {}
+
+# 축 가중치 (균형 샘플링 시 옵션별 등장 비율). 미지정 옵션은 1.
+# 실제 고객층 반영: 한국 여성 비중 확대.
+weights:
+  country: {korea: 5, japan: 1, china: 1, sea: 1, west: 1}       # 한국 ≈ 55%
+  gender: {female: 3, male: 1}                                   # 여성 75%
+  age: {late_teens: 1, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
+
+output:
+  aspect: "4:5"

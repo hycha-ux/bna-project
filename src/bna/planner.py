@@ -10,6 +10,7 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None) -> list:
     v = load("variations.yaml")
     rules = v.get("mode_rules", {}).get(mode, {})
     compat, excl = v.get("background_lighting", {}), v.get("gender_exclusions", {})
+    weights = v.get("weights", {})
     fixed = fixed or {}
 
     def allowed(axis):
@@ -24,7 +25,9 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None) -> list:
         for o in q:                     # 큐에 남은 것 중 허용되는 첫 항목
             if o in opts:
                 q.remove(o); return o
-        pool = list(opts); rng.shuffle(pool)   # 큐 리필
+        w = weights.get(axis, {})
+        pool = [o for o in opts for _ in range(int(w.get(o, 1)))]   # 가중치만큼 복제 후 섞기
+        rng.shuffle(pool)
         queues[axis] = pool
         return queues[axis].pop(0)
 
