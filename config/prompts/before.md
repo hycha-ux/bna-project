@@ -1,5 +1,5 @@
-Realistic unedited photo of a {country} {gender} {age}, {angle}, {background}.
-{lighting}. {color}. {quality}.
-Real skin with visible pores, faint peach fuzz, minor blemishes and uneven tone; individual hair strands; natural expression, no smile.
+Realistic unedited photo of a {country} {gender} {age}. {framing}.
+{scene}
+Real skin with visible pores, faint peach fuzz, minor blemishes, slight redness and natural asymmetry; individual hair strands; natural expression.
 {mode_extra}
-Absolutely no beauty retouching, no CGI look, no perfect symmetry.
+No beauty retouching, no skin smoothing, no CGI look, no perfect symmetry, no studio bokeh.

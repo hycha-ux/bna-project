@@ -1,91 +1,119 @@
-# 시스템 설계
+# 시스템 설계 (v2)
 
-## 전체 흐름
+브리프의 세 축(실사 클로즈업 · 임상 동일 조건 · 대량생산)을 구조로 보장하는 설계.
+
+## 1. 전체 흐름
 
 ```
-┌─ UI (신규 설계) ──────────────────────────────────────┐
-│ 시술·모드 선택 → 생성 → 검수 통과작 갤러리 (설계 예정)   │
-└──────────────────────┬────────────────────────────────┘
-                       │ POST /jobs {treatment, mode, count, overrides}
-┌─ API 서버 (FastAPI) ─▼────────────────────────────────┐
-│ 잡 큐 · 상태 · 히스토리 · 갤러리 조회                    │
-└──────────────────────┬────────────────────────────────┘
-┌─ 파이프라인 (src/bna) ▼───────────────────────────────┐
-│ ① 변주 샘플링   config/variations.yaml + mode_rules    │
-│ ② 프롬프트 조립  레이어 합성 (아래 표)                   │
-│ ③ Before 생성   provider.generate                      │
-│ ④ After 편집    provider.edit(before, after_prompt)     │
-│ ⑤ 자동 검수     provider.qa → 7항목 점수               │
-│ ⑥ 판정         threshold 미달 → ③부터 재시도 (max 3)    │
-│ ⑦ 저장         이미지 + meta.json + 점수               │
-└──────────────────────┬────────────────────────────────┘
-┌─ 저장소 ──────────────▼───────────────────────────────┐
-│ PoC: 로컬 outputs/  →  운영: Supabase Storage + DB      │
-└───────────────────────────────────────────────────────┘
+[배치 요청]  시술 · 모드 · 목표 통과 수 · (옵션) 축 고정
+     │
+     ▼
+[플래너]     라틴 방격 샘플링으로 변주 조합 N개 생성 (중복 없음, 축 고르게 분포)
+     │       예상 호출 수·비용 산출 → 시작 확인
+     ▼
+[워커 풀]    조합마다 아래를 병렬 실행 (동시 N건)
+     │   ① 프롬프트 조립 (레이어 합성)
+     │   ② Before 생성            provider.generate
+     │   ③ After 편집              provider.edit(before, after_prompt)   ← 새로 그리지 않음
+     │   ④ 자동 검수 (3단)
+     │        a. 구조 검사: 얼굴 검출 · 랜드마크 정렬 오차 · 프레이밍 비율
+     │        b. 비전 채점: 7항목 0~10 (손·피부·머리카락·동일성·드리프트·효과·AI티)
+     │        c. 중복 검사: 얼굴 임베딩으로 배치 내 유사 인물 제거
+     │   ⑤ 판정: 미달 → ②부터 최대 3회 재시도
+     ▼
+[정리]       파일명 규칙 적용 · 배치 폴더 · manifest.csv · 통계(통과율, 호출/통과)
+     ▼
+[갤러리]     통과작만 노출. 사람은 여기서 최종 픽 (선택)
 ```
 
-## 프롬프트 레이어 (prompf 공식을 B&A용으로 재정의)
+## 2. 프롬프트 레이어
 
-| 순서 | 레이어 | prompf | B&A |
+| 순서 | 레이어 | 임상 모드 | 셀카 모드 |
 |---|---|---|---|
-| 1 | 피사체 | korean model 고정 | 나라·연령·성별 변주 |
-| 2 | 구도·각도 | 샷/앵글 (화보용) | 임상: 정면/반측/측면 고정 · 셀카: 하이/로우앵글 |
-| 3 | 장면 | 스튜디오 배경 | 임상: 클리닉 벽 · 셀카: 생활 배경 6종 |
-| 4 | 조명 | 브랜드 허용 풀 (버터플라이 등) | 임상: 링/창가 · 셀카: 형광등·야간·역광 포함 |
-| 5 | 카메라 | full-frame 85mm, shallow DoF | 폰 카메라 화소·노이즈·기본 색보정 |
-| 6 | 피부·리얼리티 | glass skin, dewy 이펙트 | 모공·솜털·잡티 **유지**, 리터칭 금지 |
-| 7 | 모드 지시 | — | 임상 문서 스타일 / 셀카 손·폰 규칙 |
-| 8 | 품질 접미 | 8K hyperrealistic | **제거** (AI 티 유발) |
-| 9 | 브랜드 톤 | prompt_base | 후처리 색감에만 약하게 반영 (사진 자체엔 미적용) |
-| — | After 편집 | 없음 | 시술별 after_change + "그 외 절대 변경 금지" |
+| 1 | 인물 | 나라·연령·성별 + 얼굴형·피부톤 세부 | 동일 |
+| 2 | 프레이밍 | 얼굴 클로즈업 70~85% + 시술별 보조 프레이밍 | 동일, 살짝 어긋난 구도 허용 |
+| 3 | 촬영 리그 | **`clinical_rig.yaml` 고정 세트** (카메라·거리·조명·배경·자세) | 배경·각도·조명·화소 변주 |
+| 4 | 피부·리얼리티 | 모공·솜털·잡티 유지, 리터칭 금지 | 동일 + 폰 카메라 처리 특성 |
+| 5 | 모드 지시 | 무표정·머리 묶음·노메이크업·헤어밴드·가운 | 자연 표정, 손 없는 구도 기본 |
+| 6 | 금지 | 화보 접미, 뷰티 필터, 대칭, 스튜디오 보케 | 동일 |
+| — | After 편집 | 시술별 `after_change` + 그 외 변경 금지 | 동일 |
 
-## 모듈 구조
+브랜드 톤(prompf DB)은 사진 프롬프트에 넣지 않는다. 갤러리 UI와 최종 카드 디자인 단계에서만 사용.
+
+## 3. 임상 동일 조건 보장 메커니즘
+
+| 층 | 수단 |
+|---|---|
+| 프롬프트 | 리그 프로파일 문장을 Before/After 모두 동일하게 삽입 |
+| 생성 방식 | After = Before 편집. 마스크 가능한 모델은 시술 부위만 마스크 |
+| 수치 검증 | 랜드마크(눈·코·입) 위치 오차, 얼굴 크기 비율, 밝기 히스토그램 차이 → 임계 초과 시 불합격 |
+| 시리즈 | 정면·45°·측면 3컷을 같은 인물 시드로 생성 (모델이 시드/참조 이미지를 지원할 때) |
+
+## 4. 대량생산 메커니즘
+
+| 요소 | 구현 |
+|---|---|
+| 샘플링 | `planner.py`: 축별 옵션을 라틴 방격으로 배분. 배치 내 조합 중복 0 |
+| 병렬 | `asyncio` 워커 풀, 프로바이더별 동시성 상한·레이트리밋 준수 |
+| 재시도 | 조합 단위 최대 3회. 실패 조합은 `failed.csv`에 사유와 함께 기록 |
+| 비용 | 프로바이더별 단가표(`config/pricing.yaml`) × 예상 호출 수. 통과율 이력으로 보정 |
+| 이어하기 | 배치 상태를 `state.json`에 저장. 중단 후 재실행 시 미완료 조합만 처리 |
+| 정리 | `{treatment}_{mode}_{country}{age}{gender}_{id}_{before|after}.jpg`, `manifest.csv`, `stats.json` |
+
+## 5. 모듈 구조
 
 ```
 config/
-  treatments.yaml      시술 정의 (부위, 변화, 허용 각도)
+  treatments.yaml      시술 정의: 부위, 변화, 보조 프레이밍, 허용 각도
   variations.yaml      변주 축 + 모드별 제약
-  prompts/             before.md / after.md / mode_extra.yaml
-  qa_checklist.yaml    검수 항목·임계값
-  brand/onlif.json     prompf 브랜드 DB 이관 (후처리·갤러리 톤용)
+  clinical_rig.yaml    임상 촬영 리그 고정 프로파일
+  prompts/             before.md / after.md / mode_extra.yaml / framing.yaml
+  qa_checklist.yaml    비전 채점 항목 · 구조 검사 임계값
+  pricing.yaml         프로바이더 단가
+  brand/onlif.json     브랜드 DB (갤러리 톤용)
 src/bna/
-  spec.py              변주 샘플링, 프롬프트 조립  ← 구현됨 (dry-run 동작)
-  providers/           gemini.py / openai.py / higgsfield.py (generate · edit · qa 인터페이스)
-  pipeline.py          ③~⑦ 오케스트레이션, 재시도
-  store.py             저장·히스토리 (로컬 → Supabase 교체 가능)
-  api.py               FastAPI
-web/
-  (신규 설계 예정)      prompf UI 미참고. 흐름·요구사항 확정 후 별도 설계
-outputs/               결과 (git 제외)
+  spec.py              프롬프트 조립                       ← 구현됨
+  planner.py           라틴 방격 샘플링, 비용 산출
+  providers/           gemini / openai / higgsfield (generate · edit · qa)
+  qa/                  structure.py (랜드마크·정렬) · vision.py (채점) · dedup.py (임베딩)
+  batch.py             워커 풀, 재시도, 상태 저장, 정리
+  cli.py               배치 실행 진입점
+  api.py               UI용 FastAPI (2단계)
+web/                   UI 신규 설계 (2단계)
+outputs/{batch_id}/    결과 (git 제외)
 ```
 
-## 프로바이더 인터페이스
+## 6. 프로바이더 인터페이스
 ```python
 class Provider:
-    def generate(prompt: str, aspect: str) -> Image
-    def edit(image: Image, prompt: str) -> Image          # 국소 편집, 원본 보존 우선
-    def qa(before: Image, after: Image, checklist) -> dict  # {item: score 0-10, notes}
+    name: str
+    concurrency: int
+    def generate(prompt, aspect, seed=None) -> Image
+    def edit(image, prompt, mask=None) -> Image      # 원본 보존 우선
+    def qa(before, after, checklist) -> dict         # {item: 0-10, notes}
 ```
-모델별 역할은 스파이크로 결정. 가설: Before=Higgsfield 또는 Gemini, After 편집=Gemini, 검수=Gemini/GPT.
+역할 가설: Before = Higgsfield 또는 Gemini · After 편집 = Gemini · 채점 = Gemini/GPT. 스파이크로 확정.
 
-## 데이터 스키마 (meta.json → 운영 시 DB 테이블)
+## 7. 데이터 스키마
 ```
-job_id, treatment, mode, variation{8축}, before_prompt, after_prompt,
-provider{gen, edit, qa}, attempts, scores{7항목}, passed, reviewer_ok(사람), created_at
+batch: batch_id, treatment, mode, target_pass, planned, started_at, finished_at, stats
+item:  item_id, batch_id, variation{축}, before_prompt, after_prompt,
+       provider{gen, edit, qa}, attempt, structure{align_err, face_ratio, luma_diff},
+       scores{7항목}, dedup_group, passed, reviewer_pick, cost, created_at
 ```
 
-## 단계별 로드맵
+## 8. 로드맵
 
-| 단계 | 기간 | 산출 |
-|---|---|---|
-| **0. 스파이크** | 키 수령 후 2~3일 | 팔자 셀카 10장 × 모델 3종 → 리얼리티·편집 보존력 비교표, 모델 역할 확정 |
-| **1. 파이프라인** | 1주 | CLI로 팔자·엠보 2개 시술 end-to-end (생성→편집→검수→저장) |
-| **2. UI** | 1주 | UI 신규 설계·구현: 생성 요청 + 검수 통과작 갤러리 + 히스토리 |
-| **3. 시술 확장** | 1주 | 나머지 6개 시술 스펙 튜닝, 통과율 측정 |
-| **4. 팀 배포** | 1주 | Supabase 저장·권한, BX/그로스 계정 접근, 슬랙 알림 |
+| 단계 | 기간 | 산출 | 검증 |
+|---|---|---|---|
+| **0. 스파이크** | 키 수령 후 3일 | 팔자 · 임상+셀카 · 모델 3종 × 10장 | 편집 보존력(정렬 오차), 블라인드 구분율 |
+| **1. 코어 파이프라인** | 1주 | CLI 배치: 생성→편집→3단 검수→정리 | 팔자·엠보 통과율 60% |
+| **2. 대량화** | 1주 | 병렬·재시도·이어하기·비용 산출 | 시간당 통과작 100장 |
+| **3. 시술 확장** | 1주 | 나머지 6개 시술 스펙·보조 프레이밍 튜닝 | 시술별 통과율 표 |
+| **4. UI·배포** | 1~2주 | 배치 요청 화면, 갤러리, Supabase 저장, 팀 계정 | BX·그로스 자체 실행 |
 
-## 미결정 사항
-1. 이미지 규격: 세로 4:5 / 9:16 / 1:1 중 기본값
-2. 손 포함 셀카를 기본으로 할지 옵션으로 할지 (손가락 실패율에 따라)
-3. 검수 임계값(현재 7/10)과 재시도 상한(3회)의 비용 균형
-4. 광고 심의상 "생성 이미지" 표기 방식
+## 9. 미결정
+1. 라틴 방격 축 우선순위 (모든 축 균등 vs 나라·연령 우선)
+2. 정렬 오차 임계값 (초안 2%)과 비전 채점 임계값(7/10)의 비용 균형
+3. 마스크 편집 지원 모델 유무에 따른 After 생성 방식 분기
+4. 광고 심의상 생성 이미지 표기 방식

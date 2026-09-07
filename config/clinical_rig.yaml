@@ -1,0 +1,21 @@
+# 임상(후기)용 촬영 리그 고정 프로파일.
+# 임상 모드는 이 세트를 변주 없이 그대로 사용. Before/After 양쪽에 동일 삽입.
+
+rig_default:
+  camera: "clinic documentation camera, mirrorless with 85mm lens, f/5.6, everything in focus, no bokeh"
+  distance: "camera 1.2m from face, fixed tripod height at eye level"
+  lighting: "two softbox lights at 45 degrees left and right, even shadowless illumination, neutral 5500K, no ring light reflection"
+  background: "plain matte light grey backdrop, no texture, no objects"
+  subject_setup: "hair pulled back with white headband, no makeup, no earrings, white clinic gown, neutral expression, mouth closed, eyes to camera"
+  processing: "straight out of camera, neutral color, no retouching, moderate sharpness"
+
+angles:
+  front: "exact frontal view, head level, Frankfort plane horizontal"
+  oblique_45: "45 degree oblique view to the left, head level"
+  side: "true side profile facing left, head level"
+
+# 구조 검사 임계값 (임상 모드에만 적용)
+tolerance:
+  landmark_align_pct: 2.0     # 눈 중심 거리 대비 위치 오차 %
+  face_ratio_diff: 0.03       # 얼굴 세로 비율 차이
+  luma_diff: 0.05             # 평균 밝기 차이

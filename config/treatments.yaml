@@ -8,6 +8,7 @@ nasolabial:            # 팔자주름 — 1순위
     nasolabial folds visibly softened and shallower, skin around the mouth smoother,
     same facial structure, no change to lips, nose, or expression.
   modes: [clinical, selfie]
+  framing: [face_closeup, lower_face]
   angles_clinical: [front, three_quarter]
 
 skinbooster_embo:      # 스킨부스터 엠보 — 2순위
@@ -17,6 +18,7 @@ skinbooster_embo:      # 스킨부스터 엠보 — 2순위
     skin looks hydrated and plump with a natural glow, fine lines reduced,
     texture still visible (pores, tiny peach fuzz remain), no plastic smoothness.
   modes: [clinical, selfie]
+  framing: [face_closeup, cheek_macro]
   angles_clinical: [front]
 
 nose_lifting:
@@ -26,6 +28,7 @@ nose_lifting:
     nose bridge slightly higher and straighter, tip slightly more defined,
     subtle change only, rest of the face identical.
   modes: [clinical, selfie]
+  framing: [nose_side, face_closeup]
   angles_clinical: [three_quarter, side]
 
 skin_redness:
@@ -35,6 +38,7 @@ skin_redness:
     facial redness on cheeks noticeably calmer and more even, skin tone uniform,
     natural texture preserved.
   modes: [clinical, selfie]
+  framing: [face_closeup, cheek_macro]
   angles_clinical: [front]
 
 skin_pores:
@@ -43,6 +47,7 @@ skin_pores:
   after_change: >
     enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
   modes: [clinical, selfie]
+  framing: [cheek_macro, face_closeup]
   angles_clinical: [front, three_quarter]
 
 lifting:
@@ -52,6 +57,7 @@ lifting:
     jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced,
     same bone structure.
   modes: [clinical, selfie]
+  framing: [jawline_oblique, face_closeup]
   angles_clinical: [front, three_quarter, side]
 
 filler:
@@ -60,6 +66,7 @@ filler:
   after_change: >
     treated area subtly fuller and smoother volume, natural proportions.
   modes: [clinical, selfie]
+  framing: [face_closeup]
   angles_clinical: [front, three_quarter]
 
 philtrum:
@@ -68,4 +75,5 @@ philtrum:
   after_change: >
     philtrum appears slightly shorter and upper lip line more defined, subtle.
   modes: [clinical, selfie]
+  framing: [lower_face, face_closeup]
   angles_clinical: [front, side]

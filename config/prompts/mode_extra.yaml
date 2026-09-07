@@ -2,5 +2,8 @@ clinical: >
   Clinical before-and-after documentation style: subject centered, neutral expression,
   hair pulled back, no makeup, shoulders square to camera.
 selfie: >
-  Casual selfie taken with a phone held in one hand; hand and phone edge may be partially
-  visible with anatomically correct fingers (five fingers, natural grip). Slight motion blur acceptable.
+  Casual phone selfie framing; no hands or phone visible in frame. Slightly off-center
+  composition, minor motion blur acceptable.
+selfie_with_hand: >
+  Casual selfie taken with a phone held in one hand; hand and phone edge partially visible
+  with anatomically correct fingers (five fingers, natural grip). Slight motion blur acceptable.

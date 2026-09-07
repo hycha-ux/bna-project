@@ -35,7 +35,7 @@ angle:
 
 lighting:
   ring: "ring light, even soft frontal light with catchlights"
-  window: "natural window daylight from the side"
+  window: "natural daylight from the side"
   fluorescent: "indoor fluorescent ceiling light, slightly greenish"
   night: "dim indoor night lighting, warm lamp"
   backlit: "backlit against a bright window, face slightly underexposed"
@@ -65,3 +65,11 @@ mode_rules:
   selfie:
     background: [home, cafe, outdoor, car, bathroom]
     angle: [selfie_high, selfie_low, front]
+
+# 배경별 호환 조명 (셀카 모드). 배경을 먼저 뽑고 조명은 이 목록 안에서만 선택.
+background_lighting:
+  home: [window, fluorescent, night, ring]
+  cafe: [window, fluorescent, backlit]
+  outdoor: [window, backlit]
+  car: [window, backlit, night]
+  bathroom: [fluorescent, ring]
