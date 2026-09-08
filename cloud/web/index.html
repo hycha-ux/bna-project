@@ -149,20 +149,52 @@ tbody tr:last-child td { border-bottom:none }
 .dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
 .dd-menu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20; background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-sm); box-shadow:0 8px 24px rgba(25,31,40,.12); padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px }
 .dd-opt { display:flex; align-items:center; gap:8px; height:34px; padding:0 8px; border-radius:6px; font-size:var(--fs-sm); cursor:pointer } .dd-opt:hover { background:var(--ui-surface) } .dd-opt input { accent-color:var(--primary); width:16px; height:16px; margin:0 }
-.rev { display:grid; grid-template-columns:minmax(0,1fr) 320px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+/* 검수 모드 크기 (2026-09-08 성연서님 "너무 크게 보여서 한 페이지에 다 들어오지 않아").
+   실측: 문서 1944px / 창 900px → 채택·제외 버튼이 화면 밖이라 매번 스크롤해야 했다.
+   레버 둘: ①검수 중엔 위쪽 지표·통계 카드를 접는다 ②사진을 창 높이에 맞춘다.
+   ⚠ 사진은 cover(잘라 채우기)가 아니라 contain(전체 보이기)이다 — 잘린 손·머리끝을
+      못 보면 검수 자체가 안 된다. */
+.rev { display:grid; grid-template-columns:minmax(0,1fr) 340px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+#batches-wrap { max-height:340px }
+/* ⚠ 이 높이는 CSS 로 둔다 — 인라인 style 로 두면 아래 검수 모드 규칙이 못 이겨서
+   목록이 안 접히고 검수 화면이 그만큼 아래로 밀린다(2026-09-08 실측 503px). */
+body.reviewing #kpis, body.reviewing #gal-stats, body.reviewing #prog { display:none }
+body.reviewing #batches-wrap, body.reviewing #batches-empty { display:none }
+body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360px) }
+body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
+body.reviewing .rev-side { padding:12px 14px; gap:10px; max-height:calc(40vh + 84px); overflow:auto }
+body.reviewing .th { flex-basis:40px }
+body.reviewing .thumbs { padding:6px 12px }
+/* 남은 세로는 카드 여백에서 짜낸다 — 검수 중엔 제목·목록보다 사진이 먼저다 */
+body.reviewing #tab-jobs > .card:first-child > .card-head { display:none }
+body.reviewing #tab-jobs > .card:first-child { padding-top:12px; padding-bottom:8px }
+body.reviewing #detail-body > .card:first-child { padding-top:12px; padding-bottom:12px }
+body.reviewing #detail-body > .card:first-child .card-head { margin-bottom:0 }
+body.reviewing #detail { margin-top:10px }
+body.reviewing #detail-body > .card:last-child { margin-top:10px }
+body.reviewing #detail-body > .card:last-child > .card-head { margin-bottom:8px }
 .rev-main { min-width:0; display:flex; flex-direction:column } .rev-main .pair { border-radius:var(--r-md) 0 0 0 } .rev-main .pair figure { aspect-ratio:4/5 }
 .thumbs { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--ui-border) } .th-row { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none } .th-row::-webkit-scrollbar { display:none }
 .th { flex:0 0 56px; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--ui-surface); cursor:pointer } .th img { width:100%; height:100%; object-fit:cover; display:block }
 .th.pick { border-color:var(--ok) } .th.reject { border-color:var(--bad) } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
 .rev-side { border-left:1px solid var(--ui-border); padding:20px; display:flex; flex-direction:column; gap:20px } .rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-md); margin-bottom:6px }
-.scores { display:flex; flex-direction:column; gap:6px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
+.scores { display:flex; flex-direction:column; gap:6px } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
 .rev-act { margin-top:auto } .rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
 .rev-side .reason { border-top:0; padding-top:0 }
+/* 안내 문구를 버튼과 같은 높이로 늘려 그 안에서 가운데 맞춘다 — align-items:center 만으로는
+   버튼 안쪽 여백 때문에 2px 어긋난다(2026-09-08 실측 버튼 중심 1120 vs 문구 중심 1118). */
+/* 안내 문구를 버튼과 **같은 높이 박스**로 만들어 그 안에서 가운데 맞춘다.
+   align-items:center 만으로는 버튼 안쪽 여백 때문에 2px 어긋난다(2026-09-08 실측). */
 .reason-foot { display:flex; align-items:center; gap:8px; margin-top:8px }
+.reason-foot > * { align-self:center }
+/* ⚠ margin:0 을 빼지 마라 — 바로 위 `.reason .muted { margin-bottom:4px }` 가 여기까지 새어
+   들어와, 컨테이너가 4px 높아지면서 버튼만 2px 내려간다(2026-09-08 실측 버튼 927 vs 문구 925). */
+.reason-foot .muted { display:flex; align-items:center; height:var(--btn-h,32px); line-height:1; min-width:0; margin:0 }
+.reason-foot .b { height:var(--btn-h,32px); margin:0 }
 .verdict { font-weight:var(--fw-m); font-size:var(--fs-sm); color:var(--ui-md); white-space:nowrap; flex-shrink:0 } .verdict.ok { color:var(--ok) } .verdict.bad { color:var(--bad) }
 .why { font-size:var(--fs-xs); color:var(--ui-md); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
 .conds { font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:var(--sp-2) }
-.reason { margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:1px dashed var(--ui-border) } .reason .muted { margin-bottom:4px }
+.reason { margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:1px dashed var(--ui-border) } .reason > .muted { margin-bottom:4px }   /* ⚠ 직접 자식만 — 그냥 `.reason .muted` 로 두면 아래 저장됨 줄의 안내 문구까지 4px 밀려 버튼과 어긋난다(2026-09-08) */
 .tags { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px } .tags button { font-size:11px }
 button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .item input[type=text] { height:32px; font-size:12px }
@@ -193,7 +225,9 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
 .lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px } .lib .item .body { padding:8px 10px 10px } .lib .item .id { font-size:12px }
-dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18) }
+/* ⚠ margin:auto 를 빼지 마라 — 리셋 CSS 의 `margin:0` 이 브라우저 기본 가운데 정렬을 지워
+   모달이 좌상단에 붙는다(2026-09-08 실측 left 0·top 0). inset:0 과 한 쌍이다. */
+dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
 dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:var(--fs-xl); font-weight:var(--fw-b) }
 dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
 .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
@@ -343,7 +377,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
           <select id="gal-axis"><option value="">조건 전체</option></select><select id="gal-axis-val" hidden><option value="">값 전체</option></select>
           <span class="tb-space"></span><span class="muted" id="gal-count"></span>
         </div>
-        <div class="tbl-wrap" style="max-height:340px"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
       </div>
       <div id="detail" style="margin-top:var(--gap)">
@@ -401,6 +435,16 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 </div>
 
 <dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
+<script>
+// 딤(모달 바깥 어두운 부분)을 누르면 닫는다 (2026-09-08 성연서님 지시).
+// ⚠ dialog 는 딤을 눌러도 click 대상이 dialog 자신이라, 안쪽(.in)에서 올라온 클릭과 구분해야 한다.
+//   좌표가 모달 상자 밖일 때만 닫는다 — 안 그러면 표를 긁어도 닫힌다.
+document.getElementById('dlg').addEventListener('click', (e) => {
+  const d = e.currentTarget; if (e.target !== d) return;
+  const r = d.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
+});
+</script>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -446,6 +490,11 @@ const MODE_KO = {selfie:'셀카형', clinical:'임상형'};
 const KIND_KO = {demo:'샘플', dry_run:'프롬프트만', run:'실제', sim:'시뮬레이션'};
 const FAIL_KO = {structure:'얼굴 정렬 불일치', identity:'동일 인물 아님', duplicate:'유사 이미지 중복', 'vision:hair':'머리카락 부자연', 'vision:ai_look':'AI 생성 티', 'vision:fingers':'손가락 오류', 'vision:skin_texture':'피부 질감 부자연', 'vision:drift':'시술 부위 외 변화', 'vision:effect_visible':'효과 미확인', 'vision:identity':'동일 인물 아님'};
 const SCORE_KO = {fingers:'손가락', skin_texture:'피부 질감', hair:'머리카락', identity:'동일 인물', drift:'부위 외 변화 없음', effect_visible:'효과 확인', ai_look:'자연스러움'};
+// AI 검수 점수의 정본 모양은 `{item: {score, note}}` 다(src/bna/qa/vision.py).
+// 2026-09-08 성연서님 "AI 점수항목 오류" — 화면이 이걸 숫자로 다뤄 [object Object]·NaN% 가 나왔다.
+// 옛 평면 모양(숫자)도 받아 준다 — 예전 배치의 meta.json 이 그 모양이면 화면이 통째로 깨지면 안 된다.
+const scoreOf = v => { const n = (v && typeof v === 'object') ? v.score : v; return typeof n === 'number' && isFinite(n) ? n : null; };
+const noteOf = v => (v && typeof v === 'object' && typeof v.note === 'string') ? v.note : '';
 const VAL_KO = {
   country:{korea:'한국인', japan:'일본인', china:'중국인', sea:'동남아', west:'서양인'}, age:{late_teens:'10대 후반', early_20s:'20대 초', late_20s:'20대 후', '30s':'30대', '40s':'40대', '50s':'50대', '60s':'60대'}, gender:{female:'여성', male:'남성'},
   face_shape:{oval:'계란형', round:'둥근형', square:'각진형', long:'긴형', heart:'하트형'}, skin_tone:{fair:'아주 밝은 피부', light:'밝은 피부', medium:'중간 피부', tan:'그을린 피부', deep:'어두운 피부'},
@@ -499,6 +548,7 @@ function show(tab) {
   $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
   if (tab === 'home') loadHome();
   if (tab === 'create') loadQueue();
+  document.body.classList.toggle('reviewing', tab === 'jobs' && VIEW === 'review');
   if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
   if (tab === 'library') loadLibrary();
   if (tab === 'lessons') loadLessons();
@@ -811,7 +861,9 @@ function renderReview() {
   const img = (file, cap) => file ? `<figure><img src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   const fails = (it.fail_reasons||[]).map(r => esc(failKo(r))).join(' · ');
   const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>' : it.passed ? '<span class="verdict ok">AI 검수 통과</span>' : '<span class="verdict bad">AI 검수 탈락</span>';
-  const scores = it.vision?.scores ? Object.entries(it.vision.scores).map(([k, n]) => `<div class="score"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n < 5 ? 'bad' : ''}" style="width:${n*10}%"></i></span><b class="${n < 5 ? 'bad' : ''}">${n}</b></div>`).join('') : '<div class="muted">점수 없음</div>';
+  const scores = it.vision?.scores ? Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v);
+    return `<div class="score" title="${esc(noteOf(v) || '')}"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n != null && n < 5 ? 'bad' : ''}" style="width:${n == null ? 0 : n*10}%"></i></span><b class="${n != null && n < 5 ? 'bad' : ''}">${n == null ? '—' : n}</b></div>`;
+  }).join('') : '<div class="muted">점수 없음</div>';
   const cond = (ks) => ks.filter(k => v[k]).map(k => esc(val(k, v[k].key))).join(' · ');
   const thumbs = GAL_ITEMS.map((x, i) => `<button class="th ${i === REV_IDX ? 'cur' : ''} ${x.review?.pick||''}" data-idx="${i}" title="${+x.item_id+1}">${x.after_file ? `<img loading="lazy" src="/files/${b}/${x.item_id}/${x.after_file}">` : ''}</button>`).join('');
   const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
@@ -840,7 +892,13 @@ function renderReview() {
   bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; renderReview(); });
   el.querySelector('.th.cur')?.scrollIntoView({block:'nearest', inline:'center'});
 }
-$('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => { VIEW = bt.dataset.v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt)); renderGallery(); });
+$('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => {
+  VIEW = bt.dataset.v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt));
+  renderGallery();
+  // 검수 모드에선 위쪽 지표·통계를 접고(CSS) 사진 카드로 스크롤한다 — 매번 스크롤해서 내려오지 않게.
+  document.body.classList.toggle('reviewing', VIEW === 'review');
+  if (VIEW === 'review') setTimeout(() => $('#rev')?.scrollIntoView({behavior:'smooth', block:'center'}), 60);
+});
 document.addEventListener('keydown', e => {
   if (VIEW !== 'review' || $('#rev').hidden || !CUR || (e.target instanceof Element && e.target.matches('input, textarea, select'))) return;
   const it = GAL_ITEMS[REV_IDX]; if (!it) return;
@@ -940,7 +998,11 @@ async function save(it, prev) {
 function detail(id) {
   const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
   const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
-  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok', null, k => SCORE_KO[k]||k).replace(/장<\/span>/g, '점</span>')}` : '';
+  // 점수는 {score, note} 객체다. note 는 AI 가 그렇게 준 이유라 같이 보여 준다(검수의 근거).
+  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3><div class="scores lg">${
+    Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v), why = noteOf(v);
+      return `<div class="score"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n != null && n < 5 ? 'bad' : ''}" style="width:${n == null ? 0 : n*10}%"></i></span><b class="${n != null && n < 5 ? 'bad' : ''}">${n == null ? '—' : n}</b></div>${
+        why ? `<div class="score-why">${esc(why)}</div>` : ''}`; }).join('')}</div>` : '';
   const chk = [it.structure && `얼굴 정렬: ${it.structure.passed ? '통과' : '불일치'}`, it.identity && `동일 인물: ${it.identity.hard_fail ? '불일치' : '통과'}`].filter(Boolean).join(' · ');
   $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
     <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>

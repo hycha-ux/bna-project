@@ -1,5 +1,5 @@
 /**
- * B&A 대시보드 클라우드 배포본 — 보기 전용(read-only) + 계정 로그인.
+ * B&A 대시보드 클라우드 배포본 — 검수 가능 + 계정 로그인.
  *
  * 구조: 사무실 PC의 로컬 API(src/bna/api.py)가 원장이다. `push-cloud.mjs` 가 그 응답을
  *       그대로 긁어 Blob(`snapshot.json` + `files/**`)에 올리고, 이 함수는 그걸 읽어
@@ -11,7 +11,9 @@
  *   - AUTH_SECRET 이 없으면 503 으로 닫는다(fail-closed). 생성 이미지가 사람 얼굴이라
  *     열어 두느니 안 뜨는 게 낫다.
  *
- * 쓰기(생성·큐·검수·내보내기)는 전부 405 다 — 돈 쓰는 버튼을 공개 URL에 두지 않는다.
+ * 쓰기: **검수만 열려 있다**(2026-09-08). 판정은 Blob `reviews/` 에 쌓이고 사무실 PC 가
+ *       회차마다 흡수한다 — `lib/reviews.mjs` 머리말이 정본. 생성·큐·내보내기는 405 다
+ *       (돈·시간이 들고 사진 파일이 그 PC 에만 있다).
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -300,13 +302,15 @@ function indexHtml(snap, user) {
   if (!INDEX_HTML) return '<h1>index.html 을 찾지 못했습니다</h1>';
   const at = snap?.generated_at || null;
 
-  // ① 스냅샷 시각은 화면에 남긴다 — 낡은 값을 실시간으로 오해하면 그게 사고다.
-  //    (계정·관리자·로그아웃은 2026-09-08 성연서님 지시로 프로필 메뉴로 옮겼다.)
-  const banner = `<div id="snapnote" style="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
+  // ① 하단 알약은 2026-09-08 성연서님 지시로 뺐다 — "보기 전용 · 사무실 PC 기준 … 스냅샷".
+  //    같은 날 검수를 클라우드에서 열었으므로 "보기 전용"은 이제 **틀린 말**이고,
+  //    화면 위쪽 안내 카드가 되는 것/안 되는 것을 이미 말한다(같은 말을 두 번 하지 않는다).
+  //    ⚠ 낡은 값 경고는 없애면 안 되는 정보라, 알약 대신 **아직 데이터가 없을 때만** 남긴다.
+  const banner = at
+    ? ''
+    : `<div id="snapnote" style="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
 z-index:9999;background:rgba(25,31,40,.82);color:#fff;font-size:12px;padding:6px 13px;border-radius:999px;
-box-shadow:0 2px 8px rgba(0,0,0,.16)">${
-    at ? `보기 전용 · 사무실 PC 기준 ${esc(at)} 스냅샷` : '보기 전용 · 아직 데이터가 올라오지 않았습니다'
-  }</div>`;
+box-shadow:0 2px 8px rgba(0,0,0,.16)">아직 데이터가 올라오지 않았습니다</div>`;
 
   // ② 계정·관리자·로그아웃은 우측 상단 프로필(▾) 메뉴 안으로.
   //    빌디의 index.html 을 고치지 않고 여기서 얹는다(그쪽이 다시 구워도 안 지워진다).
