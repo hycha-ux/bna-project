@@ -88,7 +88,12 @@ extras:
 # 성별에 따라 제외되는 옵션
 gender_exclusions:
   female: {extras: [beard_light, beard_full], hair_style: [buzz]}
-  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs]}
+  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs, bob, long_straight]}   # bob·long_straight 누락 → 남성 20.7% 단발/긴 생머리 (티모 0907 실측)
+
+# 나이 게이트: 그 값이 어울리는 나이에만 뽑는다 (0909 dry-run: 30대에 새치 + 굵은 목 + 피곤 = 나이가 안 읽힌다)
+age_gates:
+  hair_color: {grey: ["40s", "50s", "60s"]}
+  extras: {tired: [late_20s, "30s", "40s", "50s", "60s"]}
 
 background:
   clinic: "plain light clinic wall"

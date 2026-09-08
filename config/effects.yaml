@@ -1,7 +1,7 @@
 # 효과 강도·경과 시점 문구
 effect_levels:
-  subtle: "The improvement is subtle and could be missed at a glance"
-  moderate: "The improvement is clearly noticeable but still within a natural range"
+  subtle: "The change is mild: the treated area is better than in the reference but the concern is still present, noticeable mainly when the two photos are compared side by side"
+  moderate: "The change is clear when the two photos are compared, but still within what a single treatment realistically does; nothing looks perfect or erased"
 timeline:
   immediate: "photographed right after the procedure; faint redness or slight swelling in the treated area is acceptable"
   1w: "photographed about one week after the procedure; treated area fully settled, very faint residual redness possible"

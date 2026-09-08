@@ -43,8 +43,8 @@ nasolabial:
       a clear shadow, a slightly sagging front cheek, faint marionette lines and a tired under-eye
       area. Do not make the face look younger, rested or more attractive than described.
   after_change: >
-    nasolabial folds visibly softened and shallower, skin around the mouth smoother, same
-    facial structure.
+    the nasolabial folds are softer and shallower than in the reference, the shadow inside the
+    crease is lighter, the skin beside the mouth sits a little smoother; same facial structure.
   must_not_change: >
     Do not change lip shape, lip volume, mouth width, nose, or jawline width. Do not smooth,
     brighten or tighten any other part of the face.
@@ -52,6 +52,7 @@ nasolabial:
   expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
   drift_lock: [expression, angle]
   scene_allow:
+    expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
     lighting: [window, fluorescent, ceiling_harsh, mixed]   # 어두운 밤·역광에서는 주름 그림자가 안 보인다
     angle: [front, selfie_3q, selfie_side, chin_up, tilted, selfie_high]   # selfie_low 는 팔자를 과장한다
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck, one_cheek]
@@ -75,6 +76,7 @@ lifting:
   expression_policy: lock
   drift_lock: [expression, angle, quality]   # 위에서 찍으면 시술 없이도 턱선이 올라간다 — 각도 동일이 생명
   scene_allow:
+    expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
     angle: [front, selfie_3q, tilted]        # selfie_high 금지
     lighting: [window, fluorescent, ceiling_harsh, mixed]
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
@@ -117,6 +119,7 @@ philtrum:
   expression_policy: lock                    # 웃으면 인중이 짧아 보인다
   drift_lock: [expression, angle]
   scene_allow:
+    expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
     angle: [front, selfie_side, selfie_3q, tilted]
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
   age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}

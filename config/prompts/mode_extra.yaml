@@ -3,8 +3,8 @@ clinical: >
   hair pulled back, no makeup, shoulders square to camera.
 selfie: >
   This is a photo a patient took of themselves to send to a clinic and show a skin concern,
-  the kind of photo posted in a treatment review app. It was not taken to look good: no posing,
-  no smile, the problem area is pushed close to the lens and fills the frame, composition is
+  the kind of photo posted in a treatment review app. It was not taken to look good: no posing
+  for the camera, the problem area is pushed close to the lens and fills the frame, composition is
   off-center and careless, the phone is not visible. Minor motion blur, slight overexposure or
   a color cast are acceptable and typical.
 selfie_with_hand: >
@@ -21,7 +21,7 @@ selfie_after: >
 after_day:
   same: >
     This photo is taken later the same day, right after the procedure, at the clinic or on the way
-    home, not at home like the reference. The clothes are different from the reference: she is
+    home, not at home like the reference. The clothes are different from the reference: the person is
     dressed for going out, not in home clothes. The hair is not the same: pushed back or flattened
     from the procedure, and the loose strands do not match the reference. The camera angle is only
     roughly similar: the head is turned a few degrees more or less, the phone is a little higher or

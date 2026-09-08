@@ -84,6 +84,9 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     if axis == "age":
         zero = {k for k, w in (tr.get("age_weights") or {}).items() if w <= 0}
         allowed = [k for k in allowed if k not in zero] or allowed
+    gates = v.get("age_gates", {}).get(axis) or {}
+    if gates and keys.get("age"):                     # 그 값이 어울리는 나이에만 (새치는 40대~)
+        allowed = [k for k in allowed if keys["age"] in [str(a) for a in gates.get(k, [keys["age"]])]] or allowed
     if axis == "lighting":
         compat = v.get("background_lighting", {}).get(keys.get("background"))
         if compat:
