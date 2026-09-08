@@ -100,6 +100,9 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
             allowed = [k for k in allowed if k in ca] or (["none"] if "none" in v[axis] else allowed)
         fb = v.get("framing_ban", {}).get(keys.get("framing")) or []
         allowed = [k for k in allowed if k not in fb] or (["none"] if "none" in v[axis] else allowed)
+        hs = keys.get("hair_style")
+        if hs:                                        # 잔머리는 긴 머리에만
+            allowed = [k for k in allowed if hs in v.get("context_hair", {}).get(k, [hs])] or (["none"] if "none" in v[axis] else allowed)
     return allowed
 
 
@@ -166,6 +169,10 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
             nb = v.get("angle_neighbors", {}).get(variation["angle"]["key"])
             if nb:
                 allowed = [k for k in allowed if k in nb] or allowed
+        if axis == "hair_style":                            # 머리는 2주 안에 될 수 있는 모양으로만 (포니테일→삭발 금지)
+            nb = v.get("hair_style_neighbors", {}).get(variation["hair_style"]["key"])
+            if nb is not None:
+                allowed = [k for k in allowed if k in nb]   # 빈 목록이면 안 바뀐다
         opts = [k for k in allowed if k != variation[axis]["key"]]
         if opts:
             k = rng.choice(opts); after[axis] = {"key": k, "text": v[axis][k]}; keys[axis] = k

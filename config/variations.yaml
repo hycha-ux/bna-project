@@ -88,7 +88,22 @@ extras:
 # 성별에 따라 제외되는 옵션
 gender_exclusions:
   female: {extras: [beard_light, beard_full], hair_style: [buzz]}
-  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs, bob, long_straight]}   # bob·long_straight 누락 → 남성 20.7% 단발/긴 생머리 (티모 0907 실측)
+  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs, bob, long_straight, ponytail]}   # bob·long_straight 누락 → 남성 20.7% 단발/긴 생머리 (티모 0907 실측)
+
+# 헤어 이웃: After(다른 날) 머리 모양은 2주 안에 될 수 있는 것으로만 (0909 dry-run: 포니테일 → 삭발). 없는 값은 안 바뀐다.
+hair_style_neighbors:
+  long_straight: [long_wavy, ponytail, bun]
+  long_wavy: [long_straight, ponytail, bun]
+  ponytail: [long_straight, long_wavy, bun, bob]
+  bun: [long_straight, long_wavy, ponytail]
+  bob: [bangs, ponytail]
+  bangs: [bob]
+  short: [buzz]
+  buzz: []
+
+# 맥락 × 헤어: 잔머리는 긴 머리에만 (짧은 머리에 "볼을 덮는 잔머리"가 나왔다)
+context_hair:
+  hair_in_face: [long_straight, long_wavy, bob, bangs, ponytail, bun]
 
 # 나이 게이트: 그 값이 어울리는 나이에만 뽑는다 (0909 dry-run: 30대에 새치 + 굵은 목 + 피곤 = 나이가 안 읽힌다)
 age_gates:
