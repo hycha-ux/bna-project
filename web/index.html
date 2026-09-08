@@ -1,87 +1,109 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-seed data-seed-color-mode="light-only">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>B&A 대시보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="stylesheet" href="/vendor/seed/base.min.css">
+<link rel="stylesheet" href="/vendor/seed/recipes.css">
 <style>
-  :root { --bg:#f6f6f4; --card:#fff; --ink:#1b1b1b; --mute:#6b6b6b; --line:#e4e2dd; --acc:#2f5bea; --ok:#1f9d55; --bad:#d64545; --warn:#c98a00; --chip:#efeeea; }
+  /* ── SEED Design 토큰 매핑 (역할 기반 색상만 사용) ── */
+  :root {
+    --bg: var(--seed-color-bg-layer-basement); --card: var(--seed-color-bg-layer-default); --fill: var(--seed-color-bg-layer-fill);
+    --ink: var(--seed-color-fg-neutral); --mute: var(--seed-color-fg-neutral-muted); --subtle: var(--seed-color-fg-neutral-subtle);
+    --line: var(--seed-color-stroke-neutral-muted); --line-weak: var(--seed-color-stroke-neutral-weak);
+    --acc: var(--seed-color-bg-brand-solid); --acc-fg: var(--seed-color-fg-brand); --acc-weak: var(--seed-color-bg-brand-weak);
+    --ok: var(--seed-color-fg-positive); --ok-bg: var(--seed-color-bg-positive-solid); --ok-weak: var(--seed-color-bg-positive-weak);
+    --bad: var(--seed-color-fg-critical); --bad-bg: var(--seed-color-bg-critical-solid); --bad-weak: var(--seed-color-bg-critical-weak);
+    --warn: var(--seed-color-fg-warning); --warn-bg: var(--seed-color-bg-warning-solid); --warn-weak: var(--seed-color-bg-warning-weak);
+    --info: var(--seed-color-fg-informative); --info-bg: var(--seed-color-bg-informative-solid); --info-weak: var(--seed-color-bg-informative-weak);
+    --chip: var(--seed-color-bg-neutral-weak); --r: var(--seed-radius-r3); --r-s: var(--seed-radius-r2);
+    --x1: var(--seed-dimension-x1); --x2: var(--seed-dimension-x2); --x3: var(--seed-dimension-x3); --x4: var(--seed-dimension-x4); --x5: var(--seed-dimension-x5); --x6: var(--seed-dimension-x6);
+    --t1: var(--seed-font-size-t1); --t2: var(--seed-font-size-t2); --t3: var(--seed-font-size-t3); --t4: var(--seed-font-size-t4); --t5: var(--seed-font-size-t5); --t6: var(--seed-font-size-t6); --t7: var(--seed-font-size-t7); --t8: var(--seed-font-size-t8);
+    --lh3: var(--seed-line-height-t3); --lh4: var(--seed-line-height-t4);
+    --fw-m: var(--seed-font-weight-medium); --fw-b: var(--seed-font-weight-bold);
+  }
   * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif }
-  header { display:flex; align-items:center; gap:18px; padding:12px 22px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5 }
-  header h1 { font-size:16px; margin:0 }
-  header .sub { color:var(--mute); font-size:12px }
-  nav { display:flex; gap:4px; margin-left:auto }
-  nav button { border:0; background:transparent; padding:8px 14px; border-radius:8px; font-size:14px; cursor:pointer; color:var(--mute) }
-  nav button.on { background:var(--chip); color:var(--ink); font-weight:600 }
-  main { padding:18px 22px; max-width:1500px; margin:0 auto }
-  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
-  label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--mute) }
-  select, input[type=number], input[type=text], textarea { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff; min-width:120px }
-  button.b { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer }
-  button.b.primary { background:var(--acc); color:#fff; border-color:var(--acc) }
-  button.b.danger { color:var(--bad) }
+  [hidden] { display:none !important }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif; font-size:var(--t4); line-height:var(--lh4); -webkit-font-smoothing:antialiased }
+  header { display:flex; align-items:center; gap:var(--x5); padding:0 var(--x6); background:var(--card); border-bottom:1px solid var(--line-weak); position:sticky; top:0; z-index:5; min-height:56px }
+  header h1 { font-size:var(--t6); font-weight:var(--fw-b); margin:0 }
+  header .sub { color:var(--subtle); font-size:var(--t2) }
+  nav { display:flex; gap:var(--x1); margin-left:auto; align-self:stretch }
+  nav button { border:0; background:transparent; padding:0 var(--x3); font-size:var(--t4); font-weight:var(--fw-b); cursor:pointer; color:var(--subtle); position:relative; font-family:inherit }
+  nav button.on { color:var(--ink) }
+  nav button.on::after { content:""; position:absolute; left:var(--x3); right:var(--x3); bottom:0; height:2px; background:var(--ink); border-radius:1px }
+  nav button .chip { margin-left:4px; vertical-align:1px }
+  main { padding:var(--x5) var(--x6); max-width:1500px; margin:0 auto }
+  .row { display:flex; gap:var(--x4); flex-wrap:wrap; align-items:flex-end }
+  .card { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); padding:var(--x5) }
+  label { display:flex; flex-direction:column; gap:var(--x1); font-size:var(--t2); color:var(--mute); font-weight:var(--fw-m) }
+  select, input[type=number], input[type=text], textarea { font:inherit; font-size:var(--t4); color:var(--ink); padding:0 var(--x3); min-height:40px; border:0; box-shadow:inset 0 0 0 1px var(--line); border-radius:var(--r-s); background:var(--card); min-width:120px; outline:none }
+  select:focus, input:focus, textarea:focus { box-shadow:inset 0 0 0 2px var(--seed-color-stroke-focus-ring, var(--ink)) }
+  input::placeholder { color:var(--seed-color-fg-placeholder) }
+  select { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center }
+  /* 버튼: seedify() 가 .b 에 action-button 레시피 클래스를 붙인다. 여기선 폰트만 */
+  button.b { font-family:inherit; cursor:pointer }
   button.b:disabled { opacity:.5; cursor:default }
-  h2 { font-size:15px; margin:18px 0 8px }
-  h3 { font-size:13px; margin:0 0 8px; color:var(--mute); font-weight:600 }
-  .grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px }
-  .bar { display:grid; grid-template-columns:110px 1fr 46px; gap:8px; align-items:center; font-size:12px; margin:3px 0 }
-  .bar .t { height:8px; background:var(--chip); border-radius:4px; overflow:hidden }
-  .bar .t i { display:block; height:100%; background:var(--acc) }
-  .bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) }
-  .bar .n { text-align:right; color:var(--mute) }
-  table { border-collapse:collapse; width:100%; font-size:13px }
-  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line) }
-  th { color:var(--mute); font-weight:600; font-size:12px }
-  tr.click { cursor:pointer } tr.click:hover { background:#fbfaf7 }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px }
-  .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px }
-  .kpi .v { font-size:22px; font-weight:700 } .kpi .l { font-size:12px; color:var(--mute) }
-  .chip { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--chip); font-size:11px; margin:2px 3px 0 0; color:#444 }
-  .chip.ok { background:#e3f5ea; color:var(--ok) } .chip.bad { background:#fbe5e5; color:var(--bad) } .chip.warn { background:#fff3d6; color:var(--warn) } .chip.acc { background:#e6ecfd; color:var(--acc) }
-  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:14px }
-  .item { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden }
-  .item.pick { border-color:var(--ok); box-shadow:0 0 0 2px #cdeedb } .item.reject { opacity:.7 }
-  .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--line) }
-  .pair figure { margin:0; position:relative; aspect-ratio:4/5; background:#eee; display:flex; align-items:center; justify-content:center; color:var(--mute); font-size:12px }
+  .act button.b.on-pick, .act button.b.on-reject { color:#fff }
+  h2 { font-size:var(--t6); font-weight:var(--fw-b); margin:var(--x5) 0 var(--x2) }
+  h3 { font-size:var(--t3); margin:0 0 var(--x2); color:var(--mute); font-weight:var(--fw-b) }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--x3) }
+  .bar { display:grid; grid-template-columns:110px 1fr 52px; gap:var(--x2); align-items:center; font-size:var(--t2); margin:3px 0 }
+  .bar .t { height:8px; background:var(--fill); border-radius:var(--seed-radius-full); overflow:hidden }
+  .bar .t i { display:block; height:100%; background:var(--info-bg); border-radius:inherit }
+  .bar .t i.ok { background:var(--ok-bg) } .bar .t i.bad { background:var(--bad-bg) }
+  .bar .n { text-align:right; color:var(--subtle); font-variant-numeric:tabular-nums }
+  table { border-collapse:collapse; width:100%; font-size:var(--t3); line-height:var(--lh3) }
+  th, td { text-align:left; padding:var(--x2) var(--x3); border-bottom:1px solid var(--line-weak); vertical-align:middle }
+  th { color:var(--subtle); font-weight:var(--fw-b); font-size:var(--t2) }
+  tr.click { cursor:pointer } tr.click:hover { background:var(--seed-color-bg-layer-default-pressed) }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:var(--x3); margin-bottom:var(--x3) }
+  .kpi { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); padding:var(--x3) var(--x4) }
+  .kpi .v { font-size:var(--t8); font-weight:var(--fw-b); letter-spacing:-.01em; font-variant-numeric:tabular-nums } .kpi .l { font-size:var(--t2); color:var(--subtle); margin-top:2px }
+  /* 배지: seedify() 가 .chip 에 badge 레시피를 붙인다. 톤은 여기서 */
+  .chip { margin:2px 3px 0 0; font-weight:var(--fw-m) }
+  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:var(--x4) }
+  .item { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); overflow:hidden }
+  .item.pick { border-color:var(--seed-color-stroke-positive-solid); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.65 }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--line-weak) }
+  .pair figure { margin:0; position:relative; aspect-ratio:4/5; background:var(--fill); display:flex; align-items:center; justify-content:center; color:var(--subtle); font-size:var(--t2) }
   .pair img { width:100%; height:100%; object-fit:cover; display:block }
-  .pair figcaption { position:absolute; left:6px; top:6px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px }
-  .item .body { padding:10px 12px }
-  .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px }
-  .item .id { font-weight:600 }
-  .tags { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 }
-  .tags button { font:inherit; font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--line); background:#fff; cursor:pointer }
-  .tags button.on { background:#fbe5e5; border-color:var(--bad); color:var(--bad) }
-  .act { display:flex; gap:6px; align-items:center }
-  .act button.b { padding:5px 10px; font-size:12px }
-  .act button.b.on-pick { background:var(--ok); color:#fff; border-color:var(--ok) }
-  .act button.b.on-reject { background:var(--bad); color:#fff; border-color:var(--bad) }
-  .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; background:#faf9f6; border:1px solid var(--line); border-radius:8px; padding:10px }
-  .muted { color:var(--mute); font-size:12px }
-  .empty { padding:40px; text-align:center; color:var(--mute) }
-  dialog { border:0; border-radius:14px; padding:0; max-width:900px; width:92vw; max-height:90vh }
-  dialog::backdrop { background:rgba(0,0,0,.35) }
-  dialog .in { padding:18px 20px; overflow:auto; max-height:88vh }
-  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:8px 14px; border-radius:8px; font-size:13px; opacity:0; transition:.2s; pointer-events:none }
-  .toast.show { opacity:1 }
-  .fixgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:8px }
-  details summary { cursor:pointer; color:var(--mute); font-size:12px }
-  .prog { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px }
-  .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px }
-  .prog .big { font-size:18px; font-weight:700 }
-  .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--chip); margin:10px 0 6px }
+  .pair figcaption { position:absolute; left:8px; top:8px; background:var(--seed-color-bg-overlay-muted, rgba(0,0,0,.55)); color:#fff; font-size:var(--t1); font-weight:var(--fw-b); padding:2px 8px; border-radius:var(--seed-radius-r1) }
+  .item .body { padding:var(--x3) var(--x4) var(--x4) }
+  .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--x1) }
+  .item .id { font-weight:var(--fw-b) }
+  .tags { display:flex; flex-wrap:wrap; gap:var(--x1); margin:var(--x2) 0 }
+  /* 태그 토글: seedify() 가 control-chip 레시피 + data-checked 를 붙인다 */
+  .tags button { font-family:inherit; font-size:var(--t2) }
+  .act { display:flex; gap:var(--x1); align-items:center }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--t2); white-space:pre-wrap; word-break:break-word; background:var(--fill); border-radius:var(--r-s); padding:var(--x3); color:var(--mute) }
+  .muted { color:var(--subtle); font-size:var(--t2) }
+  .empty { padding:var(--x10, 40px); text-align:center; color:var(--subtle) }
+  dialog { border:0; border-radius:var(--seed-radius-r4, 16px); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--card); color:var(--ink) }
+  dialog::backdrop { background:var(--seed-color-bg-overlay, rgba(0,0,0,.4)) }
+  dialog .in { padding:var(--x5) var(--x6); overflow:auto; max-height:88vh }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(8px); background:var(--seed-color-bg-neutral-inverted); color:var(--seed-color-fg-neutral-inverted); padding:var(--x3) var(--x4); border-radius:var(--r-s); font-size:var(--t3); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; box-shadow:0 4px 16px rgba(0,0,0,.18) }
+  .toast.show { opacity:1; transform:translateX(-50%) }
+  .fixgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:var(--x2); margin-top:var(--x2) }
+  details summary { cursor:pointer; color:var(--subtle); font-size:var(--t2); font-weight:var(--fw-m) }
+  .prog { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); padding:var(--x4) var(--x5); margin-bottom:var(--x3) }
+  .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--x2) }
+  .prog .big { font-size:var(--t7); font-weight:var(--fw-b); font-variant-numeric:tabular-nums }
+  .stack { display:flex; height:12px; border-radius:var(--seed-radius-full); overflow:hidden; background:var(--fill); margin:var(--x3) 0 var(--x2) }
   .stack i { display:block; height:100%; transition:width .4s }
-  .st-skipped{background:#d9d7d1}
-  .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--acc)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
-  .legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--mute) }
+  .st-skipped{background:var(--seed-color-bg-neutral-weak-pressed, #d9d7d1)}
+  .st-passed{background:var(--ok-bg)} .st-failed{background:var(--bad-bg)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--info-bg)} .st-retry{background:var(--warn-bg)} .st-queued{background:transparent}
+  .legend { display:flex; gap:var(--x3); flex-wrap:wrap; font-size:var(--t2); color:var(--subtle) }
   .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
-  .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px }
-  .cells b { width:18px; height:18px; border-radius:3px; background:var(--chip); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:600 }
+  .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:var(--x3) }
+  .cells b { width:18px; height:18px; border-radius:4px; background:var(--fill); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:var(--fw-b) }
   .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite }
   @keyframes pulse { 50% { opacity:.45 } }
-  .mini { display:inline-block; width:90px; height:8px; background:var(--chip); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px }
-  .mini i { display:block; height:100%; background:var(--acc) }
+  .mini { display:inline-block; width:90px; height:8px; background:var(--fill); border-radius:var(--seed-radius-full); overflow:hidden; vertical-align:middle; margin-right:6px }
+  .mini i { display:block; height:100%; background:var(--info-bg) }
 </style>
 </head>
 <body>
@@ -205,6 +227,34 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ── SEED 레시피 매핑: 시맨틱 클래스(.b/.chip/.tags button)에 SEED 클래스를 자동 부여 ──
+const setCls = (el, c) => { if (el.className !== c) el.className = c; };   // 같은 값이면 안 건드림 (옵저버 루프 방지)
+const SEED = {
+  btn: (el) => {
+    const v = el.classList.contains('primary') ? 'brandSolid' : el.classList.contains('danger') ? 'criticalSolid' : el.classList.contains('on-pick') ? 'brandSolid' : el.classList.contains('on-reject') ? 'criticalSolid' : 'neutralOutline';
+    const size = el.closest('.item, td, .prog') ? 'xsmall' : 'small';
+    setCls(el, el.className.replace(/\bseed-action-button\S*/g, '').trim().replace(/\s+/g, ' ') + ` seed-action-button seed-action-button--variant_${v} seed-action-button--size_${size} seed-action-button--size_${size}-layout_withText seed-action-button--layout_withText`);
+  },
+  chip: (el) => {
+    const tone = el.classList.contains('ok') ? 'positive' : el.classList.contains('bad') ? 'critical' : el.classList.contains('warn') ? 'warning' : el.classList.contains('acc') ? 'informative' : 'neutral';
+    setCls(el, el.className.replace(/\bseed-badge\S*/g, '').trim().replace(/\s+/g, ' ') + ` seed-badge__root seed-badge__root--size_medium seed-badge__root--variant_weak seed-badge__root--tone_${tone}-variant_weak`);
+  },
+  tag: (el) => {
+    if (!el.classList.contains('seed-control-chip')) el.classList.add('seed-control-chip', 'seed-control-chip--size_small', 'seed-control-chip--size_small-layout_withText', 'seed-control-chip--layout_withText');
+    if (el.classList.contains('on')) { if (!el.hasAttribute('data-checked')) el.setAttribute('data-checked', ''); } else el.removeAttribute('data-checked');
+  }
+};
+function seedify(root) {
+  if (!(root instanceof Element)) return;
+  const q = sel => [...(root.matches(sel) ? [root] : []), ...root.querySelectorAll(sel)];
+  q('button.b').forEach(SEED.btn); q('.chip').forEach(SEED.chip); q('.tags button').forEach(SEED.tag);
+}
+new MutationObserver(ms => ms.forEach(m => {
+  m.addedNodes.forEach(seedify);
+  if (m.type === 'attributes' && m.target instanceof Element) { const t = m.target; if (t.matches('.tags button')) SEED.tag(t); else if (t.matches('button.b')) SEED.btn(t); }
+})).observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['class']});
+seedify(document.body);
+
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

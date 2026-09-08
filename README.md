@@ -39,6 +39,7 @@ python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 50 --run    
 ```
 
 ## 대시보드 (로컬)
+디자인: [SEED Design](https://seed-design.io) 토큰·레시피(`@seed-design/css` 2.7.0)를 `web/vendor/seed/`에 넣어 React 없이 적용. 색은 역할 토큰(`--seed-color-fg/bg/stroke-*`)만 사용, 버튼·배지·칩은 `seedify()`가 시맨틱 클래스(.b/.chip/.tags button)에 레시피 클래스를 자동 부여.
 ```bash
 PYTHONPATH=src python3 -m bna.api          # http://localhost:8765 자동 오픈
 PYTHONPATH=src python3 -m bna.api --demo   # 키 없이 화면 확인용 데모 배치(자리표시 이미지) 생성 후 실행
