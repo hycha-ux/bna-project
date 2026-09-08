@@ -25,6 +25,13 @@
     --lh3: var(--seed-line-height-t3); --lh4: var(--seed-line-height-t4);
     --fw-m: var(--seed-font-weight-medium); --fw-b: var(--seed-font-weight-bold);
   }
+  /* ── 온리프 브랜드 색으로 SEED 브랜드 토큰 덮어쓰기 (config/brand/onlif.json) ── */
+  :root[data-seed] {
+    --seed-color-bg-brand-solid:#495E43; --seed-color-bg-brand-solid-pressed:#3B4C36; --seed-color-fg-brand:#495E43; --seed-color-fg-brand-contrast:#FFFFFF;
+    --seed-color-bg-brand-weak:#E7EDE5; --seed-color-bg-brand-weak-pressed:#D6E0D3; --seed-color-stroke-brand-solid:#495E43; --seed-color-stroke-brand-weak:#B9C9B4;
+    --seed-color-bg-layer-basement:#F8F8F8; --seed-color-fg-neutral:#383838;
+    --seed-color-bg-informative-weak:#E4ECF5; --seed-color-fg-informative:#3F5C80; --seed-color-bg-informative-solid:#8FA9C8; --seed-color-stroke-focus-ring:#495E43;
+  }
   * { box-sizing:border-box }
   [hidden] { display:none !important }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif; font-size:var(--t4); line-height:var(--lh4); -webkit-font-smoothing:antialiased }
@@ -51,11 +58,11 @@
   h2 { font-size:var(--t6); font-weight:var(--fw-b); margin:var(--x5) 0 var(--x2) }
   h3 { font-size:var(--t3); margin:0 0 var(--x2); color:var(--mute); font-weight:var(--fw-b) }
   .grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--x3) }
-  .bar { display:grid; grid-template-columns:110px 1fr 52px; gap:var(--x2); align-items:center; font-size:var(--t2); margin:3px 0 }
+  .bar { display:grid; grid-template-columns:118px 1fr 72px; gap:var(--x2); align-items:center; font-size:var(--t2); margin:3px 0 }
   .bar .t { height:8px; background:var(--fill); border-radius:var(--seed-radius-full); overflow:hidden }
   .bar .t i { display:block; height:100%; background:var(--info-bg); border-radius:inherit }
   .bar .t i.ok { background:var(--ok-bg) } .bar .t i.bad { background:var(--bad-bg) }
-  .bar .n { text-align:right; color:var(--subtle); font-variant-numeric:tabular-nums }
+  .bar .n { text-align:right; color:var(--subtle); font-variant-numeric:tabular-nums; white-space:nowrap }
   table { border-collapse:collapse; width:100%; font-size:var(--t3); line-height:var(--lh3) }
   th, td { text-align:left; padding:var(--x2) var(--x3); border-bottom:1px solid var(--line-weak); vertical-align:middle }
   th { color:var(--subtle); font-weight:var(--fw-b); font-size:var(--t2) }
@@ -108,12 +115,12 @@
 </head>
 <body>
 <header>
-  <div><h1>온리프 B&A 대시보드</h1><div class="sub">배치 요청 → 생성 → 검수 → 갤러리 (로컬 · outputs/ 기준)</div></div>
+  <div><h1>온리프 전후 사진 만들기</h1><div class="sub">시술을 고르고 장수를 정하면 AI가 전후 사진을 만들고 1차 검수까지 합니다</div></div>
   <nav>
-    <button data-tab="request" class="on">배치 요청</button>
-    <button data-tab="queue">큐 <span id="q-badge" class="chip warn" hidden></span></button>
-    <button data-tab="batches">배치 목록</button>
-    <button data-tab="gallery">갤러리 · 리뷰</button>
+    <button data-tab="request" class="on">만들기</button>
+    <button data-tab="queue">여러 시술 한 번에 <span id="q-badge" class="chip warn" hidden></span></button>
+    <button data-tab="batches">작업 기록</button>
+    <button data-tab="gallery">사진 보고 고르기</button>
   </nav>
 </header>
 <main>
@@ -122,34 +129,38 @@
 <section id="tab-request">
   <div class="card">
     <div class="row">
-      <label>시술 <select id="treatment"></select></label>
-      <label>모드 <select id="mode"><option value="selfie">셀카용 (selfie)</option><option value="clinical">후기용 (clinical)</option></select></label>
-      <label>수량 <input type="number" id="count" value="8" min="1" max="500"></label>
-      <label>시드 (재현용, 비우면 무작위) <input type="number" id="seed" placeholder="예: 5"></label>
-      <label>프로바이더 (생성/After/채점)
-        <span style="display:flex;gap:4px">
-          <select id="gen" style="min-width:0"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
-          <select id="edit" style="min-width:0"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
-          <select id="qa" style="min-width:0"><option>gemini</option><option>openai</option></select>
-        </span>
-      </label>
+      <label>어떤 시술이에요? <select id="treatment"></select></label>
+      <label>어떤 사진이 필요해요? <select id="mode"><option value="selfie">셀카 느낌 (SNS 후기용)</option><option value="clinical">병원 촬영 (임상 후기용)</option></select></label>
+      <label>몇 장 만들까요? <input type="number" id="count" value="8" min="1" max="500"></label>
+      <label>같은 결과 다시 뽑을 번호 (선택) <input type="number" id="seed" placeholder="비우면 매번 다르게"></label>
     </div>
-    <details style="margin-top:10px"><summary>축 고정 (선택) — 비우면 균형 샘플링</summary><div class="fixgrid" id="fixed"></div></details>
+    <details style="margin-top:10px"><summary>조건 고정하기 (선택) — 예: 여성만, 한국인만, 정면만. 비우면 골고루 섞어요</summary><div class="fixgrid" id="fixed"></div></details>
+    <details style="margin-top:6px"><summary>AI 모델 고르기 (선택) — 사진 생성 / 시술 후 사진 / 검수</summary>
+      <span style="display:flex;gap:6px;margin-top:8px">
+        <select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
+        <select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
+        <select id="qa"><option>gemini</option><option>openai</option></select>
+      </span>
+    </details>
     <div class="row" style="margin-top:14px">
-      <button class="b primary" id="btn-plan">분포 + 프롬프트 미리보기</button>
-      <button class="b" id="btn-estimate">비용 추정</button>
-      <button class="b" id="btn-dry">프롬프트 배치 저장 (이미지 없음)</button>
-      <button class="b" id="btn-run">실제 실행 (키 필요)</button>
-      <button class="b" id="btn-demo" title="PIL 자리표시 이미지 + 무작위 검수 결과. 화면 확인용">데모 배치 생성</button>
-      <button class="b" id="btn-sim" title="실제 호출 없이 항목당 수 초씩 진행 상황만 흘려보냄. 진행 화면 확인용">시뮬레이션 실행</button>
+      <button class="b primary" id="btn-plan">어떤 사람·장면이 나올지 미리보기</button>
+      <button class="b" id="btn-estimate">비용 얼마나 들까?</button>
+      <button class="b" id="btn-run">진짜로 만들기</button>
       <span class="muted" id="req-msg"></span>
     </div>
+    <details style="margin-top:10px"><summary>테스트용 (AI 키 없이 화면만 확인)</summary>
+      <div class="row" style="margin-top:8px">
+        <button class="b" id="btn-dry">설명문만 저장 (사진 없음)</button>
+        <button class="b" id="btn-demo" title="색깔 상자 사진 + 무작위 검수 결과">예시 결과 만들기</button>
+        <button class="b" id="btn-sim" title="실제 생성 없이 진행 화면만 흘러감">진행 화면 흉내내기</button>
+      </div>
+    </details>
   </div>
 
   <div id="plan-out" hidden>
-    <h2>변주 분포 <span class="muted" id="plan-n"></span></h2>
+    <h2>이런 사람·장면이 골고루 나와요 <span class="muted" id="plan-n"></span></h2>
     <div class="grid2" id="dist"></div>
-    <h2>프롬프트 <span class="muted">(처음 20개)</span></h2>
+    <h2>한 장씩 보기 <span class="muted">(처음 20장 · AI에게 보내는 설명문 포함)</span></h2>
     <div id="prompts"></div>
   </div>
 </section>
@@ -157,35 +168,35 @@
 <!-- ───────── 큐 ───────── -->
 <section id="tab-queue" hidden>
   <div class="card">
-    <h3>큐에 추가 — 시술 × 모드 조합마다 작업 하나</h3>
+    <h3>여러 시술을 한 번에 걸어두기 — 고른 시술마다 작업이 하나씩 생기고, 순서대로 만들어요</h3>
     <div class="row">
-      <label>시술 (복수) <div class="tags" id="q-treatments" style="margin:0"></div></label>
+      <label>시술 (여러 개 선택) <div class="tags" id="q-treatments" style="margin:0"></div></label>
     </div>
     <div class="row" style="margin-top:8px">
-      <label>모드 <div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카용</button><button data-v="clinical">후기용</button></div></label>
-      <label>작업당 수량 <input type="number" id="q-count" value="30" min="1" max="500"></label>
-      <label>목표 통과작 수 (도달하면 정지) <input type="number" id="q-target" placeholder="예: 20"></label>
-      <label>작업당 비용 상한 USD <input type="number" id="q-cap" placeholder="예: 5" step="0.5"></label>
-      <label>시드 <input type="number" id="q-seed" placeholder="비우면 무작위"></label>
-      <label>실행 방식 <select id="q-sim"><option value="1">시뮬레이션 (키 없음)</option><option value="0">실제 실행 (키 필요)</option></select></label>
-      <button class="b primary" id="q-add">큐에 추가</button>
+      <label>사진 종류 <div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카 느낌</button><button data-v="clinical">병원 촬영</button></div></label>
+      <label>시술당 몇 장 시도할까요? <input type="number" id="q-count" value="30" min="1" max="500"></label>
+      <label>쓸 수 있는 사진이 몇 장 모이면 멈출까요? <input type="number" id="q-target" placeholder="비우면 끝까지"></label>
+      <label>시술당 최대 비용 (달러) <input type="number" id="q-cap" placeholder="비우면 제한 없음" step="0.5"></label>
+      <label>다시 뽑을 번호 (선택) <input type="number" id="q-seed" placeholder="비우면 매번 다르게"></label>
+      <label>어떻게 돌릴까요? <select id="q-sim"><option value="1">테스트 (흉내만, 비용 없음)</option><option value="0">진짜로 만들기 (AI 키 필요)</option></select></label>
+      <button class="b primary" id="q-add">대기열에 넣기</button>
       <span class="muted" id="q-msg"></span>
     </div>
   </div>
 
   <div class="card" style="margin-top:14px">
     <div class="row" style="justify-content:space-between">
-      <div><h3 style="margin:0;display:inline">대기열</h3> <span class="muted" id="q-sum"></span></div>
+      <div><h3 style="margin:0;display:inline">순서대로 만들어요</h3> <span class="muted" id="q-sum"></span></div>
       <div class="act">
         <button class="b" id="q-pause">일시정지</button>
-        <button class="b" id="q-clear">끝난 작업 지우기</button>
+        <button class="b" id="q-clear">끝난 것 정리</button>
       </div>
     </div>
     <table id="q-table" style="margin-top:10px">
-      <thead><tr><th>#</th><th>시술</th><th>모드</th><th>수량</th><th>목표 통과</th><th>비용 상한</th><th>예상 $</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead>
+      <thead><tr><th>순서</th><th>시술</th><th>사진 종류</th><th>시도 장수</th><th>목표 장수</th><th>최대 비용</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty" id="q-empty" hidden>큐가 비어 있습니다.</div>
+    <div class="empty" id="q-empty" hidden>아직 걸어둔 작업이 없어요.</div>
   </div>
 </section>
 
@@ -193,25 +204,25 @@
 <section id="tab-batches" hidden>
   <div class="card">
     <div class="row" style="justify-content:space-between">
-      <h3 style="margin:0">outputs/ 아래 배치</h3>
+      <h3 style="margin:0">지금까지 만든 작업 (줄을 누르면 사진을 볼 수 있어요)</h3>
       <button class="b" id="btn-refresh">새로고침</button>
     </div>
     <table id="batches" style="margin-top:10px">
-      <thead><tr><th>배치</th><th>시술</th><th>모드</th><th>종류</th><th>수량</th><th>통과</th><th>통과율</th><th>시도/통과</th><th>$/통과</th><th>리뷰</th><th>상태</th></tr></thead>
+      <thead><tr><th>만든 때</th><th>시술</th><th>사진 종류</th><th>방식</th><th>시도 장수</th><th>쓸 수 있는 사진</th><th>성공률</th><th>1장당 시도</th><th>1장당 비용</th><th>사람이 확인</th><th>상태</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty" id="batches-empty" hidden>배치가 없습니다. 배치 요청 탭에서 데모 배치나 프롬프트 배치를 만들어 보세요.</div>
+    <div class="empty" id="batches-empty" hidden>아직 만든 게 없어요. "만들기" 탭에서 시작해 보세요.</div>
   </div>
 </section>
 
 <!-- ───────── 갤러리 ───────── -->
 <section id="tab-gallery" hidden>
   <div class="row" style="margin-bottom:12px">
-    <label>배치 <select id="gal-batch" style="min-width:260px"></select></label>
+    <label>어느 작업? <select id="gal-batch" style="min-width:300px"></select></label>
     <label>보기 <select id="gal-filter">
-      <option value="all">전체</option><option value="passed">자동검수 통과</option><option value="failed">자동검수 불합격</option>
-      <option value="unreviewed">미리뷰</option><option value="pick">선택됨</option><option value="reject">반려됨</option></select></label>
-    <label>축 필터 <select id="gal-axis"><option value="">없음</option></select></label>
+      <option value="all">전부</option><option value="passed">AI 검수 통과만</option><option value="failed">AI 검수 탈락만</option>
+      <option value="unreviewed">아직 안 본 것</option><option value="pick">쓰기로 한 것</option><option value="reject">안 쓰기로 한 것</option></select></label>
+    <label>조건으로 걸러보기 <select id="gal-axis"><option value="">전부</option></select></label>
     <label>&nbsp;<select id="gal-axis-val"><option value="">전체</option></select></label>
     <span class="muted" id="gal-count"></span>
   </div>
@@ -219,7 +230,7 @@
   <div class="kpis" id="kpis"></div>
   <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
   <div class="gal" id="gal"></div>
-  <div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다.</div>
+  <div class="empty" id="gal-empty" hidden>보여줄 사진이 없어요.</div>
 </section>
 </main>
 
@@ -260,11 +271,32 @@ const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST',
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
 const pct = x => (x*100).toFixed(0) + '%';
+const fmtBid = id => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}/.exec(id||''); return m ? `${+m[2]}/${+m[3]} ${m[4]}:${m[5]}` : id; };
 const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
-const STAGE_KO = {skipped:'건너뜀', queued:'대기', before:'Before 생성', after:'After 생성', postprocess:'후처리', qa:'검수', retry:'재시도 대기', passed:'통과', failed:'불합격'};
+const STAGE_KO = {skipped:'안 만듦(목표 달성)', queued:'차례 기다림', before:'시술 전 사진 만드는 중', after:'시술 후 사진 만드는 중', postprocess:'보정 중', qa:'AI 검수 중', retry:'다시 만들 예정', passed:'통과', failed:'탈락'};
+const MODE_KO = {selfie:'셀카 느낌', clinical:'병원 촬영'};
+const KIND_KO = {demo:'예시', dry_run:'설명문만', run:'진짜', sim:'흉내'};
+const FAIL_KO = {structure:'얼굴 위치·크기 안 맞음', identity:'다른 사람처럼 보임', duplicate:'비슷한 사진 이미 있음', 'vision:hair':'머리카락 어색', 'vision:ai_look':'AI 티 남', 'vision:fingers':'손가락 이상', 'vision:skin_texture':'피부 질감 어색', 'vision:drift':'시술 부위 말고도 바뀜', 'vision:effect_visible':'효과가 안 보임', 'vision:identity':'다른 사람처럼 보임'};
+const SCORE_KO = {fingers:'손가락', skin_texture:'피부 질감', hair:'머리카락', identity:'같은 사람', drift:'시술 부위만 변화', effect_visible:'효과 보임', ai_look:'AI 티 없음'};
+const VAL_KO = {
+  country:{korea:'한국인', japan:'일본인', china:'중국인', sea:'동남아', west:'서양인'}, age:{late_teens:'10대 후반', early_20s:'20대 초', late_20s:'20대 후', '30s':'30대', '40s':'40대', '50s':'50대', '60s':'60대'}, gender:{female:'여성', male:'남성'},
+  face_shape:{oval:'계란형', round:'둥근형', square:'각진형', long:'긴형', heart:'하트형'}, skin_tone:{fair:'아주 밝은 피부', light:'밝은 피부', medium:'중간 피부', tan:'그을린 피부', deep:'어두운 피부'},
+  skin_condition:{clear:'깨끗한 피부', freckles:'주근깨', moles:'점', acne_marks:'여드름 자국', redness:'홍조', oily:'지성'}, body_type:{slim:'마른 편', average:'보통', full:'통통한 편'},
+  hair_style:{long_straight:'긴 생머리', long_wavy:'긴 웨이브', bob:'단발', short:'짧은 머리', ponytail:'포니테일', bun:'올림머리', buzz:'삭발에 가까움', bangs:'앞머리'}, hair_color:{black:'검정', dark_brown:'진갈색', brown:'갈색', light_brown:'밝은 갈색', ash:'애쉬', grey:'새치'},
+  eyes:{monolid:'홑꺼풀', double:'쌍꺼풀', hooded:'처진 눈꺼풀', deep_set:'깊은 눈'}, extras:{none:'없음', glasses:'얇은 안경', glasses_thick:'뿔테', earrings:'귀걸이', beard_light:'수염 약간', beard_full:'수염', mask_chin:'턱에 마스크', makeup_light:'옅은 화장', makeup_none:'민낯', tired:'피곤한 얼굴'},
+  background:{clinic:'병원 벽', home:'집 거실', cafe:'카페', outdoor:'길거리', car:'차 안', bathroom:'욕실 거울', clinic_waiting:'병원 대기실', clinic_mirror:'병원 거울', clinic_bed:'시술 베드', car_after:'병원 나온 차 안'},
+  angle:{front:'정면', three_quarter:'45도', side:'옆모습', selfie_high:'위에서 셀카', selfie_low:'아래서 셀카', selfie_3q:'살짝 돌린 셀카', selfie_side:'옆 셀카', chin_up:'턱 든 각도', tilted:'고개 기울임'},
+  framing:{full_face:'얼굴 전체', forehead_cut:'이마 잘림', lower_face:'코 아래만', one_cheek:'한쪽 볼', nose_to_neck:'코~목'},
+  context:{none:'없음', pajamas:'잠옷', home_tee:'홈티', towel_headband:'수건 헤어밴드', cap:'모자', necklace:'목걸이', hair_in_face:'잔머리', finger_on_cheek:'볼 가리킴', outing_top:'외출복', clinic_headband:'병원 헤어밴드', hair_flat_after:'눌린 머리', cotton_pad:'솜·연고'},
+  lighting:{ring:'링라이트', window:'창가 자연광', fluorescent:'형광등', night:'밤 실내', backlit:'역광', ceiling_harsh:'천장등 번들거림', mixed:'혼합광'}, color:{neutral:'기본 색감', warm:'따뜻한', cool:'차가운', iphone:'아이폰 느낌', galaxy:'갤럭시 느낌', filter:'약한 필터'},
+  quality:{flagship:'최신폰 화질', mid:'보통 폰', old:'구형 폰', front_cam:'전면 카메라', app_upload:'앱 업로드 화질'},
+  before_severity:{mild:'약함', moderate:'보통', marked:'뚜렷함'}, effect_level:{subtle:'은은하게', moderate:'눈에 띄게'}, timeline:{immediate:'시술 직후', '1w':'1주 뒤', '2w':'2주 뒤', '4w':'4주 뒤'},
+};
+const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
+const failKo = r => FAIL_KO[r] || r;
 let POLL = null;
-const AXIS_KO = {country:'나라', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부상태', body_type:'체형', hair_style:'헤어', hair_color:'모발색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'맥락', lighting:'조명', color:'색감', quality:'화질', before_severity:'Before 강도', effect_level:'효과 강도', timeline:'경과'};
-const TAGS = ['손·손가락','피부 질감','머리카락','동일성','AI티','효과 과함','효과 없음','장면 어색','각도 이상','팔자 위치'];
+const AXIS_KO = {country:'나라', age:'나이', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'머리 모양', hair_color:'머리 색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'얼굴 어디까지', context:'상황·옷차림', lighting:'빛', color:'색감', quality:'화질', before_severity:'시술 전 상태', effect_level:'효과 정도', timeline:'며칠 뒤'};
+const TAGS = ['손가락 이상','피부 어색','머리카락 어색','다른 사람 같음','AI 티','효과 과함','효과 없음','장면 어색','각도 이상','시술 위치 틀림'];
 let CFG, BATCHES = [], CUR = null;
 
 // ---------- 탭 ----------
@@ -287,7 +319,7 @@ function renderFixed() {
   const mode = $('#mode').value, rules = CFG.mode_rules[mode] || {};
   $('#fixed').innerHTML = Object.entries(CFG.axes).map(([a, opts]) => {
     const allowed = rules[a] || opts;
-    return `<label>${AXIS_KO[a]||a}<select data-axis="${a}"><option value="">—</option>${allowed.map(o => `<option>${o}</option>`).join('')}</select></label>`;
+    return `<label>${AXIS_KO[a]||a}<select data-axis="${a}"><option value="">상관없음</option>${allowed.map(o => `<option value="${o}">${val(a, o)}</option>`).join('')}</select></label>`;
   }).join('');
 }
 function syncTreatmentModes() {
@@ -298,54 +330,54 @@ function syncTreatmentModes() {
 }
 $('#treatment').onchange = syncTreatmentModes; $('#mode').onchange = renderFixed;
 
-function bars(obj, total, cls) {
+function bars(obj, total, cls, axis, labelFn) {
   const entries = Object.entries(obj).sort((a,b) => (b[1].n ?? b[1]) - (a[1].n ?? a[1]));
   return entries.map(([k, v]) => {
-    const n = v.n ?? v, ratio = v.pass != null ? v.pass : n/total;
-    return `<div class="bar"><span title="${esc(k)}">${esc(k)}</span><span class="t"><i class="${cls||''}" style="width:${(ratio*100).toFixed(0)}%"></i></span><span class="n">${v.pass != null ? pct(v.pass)+' · '+n : n}</span></div>`;
+    const n = v.n ?? v, ratio = v.pass != null ? v.pass : n/total; const label = labelFn ? labelFn(k) : axis ? val(axis, k) : k;
+    return `<div class="bar"><span title="${esc(k)}">${esc(label)}</span><span class="t"><i class="${cls||''}" style="width:${(ratio*100).toFixed(0)}%"></i></span><span class="n">${v.pass != null ? pct(v.pass)+' · '+n+'장' : n+'장'}</span></div>`;
   }).join('');
 }
 $('#btn-plan').onclick = async () => {
   try {
-    $('#req-msg').textContent = '조립 중…'; const r = await api('/api/plan', req());
-    $('#plan-out').hidden = false; $('#plan-n').textContent = `${r.count}개`;
-    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div class="card"><h3>${AXIS_KO[a]||a}</h3>${bars(d, r.count)}</div>`).join('');
+    $('#req-msg').textContent = '준비 중…'; const r = await api('/api/plan', req());
+    $('#plan-out').hidden = false; $('#plan-n').textContent = `${r.count}장 기준`;
+    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div class="card"><h3>${AXIS_KO[a]||a}</h3>${bars(d, r.count, '', a)}</div>`).join('');
     $('#prompts').innerHTML = r.items.slice(0, 20).map((s, i) => promptCard(s, i)).join('');
     $('#req-msg').textContent = '';
   } catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 function promptCard(s, i) {
-  const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip">${AXIS_KO[k]}: ${esc(v[k].key)}</span>`).join('');
-  return `<div class="card" style="margin-bottom:10px"><div class="head" style="display:flex;justify-content:space-between"><b>#${String(i).padStart(4,'0')}</b><span class="muted">After 변경 축: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
+  const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  return `<div class="card" style="margin-bottom:10px"><div class="head" style="display:flex;justify-content:space-between"><b>${i+1}번째</b><span class="muted">시술 후 사진에서 달라지는 것: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음 (같은 장면)'}</span></div>
     <div>${badges}</div>
-    <details style="margin-top:8px"><summary>Before 프롬프트</summary><div class="mono">${esc(s.before_prompt)}</div></details>
-    <details><summary>After 프롬프트</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
+    <details style="margin-top:8px"><summary>시술 전 사진 설명문 (AI에게 보내는 영어 원문)</summary><div class="mono">${esc(s.before_prompt)}</div></details>
+    <details><summary>시술 후 사진 설명문</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
 }
 $('#btn-estimate').onclick = async () => {
-  try { const r = await api('/api/estimate', req()); $('#req-msg').textContent = `예상 호출 ${r.expected_calls}회 · $${r.expected_cost_usd} (회당 $${r.per_try_usd}, 통과율 50% 가정)`; }
+  try { const r = await api('/api/estimate', req()); $('#req-msg').textContent = `약 $${r.expected_cost_usd} 예상 (AI 호출 약 ${r.expected_calls}번, 절반은 다시 만든다고 가정)`; }
   catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 $('#btn-dry').onclick = async () => {
-  try { const r = await api('/api/dryrun_save', req()); toast(`저장: ${r.batch_id} (${r.count}개)`); CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  try { const r = await api('/api/dryrun_save', req()); toast(`설명문 ${r.count}장 저장했어요`); CUR = null; show('gallery'); await openBatch(r.batch_id); }
   catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 $('#btn-run').onclick = async () => {
-  const q = req(); if (!confirm(`${q.treatment} / ${q.mode} / ${q.count}개 실제 실행할까요? 비용이 발생합니다.`)) return;
-  try { const r = await api('/api/run', q); toast(`실행 시작: ${r.batch_id}`); show('batches'); }
-  catch (e) { $('#req-msg').textContent = '실행 불가: ' + e.message; }
+  const q = req(); if (!confirm(`${CFG.treatments[q.treatment].name_ko} · ${MODE_KO[q.mode]} · ${q.count}장을 진짜로 만들까요? AI 비용이 들어요.`)) return;
+  try { const r = await api('/api/run', q); toast('만들기 시작했어요'); CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  catch (e) { $('#req-msg').textContent = '지금은 못 만들어요: ' + e.message; }
 };
 $('#btn-demo').onclick = async () => {
-  try { $('#req-msg').textContent = '데모 생성 중…'; const q = req(); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast(`데모 배치: ${r.batch_id}`); $('#req-msg').textContent=''; CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  try { $('#req-msg').textContent = '예시 만드는 중…'; const q = req(); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast('예시 결과를 만들었어요'); $('#req-msg').textContent=''; CUR = null; show('gallery'); await openBatch(r.batch_id); }
   catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 
 $('#btn-sim').onclick = async () => {
-  try { const q = req(); const r = await api('/api/demo_run', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 60)}); toast(`시뮬레이션 시작: ${r.batch_id}`); CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  try { const q = req(); const r = await api('/api/demo_run', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 60)}); toast('진행 화면 흉내를 시작했어요'); CUR = null; show('gallery'); await openBatch(r.batch_id); }
   catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 
 // ---------- 큐 ----------
-const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 통과 ${s.split(':')[1]}장 도달` : s.startsWith('cost_cap') ? `비용 상한 $${s.split(':')[1]} 도달` : s;
+const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 ${s.split(':')[1]}장 채워서 멈춤` : s.startsWith('cost_cap') ? `비용 $${s.split(':')[1]} 넘어 멈춤` : s;
 function renderQueueForm() {
   $('#q-treatments').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('');
   $$('#q-treatments button, #q-modes button').forEach(b => b.onclick = () => b.classList.toggle('on'));
@@ -356,28 +388,28 @@ $('#q-add').onclick = async () => {
   ts.forEach(b => ms.filter(m => b.dataset.modes.split(',').includes(m)).forEach(m => jobs.push({treatment: b.dataset.v, mode: m, count: +$('#q-count').value,
     target_pass: $('#q-target').value || null, cost_cap: $('#q-cap').value || null, seed: $('#q-seed').value || null, simulate: $('#q-sim').value === '1',
     gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value})));
-  if (!jobs.length) { $('#q-msg').textContent = '시술과 모드를 하나 이상 고르세요 (지원 안 하는 조합은 제외됨)'; return; }
-  if (jobs.some(j => !j.simulate) && !confirm(`실제 실행 작업 ${jobs.filter(j=>!j.simulate).length}개를 큐에 넣습니다. 비용이 발생합니다.`)) return;
-  try { const r = await api('/api/queue/add', {jobs}); toast(`${r.added.length}개 작업 추가`); $('#q-msg').textContent = ''; loadQueue(); }
+  if (!jobs.length) { $('#q-msg').textContent = '시술과 사진 종류를 하나 이상 골라 주세요 (그 시술이 지원 안 하는 종류는 빠져요)'; return; }
+  if (jobs.some(j => !j.simulate) && !confirm(`진짜로 만드는 작업 ${jobs.filter(j=>!j.simulate).length}개를 넣어요. AI 비용이 들어요. 계속할까요?`)) return;
+  try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개를 대기열에 넣었어요`); $('#q-msg').textContent = ''; loadQueue(); }
   catch (e) { $('#q-msg').textContent = '오류: ' + e.message; }
 };
 $('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
 $('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
 async function loadQueue() {
   const q = await api('/api/queue'); const tb = $('#q-table tbody');
-  $('#q-pause').textContent = q.paused ? '▶ 재개' : '⏸ 일시정지';
-  $('#q-sum').textContent = `대기 ${q.queued_count} · ${q.running ? '실행 중 1' : '실행 중 0'} · 남은 예상 비용 $${q.est_total}${q.paused ? ' · 일시정지됨' : ''}`;
+  $('#q-pause').textContent = q.paused ? '▶ 다시 시작' : '⏸ 잠깐 멈춤';
+  $('#q-sum').textContent = `기다리는 작업 ${q.queued_count}개 · ${q.running ? '지금 만드는 중' : '쉬는 중'} · 남은 예상 비용 약 $${q.est_total}${q.paused ? ' · 멈춰 있어요 (지금 작업만 끝내고 다음은 안 해요)' : ''}`;
   const badge = $('#q-badge'); const n = q.queued_count + (q.running ? 1 : 0); badge.hidden = !n; badge.textContent = n;
   $('#q-empty').hidden = q.jobs.length > 0;
-  const stKo = {queued:'<span class="chip">대기</span>', running:'<span class="chip warn">실행 중</span>', done:'<span class="chip ok">완료</span>', error:'<span class="chip bad">오류</span>', cancelled:'<span class="chip">취소</span>'};
+  const stKo = {queued:'<span class="chip">기다림</span>', running:'<span class="chip warn">만드는 중</span>', done:'<span class="chip ok">끝</span>', error:'<span class="chip bad">문제 생김</span>', cancelled:'<span class="chip">취소함</span>'};
   tb.innerHTML = q.jobs.map((j, i) => { const p = j.progress, r = j.result || {};
     const progress = p ? `<span class="mini"><i style="width:${(p.done/p.planned*100).toFixed(0)}%"></i></span>${p.done}/${p.planned}${p.running && p.eta_s!=null ? ' · 약 '+fmtS(p.eta_s) : ''}` : '';
-    const result = j.status==='done' ? `통과 ${r.passed ?? '?'}/${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ' · <span class="chip acc">'+STOP_KO(r.stopped)+'</span>' : ''}` : j.status==='error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error||'').slice(0,60))}</span>` : '';
-    const ctl = j.status==='queued' ? `<button class="b" data-q="up" data-id="${j.job_id}" title="위로">↑</button> <button class="b" data-q="down" data-id="${j.job_id}" title="아래로">↓</button> <button class="b danger" data-q="cancel" data-id="${j.job_id}">취소</button>`
-              : j.status==='running' ? '' : `<button class="b" data-q="remove" data-id="${j.job_id}">지우기</button>`;
-    return `<tr><td>${i+1}</td><td>${CFG.treatments[j.treatment]?.name_ko || j.treatment}</td><td>${j.mode}</td><td>${j.count}</td><td>${j.target_pass ?? '—'}</td><td>${j.cost_cap != null ? '$'+j.cost_cap : '—'}</td><td>$${j.est_cost}</td>
-      <td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
-      <td style="white-space:nowrap">${j.batch_id ? `<button class="b" data-q="open" data-id="${j.batch_id}">갤러리</button> ` : ''}${ctl}</td></tr>`; }).join('');
+    const result = j.status==='done' ? `쓸 수 있는 사진 ${r.passed ?? '?'}장 (${r.total ?? '?'}장 만듦) · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ' · <span class="chip acc">'+STOP_KO(r.stopped)+'</span>' : ''}` : j.status==='error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error||'').slice(0,60))}</span>` : '';
+    const ctl = j.status==='queued' ? `<button class="b" data-q="up" data-id="${j.job_id}" title="위로">↑</button> <button class="b" data-q="down" data-id="${j.job_id}" title="아래로">↓</button> <button class="b danger" data-q="cancel" data-id="${j.job_id}">빼기</button>`
+              : j.status==='running' ? '' : `<button class="b" data-q="remove" data-id="${j.job_id}">목록에서 지우기</button>`;
+    return `<tr><td>${i+1}</td><td>${CFG.treatments[j.treatment]?.name_ko || j.treatment}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.count}</td><td>${j.target_pass ?? '—'}</td><td>${j.cost_cap != null ? '$'+j.cost_cap : '—'}</td><td>$${j.est_cost}</td>
+      <td>${j.simulate ? '<span class="chip">테스트</span>' : '<span class="chip acc">진짜</span>'}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
+      <td style="white-space:nowrap">${j.batch_id ? `<button class="b" data-q="open" data-id="${j.batch_id}">사진 보기</button> ` : ''}${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
     const a = b.dataset.q, id = b.dataset.id;
     if (a === 'open') { show('gallery'); openBatch(id); return; }
@@ -394,13 +426,13 @@ setInterval(async () => { if ($('#tab-queue').hidden) { try { const q = await ap
 async function loadBatches() {
   BATCHES = await api('/api/batches');
   const tb = $('#batches tbody'); $('#batches-empty').hidden = BATCHES.length > 0;
-  tb.innerHTML = BATCHES.map(b => { const s = b.stats || {}; const kind = {demo:'데모', dry_run:'프롬프트만', run:'실행', sim:'시뮬레이션'}[b.kind] || b.kind;
-    return `<tr class="click" data-id="${b.batch_id}"><td>${b.batch_id}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${kind}</span></td>
+  tb.innerHTML = BATCHES.map(b => { const s = b.stats || {}; const kind = KIND_KO[b.kind] || b.kind;
+    return `<tr class="click" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${s.passed ?? ''}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${b.kind==='dry_run' ? '—' : (s.attempts_per_pass ?? '')}</td><td>${b.kind==='dry_run' ? '—' : (s.cost_per_pass ?? '')}</td>
-      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 반려 ${s.rejected||0})</span></td><td>${b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span> ` : ''}${b.status==='running'&&b.progress?`<span class="mini"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.eta_s!=null?' · 약 '+fmtS(b.progress.eta_s)+' 남음':''}`:b.status==='running'?'<span class="chip warn">진행 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">오류</span>`:'<span class="chip ok">완료</span>'}</td></tr>`; }).join('');
+      <td>${s.reviewed||0}장 <span class="muted">(쓸 것 ${s.picked||0} · 안 쓸 것 ${s.rejected||0})</span></td><td>${b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span> ` : ''}${b.status==='running'&&b.progress?`<span class="mini"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.eta_s!=null?' · 약 '+fmtS(b.progress.eta_s)+' 남음':''}`:b.status==='running'?'<span class="chip warn">만드는 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">문제 생김</span>`:'<span class="chip ok">끝</span>'}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('gallery'); openBatch(tr.dataset.id); });
   const sel = $('#gal-batch'); const cur = sel.value;
-  sel.innerHTML = BATCHES.map(b => `<option value="${b.batch_id}">${b.batch_id} · ${CFG.treatments[b.treatment]?.name_ko || b.treatment||''} · ${b.mode||''}</option>`).join('');
+  sel.innerHTML = BATCHES.map(b => `<option value="${b.batch_id}">${fmtBid(b.batch_id)} · ${CFG.treatments[b.treatment]?.name_ko || b.treatment||''} · ${MODE_KO[b.mode]||b.mode||''} · ${KIND_KO[b.kind]||''}</option>`).join('');
   if (cur) sel.value = cur;
   return BATCHES;
 }
@@ -411,7 +443,7 @@ setInterval(() => { if (!$('#tab-batches').hidden && BATCHES.some(b => b.status 
 async function openBatch(id) {
   CUR = await api('/api/batches/' + id); $('#gal-batch').value = id;
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
-  $('#gal-axis').innerHTML = '<option value="">없음</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
+  $('#gal-axis').innerHTML = '<option value="">전부</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">전체</option>';
   renderStats(); renderGallery(); startPoll();
 }
@@ -437,30 +469,30 @@ function renderProgress(pg) {
   const order = ['passed','failed','before','after','postprocess','qa','retry','skipped','queued'];
   const seg = order.map(k => `<i class="st-${k}" style="width:${(c[k]/s.planned*100).toFixed(1)}%" title="${STAGE_KO[k]} ${c[k]}"></i>`).join('');
   const ids = Object.keys(pg.items).sort();
-  const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="#${id} ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.join(','):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
-  const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · 나머지 ${c.skipped} 건너뜀</span>` : '');
-  el.innerHTML = `<div class="top"><div><span class="big">${s.done} / ${s.planned}</span> <span class="muted">항목 완료</span> ${state}</div>
-      <div class="muted">동시 처리 ${s.active} · 재시도 ${s.retries}회 · 지금까지 통과율 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 경과 ${fmtS(s.elapsed_s)}${s.running?` · 남은 시간 약 ${fmtS(s.eta_s)}`:''}</div></div>
+  const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="${+id+1}번째 · ${STAGE_KO[it.stage]} · ${it.attempt}번째 시도${it.fail_reasons?.length?' · '+it.fail_reasons.map(failKo).join(', '):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
+  const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · ${c.skipped}장은 안 만듦</span>` : '');
+  el.innerHTML = `<div class="top"><div><span class="big">${s.done} / ${s.planned}</span> <span class="muted">장 끝남</span> ${state}</div>
+      <div class="muted">동시에 ${s.active}장 만드는 중 · 다시 만든 횟수 ${s.retries}번 · 지금까지 성공률 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 걸린 시간 ${fmtS(s.elapsed_s)}${s.running?` · 약 ${fmtS(s.eta_s)} 더 걸려요`:''}</div></div>
     <div class="stack">${seg}</div>
-    <div class="legend">${order.filter(k=>k!=='queued').map(k=>`<span><i class="st-${k}" style="background:${k==='queued'?'var(--chip)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}<span><i style="background:var(--chip)"></i>대기 ${c.queued}</span></div>
+    <div class="legend">${order.filter(k=>k!=='queued').map(k=>`<span><i class="st-${k}" style="background:${k==='queued'?'var(--chip)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}<span><i style="background:var(--chip)"></i>차례 기다림 ${c.queued}</span></div>
     <div class="cells">${cells}</div>`;
 }
 $('#gal-batch').onchange = e => openBatch(e.target.value);
 $('#gal-filter').onchange = renderGallery;
 $('#gal-axis').onchange = () => { const a = $('#gal-axis').value; const vals = new Set(CUR.items.map(it => it.variation?.[a]?.key).filter(Boolean));
-  $('#gal-axis-val').innerHTML = '<option value="">전체</option>' + [...vals].map(v => `<option>${v}</option>`).join(''); renderGallery(); };
+  $('#gal-axis-val').innerHTML = '<option value="">전체</option>' + [...vals].map(v => `<option value="${v}">${val(a, v)}</option>`).join(''); renderGallery(); };
 $('#gal-axis-val').onchange = renderGallery;
 
 function renderStats() {
   const s = CUR.stats, dry = CUR.kind === 'dry_run';
   $('#kpis').innerHTML = [
-    ['총 항목', s.total], ['자동검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['시도/통과', dry ? '—' : s.attempts_per_pass], ['$/통과', dry ? '—' : s.cost_per_pass],
-    ['리뷰', `${s.reviewed} / ${s.total}`], ['선택 · 반려', `${s.picked} · ${s.rejected}`]
+    ['만든 장수', s.total], ['AI 검수 통과', dry ? '—' : `${s.passed}장 (${pct(s.pass_rate)})`], ['1장당 시도', dry ? '—' : `${s.attempts_per_pass}번`], ['1장당 비용', dry ? '—' : `$${s.cost_per_pass}`],
+    ['내가 확인한 것', `${s.reviewed} / ${s.total}`], ['쓸 것 · 안 쓸 것', `${s.picked} · ${s.rejected}`]
   ].map(([l, v]) => `<div class="kpi"><div class="v">${v ?? '—'}</div><div class="l">${l}</div></div>`).join('');
   let html = '';
-  if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h3>자동검수 불합격 사유</h3>${bars(s.fail_reasons, s.total, 'bad')}</div>`;
-  if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h3>리뷰 태그</h3>${bars(s.review_tags, s.total, 'bad')}</div>`;
-  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h3>${AXIS_KO[a]||a}별 통과율</h3>${bars(s.by_axis[a], s.total, 'ok')}</div>`; });
+  if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h3>AI 검수에서 탈락한 이유</h3>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
+  if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h3>내가 안 쓰기로 한 이유</h3>${bars(s.review_tags, s.total, 'bad')}</div>`;
+  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h3>${AXIS_KO[a]||a}별 성공률</h3>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
   $('#gal-stats').innerHTML = html;
 }
 function renderGallery() {
@@ -471,29 +503,29 @@ function renderGallery() {
     if (f === 'unreviewed' && rv) return false; if (f === 'pick' && rv !== 'pick') return false; if (f === 'reject' && rv !== 'reject') return false;
     if (ax && av && it.variation?.[ax]?.key !== av) return false; return true;
   });
-  $('#gal-count').textContent = `${items.length} / ${CUR.items.length}`; $('#gal-empty').hidden = items.length > 0;
+  $('#gal-count').textContent = `${items.length}장 보는 중 (전체 ${CUR.items.length}장)`; $('#gal-empty').hidden = items.length > 0;
   $('#gal').innerHTML = items.map(itemCard).join('');
   $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct);
   $('#gal').querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
 }
 function itemCard(it) {
   const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
-  const img = (file, cap) => file ? `<figure><img loading="lazy" src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
-  const status = it.passed === null ? '<span class="chip">프롬프트만</span>' : it.passed ? '<span class="chip ok">통과</span>' : `<span class="chip bad">불합격</span>`;
-  const fails = (it.fail_reasons||[]).map(r => `<span class="chip bad">${esc(r)}</span>`).join('');
-  const badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(v[k].key)}</span>`).join('');
+  const img = (file, cap) => file ? `<figure><img loading="lazy" src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>사진 없음<figcaption>${cap}</figcaption></figure>`;
+  const status = it.passed === null ? '<span class="chip">설명문만</span>' : it.passed ? '<span class="chip ok">AI 검수 통과</span>' : `<span class="chip bad">AI 검수 탈락</span>`;
+  const fails = (it.fail_reasons||[]).map(r => `<span class="chip bad">${esc(failKo(r))}</span>`).join('');
+  const badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
-    <div class="pair">${img(it.before_file, 'Before')}${img(it.after_file, 'After')}</div>
+    <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
     <div class="body">
-      <div class="head"><span class="id">#${it.item_id} ${status}</span><span class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)} <button class="b" style="padding:2px 8px;font-size:11px" data-detail="${it.item_id}">상세</button></span></div>
+      <div class="head"><span class="id">${+it.item_id+1}번 ${status}</span><span class="muted">${it.attempt||0}번 만에 · $${(it.cost||0).toFixed(3)} <button class="b" data-detail="${it.item_id}">자세히</button></span></div>
       <div>${badges}</div>${fails ? `<div style="margin-top:4px">${fails}</div>` : ''}
       <div class="act" style="margin-top:8px">
-        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">✓ 선택</button>
-        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">✕ 반려</button>
-        <button class="b" data-act="clear" data-id="${it.item_id}" style="color:var(--mute)">초기화</button>
+        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">✓ 쓸게요</button>
+        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">✕ 안 써요</button>
+        <button class="b" data-act="clear" data-id="${it.item_id}">되돌리기</button>
       </div>
-      <div class="tags">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
-      <input type="text" placeholder="메모 (Enter 저장)" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+      <div class="muted" style="margin-top:8px">안 쓰는 이유 (누르면 표시):</div><div class="tags" style="margin-top:4px">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
+      <input type="text" placeholder="메모를 적고 Enter" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
     </div></div>`;
 }
 async function onAct(e) {
@@ -514,21 +546,21 @@ async function save(it) {
 }
 function detail(id) {
   const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
-  const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(v[k].key)}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(av[k].key)}</span>` : ''}</td></tr>`).join('');
-  const scores = it.vision?.scores ? `<h3>비전 채점</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok')}` : '';
-  const chk = [it.structure && `구조: ${it.structure.passed ? '통과' : '실패'} (정렬 오차 ${it.structure.align_err ?? '—'})`, it.identity && `동일성: ${it.identity.hard_fail ? '하드 페일' : '통과'} (유사도 ${it.identity.sim ?? '—'})`].filter(Boolean).join(' · ');
-  $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">#${it.item_id} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
-    <p class="muted">${chk || ''} ${it.prompt_version ? '· 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>변주 (Before → After 변경)</h3><table><thead><tr><th>축</th><th>Before</th><th>After</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
-    <h3 style="margin-top:14px">Before 프롬프트</h3><div class="mono">${esc(it.before_prompt)}</div>
-    <h3 style="margin-top:10px">After 프롬프트</h3><div class="mono">${esc(it.after_prompt)}</div>`;
+  const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : '<span class="muted">같음</span>'}</td></tr>`).join('');
+  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok', null, k => SCORE_KO[k]||k).replace(/장<\/span>/g, '점</span>')}` : '';
+  const chk = [it.structure && `얼굴 위치·크기: ${it.structure.passed ? '괜찮음' : '안 맞음'}`, it.identity && `같은 사람인지: ${it.identity.hard_fail ? '다른 사람 같음' : '괜찮음'}`].filter(Boolean).join(' · ');
+  $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1}번 · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
+    <p class="muted">${chk || ''} ${it.prompt_version ? '· 설명문 버전 ' + esc(it.prompt_version) : ''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>이 사진의 조건 (시술 후 사진에서 바뀐 것은 색으로 표시)</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
+    <h3 style="margin-top:14px">시술 전 사진 설명문 (AI에게 보낸 영어 원문)</h3><div class="mono">${esc(it.before_prompt)}</div>
+    <h3 style="margin-top:10px">시술 후 사진 설명문</h3><div class="mono">${esc(it.after_prompt)}</div>`;
   $('#dlg').showModal();
 }
 
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config');
-  $('#treatment').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<option value="${k}">${t.name_ko} (${k})</option>`).join('');
+  $('#treatment').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<option value="${k}">${t.name_ko}</option>`).join('');
   syncTreatmentModes(); renderQueueForm();
   $('#gen').value = 'gemini';
   api('/api/queue').then(q => { const n = q.queued_count + (q.running ? 1 : 0); $('#q-badge').hidden = !n; $('#q-badge').textContent = n; });
