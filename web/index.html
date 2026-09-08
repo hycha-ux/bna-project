@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>온리프 전후 사진 생성</title>
+<title>B&amp;A 이미지</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/vendor/seed/base.min.css">
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
@@ -31,7 +31,7 @@ a { color:var(--primary) }
 .app.collapsed { grid-template-columns:var(--rail-w) 1fr }
 .side { background:var(--ui-panel); border-right:1px solid var(--ui-border); padding:14px 12px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column; overflow:hidden }
 .side .brand-row { display:flex; align-items:center; gap:10px; padding:4px 6px 16px }
-.side .logo { width:36px; height:36px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0 }
+.side .logo { width:36px; height:36px; border-radius:9px; flex-shrink:0; display:block; object-fit:contain }
 .side .toggle { margin-left:auto; width:28px; height:28px; border:0; background:none; border-radius:8px; color:var(--ui-lo); cursor:pointer } .side .toggle:hover { background:var(--ui-surface); color:var(--ui-hi) }
 .side .toggle svg { width:16px; height:16px }
 .collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
@@ -39,7 +39,7 @@ a { color:var(--primary) }
 .collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
 .sub { display:flex; flex-direction:column; padding:2px 0 6px 28px } .sub button { border:0; background:none; text-align:left; padding:6px 10px; font-size:12.5px; color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:700 }
 .nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
-.side .brand { font-size:14px; font-weight:800; color:var(--primary); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
+.side .brand { font-size:15px; font-weight:800; color:var(--ui-hi); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
 .side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
 .nav-item { width:100%; padding:10px 12px; border:0; border-radius:var(--r-sm); background:none; font-size:13.5px; font-weight:500; color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:10px; text-align:left; margin-bottom:2px }
 .nav-item svg { width:18px; height:18px; flex-shrink:0 }
@@ -188,7 +188,7 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
 
 <div class="app" id="app">
   <nav class="side">
-    <div class="brand-row"><div class="logo">OL</div><div class="brand">ONLIF<br><small style="font-size:11px;font-weight:500;color:var(--ui-lo)">전후 사진 생성</small></div><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
+    <div class="brand-row"><img class="logo" src="/assets/medibuilder-logo.png" alt="메디빌더"><div class="brand">B&amp;A 이미지</div><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">대시보드</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
