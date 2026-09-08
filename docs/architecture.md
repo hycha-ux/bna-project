@@ -92,8 +92,8 @@ src/bna/
   qa/vision.py    ⏳  채점 규칙 (프로바이더 qa 구현 대기)
   providers/      ⏳  base(인터페이스·어댑터 훅) / gemini / openai_img / higgsfield — 키 수령 후 구현
   cli.py          ✅  --plan / --dry-run / --estimate / --run
-  api.py          ⬜  UI용 (4단계)
-web/              ⬜  UI 신규 설계 (4단계)
+  api.py          ✅  로컬 대시보드 서버 (stdlib HTTP): 배치 요청·dry-run 저장·실행·목록·리뷰 저장·데모 배치
+web/index.html    ✅  대시보드 1차: 배치 요청 / 배치 목록 / 갤러리·리뷰(선택·반려·사유 태그·메모). Supabase·팀 계정은 미착수
 samples/reference/{clinical,selfie}/   참조 실사 라이브러리 (비어 있음)
 outputs/{batch_id}/  결과 · manifest.csv · stats.json · state.json (git 제외)
 ```

@@ -23,6 +23,8 @@
 ```
 config/          시술·변주·프롬프트 설정 (코드가 아닌 데이터)
 src/bna/         생성 파이프라인 (프롬프트 조립 → 생성 → 검수 → 저장)
+src/bna/api.py   로컬 대시보드 서버 (표준 라이브러리, 의존성 없음)
+web/             대시보드 화면 (단일 HTML)
 samples/reference/  실제 참고 B&A 이미지 (구도·톤 레퍼런스)
 outputs/         생성 결과 (git 제외)
 ```
@@ -35,3 +37,13 @@ python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 4 --dry-run 
 python3 -m src.bna.cli --treatment nasolabial --mode clinical --count 30 --fix country=korea --fix gender=female --estimate  # 비용 추정
 python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 50 --run                     # 실제 배치 (키 필요)
 ```
+
+## 대시보드 (로컬)
+```bash
+PYTHONPATH=src python3 -m bna.api          # http://localhost:8765 자동 오픈
+PYTHONPATH=src python3 -m bna.api --demo   # 키 없이 화면 확인용 데모 배치(자리표시 이미지) 생성 후 실행
+```
+- **배치 요청**: 시술·모드·수량·시드·축 고정 → 변주 분포 / 프롬프트 미리보기 / 비용 추정 / 프롬프트 배치 저장 / 실제 실행(키 필요)
+- **배치 목록**: `outputs/` 아래 배치별 통과율·시도/통과·$/통과·리뷰 현황
+- **갤러리·리뷰**: Before/After 쌍, 자동검수 결과·축별 통과율, 사람 리뷰(선택/반려 + 불합격 사유 태그 + 메모) → `outputs/<batch>/<item>/review.json`
+

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B&A 대시보드</title>
+<style>
+  :root { --bg:#f6f6f4; --card:#fff; --ink:#1b1b1b; --mute:#6b6b6b; --line:#e4e2dd; --acc:#2f5bea; --ok:#1f9d55; --bad:#d64545; --warn:#c98a00; --chip:#efeeea; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif }
+  header { display:flex; align-items:center; gap:18px; padding:12px 22px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5 }
+  header h1 { font-size:16px; margin:0 }
+  header .sub { color:var(--mute); font-size:12px }
+  nav { display:flex; gap:4px; margin-left:auto }
+  nav button { border:0; background:transparent; padding:8px 14px; border-radius:8px; font-size:14px; cursor:pointer; color:var(--mute) }
+  nav button.on { background:var(--chip); color:var(--ink); font-weight:600 }
+  main { padding:18px 22px; max-width:1500px; margin:0 auto }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
+  label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--mute) }
+  select, input[type=number], input[type=text], textarea { font:inherit; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff; min-width:120px }
+  button.b { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer }
+  button.b.primary { background:var(--acc); color:#fff; border-color:var(--acc) }
+  button.b.danger { color:var(--bad) }
+  button.b:disabled { opacity:.5; cursor:default }
+  h2 { font-size:15px; margin:18px 0 8px }
+  h3 { font-size:13px; margin:0 0 8px; color:var(--mute); font-weight:600 }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px }
+  .bar { display:grid; grid-template-columns:110px 1fr 46px; gap:8px; align-items:center; font-size:12px; margin:3px 0 }
+  .bar .t { height:8px; background:var(--chip); border-radius:4px; overflow:hidden }
+  .bar .t i { display:block; height:100%; background:var(--acc) }
+  .bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) }
+  .bar .n { text-align:right; color:var(--mute) }
+  table { border-collapse:collapse; width:100%; font-size:13px }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line) }
+  th { color:var(--mute); font-weight:600; font-size:12px }
+  tr.click { cursor:pointer } tr.click:hover { background:#fbfaf7 }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px }
+  .kpi .v { font-size:22px; font-weight:700 } .kpi .l { font-size:12px; color:var(--mute) }
+  .chip { display:inline-block; padding:2px 8px; border-radius:999px; background:var(--chip); font-size:11px; margin:2px 3px 0 0; color:#444 }
+  .chip.ok { background:#e3f5ea; color:var(--ok) } .chip.bad { background:#fbe5e5; color:var(--bad) } .chip.warn { background:#fff3d6; color:var(--warn) } .chip.acc { background:#e6ecfd; color:var(--acc) }
+  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:14px }
+  .item { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden }
+  .item.pick { border-color:var(--ok); box-shadow:0 0 0 2px #cdeedb } .item.reject { opacity:.7 }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--line) }
+  .pair figure { margin:0; position:relative; aspect-ratio:4/5; background:#eee; display:flex; align-items:center; justify-content:center; color:var(--mute); font-size:12px }
+  .pair img { width:100%; height:100%; object-fit:cover; display:block }
+  .pair figcaption { position:absolute; left:6px; top:6px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px }
+  .item .body { padding:10px 12px }
+  .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px }
+  .item .id { font-weight:600 }
+  .tags { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 }
+  .tags button { font:inherit; font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--line); background:#fff; cursor:pointer }
+  .tags button.on { background:#fbe5e5; border-color:var(--bad); color:var(--bad) }
+  .act { display:flex; gap:6px; align-items:center }
+  .act button.b { padding:5px 10px; font-size:12px }
+  .act button.b.on-pick { background:var(--ok); color:#fff; border-color:var(--ok) }
+  .act button.b.on-reject { background:var(--bad); color:#fff; border-color:var(--bad) }
+  .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; background:#faf9f6; border:1px solid var(--line); border-radius:8px; padding:10px }
+  .muted { color:var(--mute); font-size:12px }
+  .empty { padding:40px; text-align:center; color:var(--mute) }
+  dialog { border:0; border-radius:14px; padding:0; max-width:900px; width:92vw; max-height:90vh }
+  dialog::backdrop { background:rgba(0,0,0,.35) }
+  dialog .in { padding:18px 20px; overflow:auto; max-height:88vh }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:8px 14px; border-radius:8px; font-size:13px; opacity:0; transition:.2s; pointer-events:none }
+  .toast.show { opacity:1 }
+  .fixgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:8px }
+  details summary { cursor:pointer; color:var(--mute); font-size:12px }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>온리프 B&A 대시보드</h1><div class="sub">배치 요청 → 생성 → 검수 → 갤러리 (로컬 · outputs/ 기준)</div></div>
+  <nav>
+    <button data-tab="request" class="on">배치 요청</button>
+    <button data-tab="batches">배치 목록</button>
+    <button data-tab="gallery">갤러리 · 리뷰</button>
+  </nav>
+</header>
+<main>
+
+<!-- ───────── 배치 요청 ───────── -->
+<section id="tab-request">
+  <div class="card">
+    <div class="row">
+      <label>시술 <select id="treatment"></select></label>
+      <label>모드 <select id="mode"><option value="selfie">셀카용 (selfie)</option><option value="clinical">후기용 (clinical)</option></select></label>
+      <label>수량 <input type="number" id="count" value="8" min="1" max="500"></label>
+      <label>시드 (재현용, 비우면 무작위) <input type="number" id="seed" placeholder="예: 5"></label>
+      <label>프로바이더 (생성/After/채점)
+        <span style="display:flex;gap:4px">
+          <select id="gen" style="min-width:0"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
+          <select id="edit" style="min-width:0"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
+          <select id="qa" style="min-width:0"><option>gemini</option><option>openai</option></select>
+        </span>
+      </label>
+    </div>
+    <details style="margin-top:10px"><summary>축 고정 (선택) — 비우면 균형 샘플링</summary><div class="fixgrid" id="fixed"></div></details>
+    <div class="row" style="margin-top:14px">
+      <button class="b primary" id="btn-plan">분포 + 프롬프트 미리보기</button>
+      <button class="b" id="btn-estimate">비용 추정</button>
+      <button class="b" id="btn-dry">프롬프트 배치 저장 (이미지 없음)</button>
+      <button class="b" id="btn-run">실제 실행 (키 필요)</button>
+      <button class="b" id="btn-demo" title="PIL 자리표시 이미지 + 무작위 검수 결과. 화면 확인용">데모 배치 생성</button>
+      <span class="muted" id="req-msg"></span>
+    </div>
+  </div>
+
+  <div id="plan-out" hidden>
+    <h2>변주 분포 <span class="muted" id="plan-n"></span></h2>
+    <div class="grid2" id="dist"></div>
+    <h2>프롬프트 <span class="muted">(처음 20개)</span></h2>
+    <div id="prompts"></div>
+  </div>
+</section>
+
+<!-- ───────── 배치 목록 ───────── -->
+<section id="tab-batches" hidden>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">outputs/ 아래 배치</h3>
+      <button class="b" id="btn-refresh">새로고침</button>
+    </div>
+    <table id="batches" style="margin-top:10px">
+      <thead><tr><th>배치</th><th>시술</th><th>모드</th><th>종류</th><th>수량</th><th>통과</th><th>통과율</th><th>시도/통과</th><th>$/통과</th><th>리뷰</th><th>상태</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty" id="batches-empty" hidden>배치가 없습니다. 배치 요청 탭에서 데모 배치나 프롬프트 배치를 만들어 보세요.</div>
+  </div>
+</section>
+
+<!-- ───────── 갤러리 ───────── -->
+<section id="tab-gallery" hidden>
+  <div class="row" style="margin-bottom:12px">
+    <label>배치 <select id="gal-batch" style="min-width:260px"></select></label>
+    <label>보기 <select id="gal-filter">
+      <option value="all">전체</option><option value="passed">자동검수 통과</option><option value="failed">자동검수 불합격</option>
+      <option value="unreviewed">미리뷰</option><option value="pick">선택됨</option><option value="reject">반려됨</option></select></label>
+    <label>축 필터 <select id="gal-axis"><option value="">없음</option></select></label>
+    <label>&nbsp;<select id="gal-axis-val"><option value="">전체</option></select></label>
+    <span class="muted" id="gal-count"></span>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
+  <div class="gal" id="gal"></div>
+  <div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다.</div>
+</section>
+</main>
+
+<dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
+const pct = x => (x*100).toFixed(0) + '%';
+const AXIS_KO = {country:'나라', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부상태', body_type:'체형', hair_style:'헤어', hair_color:'모발색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'맥락', lighting:'조명', color:'색감', quality:'화질', before_severity:'Before 강도', effect_level:'효과 강도', timeline:'경과'};
+const TAGS = ['손·손가락','피부 질감','머리카락','동일성','AI티','효과 과함','효과 없음','장면 어색','각도 이상','팔자 위치'];
+let CFG, BATCHES = [], CUR = null;
+
+// ---------- 탭 ----------
+function show(tab) {
+  $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  ['request','batches','gallery'].forEach(t => $('#tab-'+t).hidden = t !== tab);
+  if (tab === 'batches') loadBatches();
+  if (tab === 'gallery') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
+}
+$$('nav button').forEach(b => b.onclick = () => show(b.dataset.tab));
+
+// ---------- 요청 폼 ----------
+function req() {
+  const fixed = {}; $$('#fixed select').forEach(s => { if (s.value) fixed[s.dataset.axis] = s.value; });
+  return { treatment: $('#treatment').value, mode: $('#mode').value, count: +$('#count').value, seed: $('#seed').value, fixed,
+           gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value };
+}
+function renderFixed() {
+  const mode = $('#mode').value, rules = CFG.mode_rules[mode] || {};
+  $('#fixed').innerHTML = Object.entries(CFG.axes).map(([a, opts]) => {
+    const allowed = rules[a] || opts;
+    return `<label>${AXIS_KO[a]||a}<select data-axis="${a}"><option value="">—</option>${allowed.map(o => `<option>${o}</option>`).join('')}</select></label>`;
+  }).join('');
+}
+function syncTreatmentModes() {
+  const t = CFG.treatments[$('#treatment').value]; const m = $('#mode');
+  [...m.options].forEach(o => o.disabled = !t.modes.includes(o.value));
+  if (!t.modes.includes(m.value)) m.value = t.modes[0];
+  renderFixed();
+}
+$('#treatment').onchange = syncTreatmentModes; $('#mode').onchange = renderFixed;
+
+function bars(obj, total, cls) {
+  const entries = Object.entries(obj).sort((a,b) => (b[1].n ?? b[1]) - (a[1].n ?? a[1]));
+  return entries.map(([k, v]) => {
+    const n = v.n ?? v, ratio = v.pass != null ? v.pass : n/total;
+    return `<div class="bar"><span title="${esc(k)}">${esc(k)}</span><span class="t"><i class="${cls||''}" style="width:${(ratio*100).toFixed(0)}%"></i></span><span class="n">${v.pass != null ? pct(v.pass)+' · '+n : n}</span></div>`;
+  }).join('');
+}
+$('#btn-plan').onclick = async () => {
+  try {
+    $('#req-msg').textContent = '조립 중…'; const r = await api('/api/plan', req());
+    $('#plan-out').hidden = false; $('#plan-n').textContent = `${r.count}개`;
+    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div class="card"><h3>${AXIS_KO[a]||a}</h3>${bars(d, r.count)}</div>`).join('');
+    $('#prompts').innerHTML = r.items.slice(0, 20).map((s, i) => promptCard(s, i)).join('');
+    $('#req-msg').textContent = '';
+  } catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+};
+function promptCard(s, i) {
+  const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip">${AXIS_KO[k]}: ${esc(v[k].key)}</span>`).join('');
+  return `<div class="card" style="margin-bottom:10px"><div class="head" style="display:flex;justify-content:space-between"><b>#${String(i).padStart(4,'0')}</b><span class="muted">After 변경 축: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
+    <div>${badges}</div>
+    <details style="margin-top:8px"><summary>Before 프롬프트</summary><div class="mono">${esc(s.before_prompt)}</div></details>
+    <details><summary>After 프롬프트</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
+}
+$('#btn-estimate').onclick = async () => {
+  try { const r = await api('/api/estimate', req()); $('#req-msg').textContent = `예상 호출 ${r.expected_calls}회 · $${r.expected_cost_usd} (회당 $${r.per_try_usd}, 통과율 50% 가정)`; }
+  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+};
+$('#btn-dry').onclick = async () => {
+  try { const r = await api('/api/dryrun_save', req()); toast(`저장: ${r.batch_id} (${r.count}개)`); CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+};
+$('#btn-run').onclick = async () => {
+  const q = req(); if (!confirm(`${q.treatment} / ${q.mode} / ${q.count}개 실제 실행할까요? 비용이 발생합니다.`)) return;
+  try { const r = await api('/api/run', q); toast(`실행 시작: ${r.batch_id}`); show('batches'); }
+  catch (e) { $('#req-msg').textContent = '실행 불가: ' + e.message; }
+};
+$('#btn-demo').onclick = async () => {
+  try { $('#req-msg').textContent = '데모 생성 중…'; const q = req(); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast(`데모 배치: ${r.batch_id}`); $('#req-msg').textContent=''; CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+};
+
+// ---------- 배치 목록 ----------
+async function loadBatches() {
+  BATCHES = await api('/api/batches');
+  const tb = $('#batches tbody'); $('#batches-empty').hidden = BATCHES.length > 0;
+  tb.innerHTML = BATCHES.map(b => { const s = b.stats || {}; const kind = {demo:'데모', dry_run:'프롬프트만', run:'실행'}[b.kind] || b.kind;
+    return `<tr class="click" data-id="${b.batch_id}"><td>${b.batch_id}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${kind}</span></td>
+      <td>${s.total ?? b.count ?? ''}</td><td>${s.passed ?? ''}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${b.kind==='dry_run' ? '—' : (s.attempts_per_pass ?? '')}</td><td>${b.kind==='dry_run' ? '—' : (s.cost_per_pass ?? '')}</td>
+      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 반려 ${s.rejected||0})</span></td><td>${b.status==='running'?'<span class="chip warn">진행 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">오류</span>`:'<span class="chip ok">완료</span>'}</td></tr>`; }).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('gallery'); openBatch(tr.dataset.id); });
+  const sel = $('#gal-batch'); const cur = sel.value;
+  sel.innerHTML = BATCHES.map(b => `<option value="${b.batch_id}">${b.batch_id} · ${CFG.treatments[b.treatment]?.name_ko || b.treatment||''} · ${b.mode||''}</option>`).join('');
+  if (cur) sel.value = cur;
+  return BATCHES;
+}
+$('#btn-refresh').onclick = loadBatches;
+
+// ---------- 갤러리 ----------
+async function openBatch(id) {
+  CUR = await api('/api/batches/' + id); $('#gal-batch').value = id;
+  const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
+  $('#gal-axis').innerHTML = '<option value="">없음</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
+  $('#gal-axis-val').innerHTML = '<option value="">전체</option>';
+  renderStats(); renderGallery();
+}
+$('#gal-batch').onchange = e => openBatch(e.target.value);
+$('#gal-filter').onchange = renderGallery;
+$('#gal-axis').onchange = () => { const a = $('#gal-axis').value; const vals = new Set(CUR.items.map(it => it.variation?.[a]?.key).filter(Boolean));
+  $('#gal-axis-val').innerHTML = '<option value="">전체</option>' + [...vals].map(v => `<option>${v}</option>`).join(''); renderGallery(); };
+$('#gal-axis-val').onchange = renderGallery;
+
+function renderStats() {
+  const s = CUR.stats, dry = CUR.kind === 'dry_run';
+  $('#kpis').innerHTML = [
+    ['총 항목', s.total], ['자동검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['시도/통과', dry ? '—' : s.attempts_per_pass], ['$/통과', dry ? '—' : s.cost_per_pass],
+    ['리뷰', `${s.reviewed} / ${s.total}`], ['선택 · 반려', `${s.picked} · ${s.rejected}`]
+  ].map(([l, v]) => `<div class="kpi"><div class="v">${v ?? '—'}</div><div class="l">${l}</div></div>`).join('');
+  let html = '';
+  if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h3>자동검수 불합격 사유</h3>${bars(s.fail_reasons, s.total, 'bad')}</div>`;
+  if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h3>리뷰 태그</h3>${bars(s.review_tags, s.total, 'bad')}</div>`;
+  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h3>${AXIS_KO[a]||a}별 통과율</h3>${bars(s.by_axis[a], s.total, 'ok')}</div>`; });
+  $('#gal-stats').innerHTML = html;
+}
+function renderGallery() {
+  const f = $('#gal-filter').value, ax = $('#gal-axis').value, av = $('#gal-axis-val').value;
+  const items = CUR.items.filter(it => {
+    const rv = it.review?.pick;
+    if (f === 'passed' && !it.passed) return false; if (f === 'failed' && (it.passed || it.passed === null)) return false;
+    if (f === 'unreviewed' && rv) return false; if (f === 'pick' && rv !== 'pick') return false; if (f === 'reject' && rv !== 'reject') return false;
+    if (ax && av && it.variation?.[ax]?.key !== av) return false; return true;
+  });
+  $('#gal-count').textContent = `${items.length} / ${CUR.items.length}`; $('#gal-empty').hidden = items.length > 0;
+  $('#gal').innerHTML = items.map(itemCard).join('');
+  $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct);
+  $('#gal').querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+}
+function itemCard(it) {
+  const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
+  const img = (file, cap) => file ? `<figure><img loading="lazy" src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  const status = it.passed === null ? '<span class="chip">프롬프트만</span>' : it.passed ? '<span class="chip ok">통과</span>' : `<span class="chip bad">불합격</span>`;
+  const fails = (it.fail_reasons||[]).map(r => `<span class="chip bad">${esc(r)}</span>`).join('');
+  const badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(v[k].key)}</span>`).join('');
+  return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
+    <div class="pair">${img(it.before_file, 'Before')}${img(it.after_file, 'After')}</div>
+    <div class="body">
+      <div class="head"><span class="id">#${it.item_id} ${status}</span><span class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)} <button class="b" style="padding:2px 8px;font-size:11px" data-detail="${it.item_id}">상세</button></span></div>
+      <div>${badges}</div>${fails ? `<div style="margin-top:4px">${fails}</div>` : ''}
+      <div class="act" style="margin-top:8px">
+        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">✓ 선택</button>
+        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">✕ 반려</button>
+        <button class="b" data-act="clear" data-id="${it.item_id}" style="color:var(--mute)">초기화</button>
+      </div>
+      <div class="tags">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
+      <input type="text" placeholder="메모 (Enter 저장)" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+    </div></div>`;
+}
+async function onAct(e) {
+  const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id); const rv = it.review = it.review || {tags:[]};
+  const act = el.dataset.act;
+  if (act === 'note') { el.onkeydown = ev => { if (ev.key === 'Enter') { rv.note = el.value; save(it); } }; return; }
+  if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
+  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; }
+  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; rv.tags.includes(t) ? rv.tags.splice(rv.tags.indexOf(t),1) : rv.tags.push(t); if (!rv.pick) rv.pick = 'reject'; }
+  await save(it);
+}
+async function save(it) {
+  const rv = it.review; await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick, tags: rv.tags||[], note: rv.note||''});
+  const s = CUR.stats, all = CUR.items.map(x => x.review||{}); s.reviewed = all.filter(r => r.pick || (r.tags||[]).length || r.note).length;
+  s.picked = all.filter(r => r.pick === 'pick').length; s.rejected = all.filter(r => r.pick === 'reject').length;
+  s.review_tags = {}; all.forEach(r => (r.tags||[]).forEach(t => s.review_tags[t] = (s.review_tags[t]||0)+1));
+  renderStats(); const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
+}
+function detail(id) {
+  const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
+  const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(v[k].key)}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(av[k].key)}</span>` : ''}</td></tr>`).join('');
+  const scores = it.vision?.scores ? `<h3>비전 채점</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok')}` : '';
+  const chk = [it.structure && `구조: ${it.structure.passed ? '통과' : '실패'} (정렬 오차 ${it.structure.align_err ?? '—'})`, it.identity && `동일성: ${it.identity.hard_fail ? '하드 페일' : '통과'} (유사도 ${it.identity.sim ?? '—'})`].filter(Boolean).join(' · ');
+  $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">#${it.item_id} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
+    <p class="muted">${chk || ''} ${it.prompt_version ? '· 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>변주 (Before → After 변경)</h3><table><thead><tr><th>축</th><th>Before</th><th>After</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
+    <h3 style="margin-top:14px">Before 프롬프트</h3><div class="mono">${esc(it.before_prompt)}</div>
+    <h3 style="margin-top:10px">After 프롬프트</h3><div class="mono">${esc(it.after_prompt)}</div>`;
+  $('#dlg').showModal();
+}
+
+// ---------- init ----------
+(async () => {
+  CFG = await api('/api/config');
+  $('#treatment').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<option value="${k}">${t.name_ko} (${k})</option>`).join('');
+  syncTreatmentModes();
+  $('#gen').value = 'gemini';
+  if (location.hash === '#gallery') show('gallery'); else if (location.hash === '#batches') show('batches');
+})();
+</script>
+</body>
+</html>
