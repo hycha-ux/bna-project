@@ -35,7 +35,7 @@ a { color:var(--primary) }
 .side .toggle { margin-left:auto; width:28px; height:28px; border:0; background:none; border-radius:8px; color:var(--ui-lo); cursor:pointer } .side .toggle:hover { background:var(--ui-surface); color:var(--ui-hi) }
 .side .toggle svg { width:16px; height:16px }
 .collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
-.collapsed .side .brand-row { justify-content:center; padding-bottom:12px }
+.collapsed .side .brand-row { flex-direction:column; align-items:center; gap:8px; padding-bottom:10px } .collapsed .side .toggle { margin:0; width:36px; height:32px }
 .collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
 .sub { display:flex; flex-direction:column; padding:2px 0 6px 28px } .sub button { border:0; background:none; text-align:left; padding:6px 10px; font-size:12.5px; color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:700 }
 .nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
@@ -188,7 +188,7 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
 
 <div class="app" id="app">
   <nav class="side">
-    <div class="brand-row"><div class="logo">OL</div><div class="brand">ONLIF<br><small style="font-size:11px;font-weight:500;color:var(--ui-lo)">전후 사진 생성</small></div></div>
+    <div class="brand-row"><div class="logo">OL</div><div class="brand">ONLIF<br><small style="font-size:11px;font-weight:500;color:var(--ui-lo)">전후 사진 생성</small></div><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">대시보드</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
@@ -200,7 +200,6 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
 
   <div class="main">
     <div class="topbar">
-      <button class="tb-icon" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button>
       <h1 id="page-h1">대시보드</h1>
       <div class="search"><svg><use href="#i-search"/></svg><input id="search" placeholder="작업 검색 (시술, 유형, 날짜)"></div>
       <div class="tb-space"></div>
