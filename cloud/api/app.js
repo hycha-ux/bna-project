@@ -298,16 +298,65 @@ function indexHtml(snap, user) {
   }
   if (!INDEX_HTML) return '<h1>index.html 을 찾지 못했습니다</h1>';
   const at = snap?.generated_at || null;
-  const adminLink =
-    user.role === 'admin' ? ' · <a href="/admin" style="color:#9EC3F0">관리자 설정</a>' : '';
-  // 스냅샷이 언제 것인지 화면에 남긴다 — 낡은 값을 실시간으로 오해하면 그게 사고다.
+
+  // ① 스냅샷 시각은 화면에 남긴다 — 낡은 값을 실시간으로 오해하면 그게 사고다.
+  //    (계정·관리자·로그아웃은 2026-09-08 성연서님 지시로 프로필 메뉴로 옮겼다.)
   const banner = `<div id="snapnote" style="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
-z-index:9999;background:rgba(25,31,40,.88);color:#fff;font-size:12px;padding:7px 14px;border-radius:999px;
-box-shadow:0 2px 8px rgba(0,0,0,.18)">${
+z-index:9999;background:rgba(25,31,40,.82);color:#fff;font-size:12px;padding:6px 13px;border-radius:999px;
+box-shadow:0 2px 8px rgba(0,0,0,.16)">${
     at ? `보기 전용 · 사무실 PC 기준 ${esc(at)} 스냅샷` : '보기 전용 · 아직 데이터가 올라오지 않았습니다'
-  } · ${esc(user.email)}(${esc(ROLE_LABEL[user.role] || user.role)})${adminLink}
- · <a href="/api/auth/logout" style="color:#9EC3F0">로그아웃</a></div>`;
-  return INDEX_HTML.replace('</body>', `${banner}</body>`);
+  }</div>`;
+
+  // ② 계정·관리자·로그아웃은 우측 상단 프로필(▾) 메뉴 안으로.
+  //    빌디의 index.html 을 고치지 않고 여기서 얹는다(그쪽이 다시 구워도 안 지워진다).
+  //    ⚠ 메뉴 마크업(#tb-profile·#menu)이 사라지면 조용히 아무 데도 안 뜬다 →
+  //    못 찾으면 우측 상단에 대체 알약을 띄운다(fail-open, 로그아웃 길을 잃지 않게).
+  const me = JSON.stringify({
+    email: user.email,
+    role: user.role,
+    label: ROLE_LABEL[user.role] || user.role,
+  });
+  const profileJs = `<script>(function(){
+var U=${me};
+var local=U.email.split('@')[0];
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+var prof=document.getElementById('tb-profile'), menu=document.getElementById('menu');
+if(prof&&menu){
+  menu.style.width='250px'; // 기본 200px 에선 회사 메일이 두 줄로 깨진다
+  var av=prof.querySelector('.avatar'); if(av) av.textContent=local.slice(0,2).toUpperCase();
+  var sp=prof.querySelectorAll('span'); if(sp[1]) sp[1].textContent=local;
+  prof.title=U.email;
+  var head=document.createElement('div');
+  head.style.cssText='padding:10px 12px 9px;margin:-2px 0 4px;border-bottom:1px solid var(--ui-border)';
+  head.innerHTML='<div style="font-size:13px;font-weight:600;line-height:1.3">'+esc(local)+'</div>'
+    +'<div style="font-size:12px;color:var(--ui-md);word-break:break-all">'+esc(U.email)+'</div>'
+    +'<div style="margin-top:6px"><span style="display:inline-block;padding:2px 8px;border-radius:999px;'
+    +'font-size:11px;font-weight:600;background:'+(U.role==='admin'?'var(--pri-alpha);color:var(--primary)':'var(--ui-surface);color:var(--ui-md)')
+    +'">'+esc(U.label)+'</span></div>';
+  menu.insertBefore(head,menu.firstChild);
+  var sep=document.createElement('div'); sep.className='mi-sep'; menu.appendChild(sep);
+  if(U.role==='admin'){
+    var a=document.createElement('button');
+    a.innerHTML='<svg width="18" height="18"><use href="#i-gear"/></svg>관리자 설정';
+    a.onclick=function(){location.href='/admin';};
+    menu.appendChild(a);
+  }
+  var out=document.createElement('button');
+  out.innerHTML='<svg width="18" height="18"><use href="#i-user"/></svg>로그아웃';
+  out.onclick=function(){location.href='/api/auth/logout';};
+  menu.appendChild(out);
+}else{
+  var f=document.createElement('div');
+  f.style.cssText='position:fixed;right:16px;top:14px;z-index:9999;background:#fff;border:1px solid #EAECEF;'
+    +'border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.08)';
+  f.innerHTML=esc(U.email)+' · '+(U.role==='admin'?'<a href="/admin">관리자 설정</a> · ':'')
+    +'<a href="/api/auth/logout">로그아웃</a>';
+  document.body.appendChild(f);
+}
+})();</script>`;
+
+  return INDEX_HTML.replace('</body>', `${banner}${profileJs}</body>`);
 }
 
 // ── 라우팅 ──────────────────────────────────────────────────────────────────

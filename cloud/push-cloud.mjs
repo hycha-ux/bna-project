@@ -20,7 +20,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { put } from '@vercel/blob';
+import { del, list, put } from '@vercel/blob';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -115,12 +115,17 @@ async function main() {
   let skipped = 0;
   try {
     // ── 1. 원장 긁기 (로컬 API 응답 그대로) ──────────────────────────────────
-    const [config, batches, queue, library] = await Promise.all([
+    const [config, allBatches, queue, library] = await Promise.all([
       getJson('/api/config'),
       getJson('/api/batches'),
       getJson('/api/queue'),
       getJson('/api/library'),
     ]);
+
+    // 데모 배치(`--demo` 가 만든 가짜 그림)는 올리지 않는다 — 공유 화면에 섞이면
+    // 보는 사람이 실제 성과로 읽는다(2026-09-08 성연서님 "더미 데이터로 있는 거 같아").
+    const batches = allBatches.filter((b) => b.kind !== 'demo');
+    const dropped = allBatches.length - batches.length;
     const overview = {};
     for (const d of DAYS) overview[String(d)] = await getJson(`/api/overview?days=${d}`);
 
@@ -162,9 +167,9 @@ async function main() {
 
     if (DRY) {
       console.log(
-        `[dry] 배치 ${batches.length} · 이미지 ${files.length}장 · 스냅샷 ${(
-          JSON.stringify(snap).length / 1024
-        ).toFixed(0)}KB · 업로드 0건`,
+        `[dry] 배치 ${batches.length}${dropped ? `(데모 ${dropped} 제외)` : ''} · 이미지 ${
+          files.length
+        }장 · 스냅샷 ${(JSON.stringify(snap).length / 1024).toFixed(0)}KB · 업로드 0건`,
       );
       return;
     }
@@ -187,6 +192,22 @@ async function main() {
       man[f.key] = sig;
       uploaded++;
     }
+    // ── 3-2. 이제 화면이 안 부르는 사진은 클라우드에서 지운다 ─────────────────
+    // 안 지우면 데모·삭제한 배치의 사진이 창고에 영영 남는다(사람 얼굴이라 더 그렇다).
+    const want = new Set(files.map((f) => f.key));
+    let pruned = 0;
+    let cursor;
+    do {
+      const page = await list({ token: TOKEN, prefix: 'files/', cursor, limit: 1000 });
+      const gone = page.blobs.filter((b) => !want.has(b.pathname));
+      for (const b of gone) {
+        await del(b.url, { token: TOKEN });
+        delete man[b.pathname];
+        pruned++;
+      }
+      cursor = page.hasMore ? page.cursor : null;
+    } while (cursor);
+
     writeFileSync(MANIFEST, JSON.stringify(man));
 
     // ── 4. 스냅샷은 마지막에 — 먼저 올리면 화면이 아직 없는 사진을 부른다 ──────
@@ -199,7 +220,11 @@ async function main() {
     });
 
     console.log(
-      `푸시 완료 · 배치 ${batches.length} · 이미지 ${files.length}장(새로 ${uploaded} · 그대로 ${skipped}) · 기준 ${snap.generated_at}`,
+      `푸시 완료 · 배치 ${batches.length}${dropped ? `(데모 ${dropped} 제외)` : ''} · 이미지 ${
+        files.length
+      }장(새로 ${uploaded} · 그대로 ${skipped}${pruned ? ` · 지움 ${pruned}` : ''}) · 기준 ${
+        snap.generated_at
+      }`,
     );
   } finally {
     if (proc) proc.kill();
