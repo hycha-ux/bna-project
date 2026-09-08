@@ -140,7 +140,8 @@ tbody tr:last-child td { border-bottom:none }
 .item .body { padding:var(--sp-2) var(--sp-3) var(--sp-3) } .item .head { display:flex; align-items:center; gap:var(--sp-1); margin-bottom:2px } .item .id { font-weight:var(--fw-b); color:var(--ui-lo) }
 .item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
 .act { display:grid; grid-template-columns:1fr 1fr; gap:8px } .act .b { height:40px; font-size:var(--fs-md) }
-.dd { position:relative; margin-bottom:8px } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
+.dd { position:relative; margin-bottom:8px }
+.item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
 .dd-btn { display:flex; align-items:center; gap:8px; height:36px; padding:0 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:#fff; font-size:var(--fs-sm); cursor:pointer; user-select:none }
 .dd[open] .dd-btn { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha) }
 .dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
