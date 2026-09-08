@@ -102,3 +102,34 @@ InsightFace 가 얼굴을 아예 못 잡아 동일인 게이트가 **막는 게 
 - 게이트가 **재는 비율 4/8 → 7/8**, 못 잰 건 이제 **숨지 않는다.**
 - 문턱은 **안 건드렸다** — 표본이 모자란다. 이게 남은 사람 판단 하나다.
 - 다음 라운드(키 수령 후) 30쌍 배치에서 L3 재캘리브레이션 + `framing_allow` 를 같이 낸다.
+
+---
+
+## 5. 첫 실집행에서 확인된 것 (2026-09-08 저녁, 키 수령 후)
+
+셀카 1쌍(`seed 5`, `framing=one_cheek`)을 실제로 돌린 결과 **같은 결함이 옆 모듈에 그대로 있었다.**
+
+`structure.check` 는 얼굴 미검출을 `passed=False`(탈락)로 냈고, 배치는 그걸 재시도 사유로 세어
+**같은 변주를 3번 다시 생성**했다. 눈이 프레임 밖이라 다시 뽑아도 미검출인데도 그랬다.
+실비용 **$1.14 × 2회 = $2.28**, 통과 0건.
+
+→ `structure.check` 도 3값으로 바꿨다(`passed: None` = 못 잼), `batch` 는 `passed is False` 일 때만 실패로 센다.
+→ `stats` 에 `structure_gate.measured_rate` 를 추가했다.
+
+**교훈: 같은 판정이 두 곳에 있으면 전수로 고쳐라.** identity 만 고치고 structure 를 놔둔 탓에
+"못 잼을 실패로 세지 마라"는 규칙이 반쪽만 적용됐고, 그 반쪽이 돈을 태웠다.
+
+### 그리고 근본 처방은 검수기가 아니다 — `framing_allow`
+
+이번 컷은 검수기를 고쳐도 **쓸 수 없는 사진**이다. `one_cheek`(한쪽 볼) 크롭에서
+**팔자가 프레임 밖**이라 전후 비교 자체가 성립하지 않는다(Before·After 둘 다).
+검수기는 그걸 "못 잼"으로 흘려보낼 뿐, 안 만드는 게 맞다.
+
+제안(리뷰 §3-8과 같은 항목, 이제 실비용 근거가 붙었다):
+```yaml
+# treatments.yaml — 시술별로 그 부위가 화면에 남는 프레이밍만 허용
+nasolabial:
+  framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
+  # one_cheek 은 각도가 selfie_3q·front 일 때만 (측면과 겹치면 부위가 사라진다)
+```
+`sample_variation` 이 `background_lighting` 을 거르는 자리에서 같은 모양으로 한 번 더 거르면 된다.
