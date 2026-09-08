@@ -802,9 +802,15 @@ function setListOpen(open) {
   document.body.classList.toggle('list-folded', !open);
   const t = $('#list-toggle'); if (t) t.textContent = open ? '접기' : '작업 바꾸기';
 }
-async function openBatch(id, scrollTo_ = false) {
+/**
+ * byUser = 사람이 목록에서 줄을 눌러 고른 경우.
+ * ⚠ 목록 접기는 **byUser 일 때만** 한다. 새로고침하면 첫 작업이 자동으로 열리는데,
+ *   거기서도 접으면 고른 적 없는 목록이 사라져 "리스트가 사라지는 버그"가 된다
+ *   (2026-09-08 성연서님 신고 — 내가 같은 날 넣은 결함).
+ */
+async function openBatch(id, byUser = false) {
   CUR = await api('/api/batches/' + id);
-  setListOpen(false);
+  if (byUser) setListOpen(false);
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
@@ -813,7 +819,7 @@ async function openBatch(id, scrollTo_ = false) {
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
   renderStats(); renderGallery(); startPoll();
-  if (scrollTo_) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
+  if (byUser) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
 }
 async function startPoll() {
   clearInterval(POLL); POLL = null; $('#prog').hidden = true;
