@@ -82,6 +82,8 @@ a { color:var(--primary) }
 .page-title { display:flex; align-items:baseline; gap:var(--sp-2); margin-bottom:var(--sp-3) } .page-title h2 { font-size:var(--fs-xl); font-weight:var(--fw-b); letter-spacing:-.3px }
 .card { background:var(--ui-panel); border-radius:var(--r-lg); padding:var(--card-pad); box-shadow:0 1px 2px rgba(25,31,40,.04) }
 .card-head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-3); min-height:36px } .card-head h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); letter-spacing:-.2px } .card-head .tb-space { flex:1 }
+.toolbar { display:flex; align-items:center; gap:var(--sp-1); margin:calc(-1 * var(--sp-1)) 0 var(--sp-3); padding-bottom:var(--sp-3); border-bottom:1px solid var(--ui-border) }
+.toolbar select { width:auto; min-width:120px; height:38px; font-size:var(--fs-sm) } .toolbar .tl { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin:0 4px 0 2px } .toolbar .sep { width:1px; height:22px; background:var(--ui-border); margin:0 var(--sp-2) }
 .card h4 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
 .grid { display:grid; gap:var(--gap) } .grid > * { min-width:0 }
 .g-kpi { grid-template-columns:repeat(4,1fr) }
@@ -141,11 +143,11 @@ tbody tr:last-child td { border-bottom:none }
 .item input[type=text] { height:32px; font-size:12px }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
-.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); font-variant-numeric:tabular-nums; letter-spacing:-.03em }
+.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--sp-2) } .prog .lead { display:flex; align-items:center; gap:var(--sp-2) } .prog .ttl { font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md) } .prog .big small { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:4px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
 .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px } .stack i { display:block; height:100%; transition:width .4s }
 .st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
 .legend { display:flex; gap:var(--sp-3); flex-wrap:wrap; font-size:var(--fs-xs); color:var(--ui-lo) } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
-.cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:18px; height:18px; border-radius:4px; background:var(--ui-surface); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:700 }
+.cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:20px; height:20px; border-radius:4px; background:var(--ui-surface); display:block; font-size:10px; color:#fff; text-align:center; line-height:20px; font-weight:700 } .cells b.st-queued, .cells b.st-skipped { color:var(--ui-lo) }
 .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
 .mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px } .mini i { display:block; height:100%; background:var(--primary) }
 /* 대시보드 */
@@ -306,14 +308,13 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head" style="flex-wrap:wrap">
-          <h3>작업 목록</h3>
-          <div class="tb-space"></div>
-          <label class="field"><span>보기</span><select id="gal-filter" style="width:160px"><option value="all">전체</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select></label>
-          <label class="field"><span>조건</span><select id="gal-axis" style="width:140px"><option value="">전체</option></select></label>
-          <label class="field"><span>&nbsp;</span><select id="gal-axis-val" style="width:140px"><option value="">전체</option></select></label>
-          <label class="field"><span>방식</span><select id="jobs-kind" style="width:130px"><option value="">전체</option><option value="run">실제</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select></label>
-          <label class="field"><span>&nbsp;</span><button class="btn sm" id="btn-refresh">새로고침</button></label>
+        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="toolbar">
+          <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
+          <span class="sep"></span>
+          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select>
+          <select id="gal-axis"><option value="">조건 전체</option></select><select id="gal-axis-val" hidden><option value="">값 전체</option></select>
+          <span class="tb-space"></span><span class="muted" id="gal-count"></span>
         </div>
         <div class="tbl-wrap" style="max-height:340px"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
@@ -321,9 +322,9 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div id="detail" style="margin-top:var(--gap)">
         <div class="card empty" id="detail-empty">작업을 선택하세요</div>
         <div id="detail-body" hidden>
-          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden></div><div class="grid g-kpi" id="kpis"></div></div>
+          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
           <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
-          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-count"></span></div><div class="gal" id="gal"></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3></div><div class="gal" id="gal"></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
     </section>
@@ -331,10 +332,10 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 라이브러리 ═══ -->
     <section class="page" id="tab-library">
       <div class="card">
-        <div class="card-head" style="flex-wrap:wrap"><h3>선택된 사진</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div>
-          <label class="field"><span>시술</span><select id="lib-treatment" style="width:180px"><option value="">전체</option></select></label>
-          <label class="field"><span>사진 종류</span><select id="lib-mode" style="width:130px"><option value="">전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select></label>
-          <label class="field"><span>&nbsp;</span><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></label>
+        <div class="card-head"><h3>선택된 사진</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
+        <div class="toolbar">
+          <select id="lib-treatment"><option value="">시술 전체</option></select>
+          <select id="lib-mode"><option value="">종류 전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select>
         </div>
         <div class="msg" id="lib-msg"></div><div id="lib-exports"></div>
       </div>
@@ -665,10 +666,10 @@ async function openBatch(id, scrollTo_ = false) {
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
-  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><span class="muted">${fmtBid(b.batch_id)} · ${b.batch_id}</span>`;
+  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
-  $('#gal-axis').innerHTML = '<option value="">전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
-  $('#gal-axis-val').innerHTML = '<option value="">전체</option>';
+  $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
+  $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
   renderStats(); renderGallery(); startPoll();
   if (scrollTo_) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -695,15 +696,15 @@ function renderProgress(pg, el, title) {
   const ids = Object.keys(pg.items).sort();
   const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="${+id+1} · ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.map(failKo).join(', '):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
   const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · ${c.skipped}장 생략</span>` : '');
-  el.innerHTML = `<div class="top"><div>${title ? `<b>${title}</b> · ` : ''}<span class="big">${s.done} / ${s.planned}</span> <span class="muted">완료</span> ${state}</div>
+  el.innerHTML = `<div class="top"><div class="lead">${title ? `<b class="ttl">${title}</b>` : ''}<span class="big">${s.done}<small>/ ${s.planned}</small></span>${state}</div>
       <div class="muted">동시 ${s.active} · 재생성 ${s.retries}회 · 통과율 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 경과 ${fmtS(s.elapsed_s)}${s.running?` · 남은 시간 약 ${fmtS(s.eta_s)}`:''}</div></div>
     <div class="stack">${seg}</div>
-    <div class="legend">${order.filter(k=>k!=='queued').map(k=>`<span><i class="st-${k}" style="background:${k==='queued'?'var(--chip)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}<span><i style="background:var(--ui-surface)"></i>대기 ${c.queued}</span></div>
-    <div class="cells">${cells}</div>`;
+    <div class="legend">${order.filter(k => c[k]).map(k=>`<span><i class="st-${k}" style="${k==='queued'?'background:var(--ui-border)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}</div>
+    ${s.running ? `<div class="cells">${cells}</div>` : ''}`;
 }
 $('#gal-filter').onchange = renderGallery;
 $('#gal-axis').onchange = () => { const a = $('#gal-axis').value; const vals = new Set(CUR.items.map(it => it.variation?.[a]?.key).filter(Boolean));
-  $('#gal-axis-val').innerHTML = '<option value="">전체</option>' + [...vals].map(v => `<option value="${v}">${val(a, v)}</option>`).join(''); renderGallery(); };
+  $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>' + [...vals].map(v => `<option value="${v}">${val(a, v)}</option>`).join(''); $('#gal-axis-val').hidden = !a; renderGallery(); };
 $('#gal-axis-val').onchange = renderGallery;
 function renderStats() {
   const s = CUR.stats, dry = CUR.kind === 'dry_run';
@@ -783,7 +784,7 @@ function detail(id) {
 // ---------- 라이브러리 ----------
 async function loadLibrary() {
   LIB = await api('/api/library'); const t = $('#lib-treatment'); const cur = t.value;
-  t.innerHTML = '<option value="">전체</option>' + Object.keys(LIB.summary).map(k => `<option value="${k}">${CFG.treatments[k]?.name_ko || k} (${Object.values(LIB.summary[k]).reduce((a,b)=>a+b,0)})</option>`).join(''); t.value = cur;
+  t.innerHTML = '<option value="">시술 전체</option>' + Object.keys(LIB.summary).map(k => `<option value="${k}">${CFG.treatments[k]?.name_ko || k} (${Object.values(LIB.summary[k]).reduce((a,b)=>a+b,0)})</option>`).join(''); t.value = cur;
   renderLibrary();
 }
 function renderLibrary() {
