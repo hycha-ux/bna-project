@@ -94,8 +94,8 @@ src/bna/
   qa/vision.py    ⏳  채점 규칙 (프로바이더 qa 구현 대기)
   providers/      ⏳  base(인터페이스·어댑터 훅) / gemini / openai_img / higgsfield — 키 수령 후 구현
   cli.py          ✅  --plan / --dry-run / --estimate / --run
-  api.py          ✅  로컬 대시보드 서버 (stdlib HTTP): 배치 요청·dry-run 저장·실행·목록·리뷰 저장·데모 배치
-web/index.html    ✅  대시보드 1차: 배치 요청 / 배치 목록 / 갤러리·리뷰(선택·반려·사유 태그·메모). Supabase·팀 계정은 미착수
+  api.py          ✅  로컬 대시보드 서버 (stdlib HTTP): 큐·진행·목록·리뷰·라이브러리·내보내기(zip+manifest)·데모/시뮬레이션
+web/index.html    ✅  대시보드: 생성(대기열·진행·미리보기) / 작업(목록→상세·검수) / 라이브러리(선택작 모음·내보내기). Supabase·팀 계정은 미착수
 samples/reference/{clinical,selfie}/   참조 실사 라이브러리 (비어 있음)
 outputs/{batch_id}/  결과 · manifest.csv · stats.json · state.json (git 제외)
 ```
