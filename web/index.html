@@ -474,7 +474,11 @@ const PICK = {
   reject: {btn:'제외', on:'제외함', line:'→ 드라이브에 올리지 않습니다 (이미 올라갔으면 내립니다)', tone:'bad'},
   none:   {line:'→ 아직 정하지 않았습니다. 드라이브에 올라가지 않습니다', tone:''},
 };
-const RO = () => !!(CFG && CFG.readonly);          // 클라우드 배포본은 쓰기 405 다
+// 2026-09-08 성연서님 "나는 지금 PC에서 진행하고 있거든!" — 검수를 클라우드에서도 열었다.
+// 그래서 잠기는 축이 둘로 갈렸다: 검수(RO)는 이제 거의 항상 열려 있고,
+// 사진 만들기·내보내기(NO_CREATE)만 인터넷 화면에서 막힌다(사진 파일이 그 PC 에만 있어서다).
+const RO = () => !!(CFG && CFG.readonly);          // 검수 잠김 — 저장소가 끊겼을 때만 참
+const NO_CREATE = () => !!(CFG && CFG.no_create);  // 생성·내보내기 잠김 — 인터넷 화면
 // 판정 아래 한 줄: 지금 무슨 일이 일어나는지. 채택본은 실제 드라이브 상태까지 말한다.
 function pickLine(rv) {
   rv = rv || {};
@@ -648,6 +652,7 @@ $('#btn-estimate').onclick = async () => {
   catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 $('#btn-run').onclick = async () => {
+  if (NO_CREATE()) { msg('#req-msg', CFG.cloud_msg || '이 화면에서는 사진을 만들 수 없습니다.', 'err'); return; }
   const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
   if (jobs.some(j => !j.simulate) && !confirm(`실제 생성 작업 ${jobs.filter(j=>!j.simulate).length}개를 시작합니다. API 비용이 발생합니다.`)) return;
   try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개 시작`); msg('#req-msg', ''); loadQueue(); }
@@ -891,7 +896,7 @@ async function onAct(e) {
   const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id);
   if (!it) { toast('사진을 찾지 못했습니다 — 새로고침해 주세요'); return; }
   const act = el.dataset.act;
-  if (RO() && act !== 'note') { toast(CFG.readonly_msg || '이 화면은 보기 전용입니다.'); return; }
+  if (RO() && act !== 'note') { toast('지금은 검수를 저장할 수 없습니다 — 저장소 연결을 확인해 주세요'); return; }
   if (SAVING.has(id) && act !== 'note') return;          // 앞 저장이 끝나기 전엔 안 받는다(연타 경쟁 방지)
   const prev = JSON.parse(JSON.stringify(it.review || {}));   // 저장이 실패하면 여기로 되돌린다
   const rv = it.review = it.review || {tags:[]};
@@ -973,6 +978,7 @@ function libCard(i) {
 }
 $('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
 $('#btn-export').onclick = async () => {
+  if (NO_CREATE()) { msg('#lib-msg', CFG.cloud_msg || '이 화면에서는 내보내기를 할 수 없습니다.', 'err'); return; }
   try { msg('#lib-msg', '내보내는 중…'); const r = await api('/api/export', {treatment: $('#lib-treatment').value || null, mode: $('#lib-mode').value || null});
     EXPORTS.unshift(r); msg('#lib-msg', `${r.count}장 내보냄`, 'on'); renderExports(); }
   catch (e) { msg('#lib-msg', e.message, 'err'); }
@@ -1031,11 +1037,26 @@ function renderSettings() {
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
-  if (CFG.readonly) {                                  // 보기 전용이면 화면이 먼저 말한다 — 눌러 놓고 아무 일도 안 나는 게 제일 나쁘다
+  // 무엇이 되고 무엇이 안 되는지를 화면이 먼저 말한다.
+  // ⚠ 종전 문구("사무실 PC에서 진행합니다")는 보는 분이 PC 앞에 계실 때 "나 지금 PC인데?"가 된다.
+  //   갈리는 기준은 PC 냐 아니냐가 아니라 **사진 파일이 어느 컴퓨터에 있느냐**다.
+  if (CFG.no_create || CFG.readonly) {
     const b = document.createElement('div'); b.className = 'card';
-    b.style.cssText = 'margin:0 0 12px;border-left:4px solid var(--warn,#c98a00)';
-    b.innerHTML = `<b>보기 전용 화면입니다</b><div class="muted" style="margin-top:4px">${esc(CFG.readonly_msg || '검수·생성·내보내기는 사무실 PC에서 진행합니다.')} 채택/제외 버튼은 잠겨 있습니다.</div>`;
+    b.style.cssText = 'margin:0 0 12px;border-left:4px solid var(--primary,#1F3A5F)';
+    b.innerHTML = CFG.readonly
+      ? `<b>지금은 검수를 저장할 수 없습니다</b><div class="muted" style="margin-top:4px">저장소 연결이 끊겨 있어 채택·제외가 잠겼습니다. 잠시 뒤 새로고침해 주세요.</div>`
+      : `<b>여기서 되는 것 · 안 되는 것</b>
+         <div class="muted" style="margin-top:6px;line-height:1.8">
+           <div>✅ <b>됩니다</b> — 사진 보기, <b>채택·제외 검수</b>, 제외 사유·메모, 학습 확인</div>
+           <div>🚫 <b>안 됩니다</b> — 새 사진 만들기, zip 내보내기</div>
+           <div style="margin-top:6px">사진 파일 원본이 <b>생성 컴퓨터</b> 안에만 있어서, 그 두 가지는 거기서만 돌아갑니다.
+           여기서 누른 채택·제외는 <b>바로 저장</b>되고, 10분마다 그 컴퓨터로 옮겨져 드라이브 저장·프롬프트 학습까지 이어집니다.</div>
+         </div>`;
     ($('#detail') || document.querySelector('main') || document.body).prepend(b);
+    if (CFG.no_create) {                              // 눌러 보고 알게 하지 말고 버튼에 먼저 적는다
+      const r = $('#btn-run'); if (r) { r.disabled = true; r.textContent = '생성은 생성 컴퓨터에서'; r.title = CFG.cloud_msg || ''; }
+      const x = $('#btn-export'); if (x) { x.disabled = true; x.title = CFG.cloud_msg || ''; }
+    }
   }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });

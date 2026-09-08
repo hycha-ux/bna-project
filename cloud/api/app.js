@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { get } from '@vercel/blob';
+import * as REV from '../lib/reviews.mjs';
 import {
   COOKIE,
   ROLE_LABEL,
@@ -360,7 +361,14 @@ if(prof&&menu){
 }
 
 // ── 라우팅 ──────────────────────────────────────────────────────────────────
-const WRITE_MSG = '이 화면은 보기 전용입니다. 생성·검수·내보내기는 사무실 PC에서 진행합니다.';
+// 2026-09-08 성연서님 "나는 지금 PC에서 진행하고 있거든!" — 종전 문구는 두 가지가 틀렸다.
+// ①"사무실 PC"는 보는 사람 입장에선 자기 PC 를 가리키는 말로 읽힌다(지금 PC 앞에 계신다).
+// ②"왜" 가 없어 고장으로 읽힌다. 갈리는 기준은 PC 냐 아니냐가 아니라 **사진이 어디 있느냐**다.
+// 그리고 검수는 이제 이 화면에서도 된다 — 막히는 건 생성·내보내기뿐이다.
+const WRITE_MSG =
+  '이 인터넷 화면에서는 사진 만들기·내보내기가 안 됩니다. ' +
+  '사진 파일이 생성 컴퓨터에만 있어서, 그 두 가지는 거기서만 돌아갑니다. ' +
+  '채택·제외 검수는 이 화면에서 그대로 하시면 됩니다.';
 
 async function readBody(req) {
   const chunks = [];
@@ -485,7 +493,24 @@ export default async function handler(req, res) {
 
   if (p === '/api/me') return json(res, 200, publicUser(user));
 
-  // ── 쓰기 계열 — 공개 URL에 돈 쓰는 버튼을 두지 않는다 ─────────────────────
+  // ── 검수는 열려 있다 (2026-09-08) ────────────────────────────────────────
+  // 막을 이유가 있는 건 돈·시간이 드는 생성과 디스크를 쓰는 내보내기뿐이다.
+  // 검수는 판정 한 줄이라 Blob 에 두고, 사무실 PC 가 회차마다 내려받아 반영한다.
+  if (p === '/api/review' && req.method === 'POST') {
+    if (!TOKEN) return json(res, 503, { error: '저장소가 아직 연결되지 않았습니다(BLOB_READ_WRITE_TOKEN).' });
+    let body = null;
+    try { body = await readBody(req); } catch { body = null; }
+    if (!body || !body.batch || body.item == null)
+      return json(res, 400, { error: '어느 사진인지 알 수 없습니다(batch·item).' });
+    try {
+      const rv = await REV.saveReview(TOKEN, body);
+      return json(res, 200, { ...rv, drive: 'pending' });   // 드라이브 등록은 사무실 PC 회차가 한다
+    } catch (e) {
+      return json(res, 500, { error: '검수를 저장하지 못했습니다 — ' + (e?.message || e) });
+    }
+  }
+
+  // ── 남은 쓰기 계열 — 돈 쓰는 버튼을 이 화면에 두지 않는다 ─────────────────
   if (req.method !== 'GET') return json(res, 405, { error: WRITE_MSG });
 
   const snap = await snapshot();
@@ -520,11 +545,15 @@ export default async function handler(req, res) {
 
   // readonly 를 화면에 알려 준다 — 이걸 안 주면 버튼이 멀쩡해 보이고, 눌러도 405 라
   // 아무 일도 안 일어난다(2026-09-08 "클릭했을 때 반영이 안 된다"의 뿌리).
+  // 검수는 열려 있고 생성·내보내기만 잠긴다 → 화면이 그 둘만 잠그도록 알려 준다.
   if (p === '/api/config')
-    return json(res, 200, { ...snap.config, readonly: true, readonly_msg: WRITE_MSG });
-  if (p === '/api/batches') return json(res, 200, snap.batches);
+    return json(res, 200, { ...snap.config, readonly: false, cloud: true, no_create: true, cloud_msg: WRITE_MSG });
   if (p === '/api/queue') return json(res, 200, snap.queue);
-  if (p === '/api/library') return json(res, 200, snap.library);
+
+  // 아래부터는 검수 오버레이를 겹친다 — 방금 누른 판정이 10분 배치를 기다리지 않게.
+  const ov = TOKEN ? await REV.overlay(TOKEN) : {};
+  if (p === '/api/batches') return json(res, 200, REV.applyToList(snap.batches, ov, snap.items));
+  if (p === '/api/library') return json(res, 200, REV.applyToLibrary(snap.library, ov, snap.items));
 
   if (p === '/api/overview') {
     const want = String(url.searchParams.get('days') || '14');
@@ -545,7 +574,7 @@ export default async function handler(req, res) {
   const mItem = /^\/api\/batches\/([^/]+)$/.exec(p);
   if (mItem) {
     const v = (snap.items || {})[mItem[1]];
-    return v ? json(res, 200, v) : json(res, 404, { error: '없는 배치입니다.' });
+    return v ? json(res, 200, REV.applyToBatch(v, ov)) : json(res, 404, { error: '없는 배치입니다.' });
   }
 
   return json(res, 404, { error: '없는 경로입니다: ' + p });

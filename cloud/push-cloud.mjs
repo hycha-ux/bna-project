@@ -21,6 +21,7 @@ import { existsSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { del, list, put } from '@vercel/blob';
+import * as REV from './lib/reviews.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -108,12 +109,63 @@ async function connect() {
   throw new Error('로컬 API 가 30초 안에 안 떴다:\n' + err.slice(-800));
 }
 
+/**
+ * 클라우드에서 누른 검수를 이 PC 로 가져온다 (2026-09-08).
+ *
+ * 순서가 중요하다: **흡수 → 스냅샷 생성 → 업로드 → 흡수분 삭제.**
+ * 삭제를 먼저 하면 그 사이 화면이 옛 스냅샷을 읽어 방금 누른 판정이 사라져 보인다.
+ *
+ * 로컬 API 를 거쳐 저장하는 이유: 그래야 드라이브 등록·프롬프트 학습 훅이 같이 탄다
+ * (파일에 직접 쓰면 그 두 가지가 조용히 빠진다). 실패하면 지우지 않고 다음 회차가 잇는다.
+ */
+async function absorbReviews(TOKEN) {
+  if (!TOKEN) return { taken: 0, done: [] };
+  let blobs = [];
+  try {
+    let cursor;
+    do {
+      const page = await list({ token: TOKEN, prefix: REV.PREFIX, cursor, limit: 1000 });
+      blobs.push(...page.blobs);
+      cursor = page.hasMore ? page.cursor : null;
+    } while (cursor);
+  } catch (e) {
+    console.log('  검수 흡수 건너뜀 —', e.message);   // 못 읽어도 업로드는 계속한다
+    return { taken: 0, done: [] };
+  }
+  const done = [];
+  for (const b of blobs) {
+    const id = REV.parseBlobName(b.pathname);
+    if (!id) continue;
+    try {
+      const rv = await (await fetch(b.url)).json();
+      const local = readLocalReview(id.batch, id.item);
+      // 이 PC 에서 더 나중에 고친 게 있으면 클라우드 값이 이기지 않는다(양쪽 다 사람이 누른다)
+      if (local && (local.updated_at || 0) > (rv.updated_at || 0)) { done.push(b); continue; }
+      const r = await fetch(BASE + '/api/review', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batch: id.batch, item: id.item, pick: rv.pick ?? null, tags: rv.tags || [], note: rv.note || '' }),
+      });
+      if (r.ok) done.push(b);
+    } catch { /* 한 건 실패가 회차를 죽이지 않는다 — 다음 회차가 다시 본다 */ }
+  }
+  return { taken: done.length, done };
+}
+
+function readLocalReview(batch, item) {
+  const f = path.join(OUT, batch, item, 'review.json');
+  try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; }
+}
+
 async function main() {
   const TOKEN = DRY ? null : token();
   const proc = await connect();
   let uploaded = 0;
   let skipped = 0;
   try {
+    // ── 0. 클라우드에서 누른 검수를 먼저 흡수한다 (그래야 아래 스냅샷에 실린다) ──
+    const absorbed = await absorbReviews(TOKEN);
+    if (absorbed.taken) console.log(`  클라우드 검수 ${absorbed.taken}건 반영`);
+
     // ── 1. 원장 긁기 (로컬 API 응답 그대로) ──────────────────────────────────
     const [config, allBatches, queue, library] = await Promise.all([
       getJson('/api/config'),
@@ -219,12 +271,17 @@ async function main() {
       contentType: 'application/json',
     });
 
+    // ── 5. 흡수한 검수만 지운다 — 스냅샷을 올린 **뒤**여야 화면이 안 되돌아간다 ──
+    for (const b of absorbed.done) {
+      try { await del(b.url, { token: TOKEN }); } catch { /* 남으면 다음 회차가 다시 흡수한다(멱등) */ }
+    }
+
     console.log(
       `푸시 완료 · 배치 ${batches.length}${dropped ? `(데모 ${dropped} 제외)` : ''} · 이미지 ${
         files.length
-      }장(새로 ${uploaded} · 그대로 ${skipped}${pruned ? ` · 지움 ${pruned}` : ''}) · 기준 ${
-        snap.generated_at
-      }`,
+      }장(새로 ${uploaded} · 그대로 ${skipped}${pruned ? ` · 지움 ${pruned}` : ''})${
+        absorbed.taken ? ` · 클라우드 검수 ${absorbed.taken}건 반영` : ''
+      } · 기준 ${snap.generated_at}`,
     );
   } finally {
     if (proc) proc.kill();
