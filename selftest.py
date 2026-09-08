@@ -54,6 +54,35 @@ v = sample_variation("selfie", 5)
 p = build_prompts("nasolabial", "selfie", v, 5)
 ok(p["before_prompt"] and p["after_prompt"], "셀카 Before/After 프롬프트가 비어 있으면 안 된다")
 
+# ⑧ 동일인 게이트 — '안 재는 것'이 '통과'로 둔갑하지 않는가 (2026-09-08 실측 반영)
+from bna.qa import identity
+ok(identity.check.__doc__ and "n/a" in identity.check.__doc__, "identity.check 가 3값 게이트여야 한다")
+for gate, sim, want_hard, want_passed in [("ok", 0.75, False, True), ("review", 0.50, False, None),
+                                          ("fail", 0.20, True, False), ("n/a", None, False, None)]:
+    # check() 는 이미지를 받으므로, 판정 로직만 보려고 similarity 를 가로챈다
+    orig = identity.similarity
+    identity.similarity = lambda a, b, _s=sim: _s
+    try:
+        r = identity.check(None, None)
+    finally:
+        identity.similarity = orig
+    ok(r["gate"] == gate and r["hard_fail"] is want_hard and r["passed"] is want_passed,
+       f"similarity={sim} → gate={gate}·hard_fail={want_hard}·passed={want_passed} (실제 {r})")
+
+# ⑨ 미검출 구제(레터박스)가 코드에 살아 있는가. 시료 8장이 있으면 실측까지 한다.
+import inspect
+ok("_letterbox" in inspect.getsource(identity.embed), "embed 가 레터박스 재시도를 해야 한다(부분 크롭 구제)")
+
+FIX = r"C:\Users\medib\teemo\out\gen0908"
+import glob as _g
+shots = sorted(_g.glob(FIX + r"\g*_[AB]_*.png"))
+if len(shots) == 8:
+    from PIL import Image
+    got = sum(identity.embed(Image.open(f)) is not None for f in shots)
+    ok(got >= 7, f"시료 8장 중 7장 이상 검출돼야 한다(2026-09-08 실측: 구제 전 4 → 후 7) — 실제 {got}")
+else:
+    print(f"SKIP  시료 8장이 없어 검출률 실측 생략 ({FIX})")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
