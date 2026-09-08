@@ -177,3 +177,55 @@ def scorecard(out_dir: Path) -> list:
                     "after_rejects": sum(1 for r in after if r.get("pick") == "reject"),
                     "after_reviewed": len(after)})
     return out
+
+def by_version(out_dir: Path) -> list:
+    """프롬프트 버전별 성적 — 고도화의 기준선. 버전(config 해시)마다 AI 통과율·사람 제외율·상위 제외 사유를 낸다.
+    dry-run 은 사진이 없으니 뺀다. sim/demo 는 실제 프롬프트가 아니라 따로 표시만 한다."""
+    if not out_dir.exists():
+        return []
+    acc = {}
+    for d in out_dir.iterdir():
+        if not d.is_dir() or d.name == "exports":
+            continue
+        try:
+            info = json.loads((d / "batch.json").read_text(encoding="utf-8")) if (d / "batch.json").exists() else {}
+        except Exception:                               # noqa: BLE001
+            info = {}
+        if info.get("kind") == "dry_run":
+            continue
+        created = info.get("created_at") or d.stat().st_mtime
+        for m in d.glob("*/meta.json"):
+            try:
+                it = json.loads(m.read_text(encoding="utf-8"))
+            except Exception:                           # noqa: BLE001
+                continue
+            if it.get("dry_run"):
+                continue
+            v = it.get("prompt_version") or "?"
+            a = acc.setdefault(v, {"version": v, "first": created, "last": created, "n": 0, "ai_pass": 0,
+                                   "reviewed": 0, "rejected": 0, "tags": {}, "treatments": {}, "cost": 0.0})
+            a["first"] = min(a["first"], created); a["last"] = max(a["last"], created)
+            a["n"] += 1; a["ai_pass"] += bool(it.get("passed")); a["cost"] += float(it.get("cost") or 0)
+            t = it.get("treatment") or "?"; a["treatments"][t] = a["treatments"].get(t, 0) + 1
+            rp = m.parent / "review.json"
+            if rp.exists():
+                try:
+                    rv = json.loads(rp.read_text(encoding="utf-8"))
+                except Exception:                       # noqa: BLE001
+                    rv = {}
+                if rv.get("pick") in ("pick", "reject"):
+                    a["reviewed"] += 1
+                if rv.get("pick") == "reject":
+                    a["rejected"] += 1
+                    for tg in rv.get("tags", []):
+                        a["tags"][tg] = a["tags"].get(tg, 0) + 1
+    rows = []
+    for a in acc.values():
+        a["ai_pass_rate"] = round(a["ai_pass"] / a["n"], 3) if a["n"] else 0
+        a["reject_rate"] = round(a["rejected"] / a["reviewed"], 3) if a["reviewed"] else None
+        a["cost_per_pass"] = round(a["cost"] / a["ai_pass"], 4) if a["ai_pass"] else None
+        a["top_tags"] = sorted(a["tags"].items(), key=lambda kv: -kv[1])[:3]
+        a["real"] = a["version"] not in ("sim", "demo", "?")
+        rows.append(a)
+    rows.sort(key=lambda r: (r["real"], r["last"]), reverse=True)
+    return rows

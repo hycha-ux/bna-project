@@ -143,7 +143,10 @@ def batch_summary(d: Path):
 def batches_payload():
     if not OUT.exists():
         return []
-    return sorted((batch_summary(d) for d in OUT.iterdir() if d.is_dir() and d.name != "exports"), key=lambda b: b["mtime"], reverse=True)
+    # 폴더만 있고 batch.json 도 항목도 없는 것(시작 직후 죽은 배치)은 목록에 안 올린다 — 화면에 "undefined" 로 떴었다
+    dirs = [d for d in OUT.iterdir() if d.is_dir() and d.name != "exports"
+            and ((d / "batch.json").exists() or any(d.glob("*/meta.json")))]
+    return sorted((batch_summary(d) for d in dirs), key=lambda b: b["mtime"], reverse=True)
 
 
 def batch_detail(bid: str):
@@ -166,7 +169,9 @@ def lessons_payload():
     """제외 사유 되먹임 한 화면 — 집계·지금 붙는 금지문·승격 대기 메모·규칙 성적표."""
     s = lessons.summarize(OUT)
     a = lessons.active(OUT)
-    return {**s, "active": a, "scorecard": lessons.scorecard(OUT),
+    from .version import prompt_version
+    return {**s, "active": a, "scorecard": lessons.scorecard(OUT), "by_version": lessons.by_version(OUT),
+            "current_version": prompt_version(),
             "preview": {k: lessons.avoid_text(v) for k, v in (a.get("lines") or {}).items() if v}}
 
 

@@ -425,7 +425,9 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     </section>
 
     <section class="page" id="tab-lessons">
-      <div class="card"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
+      <div class="card"><div class="card-head"><h3>프롬프트 버전별 성적</h3><span class="muted" id="les-cur"></span></div>
+        <div id="les-version"></div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
         <div id="les-body" class="muted">불러오는 중…</div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>지금 프롬프트에 붙는 문장</h3></div><div id="les-preview" class="muted"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>메모 → 규칙으로 승격</h3></div>
@@ -502,6 +504,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const msg = (id, text, cls) => { const el = $(id); el.textContent = text; el.className = 'rp-msg' + (cls ? ' ' + cls : ''); };
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
 const pct = x => (x*100).toFixed(0) + '%';
+const fmtDay = t => { const d = new Date((t||0)*1000); return `${d.getMonth()+1}/${d.getDate()}`; };
 const fmtBid = id => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}/.exec(id||''); return m ? `${+m[2]}/${+m[3]} ${m[4]}:${m[5]}` : id; };
 const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
 const STAGE_KO = {skipped:'생략(목표 도달)', queued:'대기', before:'시술 전 생성', after:'시술 후 생성', postprocess:'후처리', qa:'AI 검수', retry:'재생성 대기', passed:'통과', failed:'탈락'};
@@ -817,7 +820,7 @@ async function openBatch(id, byUser = false) {
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
-  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
+  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||'종류 미지정'}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
@@ -1125,6 +1128,15 @@ async function loadLessons() {
     L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td></tr>`).join('')}</tbody></table>`
     : '<div class="muted">아직 승격된 규칙이 없습니다.</div>';
   const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
+  $('#les-cur').textContent = L.current_version ? `지금 버전 ${L.current_version}` : '';
+  const vs = L.by_version || [];
+  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>통과 1장당 비용</th><th>제외 사유 상위</th></tr></thead><tbody>${
+    vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td title="${esc(r.version)}">${r.real ? esc(r.version) : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}</td>` +
+      `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td><td>${r.reviewed}</td>` +
+      `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td><td>${r.cost_per_pass == null ? '—' : '$' + r.cost_per_pass}</td>` +
+      `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
+    <div class="muted" style="margin-top:8px">버전 = config 폴더 전체의 해시. 프롬프트·조건 파일을 고치면 새 줄이 생기고, 줄끼리 비교하면 고친 효과가 보입니다.</div>`
+    : '<div class="muted">아직 생성된 배치가 없습니다.</div>';
 }
 
 // ---------- 설정 ----------
