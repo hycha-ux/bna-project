@@ -6,5 +6,9 @@
   "description": "B&A 대시보드 클라우드 배포본 — 보기 전용. 원장은 사무실 PC가 Blob에 올린 스냅샷.",
   "dependencies": {
     "@vercel/blob": "^2.8.0"
+  },
+  "scripts": {
+    "build": "node vercel-build.mjs",
+    "test": "node auth-tests.mjs"
   }
 }

@@ -151,3 +151,23 @@ cd cloud && npx vercel --prod --yes     # 화면 코드를 고쳤을 때만 필�
   옮김). 주입은 `app.js` 쪽이라 `web/index.html` 을 고치지 않는다 — 빌디가 다시 구워도 안 지워진다.
   ⚠ 대신 `#tb-profile`·`#menu` 마크업이 사라지면 조용히 안 뜬다 → 못 찾으면 우측 상단 대체
   알약으로 떨어진다(fail-open). 하단 띠에는 **스냅샷 시각만** 남긴다(지우지 마라).
+
+### 배포 규칙 — `main` 에 푸시하면 자동 배포 (2026-09-08 성연서님 지시)
+
+**손으로 `vercel --prod` 를 치지 않는다.** GitHub 저장소가 Vercel 프로젝트 `bna-dashboard` 에
+연결돼 있어 `main` 푸시가 곧 프로덕션 배포다(`onlif-bna.vercel.app` 이 자동으로 따라온다).
+
+- 프로젝트 설정: **Root Directory = `cloud`**, **Include source files outside root = 켬**.
+  후자를 끄면 빌드가 `../web` 을 못 봐 아래 되굽기가 사라진다.
+- 빌드 단계 `cloud/vercel-build.mjs` 가 **배포 직전에 `web/` 원본으로 `cloud/web`·`cloud/public`
+  을 다시 굽는다.** 그래서 `build-cloud.mjs` 를 깜빡하고 푸시해도 옛 화면이 나가지 않는다.
+- **커밋해야 배포된다** — 로컬에서만 고친 파일은 아무 일도 일어나지 않는다.
+
+**여전히 사람(또는 예약작업)이 하는 일** — 이건 배포가 아니다:
+- **데이터 갱신**은 `cloud/push-cloud.mjs`(예약작업 `TeemoBnaCloudPush`, 30분)다.
+  코드를 배포해도 화면 숫자는 안 바뀌고, 데이터를 올려도 재배포는 필요 없다. **둘은 별개다.**
+- 환경변수(`AUTH_SECRET`·`SIGNUP_CODE`·`BLOB_READ_WRITE_TOKEN`)는 Vercel 프로젝트 설정에 있고
+  git 에 없다. 바꾸면 재배포가 있어야 반영된다.
+
+⚠ 저장소가 **공개**라 커밋 전에 값이 섞이지 않았는지 본다. `cloud/.env.local`·`cloud/.vercel` 은
+`cloud/.gitignore` 가 막고 있으니 그 두 줄을 지우지 마라.
