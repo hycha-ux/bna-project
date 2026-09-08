@@ -23,7 +23,7 @@
   GET  /exports/<name>.zip         내보낸 zip 다운로드
   GET  /files/<batch>/<item>/<f>   이미지
 """
-import argparse, asyncio, csv, json, random, shutil, threading, time, uuid, webbrowser
+import argparse, asyncio, csv, json, os, random, shutil, threading, time, uuid, webbrowser
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
@@ -504,6 +504,9 @@ def main():
     ap.add_argument("--port", type=int, default=8765); ap.add_argument("--demo", action="store_true", help="데모 배치 생성 후 실행")
     ap.add_argument("--no-open", action="store_true")
     a = ap.parse_args()
+    # 자동 업로드 훅(cloudpush)이 띄우는 node 가 '이미 떠 있는 로컬 API'를 못 찾고 헛돌지 않도록
+    # 실제 포트를 자식에게 물려준다. 기본 포트가 아닐 때만 의미가 있지만, 조건을 두면 잊는다.
+    os.environ["BNA_LOCAL_API_PORT"] = str(a.port)
     if a.demo:
         print("demo batch:", make_demo())
     queue()   # 러너 스레드 시작 (재시작 전 남은 작업 이어서 처리)

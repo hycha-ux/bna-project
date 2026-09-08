@@ -12,3 +12,6 @@ __pycache__/
 node_modules/
 .DS_Store
 !web/assets/**
+
+# 드라이브 백업 원장(무엇을 이미 올렸는지) — 산출물이라 커밋하지 않는다
+ops/.drive-manifest.json
