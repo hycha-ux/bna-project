@@ -214,19 +214,16 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
 <!-- ════ TOPBAR ════ -->
 <div class="topbar">
   <span class="tb-brand">온리프 전후 사진 만들기</span>
-  <span class="tb-sub">시술을 고르고 장수를 정하면 AI가 전후 사진을 만들고 1차 검수까지 해요</span>
   <div class="tb-space"></div>
   <div class="tb-status" id="tb-status"><span class="dot"></span><span>대기열 확인 중…</span></div>
 </div>
 
 <!-- ════ LEFT NAV ════ -->
 <nav class="left-nav">
-  <div class="rp-label">화면</div>
   <button class="nav-item active" data-tab="request"><span class="num">1</span>만들기</button>
   <button class="nav-item" data-tab="queue"><span class="num">2</span>여러 시술 한 번에 <span id="q-badge" class="chip warn" hidden></span></button>
   <button class="nav-item" data-tab="batches"><span class="num">3</span>작업 기록</button>
   <button class="nav-item" data-tab="gallery"><span class="num">4</span>사진 보고 고르기</button>
-  <div class="nav-foot">1 → 2 순서로 만들고, 3에서 기록을 보고, 4에서 쓸 사진을 골라요.<br>결과는 outputs/ 폴더에 저장돼요.</div>
 </nav>
 
 <!-- ════ RIGHT PANEL ════ -->
@@ -235,18 +232,18 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
   <!-- 만들기 컨트롤 -->
   <div class="rp-panel-section" data-for="request">
     <div class="rp-group">
-      <div class="rp-label">무엇을 만들까요</div>
+      <div class="rp-label">만들 사진</div>
       <label class="rp-field"><span>시술</span><select id="treatment"></select></label>
       <div class="rp-field"><span>사진 종류</span>
         <div class="rp-option-row" id="mode-row"><button class="rp-option-btn active" data-v="selfie">셀카 느낌<br><small>SNS 후기용</small></button><button class="rp-option-btn" data-v="clinical">병원 촬영<br><small>임상 후기용</small></button></div>
         <select id="mode" hidden><option value="selfie">셀카 느낌</option><option value="clinical">병원 촬영</option></select>
       </div>
-      <label class="rp-field"><span>몇 장 만들까요?</span><input type="number" id="count" value="8" min="1" max="500"></label>
+      <label class="rp-field"><span>장수</span><input type="number" id="count" value="8" min="1" max="500"></label>
     </div>
     <div class="rp-group">
-      <div class="rp-label">선택 사항</div>
-      <details class="rp-details"><summary>조건 고정 (여성만, 한국인만…)</summary><div><div class="rp-info">비우면 골고루 섞어요</div><div class="fixgrid" id="fixed"></div></div></details>
-      <details class="rp-details"><summary>같은 결과 다시 뽑기 · AI 모델</summary><div>
+      <div class="rp-label">옵션</div>
+      <details class="rp-details"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
+      <details class="rp-details"><summary>다시 뽑을 번호 · AI 모델</summary><div>
         <label class="rp-field"><span>다시 뽑을 번호</span><input type="number" id="seed" placeholder="비우면 매번 다르게"></label>
         <label class="rp-field"><span>사진 생성 AI</span><select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
         <label class="rp-field"><span>시술 후 사진 AI</span><select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
@@ -262,7 +259,7 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
       <div class="rp-msg" id="req-msg"></div>
     </div>
     <div class="rp-group">
-      <details class="rp-details"><summary>테스트용 (AI 키 없이)</summary><div>
+      <details class="rp-details"><summary>테스트</summary><div>
         <button class="rp-btn" id="btn-dry">설명문만 저장 (사진 없음)</button>
         <button class="rp-btn" id="btn-demo" title="색깔 상자 사진 + 무작위 검수 결과">예시 결과 만들기</button>
         <button class="rp-btn" id="btn-sim" title="실제 생성 없이 진행 화면만 흘러감">진행 화면 흉내내기</button>
@@ -274,20 +271,19 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
   <div class="rp-panel-section" data-for="queue" hidden>
     <div class="rp-group">
       <div class="rp-label">대기열에 넣기</div>
-      <div class="rp-info">고른 시술마다 작업이 하나씩 생기고 순서대로 만들어요</div>
       <div class="rp-field"><span>시술 (여러 개)</span><div class="tags" id="q-treatments" style="margin:0"></div></div>
       <div class="rp-field"><span>사진 종류</span><div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카 느낌</button><button data-v="clinical">병원 촬영</button></div></div>
-      <label class="rp-field"><span>시술당 몇 장 시도?</span><input type="number" id="q-count" value="30" min="1" max="500"></label>
-      <label class="rp-field"><span>쓸 수 있는 사진 몇 장 모이면 멈출까요?</span><input type="number" id="q-target" placeholder="비우면 끝까지"></label>
+      <label class="rp-field"><span>시술당 시도 장수</span><input type="number" id="q-count" value="30" min="1" max="500"></label>
+      <label class="rp-field"><span>목표 장수 (채우면 멈춤)</span><input type="number" id="q-target" placeholder="비우면 끝까지"></label>
       <label class="rp-field"><span>시술당 최대 비용 (달러)</span><input type="number" id="q-cap" placeholder="비우면 제한 없음" step="0.5"></label>
-      <label class="rp-field"><span>어떻게 돌릴까요?</span><select id="q-sim"><option value="1">테스트 (흉내만, 비용 없음)</option><option value="0">진짜로 만들기 (AI 키 필요)</option></select></label>
+      <label class="rp-field"><span>실행 방식</span><select id="q-sim"><option value="1">테스트 (흉내만, 비용 없음)</option><option value="0">진짜로 만들기 (AI 키 필요)</option></select></label>
       <details class="rp-details"><summary>다시 뽑을 번호</summary><div><input type="number" id="q-seed" placeholder="비우면 매번 다르게"></div></details>
       <button class="rp-btn rp-btn-primary" id="q-add">대기열에 넣기</button>
       <div class="rp-msg" id="q-msg"></div>
     </div>
     <div class="rp-divider"></div>
     <div class="rp-group">
-      <div class="rp-label">대기열 조작</div>
+      <div class="rp-label">대기열</div>
       <button class="rp-btn" id="q-pause">⏸ 잠깐 멈춤</button>
       <button class="rp-btn" id="q-clear">끝난 것 정리</button>
     </div>
@@ -297,7 +293,6 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
   <div class="rp-panel-section" data-for="batches" hidden>
     <div class="rp-group">
       <div class="rp-label">작업 기록</div>
-      <div class="rp-info">지금까지 만든 작업이에요. 줄을 누르면 사진을 볼 수 있어요.</div>
       <button class="rp-btn" id="btn-refresh">새로고침</button>
     </div>
   </div>
@@ -305,11 +300,11 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
   <!-- 사진 보고 고르기 컨트롤 -->
   <div class="rp-panel-section" data-for="gallery" hidden>
     <div class="rp-group">
-      <div class="rp-label">어느 작업?</div>
+      <div class="rp-label">작업</div>
       <select id="gal-batch"></select>
     </div>
     <div class="rp-group">
-      <div class="rp-label">걸러보기</div>
+      <div class="rp-label">필터</div>
       <label class="rp-field"><span>보기</span><select id="gal-filter">
         <option value="all">전부</option><option value="passed">AI 검수 통과만</option><option value="failed">AI 검수 탈락만</option>
         <option value="unreviewed">아직 안 본 것</option><option value="pick">쓰기로 한 것</option><option value="reject">안 쓰기로 한 것</option></select></label>
@@ -317,46 +312,40 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
       <select id="gal-axis-val"><option value="">전체</option></select>
       <div class="rp-info on" id="gal-count"></div>
     </div>
-    <div class="rp-divider"></div>
-    <div class="rp-info">사진마다 <b>쓸게요 / 안 써요</b>를 누르면 바로 저장돼요. 안 쓰는 이유를 눌러두면 다음 작업 때 참고해요.</div>
   </div>
 
-  <div class="rp-save-info">
-    <div class="rp-save-clinic">온리프 · 전후 사진 자동 생성</div>
-    <div class="rp-save-time" id="rp-save-time">이 패널은 지금 화면의 조작만 보여줘요</div>
-  </div>
 </aside>
 
 <!-- ════ CONTENT ════ -->
 <div class="tab-panel active" id="tab-request"><div class="content-wrap">
-  <div class="empty" id="plan-empty"><b>오른쪽에서 시술과 장수를 고르고 "미리보기"를 눌러 보세요</b>어떤 사람·장면 조합이 나올지, AI에게 보내는 설명문이 어떤지 여기 보여요.</div>
+  <div class="empty" id="plan-empty">시술과 장수를 고르고 미리보기를 눌러 주세요</div>
   <div id="plan-out" hidden>
-    <div class="page-head"><h2>이런 사람·장면이 골고루 나와요</h2><span class="muted" id="plan-n"></span></div>
+    <div class="page-head"><h2>미리보기</h2><span class="muted" id="plan-n"></span></div>
     <div class="grid2" id="dist"></div>
-    <h2 class="sec">한 장씩 보기 <span class="muted">(처음 20장 · AI에게 보내는 설명문 포함)</span></h2>
+    <h2 class="sec">한 장씩 보기 <span class="muted">처음 20장</span></h2>
     <div id="prompts"></div>
   </div>
 </div></div>
 
 <div class="tab-panel" id="tab-queue"><div class="content-wrap">
-  <div class="page-head"><h2>순서대로 만들어요</h2><span class="muted" id="q-sum"></span></div>
+  <div class="page-head"><h2>대기열</h2><span class="muted" id="q-sum"></span></div>
   <div class="card">
     <table id="q-table">
       <thead><tr><th>순서</th><th>시술</th><th>사진 종류</th><th>시도 장수</th><th>목표 장수</th><th>최대 비용</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty" id="q-empty" hidden style="border:0"><b>아직 걸어둔 작업이 없어요</b>오른쪽에서 시술을 골라 대기열에 넣어 보세요.</div>
+    <div class="empty" id="q-empty" hidden style="border:0">대기열이 비어 있어요</div>
   </div>
 </div></div>
 
 <div class="tab-panel" id="tab-batches"><div class="content-wrap">
-  <div class="page-head"><h2>지금까지 만든 작업</h2><span class="muted">줄을 누르면 사진을 볼 수 있어요</span></div>
+  <div class="page-head"><h2>작업 기록</h2></div>
   <div class="card">
     <table id="batches">
       <thead><tr><th>만든 때</th><th>시술</th><th>사진 종류</th><th>방식</th><th>시도 장수</th><th>쓸 수 있는 사진</th><th>성공률</th><th>1장당 시도</th><th>1장당 비용</th><th>사람이 확인</th><th>상태</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty" id="batches-empty" hidden style="border:0"><b>아직 만든 게 없어요</b>"만들기"에서 시작해 보세요.</div>
+    <div class="empty" id="batches-empty" hidden style="border:0">아직 만든 작업이 없어요</div>
   </div>
 </div></div>
 
@@ -365,7 +354,7 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
   <div class="kpis" id="kpis"></div>
   <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
   <div class="gal" id="gal"></div>
-  <div class="empty" id="gal-empty" hidden><b>보여줄 사진이 없어요</b>오른쪽에서 다른 작업이나 조건을 골라 보세요.</div>
+  <div class="empty" id="gal-empty" hidden>보여줄 사진이 없어요</div>
 </div></div>
 
 <dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
@@ -562,7 +551,7 @@ function setQueueStatus(q) {
   const n = q.queued_count + (q.running ? 1 : 0); const badge = $('#q-badge'); badge.hidden = !n; badge.textContent = n;
   const st = $('#tb-status'); const r = q.running;
   st.innerHTML = r ? `<span class="dot on"></span><span>지금 <b>${CFG.treatments[r.treatment]?.name_ko || r.treatment}</b> 만드는 중${q.queued_count ? ` · ${q.queued_count}개 기다림` : ''}</span>`
-                   : q.paused ? `<span class="dot"></span><span>대기열 멈춤${q.queued_count ? ` · ${q.queued_count}개 기다림` : ''}</span>` : `<span class="dot"></span><span>쉬는 중</span>`;
+                   : q.paused ? `<span class="dot"></span><span>대기열 멈춤${q.queued_count ? ` · ${q.queued_count}개 기다림` : ''}</span>` : `<span class="dot"></span><span>대기 중</span>`;
 }
 setInterval(async () => { if (!$('#tab-queue').classList.contains('active')) { try { setQueueStatus(await api('/api/queue')); } catch {} } }, 5000);
 
@@ -668,8 +657,8 @@ function itemCard(it) {
         <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">✕ 안 써요</button>
         <button class="b" data-act="clear" data-id="${it.item_id}">되돌리기</button>
       </div>
-      <div class="muted" style="margin-top:8px">안 쓰는 이유 (누르면 표시):</div><div class="tags" style="margin-top:4px">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
-      <input type="text" placeholder="메모를 적고 Enter" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+      <div class="tags">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
+      <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
     </div></div>`;
 }
 async function onAct(e) {
