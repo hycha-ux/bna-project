@@ -37,6 +37,7 @@
   /* 레이아웃 */
   --topbar-h: 56px;
   --panel-w:  300px;
+  --nav-w:    220px;
   --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
 
   /* SEED 레시피(버튼·배지·칩)가 쓰는 브랜드 토큰을 네이비로 */
@@ -62,6 +63,17 @@ button, input, select, textarea { font-family:inherit }
 .tb-status { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ui-md) }
 .tb-status .dot { width:8px; height:8px; border-radius:50%; background:var(--ui-lo) }
 .tb-status .dot.on { background:var(--ok); box-shadow:0 0 0 3px var(--ok-weak) }
+
+/* ════ LEFT NAV ════ */
+.left-nav { position:fixed; top:var(--topbar-h); left:0; width:var(--nav-w); height:calc(100vh - var(--topbar-h)); background:var(--ui-panel); border-right:1px solid var(--ui-border); z-index:100; padding:20px 12px 24px; display:flex; flex-direction:column; gap:4px; overflow-y:auto }
+.left-nav .rp-label { padding:0 10px }
+.nav-item { width:100%; padding:10px 12px; text-align:left; border:none; border-radius:var(--radius-sm); background:none; font-size:13px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; display:flex; align-items:center; gap:10px }
+.nav-item:hover { background:var(--ui-surface); color:var(--ui-hi) }
+.nav-item.active { background:var(--pri-alpha); color:var(--primary); font-weight:700 }
+.nav-item .num { width:22px; height:22px; border-radius:50%; background:var(--ui-surface); color:var(--ui-lo); font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0 }
+.nav-item.active .num { background:var(--primary); color:#fff }
+.nav-item .chip { margin-left:auto }
+.nav-foot { margin-top:auto; padding:12px 10px 0; border-top:1px solid var(--ui-border); font-size:11px; color:var(--ui-lo); line-height:1.6 }
 
 /* ════ RIGHT PANEL ════ */
 .right-panel { position:fixed; top:var(--topbar-h); right:0; width:var(--panel-w); height:calc(100vh - var(--topbar-h)); background:var(--ui-panel); border-left:1px solid var(--ui-border); overflow-y:auto; z-index:100; padding:20px 16px 32px; display:flex; flex-direction:column; gap:4px }
@@ -112,7 +124,7 @@ select { appearance:none; -webkit-appearance:none; padding-right:28px; backgroun
 .fixgrid select { height:30px; font-size:12px; padding:0 22px 0 8px }
 
 /* ════ CONTENT AREA ════ */
-.tab-panel { display:none; margin-right:var(--panel-w) }
+.tab-panel { display:none; margin-left:var(--nav-w); margin-right:var(--panel-w) }
 .tab-panel.active { display:block }
 .content-wrap { padding:24px 24px 56px; max-width:1400px }
 .page-head { display:flex; align-items:baseline; gap:10px; margin-bottom:14px }
@@ -207,18 +219,18 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
   <div class="tb-status" id="tb-status"><span class="dot"></span><span>대기열 확인 중…</span></div>
 </div>
 
+<!-- ════ LEFT NAV ════ -->
+<nav class="left-nav">
+  <div class="rp-label">화면</div>
+  <button class="nav-item active" data-tab="request"><span class="num">1</span>만들기</button>
+  <button class="nav-item" data-tab="queue"><span class="num">2</span>여러 시술 한 번에 <span id="q-badge" class="chip warn" hidden></span></button>
+  <button class="nav-item" data-tab="batches"><span class="num">3</span>작업 기록</button>
+  <button class="nav-item" data-tab="gallery"><span class="num">4</span>사진 보고 고르기</button>
+  <div class="nav-foot">1 → 2 순서로 만들고, 3에서 기록을 보고, 4에서 쓸 사진을 골라요.<br>결과는 outputs/ 폴더에 저장돼요.</div>
+</nav>
+
 <!-- ════ RIGHT PANEL ════ -->
 <aside class="right-panel">
-  <div class="rp-group">
-    <div class="rp-label">화면</div>
-    <div class="rp-tab-list">
-      <button class="rp-tab active" data-tab="request"><span class="num">1</span>만들기</button>
-      <button class="rp-tab" data-tab="queue"><span class="num">2</span>여러 시술 한 번에 <span id="q-badge" class="chip warn" hidden></span></button>
-      <button class="rp-tab" data-tab="batches"><span class="num">3</span>작업 기록</button>
-      <button class="rp-tab" data-tab="gallery"><span class="num">4</span>사진 보고 고르기</button>
-    </div>
-  </div>
-  <div class="rp-divider"></div>
 
   <!-- 만들기 컨트롤 -->
   <div class="rp-panel-section" data-for="request">
@@ -311,7 +323,7 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
 
   <div class="rp-save-info">
     <div class="rp-save-clinic">온리프 · 전후 사진 자동 생성</div>
-    <div class="rp-save-time" id="rp-save-time">결과는 outputs/ 폴더에 저장돼요</div>
+    <div class="rp-save-time" id="rp-save-time">이 패널은 지금 화면의 조작만 보여줘요</div>
   </div>
 </aside>
 
@@ -424,14 +436,14 @@ let CFG, BATCHES = [], CUR = null;
 
 // ---------- 탭 ----------
 function show(tab) {
-  $$('.rp-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.rp-panel-section').forEach(p => p.hidden = p.dataset.for !== tab);
   ['request','queue','batches','gallery'].forEach(t => $('#tab-'+t).classList.toggle('active', t === tab));
   if (tab === 'batches') loadBatches();
   if (tab === 'queue') loadQueue();
   if (tab === 'gallery') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
 }
-$$('.rp-tab').forEach(b => b.onclick = () => show(b.dataset.tab));
+$$('.nav-item').forEach(b => b.onclick = () => show(b.dataset.tab));
 // 사진 종류 옵션 버튼 ↔ 숨은 select
 $$('#mode-row button').forEach(b => b.onclick = () => { if (b.disabled) return; $('#mode').value = b.dataset.v; $$('#mode-row button').forEach(x => x.classList.toggle('active', x === b)); renderFixed(); });
 
