@@ -22,7 +22,7 @@ def main():
     fixed = dict(f.split("=", 1) for f in a.fix)
     d = defaults_for(a.mode)
     gen, edit, qa = a.gen or d["gen"], a.edit or d["edit"], a.qa or d["qa"]
-    plans = plan_batch(a.mode, a.count, a.seed, fixed)
+    plans = plan_batch(a.mode, a.count, a.seed, fixed, treatment=a.treatment)
     if a.plan:
         print(json.dumps(distribution(plans), ensure_ascii=False, indent=1)); return
     if a.dry_run:

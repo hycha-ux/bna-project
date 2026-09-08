@@ -31,7 +31,20 @@ REGIONS = {
     "philtrum":       [2, 97, 98, 164, 167, 165, 92, 186, 57, 0, 267, 393, 391, 322, 410, 287, 326, 327],
     "jawline_midface":[234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397, 288, 361, 323, 454, 356, 389, 251, 284, 332, 297, 338, 10, 109, 67, 103, 54, 21, 162, 127],
     "full_face_skin": [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109],
+    # 목: 얼굴 랜드마크에 목이 없다. 턱선(왼→오른)을 얼굴 높이의 NECK_DROP 만큼 아래로 내린 사다리꼴 (목주름 필러용, 2026-09-09)
+    "neck":           "derived:jaw_down",
 }
+JAW_LINE = [132, 58, 172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397, 288, 361]
+NECK_DROP = 0.55          # 턱선에서 아래로 내릴 길이 (얼굴 높이 = 이마 10 ↔ 턱 152 거리 대비)
+
+
+def neck_polygon(pts: np.ndarray) -> list:
+    """턱선을 따라 내려간 목 영역 폴리곤. 위변 = 턱선, 아래변 = 턱선을 그대로 아래로 평행이동."""
+    face_h = float(np.linalg.norm(np.asarray(pts[10], dtype=float) - np.asarray(pts[152], dtype=float)))
+    top = [tuple(map(float, pts[i])) for i in JAW_LINE]
+    drop = face_h * NECK_DROP
+    bottom = [(x, y + drop) for x, y in reversed(top)]
+    return top + bottom
 LEFT_EYE, RIGHT_EYE, NOSE_TIP, MOUTH_L, MOUTH_R = 33, 263, 1, 61, 291
 
 
@@ -86,7 +99,7 @@ def region_mask(img: Image.Image, pts: np.ndarray, region: str, feather: int = 1
     d = ImageDraw.Draw(mask)
     keys = ["cheeks", "nose"] if region == "cheeks_nose" else [region]
     for k in keys:
-        poly = [tuple(pts[i]) for i in REGIONS[k]]
+        poly = neck_polygon(pts) if k == "neck" else [tuple(pts[i]) for i in REGIONS[k]]
         d.polygon(poly, fill=255)
     return mask.filter(ImageFilter.GaussianBlur(feather))
 

@@ -1,15 +1,31 @@
-# 시술 정의. 프롬프트 조립 시 after_change 가 After 편집 지시문의 핵심.
-# 원칙: 변화는 "자연스러운 개선" 범위. 과장 금지.
-# mask_region  : qa/landmarks.py 의 부위 폴리곤 키 (마스크 편집·합성용)
-# effect_levels: 효과 강도 축 (subtle/moderate). 프롬프트에 강도 문구 삽입
-# timeline     : 경과 시점 축. 셀카 모드에서 잔여 홍조 등 디테일에 사용
-# ※ 지시문 의료진 검토는 추후 진행 (2026-09-07 기준 미검토, 모두 오픈)
+# 시술 정의 — 프롬프트 구조 v2 (2026-09-09, 성연서님 지시 "1단계 구조부터")
+#
+# 시술 하나당 채우는 칸 (티모 설계안 prompt-design-0907 의 4칸 + 구조 필드)
+#   before_condition  : 시술 전 문제 상태 문장 (강도별). 없으면 Before 가 시술을 모른다 → 깨끗한 얼굴이 나온다
+#   must_not_change   : 그 시술이 절대 안 건드리는 곳 (After 지시문 뒤에 붙는다). 없으면 얼굴 전체를 손본다
+#   scene_allow       : 효과가 보이는 장면만 허용 (셀카). 모드 화이트리스트와 교집합. 모공은 야간 저화질에서 안 보인다
+#   drift_lock        : Before→After 사이 바뀌면 안 되는 축 (셀카). 팔자는 표정이 바뀌면 시술 없이도 B&A 가 된다
+#   framing_allow     : 시술 부위가 화면에 남는 프레이밍만 (셀카). one_cheek 에서 팔자는 프레임 밖 (0908 실비용 $2.28)
+#   framing_ban_by_angle : 각도별 금지 프레이밍 (측면 + 한쪽 볼 = 부위 사라짐)
+#   context_ban       : 부위를 가리는 맥락 (목걸이는 목주름을 가린다)
+#   expression_policy : lock = Before/After 표정 동일 강제, free = 달라도 됨 (피부 시술)
+#   age_weights       : 시술별 나이 가중치. 0 이면 그 나이는 안 뽑는다 (18세 리프팅 = AI 티)
+#   effect_by_severity: Before 강도 ↔ After 효과 허용 짝. mild+moderate 는 과장, marked+subtle 은 효과 없음으로 보인다
+#   mask_region       : qa/landmarks.py 폴리곤 키 (임상 마스크 합성). neck 은 턱선에서 아래로 내린 파생 영역
+#
+# ※ 문장은 전부 의료진 검토 전 초안 (2026-09-09). before_condition 이 있는 건 팔자·코필러·목주름필러 3종.
+#    나머지는 2단계(시술별 문장 작업)에서 채운다 — 구조 필드만 먼저 넣었다.
+# ※ 필러는 부위마다 Before 가 완전히 달라 한 칸으로 못 쓴다 → 코필러·목주름필러 2종으로 분할 (2026-09-09 성연서님 확정).
+
 nasolabial:
   name_ko: 팔자주름
   region: nasolabial folds (both sides)
-  # Before 상태 (페르소나형, 강도 3단계). 실측: 주름 '묘사'보다 사람 '규정'이 먹힘 (lang-ab-0907)
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter]
+  mask_region: nasolabial
+  timeline: [immediate, 1w, 2w]
+  effect_levels: [subtle, moderate]
   before_severity: [mild, moderate, marked]
-  # 강도별 최소 나이 (인물 축의 age 가 이보다 어리면 한 단계 낮춤). 성별·나이는 인물 축이 담당하므로 문장에 안 적음
   severity_min_age: {mild: late_20s, moderate: 30s, marked: 40s}
   before_condition:
     mild: >
@@ -26,157 +42,218 @@ nasolabial:
       This person has never had any aesthetic treatment. Pronounced, deep nasolabial folds casting
       a clear shadow, a slightly sagging front cheek, faint marionette lines and a tired under-eye
       area. Do not make the face look younger, rested or more attractive than described.
-  after_change: 'nasolabial folds visibly softened and shallower, skin around the mouth smoother, same
-    facial structure, no change to lips or nose.
+  after_change: >
+    nasolabial folds visibly softened and shallower, skin around the mouth smoother, same
+    facial structure.
+  must_not_change: >
+    Do not change lip shape, lip volume, mouth width, nose, or jawline width. Do not smooth,
+    brighten or tighten any other part of the face.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
+  drift_lock: [expression, angle]
+  scene_allow:
+    lighting: [window, fluorescent, ceiling_harsh, mixed]   # 어두운 밤·역광에서는 주름 그림자가 안 보인다
+    angle: [front, selfie_3q, selfie_side, chin_up, tilted, selfie_high]   # selfie_low 는 팔자를 과장한다
+  framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck, one_cheek]
+  framing_ban_by_angle: {selfie_side: [one_cheek], chin_up: [one_cheek]}
+  age_weights: {late_teens: 0, early_20s: 0, late_20s: 1, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
 
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  - three_quarter
-  mask_region: nasolabial
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - immediate
-  - 1w
-  - 2w
-skinbooster_embo:
-  name_ko: 스킨부스터 엠보
-  region: full face skin
-  after_change: 'skin looks hydrated and plump with a natural glow, fine lines reduced, texture still
-    visible (pores, tiny peach fuzz remain), no plastic smoothness.
-
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  mask_region: full_face_skin
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - 1w
-  - 4w
-nose_lifting:
-  name_ko: 코 프팅
-  region: nose bridge and tip
-  after_change: 'nose bridge slightly higher and straighter, tip slightly more defined, subtle change
-    only, rest of the face identical.
-
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - three_quarter
-  - side
-  mask_region: nose
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - immediate
-  - 2w
-skin_redness:
-  name_ko: 스킨부스터 홍조
-  region: cheeks
-  after_change: 'facial redness on cheeks noticeably calmer and more even, skin tone uniform, natural
-    texture preserved.
-
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  mask_region: cheeks
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - 2w
-  - 4w
-skin_pores:
-  name_ko: 스킨부스터 모공
-  region: cheeks and nose
-  after_change: 'enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
-
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  - three_quarter
-  mask_region: cheeks_nose
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - 2w
-  - 4w
 lifting:
   name_ko: 리프팅
   region: jawline and mid-face
-  after_change: 'jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced, same
-    bone structure.
-
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  - three_quarter
-  - side
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter, side]
   mask_region: jawline_midface
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - 2w
-  - 4w
-filler:
-  name_ko: 필러
-  region: (specify per request) cheeks / chin / under-eye
-  after_change: 'treated area subtly fuller and smoother volume, natural proportions.
+  timeline: [2w, 4w]
+  effect_levels: [subtle, moderate]
+  after_change: >
+    jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced, same
+    bone structure.
+  must_not_change: >
+    Do not change bone structure, face width, or eye shape. Do not slim the face beyond the lift.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: lock
+  drift_lock: [expression, angle, quality]   # 위에서 찍으면 시술 없이도 턱선이 올라간다 — 각도 동일이 생명
+  scene_allow:
+    angle: [front, selfie_3q, tilted]        # selfie_high 금지
+    lighting: [window, fluorescent, ceiling_harsh, mixed]
+  framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
+  age_weights: {late_teens: 0, early_20s: 0, late_20s: 1, "30s": 3, "40s": 3, "50s": 3, "60s": 2}
 
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  - three_quarter
-  mask_region: custom
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - immediate
-  - 2w
+nose_lifting:
+  name_ko: 코 리프팅
+  region: nose bridge and tip
+  modes: [clinical, selfie]
+  angles_clinical: [three_quarter, side]
+  mask_region: nose
+  timeline: [1w, 2w]
+  effect_levels: [subtle, moderate]
+  after_change: >
+    nose bridge slightly higher and straighter, tip slightly more defined, subtle change only,
+    rest of the face identical.
+  must_not_change: >
+    Do not narrow the nostrils or the alar width. Do not change eyes, lips, or face shape.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: free
+  drift_lock: [angle]                        # 정면만으로는 코 높이 변화가 안 보인다
+  scene_allow:
+    angle: [selfie_3q, selfie_side]          # 셀카 하이/로우 앵글은 코 길이를 왜곡
+  framing_allow: [full_face, forehead_cut, lower_face]
+  age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
+
 philtrum:
   name_ko: 인중
   region: philtrum
-  after_change: 'philtrum appears slightly shorter and upper lip line more defined, subtle.
-
-    '
-  modes:
-  - clinical
-  - selfie
-  angles_clinical:
-  - front
-  - side
+  modes: [clinical, selfie]
+  angles_clinical: [front, side]
   mask_region: philtrum
-  effect_levels:
-  - subtle
-  - moderate
-  timeline:
-  - immediate
-  - 2w
+  timeline: [immediate, 2w]
+  effect_levels: [subtle, moderate]
+  after_change: >
+    philtrum appears slightly shorter and upper lip line more defined, subtle.
+  must_not_change: >
+    Do not change lip thickness, lip width, or the nose.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: lock                    # 웃으면 인중이 짧아 보인다
+  drift_lock: [expression, angle]
+  scene_allow:
+    angle: [front, selfie_side, selfie_3q, tilted]
+  framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
+  age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
+
+skinbooster_embo:
+  name_ko: 스킨부스터 엠보
+  region: full face skin
+  modes: [clinical, selfie]
+  angles_clinical: [front]
+  mask_region: full_face_skin
+  timeline: [1w, 4w]
+  effect_levels: [subtle, moderate]
+  after_change: >
+    skin looks hydrated and plump with a natural glow, fine lines reduced, texture still
+    visible (pores, tiny peach fuzz remain), no plastic smoothness.
+  must_not_change: >
+    Do not remove moles or freckles. Do not change face shape, volume, or features. This is a
+    hydration treatment, not a pigment or contour treatment.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: free
+  drift_lock: [quality, lighting, color]     # 화질·빛이 바뀌면 그게 피부결 변화처럼 보인다
+  scene_allow:
+    quality: [mid, app_upload]               # 구형폰·전면카메라에서는 피부결 변화가 물리적으로 안 보인다
+    lighting: [window, fluorescent, ceiling_harsh]
+  framing_allow: [full_face, forehead_cut, lower_face, one_cheek, nose_to_neck]
+  age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
+
+skin_pores:
+  name_ko: 스킨부스터 모공
+  region: cheeks and nose
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter]
+  mask_region: cheeks_nose
+  timeline: [2w, 4w]
+  effect_levels: [subtle, moderate]
+  after_change: >
+    enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
+  must_not_change: >
+    Do not change skin tone, remove moles, or alter face shape. Skin must still show real
+    texture after treatment.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: free
+  drift_lock: [quality, lighting, color]
+  scene_allow:
+    quality: [mid]                           # 모공은 화면에서 몇 픽셀이냐의 문제 — 가장 좋은 화질만
+    lighting: [window, fluorescent, ceiling_harsh]
+  framing_allow: [full_face, forehead_cut, lower_face, one_cheek]   # 볼 확대 컷이 실효가 크다
+  age_weights: {late_teens: 2, early_20s: 3, late_20s: 3, "30s": 3, "40s": 2, "50s": 1, "60s": 0}
+
+skin_redness:
+  name_ko: 스킨부스터 홍조
+  region: cheeks
+  modes: [clinical, selfie]
+  angles_clinical: [front]
+  mask_region: cheeks
+  timeline: [2w, 4w]
+  effect_levels: [subtle, moderate]
+  after_change: >
+    facial redness on cheeks noticeably calmer and more even, skin tone uniform, natural
+    texture preserved.
+  must_not_change: >
+    Do not lighten the overall skin tone or whiten the face. Only the redness pattern changes;
+    tone, texture and moles stay the same.
+  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  expression_policy: free
+  drift_lock: [color, lighting]              # 따뜻한 색감은 홍조를 만들고 차가운 색감은 지운다 — 화이트밸런스가 시술로 둔갑
+  scene_allow:
+    color: [neutral]
+    lighting: [window, fluorescent]
+  framing_allow: [full_face, forehead_cut, lower_face, one_cheek]
+  age_weights: {late_teens: 2, early_20s: 3, late_20s: 3, "30s": 3, "40s": 2, "50s": 2, "60s": 1}
+
+filler_nose:
+  name_ko: 코 필러
+  region: nose bridge and tip
+  modes: [clinical, selfie]
+  angles_clinical: [three_quarter, side]
+  mask_region: nose
+  timeline: [immediate, 2w]
+  effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The nose bridge is fairly low and flat
+      with a slight dip between the eyes, and the tip is soft and rounded rather than defined.
+      Otherwise an ordinary face. Do not make the nose look more refined than described.
+    marked: >
+      This person has never had any aesthetic treatment. The nose bridge is low and flat, almost
+      without a visible ridge in this light, and the tip is broad, rounded and slightly drooping.
+      Otherwise an ordinary face. Do not make the nose look more refined than described.
+  after_change: >
+    nose bridge raised and straighter with a continuous line from between the eyes to the tip,
+    tip slightly more projected and defined, natural filler result.
+  must_not_change: >
+    Do not narrow the nostrils or the alar width. Do not change eyes, lips, cheeks, chin, or
+    face shape. Do not brighten or smooth the skin.
+  effect_by_severity: {mild: [subtle], marked: [moderate]}
+  expression_policy: free
+  drift_lock: [angle]                        # 코 높이는 각도가 조금만 달라도 다르게 보인다
+  scene_allow:
+    angle: [selfie_3q, selfie_side]          # 정면은 코 높이 변화가 안 보이고, 하이/로우 앵글은 코 길이를 왜곡
+    lighting: [window, fluorescent, ceiling_harsh, mixed]
+  framing_allow: [full_face, forehead_cut, lower_face]   # 코 전체가 화면에 있어야 한다
+  age_weights: {late_teens: 0, early_20s: 3, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
+
+filler_neck:
+  name_ko: 목주름 필러
+  region: horizontal neck lines (front of the neck)
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter, side]
+  mask_region: neck                          # 얼굴 랜드마크에 목이 없다 — 턱선에서 아래로 내린 파생 영역 (landmarks.py)
+  timeline: [immediate, 2w]
+  effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  severity_min_age: {mild: late_20s, marked: 40s}
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. On the front of the neck there are two
+      faint horizontal lines, like a light necklace mark, visible when the chin is slightly
+      lifted, with normal skin between them. Do not exaggerate the lines or add sagging.
+    marked: >
+      This person has never had any aesthetic treatment. The front of the neck shows two or three
+      distinct horizontal creases running around the neck, with slightly crepey, loose skin
+      between them and a faint shadow inside each crease. Do not make the neck look younger or
+      smoother than described.
+  after_change: >
+    the horizontal neck lines are visibly softened and shallower, skin between them smoother
+    and more even, the neck still looks like real skin with natural texture.
+  must_not_change: >
+    Do not change the jawline, chin, face, or the length and width of the neck. Do not whiten
+    or blur the neck skin; keep pores and natural texture. Do not remove moles on the neck.
+  effect_by_severity: {mild: [subtle], marked: [moderate]}
+  expression_policy: free
+  drift_lock: [angle]                        # 턱을 들고 내리는 것만으로 목주름이 생기고 사라진다
+  context_ban: [necklace]                    # 목걸이가 주름을 가린다
+  scene_allow:
+    angle: [chin_up, front, selfie_3q]       # selfie_high 는 목이 안 보인다
+    lighting: [window, fluorescent, ceiling_harsh, mixed]
+  framing_allow: [nose_to_neck, neck_only]   # 목이 화면에 있어야 한다. neck_only 는 이 시술 전용 프레이밍
+  age_weights: {late_teens: 0, early_20s: 0, late_20s: 1, "30s": 3, "40s": 3, "50s": 3, "60s": 2}

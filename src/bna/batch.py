@@ -134,7 +134,7 @@ class Batch:
 
     # ---------- 배치 ----------
     async def run(self):
-        plans = plan_batch(self.mode, self.count, self.seed, self.fixed, (self.avoid or {}).get("weights"))
+        plans = plan_batch(self.mode, self.count, self.seed, self.fixed, (self.avoid or {}).get("weights"), treatment=self.treatment)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
         self.progress = Progress(self.dir, len(plans))

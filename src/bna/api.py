@@ -55,7 +55,7 @@ def config_payload():
 def _plans(req):
     fixed = {k: val for k, val in (req.get("fixed") or {}).items() if val}
     seed = req.get("seed"); seed = int(seed) if seed not in (None, "") else None
-    return plan_batch(req["mode"], int(req.get("count", 4)), seed, fixed), seed, fixed
+    return plan_batch(req["mode"], int(req.get("count", 4)), seed, fixed, treatment=req.get("treatment")), seed, fixed
 
 
 def plan_payload(req):
@@ -296,7 +296,7 @@ def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
     from PIL import Image, ImageDraw
     rng = random.Random(seed)
     bid = time.strftime("%Y%m%d-%H%M%S") + "-demo"; d = OUT / bid; d.mkdir(parents=True, exist_ok=True)
-    plans = plan_batch(mode, count, seed)
+    plans = plan_batch(mode, count, seed, treatment=treatment)
     checklist = list(load("qa_checklist.yaml")["items"]); items = []
     for i, v in enumerate(plans):
         spec = build_prompts(treatment, mode, v, seed * 1000 + i); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
@@ -329,7 +329,7 @@ def sim_batch(treatment="nasolabial", mode="selfie", count=12, seed=None, item_s
     from concurrent.futures import ThreadPoolExecutor
     seed = seed if seed is not None else random.randint(0, 9999); rng = random.Random(seed)
     bid = time.strftime("%Y%m%d-%H%M%S") + "-sim"; d = OUT / bid; d.mkdir(parents=True, exist_ok=True)
-    plans = plan_batch(mode, count, seed, fixed or {}); checklist = list(load("qa_checklist.yaml")["items"])
+    plans = plan_batch(mode, count, seed, fixed or {}, treatment=treatment); checklist = list(load("qa_checklist.yaml")["items"])
     (d / "batch.json").write_text(json.dumps({"batch_id": bid, "treatment": treatment, "mode": mode, "count": count, "kind": "sim", "seed": seed,
                                               "target_pass": target_pass, "cost_cap": cost_cap, "created_at": time.time()}, ensure_ascii=False))
     pgs = prog.Progress(d, count); RUNNING[bid] = {"status": "running", "started": time.time(), "error": None}

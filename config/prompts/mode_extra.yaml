@@ -11,6 +11,12 @@ selfie_with_hand: >
   Casual selfie taken with a phone held in one hand; hand and phone edge partially visible
   with anatomically correct fingers (five fingers, natural grip). Slight motion blur acceptable.
 
+# After 셀카에도 붙는 규정 (0908 실측: Before 에만 넣었더니 After 에 폰이 대놓고 찍혔다)
+selfie_after: >
+  Like the reference, this is a photo the patient took of themselves for the clinic, not to look
+  good: no posing, the treated area is close to the lens, composition is careless, the phone is
+  not visible in the picture.
+
 # After 셀카: 같은 날 vs 다른 날 (경과 시점에 따라 spec.build_prompts 가 선택)
 after_day:
   same: >

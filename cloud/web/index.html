@@ -425,7 +425,9 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     </section>
 
     <section class="page" id="tab-lessons">
-      <div class="card"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
+      <div class="card"><div class="card-head"><h3>프롬프트 버전별 성적</h3><span class="muted" id="les-cur"></span></div>
+        <div id="les-version"></div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
         <div id="les-body" class="muted">불러오는 중…</div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>지금 프롬프트에 붙는 문장</h3></div><div id="les-preview" class="muted"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>메모 → 규칙으로 승격</h3></div>
@@ -502,6 +504,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const msg = (id, text, cls) => { const el = $(id); el.textContent = text; el.className = 'rp-msg' + (cls ? ' ' + cls : ''); };
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
 const pct = x => (x*100).toFixed(0) + '%';
+const fmtDay = t => { const d = new Date((t||0)*1000); return `${d.getMonth()+1}/${d.getDate()}`; };
 const fmtBid = id => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}/.exec(id||''); return m ? `${+m[2]}/${+m[3]} ${m[4]}:${m[5]}` : id; };
 const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
 const STAGE_KO = {skipped:'생략(목표 도달)', queued:'대기', before:'시술 전 생성', after:'시술 후 생성', postprocess:'후처리', qa:'AI 검수', retry:'재생성 대기', passed:'통과', failed:'탈락'};
@@ -522,7 +525,8 @@ const VAL_KO = {
   eyes:{monolid:'홑꺼풀', double:'쌍꺼풀', hooded:'처진 눈꺼풀', deep_set:'깊은 눈'}, extras:{none:'없음', glasses:'얇은 안경', glasses_thick:'뿔테', earrings:'귀걸이', beard_light:'수염 약간', beard_full:'수염', mask_chin:'턱에 마스크', makeup_light:'옅은 화장', makeup_none:'민낯', tired:'피곤한 얼굴'},
   background:{clinic:'병원 벽', home:'집 거실', cafe:'카페', outdoor:'길거리', car:'차 안', bathroom:'욕실 거울', clinic_waiting:'병원 대기실', clinic_mirror:'병원 거울', clinic_bed:'시술 베드', car_after:'병원 나온 차 안'},
   angle:{front:'정면', three_quarter:'45도', side:'옆모습', selfie_high:'위에서 셀카', selfie_low:'아래서 셀카', selfie_3q:'살짝 돌린 셀카', selfie_side:'옆 셀카', chin_up:'턱 든 각도', tilted:'고개 기울임'},
-  framing:{full_face:'얼굴 전체', forehead_cut:'이마 잘림', lower_face:'코 아래만', one_cheek:'한쪽 볼', nose_to_neck:'코~목'},
+  framing:{full_face:'얼굴 전체', forehead_cut:'이마 잘림', lower_face:'코 아래만', one_cheek:'한쪽 볼', nose_to_neck:'코~목', neck_only:'목만'},
+  expression:{neutral_closed:'무표정', slight_smile:'살짝 미소', relaxed_open:'편안한 표정'},
   context:{none:'없음', pajamas:'잠옷', home_tee:'홈티', towel_headband:'수건 헤어밴드', cap:'모자', necklace:'목걸이', hair_in_face:'잔머리', finger_on_cheek:'볼 가리킴', outing_top:'외출복', clinic_headband:'병원 헤어밴드', hair_flat_after:'눌린 머리', cotton_pad:'솜·연고'},
   lighting:{ring:'링라이트', window:'창가 자연광', fluorescent:'형광등', night:'밤 실내', backlit:'역광', ceiling_harsh:'천장등 번들거림', mixed:'혼합광'}, color:{neutral:'기본 색감', warm:'따뜻한', cool:'차가운', iphone:'아이폰 느낌', galaxy:'갤럭시 느낌', filter:'약한 필터'},
   quality:{flagship:'최신폰 화질', mid:'보통 폰', old:'구형 폰', front_cam:'전면 카메라', app_upload:'앱 업로드 화질'},
@@ -531,7 +535,7 @@ const VAL_KO = {
 const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
 const failKo = r => FAIL_KO[r] || r;
 let POLL = null;
-const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
+const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', expression:'표정', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
 // 검수 버튼 문구 정본 한 곳.
 // ⚠ 내부 값(pick/reject)은 그대로다 — 바꾸면 저장된 review.json·통계 축이 갈린다.
@@ -817,7 +821,7 @@ async function openBatch(id, byUser = false) {
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
-  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
+  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||'종류 미지정'}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
@@ -1125,6 +1129,15 @@ async function loadLessons() {
     L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td></tr>`).join('')}</tbody></table>`
     : '<div class="muted">아직 승격된 규칙이 없습니다.</div>';
   const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
+  $('#les-cur').textContent = L.current_version ? `지금 버전 ${L.current_version}` : '';
+  const vs = L.by_version || [];
+  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>통과 1장당 비용</th><th>제외 사유 상위</th></tr></thead><tbody>${
+    vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td title="${esc(r.version)}">${r.real ? esc(r.version) : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}</td>` +
+      `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td><td>${r.reviewed}</td>` +
+      `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td><td>${r.cost_per_pass == null ? '—' : '$' + r.cost_per_pass}</td>` +
+      `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
+    <div class="muted" style="margin-top:8px">버전 = config 폴더 전체의 해시. 프롬프트·조건 파일을 고치면 새 줄이 생기고, 줄끼리 비교하면 고친 효과가 보입니다.</div>`
+    : '<div class="muted">아직 생성된 배치가 없습니다.</div>';
 }
 
 // ---------- 설정 ----------

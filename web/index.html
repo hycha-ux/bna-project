@@ -525,7 +525,8 @@ const VAL_KO = {
   eyes:{monolid:'홑꺼풀', double:'쌍꺼풀', hooded:'처진 눈꺼풀', deep_set:'깊은 눈'}, extras:{none:'없음', glasses:'얇은 안경', glasses_thick:'뿔테', earrings:'귀걸이', beard_light:'수염 약간', beard_full:'수염', mask_chin:'턱에 마스크', makeup_light:'옅은 화장', makeup_none:'민낯', tired:'피곤한 얼굴'},
   background:{clinic:'병원 벽', home:'집 거실', cafe:'카페', outdoor:'길거리', car:'차 안', bathroom:'욕실 거울', clinic_waiting:'병원 대기실', clinic_mirror:'병원 거울', clinic_bed:'시술 베드', car_after:'병원 나온 차 안'},
   angle:{front:'정면', three_quarter:'45도', side:'옆모습', selfie_high:'위에서 셀카', selfie_low:'아래서 셀카', selfie_3q:'살짝 돌린 셀카', selfie_side:'옆 셀카', chin_up:'턱 든 각도', tilted:'고개 기울임'},
-  framing:{full_face:'얼굴 전체', forehead_cut:'이마 잘림', lower_face:'코 아래만', one_cheek:'한쪽 볼', nose_to_neck:'코~목'},
+  framing:{full_face:'얼굴 전체', forehead_cut:'이마 잘림', lower_face:'코 아래만', one_cheek:'한쪽 볼', nose_to_neck:'코~목', neck_only:'목만'},
+  expression:{neutral_closed:'무표정', slight_smile:'살짝 미소', relaxed_open:'편안한 표정'},
   context:{none:'없음', pajamas:'잠옷', home_tee:'홈티', towel_headband:'수건 헤어밴드', cap:'모자', necklace:'목걸이', hair_in_face:'잔머리', finger_on_cheek:'볼 가리킴', outing_top:'외출복', clinic_headband:'병원 헤어밴드', hair_flat_after:'눌린 머리', cotton_pad:'솜·연고'},
   lighting:{ring:'링라이트', window:'창가 자연광', fluorescent:'형광등', night:'밤 실내', backlit:'역광', ceiling_harsh:'천장등 번들거림', mixed:'혼합광'}, color:{neutral:'기본 색감', warm:'따뜻한', cool:'차가운', iphone:'아이폰 느낌', galaxy:'갤럭시 느낌', filter:'약한 필터'},
   quality:{flagship:'최신폰 화질', mid:'보통 폰', old:'구형 폰', front_cam:'전면 카메라', app_upload:'앱 업로드 화질'},
@@ -534,7 +535,7 @@ const VAL_KO = {
 const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
 const failKo = r => FAIL_KO[r] || r;
 let POLL = null;
-const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
+const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', expression:'표정', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
 // 검수 버튼 문구 정본 한 곳.
 // ⚠ 내부 값(pick/reject)은 그대로다 — 바꾸면 저장된 review.json·통계 축이 갈린다.

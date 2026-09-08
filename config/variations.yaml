@@ -132,6 +132,7 @@ framing:
   lower_face: "only the lower half of the face is in frame: nose, cheeks, mouth and chin, eyes out of frame"
   one_cheek: "extreme close-up of one cheek and the side of the nose, the rest of the face outside the frame"
   nose_to_neck: "framed from the nose down to the neck and collar, mouth and jaw centered"
+  neck_only: "framed from the chin down to the collarbones, the front of the neck fills the frame, face mostly out of frame"   # 목주름 필러 전용 (framing_allow 로만 진입)
 
 # 생활 맥락: 옷·소품·머리 (셀카 전용 축. 임상은 none 고정)
 context:
@@ -173,6 +174,13 @@ quality:
   front_cam: "low-resolution front camera, slight grain"
   app_upload: "phone photo re-uploaded to a review app, jpeg compression artifacts, slightly soft"
 
+# 표정 축 (2026-09-09 신설). 팔자·리프팅·인중은 표정이 바뀌면 시술 없이도 B&A 가 된다 →
+# treatments.yaml 의 expression_policy: lock 이면 Before/After 같은 값 + After 에 "identical expression" 문장.
+expression:
+  neutral_closed: "neutral expression, mouth closed, not smiling"
+  slight_smile: "slight closed-mouth smile"
+  relaxed_open: "relaxed natural expression, lips slightly parted"
+
 # 모드별 사용 제약
 mode_rules:
   clinical:
@@ -185,6 +193,7 @@ mode_rules:
     quality: [flagship]
     framing: [full_face]
     context: [none]
+    expression: [neutral_closed]
   selfie:
     background: [home, cafe, outdoor, car, bathroom]
     # ⚠ context 화이트리스트가 없으면 전량 허용이라 "시술 직후 After 전용" 맥락 4종
@@ -197,6 +206,7 @@ mode_rules:
     lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed]   # 링라이트 제외 (스튜디오 느낌)
     color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외
     quality: [mid, old, front_cam, app_upload]                               # flagship 제외
+    expression: [neutral_closed, slight_smile, relaxed_open]
   # 임상: 프레이밍·맥락은 고정
 
 # 배경별 호환 조명 (셀카 모드). 배경을 먼저 뽑고 조명은 이 목록 안에서만 선택.
@@ -210,6 +220,27 @@ background_lighting:
   clinic_mirror: [fluorescent, ceiling_harsh]
   clinic_bed: [fluorescent, ceiling_harsh, ring]
   car_after: [window, backlit, mixed]
+
+# 배경 × 맥락 허용표 (셀카). 배경을 먼저 뽑고 맥락은 이 목록 안에서만.
+# 실측(0908): 배경·맥락이 독립 추첨이라 "차 안 + 수건 헤어밴드" 같은 조합이 나왔다.
+context_allow:
+  home:           [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face, finger_on_cheek]
+  bathroom:       [none, pajamas, home_tee, towel_headband, hair_in_face, finger_on_cheek]
+  cafe:           [none, cap, necklace, hair_in_face, finger_on_cheek, outing_top]
+  outdoor:        [none, cap, necklace, hair_in_face, outing_top]
+  car:            [none, cap, necklace, hair_in_face, finger_on_cheek, outing_top]
+  clinic_waiting: [none, outing_top, clinic_headband, hair_flat_after, cotton_pad]
+  clinic_mirror:  [none, outing_top, clinic_headband, hair_flat_after, cotton_pad]
+  clinic_bed:     [none, clinic_headband, hair_flat_after, cotton_pad]
+  car_after:      [none, outing_top, hair_flat_after, cotton_pad]
+
+# 프레이밍 × 맥락 금지표 (그 부위가 화면에 없으면 그 소품도 없다). 실측(0908): forehead_cut + cap = 없는 이마에 챙 그림자
+framing_ban:
+  forehead_cut: [cap]
+  lower_face:   [cap, towel_headband, clinic_headband]
+  one_cheek:    [cap, towel_headband, clinic_headband, necklace]
+  nose_to_neck: [cap, towel_headband, clinic_headband]
+  neck_only:    [cap, towel_headband, clinic_headband, hair_in_face, finger_on_cheek, hair_flat_after]
 
 # 셀카 모드 After 드리프트: Before 대비 달라져도 되는 축과 확률. 이목구비는 항상 고정.
 # 경과 시점(timeline)별로 다르다:
@@ -228,6 +259,7 @@ after_drift:
       hair_color: 0.0
       extras: 0.3
       context: 1.0
+      expression: 0.5
     later:                 # 1w, 2w, 4w 공통
       background: 0.9
       lighting: 0.8
@@ -239,6 +271,7 @@ after_drift:
       hair_color: 0.15
       extras: 0.6
       context: 0.9
+      expression: 0.7
   clinical: {}
 
 # 시술 직후 After 는 "집에서 찍은 Before" 와 다른 장소·옷이어야 자연스럽다:
@@ -256,7 +289,8 @@ weights:
   age: {late_teens: 1, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
   # 셀카: 정면은 드물게, 부분 크롭 우세 (레퍼런스 후기 사진 비율 반영)
   angle: {front: 1, selfie_high: 1, selfie_low: 1, selfie_3q: 3, selfie_side: 2, chin_up: 2, tilted: 2}
-  framing: {full_face: 1, forehead_cut: 2, lower_face: 3, one_cheek: 2, nose_to_neck: 2}
+  framing: {full_face: 1, forehead_cut: 2, lower_face: 3, one_cheek: 2, nose_to_neck: 2, neck_only: 3}
+  expression: {neutral_closed: 3, slight_smile: 1, relaxed_open: 2}   # 상담용 사진은 대부분 무표정
 
 output:
   aspect: "4:5"

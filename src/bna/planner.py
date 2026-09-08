@@ -1,7 +1,7 @@
 """배치 플래너: N개의 변주 조합을 축별로 균등 배분 (균형 샘플링) + 인물 조합 중복 금지."""
 import random
 from collections import Counter
-from .spec import load, PERSON_AXES, SCENE_AXES
+from .spec import load, PERSON_AXES, SCENE_AXES, treatment_rules, allowed_values
 
 
 # 배분 큐의 기본 배수. 학습 가중(0~1)을 곱해도 1 밑으로 안 떨어지게 해 준다 —
@@ -9,7 +9,7 @@ from .spec import load, PERSON_AXES, SCENE_AXES
 WEIGHT_SCALE = 4
 
 
-def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None) -> list:
+def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, treatment=None) -> list:
     """축마다 옵션을 섞은 순환 큐에서 뽑아 n개 안에 모든 옵션이 최대한 고르게 등장하도록 한다.
 
     avoid_weights: {축: {값: 0~1}} — 제외가 몰린 조건값을 **덜** 뽑는다(lessons.active).
@@ -18,27 +18,24 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None) -> 
     """
     rng = random.Random(seed)
     v = load("variations.yaml")
-    rules = v.get("mode_rules", {}).get(mode, {})
-    compat, excl = v.get("background_lighting", {}), v.get("gender_exclusions", {})
+    tr = treatment_rules(treatment, mode)
     weights = v.get("weights", {})
     avoid_weights = avoid_weights or {}
     fixed = fixed or {}
-
-    def allowed(axis):
-        return [rules.get(axis)] and [k for k in (rules.get(axis) or list(v[axis]))] or list(v[axis])
+    tw = tr.get("age_weights") or {}                     # 시술별 나이 가중 (0 은 allowed_values 가 뺀다)
 
     queues = {}
-    def draw(axis, filt=None):
-        opts = [fixed[axis]] if axis in fixed else allowed(axis)
-        if filt:
-            opts = [o for o in opts if filt(o)] or opts
+    def draw(axis, opts):
+        """허용 목록(opts) 안에서 순환 큐로 뽑는다 — 축별로 고르게, 가중치만큼 더 자주."""
+        opts = [fixed[axis]] if axis in fixed else opts
         q = queues.setdefault(axis, [])
         for o in q:                     # 큐에 남은 것 중 허용되는 첫 항목
             if o in opts:
                 q.remove(o); return o
         w = weights.get(axis, {}); aw = avoid_weights.get(axis, {})
-        def reps(o):                    # 기본 가중 × 학습 회피 가중, 최소 1
-            return max(1, round(WEIGHT_SCALE * int(w.get(o, 1)) * float(aw.get(o, 1.0))))
+        def reps(o):                    # 기본 가중 × 시술 가중 × 학습 회피 가중, 최소 1
+            base = float(w.get(o, 1)) * (float(tw.get(o, 1.0)) if axis == "age" else 1.0)
+            return max(1, round(WEIGHT_SCALE * base * float(aw.get(o, 1.0))))
         pool = [o for o in opts for _ in range(reps(o))]            # 가중치만큼 복제 후 섞기
         rng.shuffle(pool)
         queues[axis] = pool
@@ -50,17 +47,13 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None) -> 
         tries += 1
         p = {}
         for axis in PERSON_AXES:
-            banned = excl.get(p.get("gender"), {}).get(axis, []) if "gender" in p else []
-            p[axis] = draw(axis, lambda o: o not in banned)
+            p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr))
         sig = tuple(p[a] for a in PERSON_AXES)
         if sig in seen:
             continue
         seen.add(sig)
         for axis in SCENE_AXES:
-            if axis == "lighting" and p["background"] in compat:
-                p[axis] = draw(axis, lambda o: o in compat[p["background"]])
-            else:
-                p[axis] = draw(axis)
+            p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr))
         plans.append({a: {"key": k, "text": v[a][k]} for a, k in p.items()})
     return plans
 
