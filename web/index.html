@@ -9,361 +9,319 @@
 <link rel="stylesheet" href="/vendor/seed/base.min.css">
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
 <style>
-/* ════════════════════════════════════════════════
-   DESIGN TOKENS — 디자인 자동화 툴(_base-template)과 같은 구조. 브랜드만 온리프 네이비
-   ════════════════════════════════════════════════ */
 :root {
-  /* 브랜드: 온리프 네이비 (가이드 메인 블루 #CCD8E8 과 같은 색상 계열의 진한 톤. 바꾸려면 이 4줄만) */
-  --primary:    #1F3A5F;
-  --pri-hov:    #172C49;
-  --pri-alpha:  rgba(31,58,95,.07);
-  --pri-border: rgba(31,58,95,.18);
-  --brand-blue: #CCD8E8;   /* 온리프 메인 블루: 강조 배경 */
-
-  /* 그레이 스케일 */
-  --ui-bg:      #F2F4F6;
-  --ui-panel:   #ffffff;
-  --ui-border:  #E5E8EB;
-  --ui-hi:      #191F28;
-  --ui-md:      #6B7684;
-  --ui-lo:      #8B95A1;
-  --ui-surface: #F7F8FA;
-
-  /* 상태색 */
-  --ok:   #1F8F55; --ok-weak:   #E3F5EA;
-  --bad:  #D64545; --bad-weak:  #FBE5E5;
-  --warn: #B87A00; --warn-weak: #FFF3D6;
-
-  /* 레이아웃 */
-  --topbar-h: 56px;
-  --panel-w:  300px;
-  --nav-w:    220px;
-  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
-
-  /* SEED 레시피(버튼·배지·칩)가 쓰는 브랜드 토큰을 네이비로 */
-  --seed-color-bg-brand-solid: var(--primary); --seed-color-bg-brand-solid-pressed: var(--pri-hov); --seed-color-fg-brand: var(--primary); --seed-color-fg-brand-contrast: #fff;
-  --seed-color-bg-brand-weak: var(--pri-alpha); --seed-color-stroke-brand-solid: var(--primary); --seed-color-stroke-focus-ring: var(--primary);
-  --seed-color-fg-neutral: var(--ui-hi); --seed-color-fg-neutral-muted: var(--ui-md); --seed-color-fg-neutral-subtle: var(--ui-lo);
-  --seed-color-stroke-neutral-muted: var(--ui-border);
-  --seed-color-bg-informative-weak: var(--brand-blue); --seed-color-fg-informative: var(--primary);
+  --primary:#1F3A5F; --pri-hov:#172C49; --pri-alpha:rgba(31,58,95,.08); --pri-border:rgba(31,58,95,.18); --brand-blue:#CCD8E8;
+  --ui-bg:#F4F5F7; --ui-panel:#fff; --ui-border:#EAECEF; --ui-hi:#191F28; --ui-md:#6B7684; --ui-lo:#8B95A1; --ui-surface:#F7F8FA;
+  --ok:#1F8F55; --ok-weak:#E3F5EA; --bad:#D64545; --bad-weak:#FBE5E5; --warn:#B87A00; --warn-weak:#FFF3D6;
+  --rail-w:72px; --side-w:220px; --top-h:64px; --r-sm:8px; --r-md:12px; --r-lg:16px; --gap:20px;
+  --seed-color-bg-brand-solid:var(--primary); --seed-color-bg-brand-solid-pressed:var(--pri-hov); --seed-color-fg-brand:var(--primary); --seed-color-fg-brand-contrast:#fff;
+  --seed-color-bg-brand-weak:var(--pri-alpha); --seed-color-stroke-brand-solid:var(--primary); --seed-color-stroke-focus-ring:var(--primary);
+  --seed-color-fg-neutral:var(--ui-hi); --seed-color-fg-neutral-muted:var(--ui-md); --seed-color-fg-neutral-subtle:var(--ui-lo); --seed-color-stroke-neutral-muted:var(--ui-border);
+  --seed-color-bg-informative-weak:var(--brand-blue); --seed-color-fg-informative:var(--primary);
 }
-
-/* ════ RESET & BASE ════ */
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
 [hidden] { display:none !important }
 html, body { height:100% }
-body { font-family:'Pretendard',-apple-system,sans-serif; font-size:13px; line-height:1.5; background:var(--ui-bg); color:var(--ui-hi); -webkit-font-smoothing:antialiased; padding-top:var(--topbar-h) }
+body { font-family:'Pretendard',-apple-system,sans-serif; font-size:13px; line-height:1.5; background:var(--ui-bg); color:var(--ui-hi); -webkit-font-smoothing:antialiased }
 button, input, select, textarea { font-family:inherit }
+a { color:var(--primary) }
 
-/* ════ TOPBAR ════ */
-.topbar { height:var(--topbar-h); background:var(--ui-panel); border-bottom:1px solid var(--ui-border); display:flex; align-items:center; padding:0 24px; gap:12px; position:fixed; top:0; left:0; right:0; z-index:200 }
-.tb-brand { font-size:15px; font-weight:700; color:var(--ui-hi); letter-spacing:-.3px }
-.tb-sub { font-size:12px; color:var(--ui-lo) }
-.tb-space { flex:1 }
-.tb-status { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ui-md) }
-.tb-status .dot { width:8px; height:8px; border-radius:50%; background:var(--ui-lo) }
-.tb-status .dot.on { background:var(--ok); box-shadow:0 0 0 3px var(--ok-weak) }
-
-/* ════ LEFT NAV ════ */
-.left-nav { position:fixed; top:var(--topbar-h); left:0; width:var(--nav-w); height:calc(100vh - var(--topbar-h)); background:var(--ui-panel); border-right:1px solid var(--ui-border); z-index:100; padding:20px 12px 24px; display:flex; flex-direction:column; gap:4px; overflow-y:auto }
-.left-nav .rp-label { padding:0 10px }
-.nav-item { width:100%; padding:10px 12px; text-align:left; border:none; border-radius:var(--radius-sm); background:none; font-size:13px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; display:flex; align-items:center; gap:10px }
+/* ════ 레이아웃: 레일 | 사이드바 | 콘텐츠 ════ */
+.app { display:grid; grid-template-columns:var(--rail-w) var(--side-w) 1fr; min-height:100vh }
+.rail { background:var(--ui-panel); border-right:1px solid var(--ui-border); display:flex; flex-direction:column; align-items:center; padding:14px 0; gap:6px; position:sticky; top:0; height:100vh }
+.rail .logo { width:44px; height:44px; border-radius:12px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; letter-spacing:-.5px; margin-bottom:14px }
+.rail button { width:44px; height:44px; border:0; background:none; border-radius:12px; color:var(--ui-lo); cursor:pointer; display:flex; align-items:center; justify-content:center }
+.rail button:hover { background:var(--ui-surface); color:var(--ui-hi) }
+.rail button.active { background:var(--pri-alpha); color:var(--primary) }
+.rail .spacer { flex:1 }
+.rail svg { width:20px; height:20px }
+.side { background:var(--ui-panel); border-right:1px solid var(--ui-border); padding:16px 12px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column }
+.side .brand { font-size:15px; font-weight:800; color:var(--primary); padding:6px 12px 18px; letter-spacing:-.3px }
+.side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
+.nav-item { width:100%; padding:10px 12px; border:0; border-radius:var(--r-sm); background:none; font-size:13.5px; font-weight:500; color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:10px; text-align:left; margin-bottom:2px }
+.nav-item svg { width:18px; height:18px; flex-shrink:0 }
 .nav-item:hover { background:var(--ui-surface); color:var(--ui-hi) }
 .nav-item.active { background:var(--pri-alpha); color:var(--primary); font-weight:700 }
-.nav-item .num { width:22px; height:22px; border-radius:50%; background:var(--ui-surface); color:var(--ui-lo); font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0 }
-.nav-item.active .num { background:var(--primary); color:#fff }
 .nav-item .chip { margin-left:auto }
-.nav-foot { margin-top:auto; padding:12px 10px 0; border-top:1px solid var(--ui-border); font-size:11px; color:var(--ui-lo); line-height:1.6 }
+.side .divider { height:1px; background:var(--ui-border); margin:12px 4px }
+.side .foot { margin-top:auto; padding:10px 12px; font-size:11px; color:var(--ui-lo); line-height:1.5 }
 
-/* ════ RIGHT PANEL ════ */
-.right-panel.hidden-panel { display:none }
-.right-panel { position:fixed; top:var(--topbar-h); right:0; width:var(--panel-w); height:calc(100vh - var(--topbar-h)); background:var(--ui-panel); border-left:1px solid var(--ui-border); overflow-y:auto; z-index:100; padding:20px 16px 32px; display:flex; flex-direction:column; gap:4px }
-.rp-group { display:flex; flex-direction:column; gap:8px; margin-bottom:8px }
-.rp-label { font-size:12px; font-weight:600; color:var(--ui-lo); letter-spacing:.05em; text-transform:uppercase; padding:0 2px; margin-bottom:2px }
-.rp-divider { height:1px; background:var(--ui-border); margin:12px 0 }
-.rp-info { font-size:12px; color:var(--ui-lo); padding:0 2px; line-height:1.5; word-break:break-all }
-.rp-info.on { color:var(--primary); font-weight:600 }
-.rp-tab-list { display:flex; flex-direction:column; gap:2px }
-.rp-tab { width:100%; padding:9px 12px; text-align:left; border:none; border-radius:var(--radius-sm); background:none; font-size:13px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; display:flex; align-items:center; gap:8px }
-.rp-tab:hover { background:var(--ui-surface); color:var(--ui-hi) }
-.rp-tab.active { background:var(--pri-alpha); color:var(--primary); font-weight:700 }
-.rp-tab .num { width:20px; height:20px; border-radius:50%; background:var(--ui-surface); color:var(--ui-lo); font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0 }
-.rp-tab.active .num { background:var(--primary); color:#fff }
-.rp-option-row { display:flex; gap:6px }
-.rp-option-btn { flex:1; padding:8px 4px; border-radius:var(--radius-sm); border:1.5px solid var(--ui-border); background:var(--ui-surface); font-size:12px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; text-align:center }
-.rp-option-btn:hover { border-color:var(--primary); color:var(--primary) }
-.rp-option-btn.active { border-color:var(--primary); background:var(--pri-alpha); color:var(--primary); font-weight:700 }
-.rp-option-btn:disabled { opacity:.35; cursor:not-allowed }
-.rp-btn { width:100%; padding:9px 12px; border-radius:var(--radius-sm); border:1px dashed var(--ui-border); background:none; font-size:13px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; text-align:left }
-.rp-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--ui-surface) }
-.rp-btn-primary { border-style:solid; border-color:var(--primary); color:#fff; background:var(--primary); font-weight:700 }
-.rp-btn-primary:hover { background:var(--pri-hov); color:#fff; border-color:var(--pri-hov) }
-.rp-btn-accent { border-style:solid; border-color:var(--pri-border); color:var(--primary); background:var(--pri-alpha); font-weight:600 }
-.rp-btn-accent:hover { background:rgba(31,58,95,.13) }
-.rp-save-info { margin-top:auto; padding-top:16px; border-top:1px solid var(--ui-border) }
-.rp-save-clinic { font-size:11px; font-weight:600; color:var(--ui-md); margin-bottom:3px }
-.rp-save-time { font-size:10px; color:var(--ui-lo) }
-.rp-field { display:flex; flex-direction:column; gap:4px }
-.rp-field > span { font-size:12px; font-weight:600; color:var(--ui-md); padding:0 2px }
-.rp-field .hint { font-size:11px; color:var(--ui-lo); font-weight:400; padding:0 2px }
-.rp-panel-section[hidden] { display:none }
-.rp-msg { font-size:12px; color:var(--ui-md); padding:6px 2px 0; line-height:1.5; min-height:0 }
-.rp-msg.err { color:var(--bad) }
-.rp-msg.on { color:var(--primary); font-weight:600 }
-details.rp-details > summary { list-style:none; cursor:pointer; font-size:12px; font-weight:600; color:var(--ui-md); padding:8px 10px; border:1px solid var(--ui-border); border-radius:var(--radius-sm); background:var(--ui-surface) }
-details.rp-details > summary::before { content:"▸ "; color:var(--ui-lo) }
-details.rp-details[open] > summary::before { content:"▾ " }
-details.rp-details > div { padding:8px 2px 0; display:flex; flex-direction:column; gap:8px }
+/* ════ 상단 바 ════ */
+.main { min-width:0 }
+.topbar { height:var(--top-h); background:var(--ui-panel); border-bottom:1px solid var(--ui-border); display:flex; align-items:center; gap:16px; padding:0 28px; position:sticky; top:0; z-index:50 }
+.topbar h1 { font-size:16px; font-weight:700; letter-spacing:-.2px; white-space:nowrap }
+.search { flex:1; max-width:520px; display:flex; align-items:center; gap:8px; height:38px; padding:0 14px; background:var(--ui-surface); border-radius:999px; color:var(--ui-lo) }
+.search input { flex:1; border:0; background:none; outline:none; font-size:13px; color:var(--ui-hi); height:100% }
+.search svg { width:16px; height:16px }
+.tb-space { flex:1 }
+.tb-icon { position:relative; width:38px; height:38px; border:0; background:none; border-radius:10px; color:var(--ui-md); cursor:pointer; display:flex; align-items:center; justify-content:center }
+.tb-icon:hover { background:var(--ui-surface) }
+.tb-icon svg { width:20px; height:20px }
+.tb-icon .dot { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; background:var(--bad); border:2px solid #fff }
+.tb-icon .dot.on { background:var(--ok) }
+.profile { display:flex; align-items:center; gap:8px; padding:4px 8px 4px 4px; border-radius:999px; border:0; background:none; cursor:pointer; font-size:13px; font-weight:600; color:var(--ui-hi) }
+.profile:hover { background:var(--ui-surface) }
+.profile .avatar { width:32px; height:32px; border-radius:50%; background:var(--brand-blue); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px }
+.menu { position:absolute; right:28px; top:calc(var(--top-h) - 6px); width:200px; background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md); box-shadow:0 10px 30px rgba(0,0,0,.12); padding:6px; z-index:60 }
+.menu button { width:100%; padding:10px 12px; border:0; background:none; border-radius:var(--r-sm); text-align:left; font-size:13px; font-weight:500; color:var(--ui-hi); cursor:pointer; display:flex; gap:10px; align-items:center }
+.menu button:hover { background:var(--ui-surface) }
+.menu .mi-sep { height:1px; background:var(--ui-border); margin:4px 6px }
 
-/* 인풋 */
-select, input[type=number], input[type=text] { width:100%; height:36px; padding:0 10px; border:1px solid var(--ui-border); border-radius:var(--radius-sm); background:var(--ui-surface); color:var(--ui-hi); font-size:13px; outline:none; transition:border-color .12s, background .12s }
+/* ════ 콘텐츠 ════ */
+.page { padding:24px 28px 56px; display:none } .page.active { display:block }
+.page-title { display:flex; align-items:baseline; gap:10px; margin-bottom:16px } .page-title h2 { font-size:18px; font-weight:700; letter-spacing:-.3px } .page-title .muted { font-size:12px }
+.card { background:var(--ui-panel); border-radius:var(--r-lg); padding:20px 22px; box-shadow:0 1px 2px rgba(25,31,40,.04) }
+.card-head { display:flex; align-items:center; gap:10px; margin-bottom:14px } .card-head h3 { font-size:15px; font-weight:700; letter-spacing:-.2px } .card-head .muted { font-size:12px } .card-head .tb-space { flex:1 }
+.card h4 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:8px }
+.grid { display:grid; gap:var(--gap) } .grid > * { min-width:0 }
+.g-kpi { grid-template-columns:repeat(4,1fr) }
+.g-main { grid-template-columns:1fr 340px }
+.g-stats { grid-template-columns:repeat(auto-fill,minmax(250px,1fr)) }
+.g-create { grid-template-columns:360px 1fr; align-items:start }
+.kpi { background:var(--ui-panel); border-radius:var(--r-lg); padding:18px 22px }
+.kpi .l { font-size:13px; font-weight:600; color:var(--ui-md) } .kpi .v { font-size:26px; font-weight:800; letter-spacing:-.5px; margin:6px 0 8px; font-variant-numeric:tabular-nums }
+.kpi .t { font-size:12px; color:var(--ui-lo) } .kpi .t b { color:var(--ok); font-weight:700 } .kpi .t b.down { color:var(--bad) }
+.kpi.compact .v { font-size:20px }
+.muted { color:var(--ui-lo); font-size:12px }
+.empty { padding:40px 20px; text-align:center; color:var(--ui-lo); font-size:13px }
+.row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap }
+.field { display:flex; flex-direction:column; gap:4px } .field > span { font-size:12px; font-weight:600; color:var(--ui-md) }
+select, input[type=number], input[type=text] { width:100%; height:38px; padding:0 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:var(--ui-surface); color:var(--ui-hi); font-size:13px; outline:none }
 select:focus, input:focus { border-color:var(--primary); background:#fff }
 input::placeholder { color:var(--ui-lo) }
-select { appearance:none; -webkit-appearance:none; padding-right:28px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center }
+select { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center }
+.form { display:flex; flex-direction:column; gap:12px }
 .fixgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px }
 .fixgrid label { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--ui-lo) }
-.fixgrid select { height:30px; font-size:12px; padding:0 22px 0 8px }
-
-/* ════ CONTENT AREA ════ */
-.tab-panel { display:none; margin-left:var(--nav-w); margin-right:var(--panel-w) }
-.tab-panel.active { display:block }
-.content-wrap { padding:24px 24px 56px; max-width:1400px }
-.page-head { display:flex; align-items:baseline; gap:10px; margin-bottom:14px }
-.page-head h2 { font-size:16px; font-weight:700; letter-spacing:-.2px }
-.page-head .muted { font-size:12px; color:var(--ui-lo) }
-.card { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); padding:16px 18px }
-.card h3 { font-size:12px; font-weight:600; color:var(--ui-lo); letter-spacing:.04em; text-transform:uppercase; margin-bottom:8px }
-.grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px }
-.empty { padding:56px 24px; text-align:center; color:var(--ui-lo); font-size:13px; background:var(--ui-panel); border:1px dashed var(--ui-border); border-radius:var(--radius-md) }
-.empty b { display:block; color:var(--ui-md); font-size:14px; margin-bottom:6px }
-.muted { color:var(--ui-lo); font-size:12px }
-h2.sec { font-size:14px; font-weight:700; margin:20px 0 8px }
-
-/* 막대 */
-.bar { display:grid; grid-template-columns:118px 1fr 72px; gap:8px; align-items:center; font-size:12px; margin:3px 0 }
-.bar .t { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden }
-.bar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit }
-.bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) }
-.bar .n { text-align:right; color:var(--ui-lo); font-variant-numeric:tabular-nums; white-space:nowrap }
-
-/* 표 */
+.fixgrid select { height:32px; font-size:12px; padding:0 22px 0 8px }
+details.opt > summary { list-style:none; cursor:pointer; font-size:12px; font-weight:600; color:var(--ui-md); padding:9px 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:var(--ui-surface) }
+details.opt > summary::before { content:"▸ "; color:var(--ui-lo) } details.opt[open] > summary::before { content:"▾ " }
+details.opt > div { padding:10px 2px 0; display:flex; flex-direction:column; gap:10px }
+.btn { width:100%; height:42px; border-radius:var(--r-sm); border:1px solid var(--ui-border); background:#fff; font-size:13.5px; font-weight:600; color:var(--ui-hi); cursor:pointer }
+.btn:hover { background:var(--ui-surface) }
+.btn.primary { background:var(--primary); border-color:var(--primary); color:#fff } .btn.primary:hover { background:var(--pri-hov) }
+.btn.accent { background:var(--pri-alpha); border-color:var(--pri-border); color:var(--primary) }
+.btn.sm { width:auto; height:34px; padding:0 14px; font-size:12.5px }
+.msg { font-size:12px; color:var(--ui-md); min-height:18px } .msg.err { color:var(--bad) } .msg.on { color:var(--primary); font-weight:600 }
+.bar { display:grid; grid-template-columns:118px 1fr 72px; gap:8px; align-items:center; font-size:12px; margin:4px 0 }
+.bar .t { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .bar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit }
+.bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) } .bar .n { text-align:right; color:var(--ui-lo); font-variant-numeric:tabular-nums; white-space:nowrap }
 table { border-collapse:collapse; width:100%; font-size:13px }
-th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--ui-border); vertical-align:middle }
+th, td { text-align:left; padding:10px 10px; border-bottom:1px solid var(--ui-border); vertical-align:middle }
 th { color:var(--ui-lo); font-weight:600; font-size:12px; white-space:nowrap }
-tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) }
+tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.sel { background:var(--pri-alpha) }
 tbody tr:last-child td { border-bottom:none }
-
-/* KPI */
-.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px }
-.kpi { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); padding:12px 14px }
-.kpi .v { font-size:20px; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums } .kpi .l { font-size:12px; color:var(--ui-lo); margin-top:2px }
-
-/* 배지 (seedify → SEED badge) */
+.tbl-wrap { overflow:auto } .tbl-wrap td { white-space:nowrap }
+.list { display:flex; flex-direction:column } .list-row { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--ui-border); cursor:pointer } .list-row:last-child { border-bottom:0 }
+.list-row .n { width:18px; color:var(--ui-lo); font-size:12px } .list-row .thumb { width:40px; height:40px; border-radius:8px; background:var(--ui-surface); object-fit:cover; flex-shrink:0 }
+.list-row .t { flex:1; min-width:0 } .list-row .t b { display:block; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .list-row .t span { font-size:11px; color:var(--ui-lo) }
+.list-row .v { font-weight:700; font-size:13px; white-space:nowrap }
 .chip { margin:2px 3px 0 0; font-weight:500; white-space:nowrap }
-#q-table td:nth-child(-n+9), #batches td { white-space:nowrap }
-
-/* 갤러리 */
-.gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px }
-.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); overflow:hidden; transition:box-shadow .15s }
+.gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px }
+.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md); overflow:hidden }
 .item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.6 }
 .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
 .pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
 .pair img { width:100%; height:100%; object-fit:cover; display:block }
 .pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
-.item .body { padding:12px 14px 14px }
-.item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px }
-.item .id { font-weight:700 }
-.tags { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px }
-.tags button { font-size:11px }
-.act { display:flex; gap:6px; align-items:center }
-button.b { cursor:pointer }
-button.b:disabled { opacity:.5; cursor:default }
+.item .body { padding:12px 14px 14px } .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px } .item .id { font-weight:700 }
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px } .tags button { font-size:11px }
+.act { display:flex; gap:6px; align-items:center } button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .item input[type=text] { height:32px; font-size:12px }
-.mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--radius-sm); padding:10px; color:var(--ui-md); margin-top:6px }
+.mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:12px; font-weight:500 }
-
-/* 진행 */
-.prog { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); padding:14px 18px; margin-bottom:12px }
-.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px }
-.prog .big { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums }
-.stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px }
-.stack i { display:block; height:100%; transition:width .4s }
+.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px } .prog .big { font-size:18px; font-weight:800; font-variant-numeric:tabular-nums }
+.stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px } .stack i { display:block; height:100%; transition:width .4s }
 .st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
-.legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ui-lo) }
-.legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
-.cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px }
-.cells b { width:18px; height:18px; border-radius:4px; background:var(--ui-surface); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:700 }
-.cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite }
-@keyframes pulse { 50% { opacity:.45 } }
-.mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px }
-.mini i { display:block; height:100%; background:var(--primary) }
-
-/* ════ MODAL ════ */
-dialog { border:0; border-radius:var(--radius-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18) }
-dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) }
-dialog .in { padding:24px 28px; overflow:auto; max-height:88vh }
-dialog h2 { font-size:16px; font-weight:700 }
-dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px }
-
-/* ════ TOAST ════ */
-.toast { position:fixed; bottom:24px; right:calc(var(--panel-w) + 24px); background:var(--ui-hi); color:#fff; padding:12px 18px; border-radius:var(--radius-md); font-size:13px; font-weight:500; opacity:0; transform:translateY(6px); transition:opacity .2s, transform .2s; pointer-events:none; z-index:500 }
-.toast.show { opacity:1; transform:translateY(0) }
-
-/* ════ 작업: 필터 → 리스트 → 세부 (세로) ════ */
-.jobs-wrap { display:flex; flex-direction:column; gap:14px }
-.tab-panel#tab-jobs { margin-right:0 }
-.filter-bar { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; padding:12px 16px }
-.filter-bar .rp-field { min-width:150px }
-.job-list { padding:0; max-height:360px; overflow:auto }
-.job-list table { font-size:12px } .job-list th, .job-list td { padding:8px 10px; white-space:nowrap }
-.job-list thead th { position:sticky; top:0; background:var(--ui-panel); z-index:1 }
-.job-list tr.sel { background:var(--pri-alpha) } .job-list tr.sel td:first-child { box-shadow:inset 3px 0 0 var(--primary) }
-.detail-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px }
-.detail-head h2 { font-size:16px; font-weight:700 } .detail-head .muted { font-size:12px }
-/* ════ 생성: 진행 + 대기열 ════ */
-.queue-card table { font-size:12px }
-/* ════ 라이브러리 ════ */
-.lib-group { margin-bottom:22px }
-.lib-group h2 { font-size:14px; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px }
-.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px }
-.lib .item .body { padding:8px 10px 10px }
-.lib .item .pair figure { aspect-ratio:4/5 }
-.lib .item .head { margin-bottom:2px }
-.lib .item .id { font-size:12px }
+.legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ui-lo) } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
+.cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:18px; height:18px; border-radius:4px; background:var(--ui-surface); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:700 }
+.cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
+.mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px } .mini i { display:block; height:100%; background:var(--primary) }
+/* 차트 (SVG) */
+.chart { width:100%; height:220px } .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:11px }
+.chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
+.chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
+.lib-group { margin-bottom:22px } .lib-group h3 { font-size:14px; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px }
+.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px } .lib .item .body { padding:8px 10px 10px } .lib .item .id { font-size:12px }
+dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18) }
+dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:16px; font-weight:700 }
+dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6px }
+.toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:12px 18px; border-radius:var(--r-md); font-size:13px; font-weight:500; opacity:0; transition:.2s; pointer-events:none; z-index:500 }
+.toast.show { opacity:1; transform:translate(-50%,0) }
+@media (max-width:1280px) { .g-kpi { grid-template-columns:repeat(2,1fr) } .g-main, .g-create { grid-template-columns:1fr } }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="6" r="1.3" fill="currentColor"/><circle cx="4" cy="12" r="1.3" fill="currentColor"/><circle cx="4" cy="18" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="i-lib" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 15l5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="16" cy="9" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3v18" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+</defs></svg>
 
-<div class="topbar">
-  <span class="tb-brand">온리프 전후 사진 생성</span>
-  <div class="tb-space"></div>
-  <div class="tb-status" id="tb-status"><span class="dot"></span><span>확인 중</span></div>
+<div class="app">
+  <div class="rail">
+    <div class="logo">OL</div>
+    <button data-tab="home" class="active" title="대시보드"><svg><use href="#i-home"/></svg></button>
+    <button data-tab="create" title="생성"><svg><use href="#i-plus"/></svg></button>
+    <button data-tab="jobs" title="작업"><svg><use href="#i-list"/></svg></button>
+    <button data-tab="library" title="라이브러리"><svg><use href="#i-lib"/></svg></button>
+    <div class="spacer"></div>
+    <button data-tab="settings" title="설정"><svg><use href="#i-gear"/></svg></button>
+  </div>
+  <nav class="side">
+    <div class="brand">ONLIF <small>전후 사진 생성</small></div>
+    <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg>대시보드</button>
+    <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg>생성 <span id="q-badge" class="chip warn" hidden></span></button>
+    <button class="nav-item" data-tab="jobs"><svg><use href="#i-list"/></svg>작업</button>
+    <button class="nav-item" data-tab="library"><svg><use href="#i-lib"/></svg>라이브러리 <span id="lib-badge" class="chip ok" hidden></span></button>
+    <div class="divider"></div>
+    <button class="nav-item" data-tab="settings"><svg><use href="#i-gear"/></svg>설정</button>
+    <button class="nav-item" data-tab="help"><svg><use href="#i-help"/></svg>도움말</button>
+    <div class="foot" id="side-foot"></div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <h1 id="page-h1">대시보드</h1>
+      <div class="search"><svg><use href="#i-search"/></svg><input id="search" placeholder="작업 검색 (시술, 유형, 날짜)"></div>
+      <div class="tb-space"></div>
+      <button class="tb-icon" id="tb-bell" title="대기열 상태"><svg><use href="#i-bell"/></svg><span class="dot" id="tb-dot" hidden></span></button>
+      <button class="profile" id="tb-profile"><span class="avatar">OL</span><span>온리프</span><span class="muted">▾</span></button>
+      <div class="menu" id="menu" hidden>
+        <button data-tab="settings"><svg width="18" height="18"><use href="#i-user"/></svg>프로필</button>
+        <button data-tab="help"><svg width="18" height="18"><use href="#i-help"/></svg>도움말</button>
+        <button data-tab="settings"><svg width="18" height="18"><use href="#i-gear"/></svg>설정</button>
+        <div class="mi-sep"></div>
+        <button id="menu-open-out"><svg width="18" height="18"><use href="#i-folder"/></svg>결과 폴더 경로</button>
+      </div>
+    </div>
+
+    <!-- ═══ 대시보드 ═══ -->
+    <section class="page active" id="tab-home">
+      <div class="grid g-kpi" id="home-kpis"></div>
+      <div class="grid g-main" style="margin-top:var(--gap)">
+        <div class="card">
+          <div class="card-head"><h3>생성 추이</h3><span class="muted">최근 14일 · 생성 / 통과 장수</span><div class="tb-space"></div><select id="home-range" style="width:110px;height:32px"><option value="14">2주</option><option value="30">1개월</option><option value="90">3개월</option></select></div>
+          <div id="home-chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>시술별 통과율</h3></div>
+          <div id="home-treat"></div>
+        </div>
+      </div>
+      <div class="grid g-main" style="margin-top:var(--gap)">
+        <div class="card">
+          <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
+          <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>생성</th><th>통과</th><th>통과율</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>진행 중</h3><div class="tb-space"></div><button class="btn sm" data-goto="create">대기열</button></div>
+          <div id="home-running"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 생성 ═══ -->
+    <section class="page" id="tab-create">
+      <div class="grid g-create">
+        <div class="card">
+          <div class="card-head"><h3>생성 조건</h3></div>
+          <div class="form">
+            <div class="field"><span>시술</span><div class="tags" id="q-treatments" style="margin:0"></div></div>
+            <div class="field"><span>사진 종류</span><div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카형</button><button data-v="clinical">임상형</button></div></div>
+            <div class="row"><label class="field" style="flex:1"><span>시술당 생성 장수</span><input type="number" id="count" value="10" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
+            <div class="row"><label class="field" style="flex:1"><span>시술당 비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label><label class="field" style="flex:1"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성</option><option value="1">시뮬레이션</option></select></label></div>
+            <details class="opt"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
+            <details class="opt"><summary>시드 · AI 모델</summary><div>
+              <label class="field"><span>시드 (재현용)</span><input type="number" id="seed" placeholder="비우면 무작위"></label>
+              <label class="field"><span>생성 모델</span><select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
+              <label class="field"><span>시술 후 생성 모델</span><select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
+              <label class="field"><span>검수 모델</span><select id="qa"><option>gemini</option><option>openai</option></select></label>
+            </div></details>
+            <div class="row"><button class="btn accent" id="btn-plan" style="flex:1">미리보기</button><button class="btn" id="btn-estimate" style="flex:1">비용 예상</button></div>
+            <button class="btn primary" id="btn-run">생성 시작</button>
+            <div class="msg" id="req-msg"></div>
+            <details class="opt"><summary>테스트</summary><div class="row"><button class="btn sm" id="btn-dry">프롬프트만 저장</button><button class="btn sm" id="btn-demo">샘플 결과 생성</button></div></details>
+          </div>
+        </div>
+        <div>
+          <div class="card prog" id="prog-create" hidden></div>
+          <div class="card" style="margin-top:0">
+            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
+            <div class="tbl-wrap"><table id="q-table"><thead><tr><th>순서</th><th>시술</th><th>유형</th><th>생성 장수</th><th>목표 통과</th><th>비용 상한</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
+          </div>
+          <div id="plan-out" hidden style="margin-top:var(--gap)">
+            <div class="card"><div class="card-head"><h3>미리보기</h3><span class="muted" id="plan-n"></span></div><div class="grid g-stats" id="dist"></div></div>
+            <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>개별 항목</h3><span class="muted">처음 20장</span></div><div id="prompts"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 작업 ═══ -->
+    <section class="page" id="tab-jobs">
+      <div class="card">
+        <div class="card-head" style="flex-wrap:wrap">
+          <h3>작업 목록</h3>
+          <div class="tb-space"></div>
+          <label class="field"><span>보기</span><select id="gal-filter" style="width:150px;height:34px"><option value="all">전체</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select></label>
+          <label class="field"><span>조건</span><select id="gal-axis" style="width:130px;height:34px"><option value="">전체</option></select></label>
+          <label class="field"><span>&nbsp;</span><select id="gal-axis-val" style="width:130px;height:34px"><option value="">전체</option></select></label>
+          <label class="field"><span>방식</span><select id="jobs-kind" style="width:120px;height:34px"><option value="">전체</option><option value="run">실제</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select></label>
+          <label class="field"><span>&nbsp;</span><button class="btn sm" id="btn-refresh">새로고침</button></label>
+        </div>
+        <div class="tbl-wrap" style="max-height:340px"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
+      </div>
+      <div id="detail" style="margin-top:var(--gap)">
+        <div class="card empty" id="detail-empty">작업을 선택하세요</div>
+        <div id="detail-body" hidden>
+          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden></div><div class="grid g-kpi" id="kpis"></div></div>
+          <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-count"></span></div><div class="gal" id="gal"></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 라이브러리 ═══ -->
+    <section class="page" id="tab-library">
+      <div class="card">
+        <div class="card-head" style="flex-wrap:wrap"><h3>선택된 사진</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div>
+          <label class="field"><span>시술</span><select id="lib-treatment" style="width:170px;height:34px"><option value="">전체</option></select></label>
+          <label class="field"><span>사진 종류</span><select id="lib-mode" style="width:120px;height:34px"><option value="">전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select></label>
+          <label class="field"><span>&nbsp;</span><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></label>
+        </div>
+        <div class="msg" id="lib-msg"></div><div id="lib-exports"></div>
+      </div>
+      <div style="margin-top:var(--gap)"><div id="lib-groups"></div><div class="card empty" id="lib-empty" hidden>선택된 사진이 없습니다</div></div>
+    </section>
+
+    <!-- ═══ 설정 · 도움말 ═══ -->
+    <section class="page" id="tab-settings">
+      <div class="grid g-main"><div class="card"><div class="card-head"><h3>설정</h3></div><div id="settings-body"></div></div>
+      <div class="card"><div class="card-head"><h3>API 키</h3></div><div class="muted">`.env`에 GEMINI_API_KEY / OPENAI_API_KEY / HIGGSFIELD_API_KEY 를 넣고 서버를 재시작하면 실제 생성이 열립니다. 키가 없으면 시뮬레이션·샘플만 동작합니다.</div></div></div>
+    </section>
+    <section class="page" id="tab-help">
+      <div class="card"><div class="card-head"><h3>도움말</h3></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+          <div><h4>대시보드</h4><div class="muted">전체 생성·통과·선택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
+          <div><h4>생성</h4><div class="muted">시술(복수)·사진 종류·장수·목표 통과 장수·비용 상한을 정해 생성 시작. 모든 작업은 대기열로 들어가 순서대로 실행.</div></div>
+          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 선택/제외와 사유 태그.</div></div>
+          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 선택한 사진 모음. 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
-
-<nav class="left-nav">
-  <button class="nav-item active" data-tab="create"><span class="num">1</span>생성 <span id="q-badge" class="chip warn" hidden></span></button>
-  <button class="nav-item" data-tab="jobs"><span class="num">2</span>작업</button>
-  <button class="nav-item" data-tab="library"><span class="num">3</span>라이브러리 <span id="lib-badge" class="chip ok" hidden></span></button>
-</nav>
-
-<aside class="right-panel">
-  <!-- 생성 -->
-  <div class="rp-panel-section" data-for="create">
-    <div class="rp-group">
-      <div class="rp-label">생성 조건</div>
-      <div class="rp-field"><span>시술</span><div class="tags" id="q-treatments" style="margin:0"></div></div>
-      <div class="rp-field"><span>사진 종류</span><div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카형</button><button data-v="clinical">임상형</button></div></div>
-      <label class="rp-field"><span>시술당 생성 장수</span><input type="number" id="count" value="10" min="1" max="500"></label>
-      <label class="rp-field"><span>목표 통과 장수 (도달 시 중단)</span><input type="number" id="q-target" placeholder="없음"></label>
-      <label class="rp-field"><span>시술당 비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label>
-      <label class="rp-field"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성 (API 키 필요)</option><option value="1">시뮬레이션 (비용 없음)</option></select></label>
-    </div>
-    <div class="rp-group">
-      <div class="rp-label">옵션</div>
-      <details class="rp-details"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
-      <details class="rp-details"><summary>시드 · AI 모델</summary><div>
-        <label class="rp-field"><span>시드 (재현용)</span><input type="number" id="seed" placeholder="비우면 무작위"></label>
-        <label class="rp-field"><span>생성 모델</span><select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
-        <label class="rp-field"><span>시술 후 생성 모델</span><select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
-        <label class="rp-field"><span>검수 모델</span><select id="qa"><option>gemini</option><option>openai</option></select></label>
-      </div></details>
-    </div>
-    <div class="rp-divider"></div>
-    <div class="rp-group">
-      <div class="rp-label">실행</div>
-      <button class="rp-btn rp-btn-accent" id="btn-plan">미리보기</button>
-      <button class="rp-btn" id="btn-estimate">비용 예상</button>
-      <button class="rp-btn rp-btn-primary" id="btn-run">생성 시작</button>
-      <div class="rp-msg" id="req-msg"></div>
-    </div>
-    <div class="rp-group">
-      <div class="rp-label">대기열</div>
-      <button class="rp-btn" id="q-pause">일시정지</button>
-      <button class="rp-btn" id="q-clear">완료 항목 정리</button>
-    </div>
-    <div class="rp-group">
-      <details class="rp-details"><summary>테스트</summary><div>
-        <button class="rp-btn" id="btn-dry">프롬프트만 저장</button>
-        <button class="rp-btn" id="btn-demo" title="자리표시 이미지 + 무작위 검수 결과">샘플 결과 생성</button>
-      </div></details>
-    </div>
-  </div>
-
-  <!-- 라이브러리 -->
-  <div class="rp-panel-section" data-for="library" hidden>
-    <div class="rp-group">
-      <div class="rp-label">필터</div>
-      <label class="rp-field"><span>시술</span><select id="lib-treatment"><option value="">전체</option></select></label>
-      <label class="rp-field"><span>사진 종류</span><select id="lib-mode"><option value="">전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select></label>
-      <div class="rp-info on" id="lib-count"></div>
-    </div>
-    <div class="rp-divider"></div>
-    <div class="rp-group">
-      <div class="rp-label">내보내기</div>
-      <button class="rp-btn rp-btn-primary" id="btn-export">현재 필터로 내보내기</button>
-      <div class="rp-msg" id="lib-msg"></div>
-      <div id="lib-exports"></div>
-    </div>
-  </div>
-</aside>
-
-<!-- 생성 -->
-<div class="tab-panel active" id="tab-create"><div class="content-wrap">
-  <div class="prog" id="prog-create" hidden></div>
-  <div class="card queue-card">
-    <div class="page-head" style="margin-bottom:8px"><h2 style="font-size:14px">대기열</h2><span class="muted" id="q-sum"></span></div>
-    <table id="q-table">
-      <thead><tr><th>순서</th><th>시술</th><th>유형</th><th>생성 장수</th><th>목표 통과</th><th>비용 상한</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <div class="empty" id="q-empty" hidden style="border:0;padding:28px">대기열이 비어 있습니다</div>
-  </div>
-  <div id="plan-out" hidden>
-    <div class="page-head" style="margin-top:20px"><h2>미리보기</h2><span class="muted" id="plan-n"></span></div>
-    <div class="grid2" id="dist"></div>
-    <h2 class="sec">개별 항목 <span class="muted">처음 20장</span></h2>
-    <div id="prompts"></div>
-  </div>
-</div></div>
-
-<!-- 작업 -->
-<div class="tab-panel" id="tab-jobs"><div class="content-wrap jobs-wrap">
-  <div class="card filter-bar">
-    <label class="rp-field"><span>보기</span><select id="gal-filter">
-      <option value="all">전체</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option>
-      <option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select></label>
-    <label class="rp-field"><span>조건</span><select id="gal-axis"><option value="">전체</option></select></label>
-    <label class="rp-field"><span>&nbsp;</span><select id="gal-axis-val"><option value="">전체</option></select></label>
-    <label class="rp-field"><span>방식</span><select id="jobs-kind"><option value="">전체</option><option value="run">실제</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select></label>
-    <div class="rp-info on" id="gal-count" style="align-self:flex-end;padding-bottom:9px"></div>
-    <div class="tb-space"></div>
-    <button class="b" id="btn-refresh">새로고침</button>
-  </div>
-  <div class="card job-list">
-    <table id="batches">
-      <thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead>
-      <tbody></tbody>
-    </table>
-    <div class="empty" id="batches-empty" hidden style="border:0">생성 기록이 없습니다</div>
-  </div>
-  <div id="detail">
-    <div class="empty" id="detail-empty">작업을 선택하세요</div>
-    <div id="detail-body" hidden>
-      <div class="detail-head" id="detail-head"></div>
-      <div class="prog" id="prog" hidden></div>
-      <div class="kpis" id="kpis"></div>
-      <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
-      <div class="gal" id="gal"></div>
-      <div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div>
-    </div>
-  </div>
-</div></div>
-
-<!-- 라이브러리 -->
-<div class="tab-panel" id="tab-library"><div class="content-wrap">
-  <div id="lib-groups"></div>
-  <div class="empty" id="lib-empty" hidden>선택된 사진이 없습니다. 작업 화면에서 사진을 선택하면 여기에 모입니다.</div>
-</div></div>
 
 <dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
 <div class="toast" id="toast"></div>
@@ -431,19 +389,73 @@ const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'�
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
 let CFG, BATCHES = [], CUR = null;
 
-let JOBS_SEL = null, LIB = null, EXPORTS = [];
+let QSTAT = null, LIB = null, EXPORTS = [];
+const TITLES = {home:'대시보드', create:'생성', jobs:'작업', library:'라이브러리', settings:'설정', help:'도움말'};
 
 // ---------- 화면 ----------
 function show(tab) {
-  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  $$('.rp-panel-section').forEach(p => p.hidden = p.dataset.for !== tab);
-  $('.right-panel').classList.toggle('hidden-panel', tab === 'jobs');
-  ['create','jobs','library'].forEach(t => $('#tab-'+t).classList.toggle('active', t === tab));
+  $$('.nav-item, .rail button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.page').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+  $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
+  if (tab === 'home') loadHome();
   if (tab === 'create') loadQueue();
   if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
   if (tab === 'library') loadLibrary();
+  if (tab === 'settings') renderSettings();
 }
-$$('.nav-item').forEach(b => b.onclick = () => show(b.dataset.tab));
+$$('.nav-item, .rail button, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
+$('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
+document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
+$('#tb-bell').onclick = () => show('create');
+$('#menu-open-out').onclick = () => { prompt('결과 폴더', OUT_DIR || 'outputs/'); $('#menu').hidden = true; };
+$('#search').oninput = () => { const q = $('#search').value.trim(); if (q) { SEARCH = q; show('jobs'); } else { SEARCH = ''; if ($('#tab-jobs').classList.contains('active')) loadBatches(); } };
+let SEARCH = '', OUT_DIR = '';
+
+// ---------- 대시보드 ----------
+async function loadHome() {
+  const [batches, q, lib] = await Promise.all([api('/api/batches'), api('/api/queue'), api('/api/library')]);
+  BATCHES = batches; setQueueStatus(q);
+  const real = batches.filter(b => b.kind !== 'dry_run');
+  const tot = real.reduce((a, b) => a + (b.stats?.total || 0), 0), pas = real.reduce((a, b) => a + (b.stats?.passed || 0), 0);
+  const cost = real.reduce((a, b) => a + (b.progress?.cost || (b.stats?.cost_per_pass || 0) * (b.stats?.passed || 0)), 0);
+  const today = new Date().toDateString(); const todayB = real.filter(b => new Date((b.created_at||0)*1000).toDateString() === today);
+  const todayN = todayB.reduce((a, b) => a + (b.stats?.total || 0), 0);
+  $('#home-kpis').innerHTML = [
+    ['생성 장수', tot, `오늘 ${todayN}장`], ['AI 검수 통과', pas, tot ? `통과율 <b>${pct(pas/tot)}</b>` : '—'],
+    ['선택된 사진', lib.total, `${Object.keys(lib.summary).length}개 시술`], ['누적 비용', `$${cost.toFixed(2)}`, pas ? `장당 $${(cost/pas).toFixed(3)}` : '—']
+  ].map(([l, v, t]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="t">${t}</div></div>`).join('');
+  renderHomeChart(real); renderHomeTreat(real);
+  const tb = $('#home-recent tbody');
+  tb.innerHTML = batches.slice(0, 6).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : '<span class="chip ok">완료</span>';
+    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||''}</td><td>${s.total ?? ''}</td><td>${b.kind==='dry_run' ? '—' : s.passed ?? 0}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${st}</td></tr>`; }).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
+  const r = q.running; const el = $('#home-running');
+  if (r && r.batch_id) { try { const pg = await api(`/api/batches/${r.batch_id}/progress`); el.classList.add('prog'); renderProgress(pg, el, `${CFG.treatments[r.treatment]?.name_ko || r.treatment} · ${MODE_KO[r.mode]}`); } catch { el.innerHTML = '<div class="empty">진행 중인 작업이 없습니다</div>'; } }
+  else el.innerHTML = `<div class="empty">진행 중인 작업이 없습니다${q.queued_count ? `<br><span class="muted">대기 ${q.queued_count}개${q.paused ? ' · 일시정지' : ''}</span>` : ''}</div>`;
+}
+function renderHomeChart(batches) {
+  const days = +$('#home-range').value; const now = new Date(); const keys = [], map = {};
+  for (let i = days - 1; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); const k = d.toISOString().slice(0, 10); keys.push(k); map[k] = {t:0, p:0, label:`${d.getMonth()+1}/${d.getDate()}`}; }
+  batches.forEach(b => { const k = new Date((b.created_at||0)*1000).toISOString().slice(0,10); if (map[k]) { map[k].t += b.stats?.total || 0; map[k].p += b.stats?.passed || 0; } });
+  const W = 760, H = 220, L = 36, R = 10, T = 14, B = 28; const max = Math.max(5, ...keys.map(k => map[k].t));
+  const x = i => L + i * (W - L - R) / Math.max(1, keys.length - 1), y = v => T + (H - T - B) * (1 - v / max);
+  const path = (f) => keys.map((k, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(map[k][f]).toFixed(1)}`).join(' ');
+  const area = path('t') + ` L${x(keys.length-1).toFixed(1)},${y(0)} L${x(0)},${y(0)} Z`;
+  const ticks = [0, .25, .5, .75, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
+  const step = Math.ceil(keys.length / 7);
+  const labels = keys.map((k, i) => i % step === 0 || i === keys.length-1 ? `<text class="axis" x="${x(i)}" y="${H-8}" text-anchor="middle">${map[k].label}</text>` : '').join('');
+  const pts = keys.map((k, i) => map[k].t ? `<circle class="pt" cx="${x(i)}" cy="${y(map[k].t)}" r="3.5"><title>${map[k].label} · 생성 ${map[k].t} · 통과 ${map[k].p}</title></circle>` : '').join('');
+  $('#home-chart').innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1F3A5F" stop-opacity=".18"/><stop offset="1" stop-color="#1F3A5F" stop-opacity="0"/></linearGradient></defs>${ticks}<path class="area" d="${area}"/><path class="line2" d="${path('p')}"/><path class="line" d="${path('t')}"/>${pts}${labels}</svg>
+    <div class="legend" style="margin-top:6px"><span><i style="background:var(--primary)"></i>생성</span><span><i style="background:#8FA9C8"></i>통과</span></div>`;
+}
+function renderHomeTreat(batches) {
+  const agg = {}; batches.forEach(b => { const a = agg[b.treatment] = agg[b.treatment] || {n:0, p:0}; a.n += b.stats?.total || 0; a.p += b.stats?.passed || 0; });
+  const rows = Object.entries(agg).filter(([,a]) => a.n).sort((a,b) => b[1].n - a[1].n);
+  $('#home-treat').innerHTML = rows.length ? rows.map(([t, a], i) => `<div class="list-row" data-t="${t}"><span class="n">${i+1}</span><div class="t"><b>${CFG.treatments[t]?.name_ko || t}</b><span>생성 ${a.n} · 통과 ${a.p}</span></div><span class="v" style="color:${a.p/a.n >= .6 ? 'var(--ok)' : 'var(--ui-hi)'}">${pct(a.p/a.n)}</span></div>`).join('') : '<div class="empty">아직 생성 기록이 없습니다</div>';
+  $('#home-treat').querySelectorAll('.list-row').forEach(r => r.onclick = () => { $('#search').value = CFG.treatments[r.dataset.t]?.name_ko || r.dataset.t; SEARCH = $('#search').value; show('jobs'); });
+}
+$('#home-range').onchange = loadHome;
+setInterval(() => { if ($('#tab-home').classList.contains('active') && QSTAT?.running) loadHome(); }, 4000);
 
 // ---------- 생성 조건 ----------
 function selTreatments() { return $$('#q-treatments button.on').map(b => b.dataset.v); }
@@ -481,14 +493,14 @@ $('#btn-plan').onclick = async () => {
   try {
     msg('#req-msg', '준비 중…'); const r = await api('/api/plan', q); const n = jobsFromForm().length;
     $('#plan-out').hidden = false; $('#plan-n').textContent = `${CFG.treatments[q.treatment].name_ko} · ${MODE_KO[q.mode]} · ${r.count}장${n > 1 ? ` (작업 ${n}개 중 첫 번째)` : ''}`;
-    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div class="card"><h3>${AXIS_KO[a]||a}</h3>${bars(d, r.count, '', a)}</div>`).join('');
+    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div><h4>${AXIS_KO[a]||a}</h4>${bars(d, r.count, '', a)}</div>`).join('');
     $('#prompts').innerHTML = r.items.slice(0, 20).map((s, i) => promptCard(s, i)).join('');
     msg('#req-msg', ''); $('#plan-out').scrollIntoView({behavior:'smooth'});
   } catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 function promptCard(s, i) {
   const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
-  return `<div class="card" style="margin-bottom:10px"><div class="head" style="display:flex;justify-content:space-between"><b>${i+1}</b><span class="muted">시술 후 변경: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
+  return `<div style="padding:12px 0;border-bottom:1px solid var(--ui-border)"><div class="head" style="display:flex;justify-content:space-between"><b>${i+1}</b><span class="muted">시술 후 변경: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
     <div>${badges}</div>
     <details style="margin-top:8px"><summary>시술 전 프롬프트</summary><div class="mono">${esc(s.before_prompt)}</div></details>
     <details><summary>시술 후 프롬프트</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
@@ -549,17 +561,17 @@ async function loadQueue() {
   else el.hidden = true;
 }
 function setQueueStatus(q) {
-  const n = q.queued_count + (q.running ? 1 : 0); const badge = $('#q-badge'); badge.hidden = !n; badge.textContent = n;
-  const st = $('#tb-status'); const r = q.running;
-  st.innerHTML = r ? `<span class="dot on"></span><span><b>${CFG.treatments[r.treatment]?.name_ko || r.treatment}</b> 생성 중${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}</span>`
-                   : q.paused ? `<span class="dot"></span><span>일시정지${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}</span>` : `<span class="dot"></span><span>대기 중</span>`;
+  QSTAT = q; const n = q.queued_count + (q.running ? 1 : 0); const badge = $('#q-badge'); badge.hidden = !n; badge.textContent = n;
+  const dot = $('#tb-dot'); dot.hidden = !q.running; dot.classList.toggle('on', !!q.running);
+  const r = q.running; $('#tb-bell').title = r ? `${CFG.treatments[r.treatment]?.name_ko || r.treatment} 생성 중${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}` : q.paused ? '일시정지' : '대기 중';
 }
 setInterval(() => { if ($('#tab-create').classList.contains('active')) loadQueue(); }, 2500);
 setInterval(async () => { if (!$('#tab-create').classList.contains('active')) { try { setQueueStatus(await api('/api/queue')); } catch {} } }, 5000);
 
 // ---------- 작업 목록 ----------
 async function loadBatches() {
-  BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const list = BATCHES.filter(b => !kind || b.kind === kind);
+  BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const q = SEARCH.toLowerCase();
+  const list = BATCHES.filter(b => (!kind || b.kind === kind) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
@@ -579,7 +591,7 @@ async function openBatch(id, scrollTo_ = false) {
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
-  $('#detail-head').innerHTML = `<h2>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h2><span class="chip">${KIND_KO[b.kind]||b.kind}</span><span class="muted">${fmtBid(b.batch_id)} · ${b.batch_id}</span>`;
+  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><span class="muted">${fmtBid(b.batch_id)} · ${b.batch_id}</span>`;
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">전체</option>';
@@ -624,11 +636,11 @@ function renderStats() {
   $('#kpis').innerHTML = [
     ['생성 장수', s.total], ['AI 검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['장당 시도', dry ? '—' : `${s.attempts_per_pass}회`], ['장당 비용', dry ? '—' : `$${s.cost_per_pass}`],
     ['검수 완료', `${s.reviewed} / ${s.total}`], ['선택 · 제외', `${s.picked} · ${s.rejected}`]
-  ].map(([l, v]) => `<div class="kpi"><div class="v">${v ?? '—'}</div><div class="l">${l}</div></div>`).join('');
+  ].map(([l, v]) => `<div class="kpi compact" style="background:var(--ui-surface)"><div class="l">${l}</div><div class="v">${v ?? '—'}</div></div>`).join('');
   let html = '';
-  if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h3>AI 검수 탈락 사유</h3>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
-  if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h3>제외 사유</h3>${bars(s.review_tags, s.total, 'bad')}</div>`;
-  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h3>${AXIS_KO[a]||a}별 통과율</h3>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
+  if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
+  if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h4>제외 사유</h4>${bars(s.review_tags, s.total, 'bad')}</div>`;
+  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h4>${AXIS_KO[a]||a}별 통과율</h4>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
   $('#gal-stats').innerHTML = html;
 }
 function renderGallery() {
@@ -707,7 +719,7 @@ function renderLibrary() {
   $('#lib-empty').hidden = items.length > 0;
   const groups = {}; items.forEach(i => { const k = `${i.treatment}|${i.mode}`; (groups[k] = groups[k] || []).push(i); });
   $('#lib-groups').innerHTML = Object.entries(groups).map(([k, arr]) => { const [t, m] = k.split('|');
-    return `<div class="lib-group"><h2>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h2><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
+    return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
   $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
   $('#lib-groups').querySelectorAll('[data-unpick]').forEach(b => b.onclick = async () => { const [bid, iid] = b.dataset.unpick.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
     await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('선택 해제'); loadLibrary(); });
@@ -726,15 +738,26 @@ $('#btn-export').onclick = async () => {
   catch (e) { msg('#lib-msg', e.message, 'err'); }
 };
 function renderExports() {
-  $('#lib-exports').innerHTML = EXPORTS.slice(0, 5).map(r => `<div class="rp-info" style="margin-top:6px"><a href="${r.zip}" style="color:var(--primary);font-weight:600">${r.name}.zip</a> · ${r.count}장 · ${(r.zip_bytes/1024).toFixed(0)}KB<br><span style="font-size:10px">${esc(r.dir)}</span></div>`).join('');
+  $('#lib-exports').innerHTML = EXPORTS.slice(0, 5).map(r => `<div class="muted" style="margin-top:6px;word-break:break-all"><a href="${r.zip}" style="color:var(--primary);font-weight:600">${r.name}.zip</a> · ${r.count}장 · ${(r.zip_bytes/1024).toFixed(0)}KB<br><span style="font-size:10px">${esc(r.dir)}</span></div>`).join('');
+}
+
+
+// ---------- 설정 ----------
+function renderSettings() {
+  $('#settings-body').innerHTML = `<div class="list">
+    <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>기본 AI 모델</b><span>생성 ${$('#gen').value} · 시술 후 ${$('#edit').value} · 검수 ${$('#qa').value}</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
 }
 
 // ---------- init ----------
 (async () => {
-  CFG = await api('/api/config');
+  CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
   renderTreatmentChips(); renderFixed();
-  api('/api/queue').then(setQueueStatus); api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
-  const h = location.hash.slice(1); show(['create','jobs','library'].includes(h) ? h : 'create');
+  api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
+  $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
+  const h = location.hash.slice(1); show(TITLES[h] ? h : 'home');
 })();
 </script>
 </body>

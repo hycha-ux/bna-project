@@ -43,9 +43,10 @@ python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 50 --run    
 PYTHONPATH=src python3 -m bna.api          # http://localhost:8765 자동 오픈
 PYTHONPATH=src python3 -m bna.api --demo   # 키 없이 화면 확인용 샘플 배치 생성 후 실행
 ```
-화면 3개 (만든다 / 본다 / 쓴다):
+화면: 대시보드(개요) + 3개 (만든다 / 본다 / 쓴다):
+- **대시보드**: KPI(생성·통과·선택·누적 비용), 생성 추이 차트(2주/1개월/3개월), 시술별 통과율, 최근 작업, 진행 중 작업
 - **생성**: 시술(복수)·사진 종류·장수·목표 통과 장수·비용 상한·실행 방식(실제/시뮬레이션)을 정하고 생성 시작 → 전부 대기열로. 실행 중 작업 진행 패널, 대기열 표(일시정지·순서·취소), 미리보기(분포·프롬프트), 비용 예상. `outputs/queue.json`
 - **작업**: 왼쪽 목록(생성 시간·시술·유형·통과·상태) → 클릭하면 오른쪽에 그 작업의 진행 상황·지표·AI 탈락 사유·조건별 통과율·전후 사진 카드. 카드에서 선택/제외·제외 사유 태그·메모 → `outputs/<batch>/<item>/review.json`
 - **라이브러리**: 모든 작업에서 "선택"한 사진만 시술·유형별로 모아 보고, 현재 필터로 내보내기 → `outputs/exports/<ts>/<treatment>_<mode>/` + manifest.csv + zip
 
-디자인: 화면 구조·회색 토큰은 디자인 자동화 툴(`AI-Tools/platform/common/_base-template.html`)과 동일 — 상단 고정 바 + 왼쪽 사이드 내비 + 오른쪽 컨트롤 패널 + 가운데 결과 영역. 브랜드색은 온리프 네이비(`--primary` #1F3A5F). 버튼·배지·칩은 SEED Design 레시피(`web/vendor/seed/`, `seedify()` 자동 매핑). 워딩은 간결한 용어(생성·작업·통과·장당 비용, 조건값 한국어).
+디자인: 레이아웃은 네이버 부동산 대시보드 레퍼런스(Behance 194113213) 구조 — 왼쪽 아이콘 레일 + 라벨 사이드바, 상단 바(제목·검색·알림·프로필 메뉴), 카드형 콘텐츠(KPI 행 + 차트 + 우측 목록). 회색 토큰은 디자인 자동화 툴(`AI-Tools/platform/common/_base-template.html`)과 동일. 브랜드색은 온리프 네이비(`--primary` #1F3A5F). 버튼·배지·칩은 SEED Design 레시피(`web/vendor/seed/`, `seedify()` 자동 매핑). 워딩은 간결한 용어(생성·작업·통과·장당 비용, 조건값 한국어).

@@ -44,7 +44,7 @@ def config_payload():
     axes = {a: list(v[a]) for a in PERSON_AXES + SCENE_AXES}
     return {"treatments": {k: {"name_ko": x.get("name_ko", k), "modes": list(x.get("modes", {}))} for k, x in t.items()},
             "modes": ["selfie", "clinical"], "axes": axes, "mode_rules": v.get("mode_rules", {}),
-            "pricing": load("pricing.yaml"), "checklist": list(load("qa_checklist.yaml")["items"])}
+            "pricing": load("pricing.yaml"), "checklist": list(load("qa_checklist.yaml")["items"]), "out_dir": str(OUT)}
 
 
 def _plans(req):
