@@ -35,7 +35,7 @@ a { color:var(--primary) }
 .side .toggle { margin-left:auto; width:28px; height:28px; border:0; background:none; border-radius:8px; color:var(--ui-lo); cursor:pointer } .side .toggle:hover { background:var(--ui-surface); color:var(--ui-hi) }
 .side .toggle svg { width:16px; height:16px }
 .collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
-.collapsed .side .brand-row { justify-content:center; padding-bottom:12px } .collapsed .side .toggle { margin:6px 0 0; }
+.collapsed .side .brand-row { justify-content:center; padding-bottom:12px }
 .collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
 .sub { display:flex; flex-direction:column; padding:2px 0 6px 28px } .sub button { border:0; background:none; text-align:left; padding:6px 10px; font-size:12.5px; color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:700 }
 .nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
@@ -54,7 +54,8 @@ a { color:var(--primary) }
 .topbar { height:var(--top-h); background:var(--ui-panel); border-bottom:1px solid var(--ui-border); display:flex; align-items:center; gap:16px; padding:0 28px; position:sticky; top:0; z-index:50 }
 .topbar h1 { font-size:16px; font-weight:700; letter-spacing:-.2px; white-space:nowrap }
 .search { flex:1; max-width:520px; display:flex; align-items:center; gap:8px; height:38px; padding:0 14px; background:var(--ui-surface); border-radius:999px; color:var(--ui-lo) }
-.search input { flex:1; border:0; background:none; outline:none; font-size:13px; color:var(--ui-hi); height:100% }
+.search input, .search input:focus { flex:1; border:0; background:none; outline:none; font-size:13px; color:var(--ui-hi); height:100%; border-color:transparent }
+.search:focus-within { background:#fff; box-shadow:inset 0 0 0 1px var(--ui-border) }
 .search svg { width:16px; height:16px }
 .tb-space { flex:1 }
 .tb-icon { position:relative; width:38px; height:38px; border:0; background:none; border-radius:10px; color:var(--ui-md); cursor:pointer; display:flex; align-items:center; justify-content:center }
@@ -62,6 +63,8 @@ a { color:var(--primary) }
 .tb-icon svg { width:20px; height:20px }
 .tb-icon .dot { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; background:var(--bad); border:2px solid #fff }
 .tb-icon .dot.on { background:var(--ok) }
+.status-pill { display:flex; align-items:center; gap:8px; height:34px; padding:0 12px 0 10px; border-radius:999px; border:1px solid var(--ui-border); background:#fff; font-size:12.5px; font-weight:600; color:var(--ui-md); cursor:pointer }
+.status-pill:hover { background:var(--ui-surface) } .status-pill .dot { width:8px; height:8px; border-radius:50%; background:var(--ui-lo) } .status-pill.on { color:var(--primary); border-color:var(--pri-border); background:var(--pri-alpha) } .status-pill.on .dot { background:var(--ok); box-shadow:0 0 0 3px var(--ok-weak) }
 .profile { display:flex; align-items:center; gap:8px; padding:4px 8px 4px 4px; border-radius:999px; border:0; background:none; cursor:pointer; font-size:13px; font-weight:600; color:var(--ui-hi) }
 .profile:hover { background:var(--ui-surface) }
 .profile .avatar { width:32px; height:32px; border-radius:50%; background:var(--brand-blue); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px }
@@ -185,25 +188,23 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
 
 <div class="app" id="app">
   <nav class="side">
-    <div class="brand-row"><div class="logo">OL</div><div class="brand">ONLIF<br><small style="font-size:11px;font-weight:500;color:var(--ui-lo)">전후 사진 생성</small></div><button class="toggle" id="side-toggle" title="사이드바 접기"><svg><use href="#i-menu"/></svg></button></div>
+    <div class="brand-row"><div class="logo">OL</div><div class="brand">ONLIF<br><small style="font-size:11px;font-weight:500;color:var(--ui-lo)">전후 사진 생성</small></div></div>
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">대시보드</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
     <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="sim">시뮬레이션</button><button data-kind="demo">샘플</button></div>
     <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
     <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
-    <div class="divider"></div>
-    <button class="nav-item" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl">설정</span></button>
-    <button class="nav-item" data-tab="help"><svg><use href="#i-help"/></svg><span class="lbl">도움말</span></button>
     <div class="foot" id="side-foot"></div>
   </nav>
 
   <div class="main">
     <div class="topbar">
+      <button class="tb-icon" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button>
       <h1 id="page-h1">대시보드</h1>
       <div class="search"><svg><use href="#i-search"/></svg><input id="search" placeholder="작업 검색 (시술, 유형, 날짜)"></div>
       <div class="tb-space"></div>
-      <button class="tb-icon" id="tb-bell" title="대기열 상태"><svg><use href="#i-bell"/></svg><span class="dot" id="tb-dot" hidden></span></button>
+      <button class="status-pill" id="tb-status"><span class="dot"></span><span id="tb-status-text">확인 중</span></button>
       <button class="profile" id="tb-profile"><span class="avatar">OL</span><span>온리프</span><span class="muted">▾</span></button>
       <div class="menu" id="menu" hidden>
         <button data-tab="settings"><svg width="18" height="18"><use href="#i-user"/></svg>프로필</button>
@@ -442,7 +443,7 @@ $$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').f
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
-$('#tb-bell').onclick = () => show('create');
+$('#tb-status').onclick = () => show('create');
 $('#menu-open-out').onclick = () => { prompt('결과 폴더', OUT_DIR || 'outputs/'); $('#menu').hidden = true; };
 $('#search').oninput = () => { const q = $('#search').value.trim(); if (q) { SEARCH = q; show('jobs'); } else { SEARCH = ''; if ($('#tab-jobs').classList.contains('active')) loadBatches(); } };
 let SEARCH = '', OUT_DIR = '';
@@ -632,8 +633,8 @@ async function loadQueue() {
 }
 function setQueueStatus(q) {
   QSTAT = q; const n = q.queued_count + (q.running ? 1 : 0); const badge = $('#q-badge'); badge.hidden = !n; badge.textContent = n;
-  const dot = $('#tb-dot'); dot.hidden = !q.running; dot.classList.toggle('on', !!q.running);
-  const r = q.running; $('#tb-bell').title = r ? `${CFG.treatments[r.treatment]?.name_ko || r.treatment} 생성 중${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}` : q.paused ? '일시정지' : '대기 중';
+  const r = q.running; const pill = $('#tb-status'); pill.classList.toggle('on', !!r);
+  $('#tb-status-text').textContent = r ? `${CFG.treatments[r.treatment]?.name_ko || r.treatment} 생성 중${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}` : q.paused ? `일시정지${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}` : q.queued_count ? `대기 ${q.queued_count}` : '대기 중';
 }
 setInterval(() => { if ($('#tab-create').classList.contains('active')) loadQueue(); }, 2500);
 setInterval(async () => { if (!$('#tab-create').classList.contains('active')) { try { setQueueStatus(await api('/api/queue')); } catch {} } }, 5000);
