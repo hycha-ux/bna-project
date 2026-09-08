@@ -59,8 +59,8 @@ def treatment_rules(treatment: str, mode: str) -> dict:
             r["allow"]["framing"] = list(t["framing_allow"])
         for a, ks in (t.get("scene_allow") or {}).items():
             r["allow"][a] = list(ks)
-        if t.get("context_ban"):
-            r["ban"]["context"] = list(t["context_ban"])
+        for a, ks in (t.get("axis_ban") or {}).items():
+            r["ban"][a] = list(ks)
         r["framing_ban_by_angle"] = {k: list(v) for k, v in (t.get("framing_ban_by_angle") or {}).items()}
     return r
 
@@ -222,6 +222,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
         person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, avoid=avoid_before, **fields)
     identity = (CFG / "prompts/identity_lock.md").read_text(encoding="utf-8").strip()
+    for ph in t.get("identity_exempt") or []:            # 시술 부위는 잠금에서 뺀다 (코 필러에 "same nose shape" 은 모순)
+        identity = identity.replace(ph + ", ", "").replace(", " + ph, "").replace(ph, "")
+    if t.get("identity_note"):
+        identity += " " + " ".join(str(t["identity_note"]).split())
     eff = load("effects.yaml")
     # Before 강도 ↔ After 효과 짝 (mild+눈에 띄게 = 과장, marked+은은 = 효과 없음). 나이 하향 **뒤**의 sev 로 뽑는다
     levels = (t.get("effect_by_severity") or {}).get(sev) or t.get("effect_levels", ["moderate"])

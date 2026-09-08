@@ -7,10 +7,12 @@
 #   drift_lock        : Before→After 사이 바뀌면 안 되는 축 (셀카). 팔자는 표정이 바뀌면 시술 없이도 B&A 가 된다
 #   framing_allow     : 시술 부위가 화면에 남는 프레이밍만 (셀카). one_cheek 에서 팔자는 프레임 밖 (0908 실비용 $2.28)
 #   framing_ban_by_angle : 각도별 금지 프레이밍 (측면 + 한쪽 볼 = 부위 사라짐)
-#   context_ban       : 부위를 가리는 맥락 (목걸이는 목주름을 가린다)
 #   expression_policy : lock = Before/After 표정 동일 강제, free = 달라도 됨 (피부 시술)
 #   age_weights       : 시술별 나이 가중치. 0 이면 그 나이는 안 뽑는다 (18세 리프팅 = AI 티)
 #   effect_by_severity: Before 강도 ↔ After 효과 허용 짝. mild+moderate 는 과장, marked+subtle 은 효과 없음으로 보인다
+#   identity_exempt   : 동일인 잠금 문장에서 뺄 구절. "same nose shape" 을 그대로 두면 코 시술 After 와 충돌한다 (0909 dry-run)
+#   identity_note     : 그 자리에 대신 넣는 문장 — 시술 부위는 아래 지시대로만 바뀌고 나머지는 그대로
+#   axis_ban          : 축별 금지값. 뿔테 안경은 콧대를 가린다 (extras), 목걸이는 목주름을 가린다 (context)
 #   mask_region       : qa/landmarks.py 폴리곤 키 (임상 마스크 합성). neck 은 턱선에서 아래로 내린 파생 영역
 #
 # ※ 문장은 전부 의료진 검토 전 초안 (2026-09-09). before_condition 이 있는 건 팔자·코필러·목주름필러 3종.
@@ -74,6 +76,10 @@ lifting:
     Do not change bone structure, face width, or eye shape. Do not slim the face beyond the lift.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock
+  identity_exempt: ["same face shape and jawline"]
+  identity_note: >
+    The bone structure and face shape stay exactly as in the reference; only the softness and
+    sagging along the jawline and mid-face change, as described below.
   drift_lock: [expression, angle, quality]   # 위에서 찍으면 시술 없이도 턱선이 올라간다 — 각도 동일이 생명
   scene_allow:
     expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
@@ -97,10 +103,15 @@ nose_lifting:
     Do not narrow the nostrils or the alar width. Do not change eyes, lips, or face shape.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
+  identity_exempt: ["same nose shape and width"]
+  identity_note: >
+    The nose is the treated area and changes only as described below; its width, the nostrils
+    and the alar base stay exactly as in the reference.
+  axis_ban: {extras: [glasses, glasses_thick]}   # 안경이 콧대를 가린다
   drift_lock: [angle]                        # 정면만으로는 코 높이 변화가 안 보인다
   scene_allow:
     angle: [selfie_3q, selfie_side]          # 셀카 하이/로우 앵글은 코 길이를 왜곡
-  framing_allow: [full_face, forehead_cut, lower_face]
+  framing_allow: [full_face, forehead_cut]   # 콧대가 화면에 있어야 한다
   age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
 
 philtrum:
@@ -117,6 +128,10 @@ philtrum:
     Do not change lip thickness, lip width, or the nose.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock                    # 웃으면 인중이 짧아 보인다
+  identity_exempt: ["same lips and mouth width"]
+  identity_note: >
+    The mouth width and lip shape stay exactly as in the reference; only the upper lip line and
+    the philtrum length change, as described below.
   drift_lock: [expression, angle]
   scene_allow:
     expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
@@ -218,11 +233,16 @@ filler_nose:
     face shape. Do not brighten or smooth the skin.
   effect_by_severity: {mild: [subtle], marked: [moderate]}
   expression_policy: free
+  identity_exempt: ["same nose shape and width"]
+  identity_note: >
+    The nose is the treated area and changes only as described below; its width, the nostrils
+    and the alar base stay exactly as in the reference.
+  axis_ban: {extras: [glasses, glasses_thick]}   # 안경이 콧대를 가린다
   drift_lock: [angle]                        # 코 높이는 각도가 조금만 달라도 다르게 보인다
   scene_allow:
     angle: [selfie_3q, selfie_side]          # 정면은 코 높이 변화가 안 보이고, 하이/로우 앵글은 코 길이를 왜곡
     lighting: [window, fluorescent, ceiling_harsh, mixed]
-  framing_allow: [full_face, forehead_cut, lower_face]   # 코 전체가 화면에 있어야 한다
+  framing_allow: [full_face, forehead_cut]   # 콧대(미간~코끝)가 화면에 있어야 한다. lower_face 는 콧대가 잘린다
   age_weights: {late_teens: 0, early_20s: 3, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
 
 filler_neck:
@@ -254,7 +274,7 @@ filler_neck:
   effect_by_severity: {mild: [subtle], marked: [moderate]}
   expression_policy: free
   drift_lock: [angle]                        # 턱을 들고 내리는 것만으로 목주름이 생기고 사라진다
-  context_ban: [necklace]                    # 목걸이가 주름을 가린다
+  axis_ban: {context: [necklace]}            # 목걸이가 주름을 가린다
   scene_allow:
     angle: [chin_up, front, selfie_3q]       # selfie_high 는 목이 안 보인다
     lighting: [window, fluorescent, ceiling_harsh, mixed]

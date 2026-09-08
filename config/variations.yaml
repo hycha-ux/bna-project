@@ -300,6 +300,7 @@ after_immediate:
   selfie:
     background: [clinic_waiting, clinic_mirror, clinic_bed, car_after]
     context: [outing_top, clinic_headband, hair_flat_after, cotton_pad]
+    extras: [none, glasses, glasses_thick, mask_chin, tired]   # 같은 날 생길 수 있는 것만 (0909 dry-run: 직후 컷에 수염이 생겼다)
 
 # 축 가중치 (균형 샘플링 시 옵션별 등장 비율). 미지정 옵션은 1.
 # 실제 고객층 반영: 한국 여성 비중 확대.
