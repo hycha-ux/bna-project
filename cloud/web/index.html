@@ -156,13 +156,24 @@ tbody tr:last-child td { border-bottom:none }
       못 보면 검수 자체가 안 된다. */
 .rev { display:grid; grid-template-columns:minmax(0,1fr) 340px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
 #batches-wrap { max-height:340px }
+/* 작업을 고른 뒤엔 목록을 접는다(2026-09-08 성연서님 "스크롤을 해야 사진들이 등장"). */
+body.list-folded #batches-wrap, body.list-folded #batches-empty { display:none }
+body.list-folded #tab-jobs > .card:first-child { padding-bottom:10px }
+.stats-fold > summary { cursor:pointer; list-style:none; font-size:var(--fs-sm); color:var(--ui-md);
+  padding:8px 12px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff; width:fit-content }
+.stats-fold > summary::-webkit-details-marker { display:none }
+.stats-fold > summary::after { content:' ▾' }
+.stats-fold[open] > summary::after { content:' ▴' }
+.stats-fold[open] > summary { margin-bottom:var(--gap) }
 /* ⚠ 이 높이는 CSS 로 둔다 — 인라인 style 로 두면 아래 검수 모드 규칙이 못 이겨서
    목록이 안 접히고 검수 화면이 그만큼 아래로 밀린다(2026-09-08 실측 503px). */
 body.reviewing #kpis, body.reviewing #gal-stats, body.reviewing #prog { display:none }
 body.reviewing #batches-wrap, body.reviewing #batches-empty { display:none }
 body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360px) }
 body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
-body.reviewing .rev-side { padding:12px 14px; gap:10px; max-height:calc(40vh + 84px); overflow:auto }
+/* ⚠ overflow:auto 로 되돌리지 마라 — 그게 '불필요한 스크롤'의 정체였다(09-08).
+   칸을 잘라 스크롤을 만드는 대신 **내용을 줄여** 통째로 보이게 한다. */
+body.reviewing .rev-side { padding:10px 14px; gap:6px }
 body.reviewing .th { flex-basis:40px }
 body.reviewing .thumbs { padding:6px 12px }
 /* 남은 세로는 카드 여백에서 짜낸다 — 검수 중엔 제목·목록보다 사진이 먼저다 */
@@ -170,17 +181,24 @@ body.reviewing #tab-jobs > .card:first-child > .card-head { display:none }
 body.reviewing #tab-jobs > .card:first-child { padding-top:12px; padding-bottom:8px }
 body.reviewing #detail-body > .card:first-child { padding-top:12px; padding-bottom:12px }
 body.reviewing #detail-body > .card:first-child .card-head { margin-bottom:0 }
-body.reviewing #detail { margin-top:10px }
-body.reviewing #detail-body > .card:last-child { margin-top:10px }
+body.reviewing #detail { margin-top:8px }
+body.reviewing #tab-jobs { padding-bottom:52px }   /* 기본 64px 中 12px 회수 — 서브픽셀 반올림으로 1px 스크롤바가 뜨는 걸 막는다 */
+body.reviewing #detail-body > .card:last-child { margin-top:6px }
 body.reviewing #detail-body > .card:last-child > .card-head { margin-bottom:8px }
 .rev-main { min-width:0; display:flex; flex-direction:column } .rev-main .pair { border-radius:var(--r-md) 0 0 0 } .rev-main .pair figure { aspect-ratio:4/5 }
 .thumbs { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--ui-border) } .th-row { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none } .th-row::-webkit-scrollbar { display:none }
 .th { flex:0 0 56px; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--ui-surface); cursor:pointer } .th img { width:100%; height:100%; object-fit:cover; display:block }
 .th.pick { border-color:var(--ok) } .th.reject { border-color:var(--bad) } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
 .rev-side { border-left:1px solid var(--ui-border); padding:20px; display:flex; flex-direction:column; gap:20px } .rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-md); margin-bottom:6px }
-.scores { display:flex; flex-direction:column; gap:6px } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
+.scores { display:flex; flex-direction:column; gap:6px }
+/* 검수 모드 오른쪽 칸은 사진 높이만큼만 쓴다 — 넘치면 사유 칸이 숨어 스크롤이 생긴다
+   (2026-09-08 실측 내용 609px / 칸 444px). 점수를 2열로 접어 세로를 벌었다. */
+body.reviewing .rev-side .scores { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px }
+body.reviewing .rev-side .score > span:first-child { width:74px }
+body.reviewing .rev-side .score b { width:16px }
+.cond-line { line-height:1.5 } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
 .rev-act { margin-top:auto } .rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
-.rev-side .reason { border-top:0; padding-top:0 }
+.rev-side .reason { border-top:0; padding-top:0 } body.reviewing .rev-side .reason { margin-top:2px } body.reviewing .rev-side .reason > .muted { margin-bottom:2px }
 /* 안내 문구를 버튼과 같은 높이로 늘려 그 안에서 가운데 맞춘다 — align-items:center 만으로는
    버튼 안쪽 여백 때문에 2px 어긋난다(2026-09-08 실측 버튼 중심 1120 vs 문구 중심 1118). */
 /* 안내 문구를 버튼과 **같은 높이 박스**로 만들어 그 안에서 가운데 맞춘다.
@@ -369,7 +387,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="list-toggle">접기</button><button class="btn sm" id="btn-refresh">새로고침</button></div>
         <div class="toolbar">
           <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
           <span class="sep"></span>
@@ -535,6 +553,8 @@ function pickLine(rv) {
 let CFG, BATCHES = [], CUR = null;
 
 let QSTAT = null, LIB = null, EXPORTS = [];
+let STATS_OPEN = false;
+try { STATS_OPEN = localStorage.getItem('statsOpen') === '1'; } catch {}
 const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', lessons:'학습', settings:'설정', help:'도움말'};
 
 // ---------- 화면 ----------
@@ -770,11 +790,21 @@ async function loadBatches() {
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches; $('#jobs-kind').onchange = loadBatches;
+$('#list-toggle').onclick = () => setListOpen(!LIST_OPEN);
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
+// 작업을 고르면 목록을 접는다 — 고르고 나면 목록은 자리만 차지하고,
+// 그만큼 사진이 화면 밖으로 밀린다. 헤더를 누르면 다시 펼친다.
+let LIST_OPEN = true;
+function setListOpen(open) {
+  LIST_OPEN = open;
+  document.body.classList.toggle('list-folded', !open);
+  const t = $('#list-toggle'); if (t) t.textContent = open ? '접기' : '작업 바꾸기';
+}
 async function openBatch(id, scrollTo_ = false) {
   CUR = await api('/api/batches/' + id);
+  setListOpen(false);
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
@@ -828,7 +858,13 @@ function renderStats() {
   if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
   if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h4>제외 사유</h4>${bars(s.review_tags, s.total, 'bad')}</div>`;
   if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h4>${AXIS_KO[a]||a}별 통과율</h4>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
-  $('#gal-stats').innerHTML = html;
+  // 통계는 가끔 보는 값이다 — 항상 펼쳐 두면 매번 사진이 화면 밖으로 밀린다
+  // (2026-09-08 실측: 사진까지 1108px 스크롤). 접어 두고 필요할 때 펼친다.
+  $('#gal-stats').innerHTML = html
+    ? `<details class="stats-fold"${STATS_OPEN ? ' open' : ''}><summary>지표 자세히 보기</summary><div class="grid g-stats">${html}</div></details>`
+    : '';
+  const d = $('#gal-stats details');
+  if (d) d.ontoggle = () => { STATS_OPEN = d.open; try { localStorage.setItem('statsOpen', d.open ? '1' : '0'); } catch {} };
 }
 function renderGallery() {
   const f = $('#gal-filter').value, ax = $('#gal-axis').value, av = $('#gal-axis-val').value;
@@ -874,7 +910,7 @@ function renderReview() {
         ${fails ? `<div class="muted">${fails}</div>` : ''}
       </div>
       <div><div class="rev-h">AI 점수</div><div class="scores">${scores}</div></div>
-      <div><div class="rev-h">생성 조건</div><div class="muted" style="line-height:1.7"><div>${cond(['country','age','gender'])}</div><div>${cond(['angle','framing','background'])}</div><div>${cond(['before_severity','effect_level','timeline'])}</div></div></div>
+      <div><div class="rev-h">생성 조건</div><div class="muted cond-line">${cond(['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'])}</div></div>
       <div class="rev-act">
         <div class="act">
           <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn} <kbd>1</kbd></button>
@@ -882,7 +918,6 @@ function renderReview() {
         </div>
         ${pickLine(rv)}
         ${reasonBlock(it, rv.pick === 'reject')}
-        <div class="muted" style="margin-top:8px">← → 로 이전·다음 사진</div>
       </div>
     </div></div>`;
   bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; renderReview(); });
