@@ -39,7 +39,7 @@ python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 50 --run    
 ```
 
 ## 대시보드 (로컬)
-디자인: [SEED Design](https://seed-design.io) 토큰·레시피(`@seed-design/css` 2.7.0)를 `web/vendor/seed/`에 넣어 React 없이 적용. 브랜드 토큰은 온리프 색(`config/brand/onlif.json`의 accent_green)으로 덮어씀. 버튼·배지·칩은 `seedify()`가 시맨틱 클래스에 레시피 클래스를 자동 부여. 화면 워딩은 비전공자 기준(배치→작업, 큐→대기열, 통과→쓸 수 있는 사진, 조건값 한국어).
+디자인: 화면 구조·회색 토큰은 디자인 자동화 툴(`AI-Tools/platform/common/_base-template.html`)과 동일 — 상단 고정 바 + 오른쪽 고정 컨트롤 패널(300px) + 왼쪽 결과 영역. 브랜드색은 온리프 네이비(`--primary` #1F3A5F, 가이드 메인 블루 #CCD8E8 계열). 버튼·배지·칩은 SEED Design 레시피(`web/vendor/seed/`, `seedify()` 자동 매핑). 화면 워딩은 비전공자 기준(배치→작업, 큐→대기열, 통과→쓸 수 있는 사진, 조건값 한국어).
 ```bash
 PYTHONPATH=src python3 -m bna.api          # http://localhost:8765 자동 오픈
 PYTHONPATH=src python3 -m bna.api --demo   # 키 없이 화면 확인용 데모 배치(자리표시 이미지) 생성 후 실행

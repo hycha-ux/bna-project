@@ -4,235 +4,357 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>B&A 대시보드</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<title>온리프 전후 사진 만들기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/vendor/seed/base.min.css">
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
 <style>
-  /* ── SEED Design 토큰 매핑 (역할 기반 색상만 사용) ── */
-  :root {
-    --bg: var(--seed-color-bg-layer-basement); --card: var(--seed-color-bg-layer-default); --fill: var(--seed-color-bg-layer-fill);
-    --ink: var(--seed-color-fg-neutral); --mute: var(--seed-color-fg-neutral-muted); --subtle: var(--seed-color-fg-neutral-subtle);
-    --line: var(--seed-color-stroke-neutral-muted); --line-weak: var(--seed-color-stroke-neutral-weak);
-    --acc: var(--seed-color-bg-brand-solid); --acc-fg: var(--seed-color-fg-brand); --acc-weak: var(--seed-color-bg-brand-weak);
-    --ok: var(--seed-color-fg-positive); --ok-bg: var(--seed-color-bg-positive-solid); --ok-weak: var(--seed-color-bg-positive-weak);
-    --bad: var(--seed-color-fg-critical); --bad-bg: var(--seed-color-bg-critical-solid); --bad-weak: var(--seed-color-bg-critical-weak);
-    --warn: var(--seed-color-fg-warning); --warn-bg: var(--seed-color-bg-warning-solid); --warn-weak: var(--seed-color-bg-warning-weak);
-    --info: var(--seed-color-fg-informative); --info-bg: var(--seed-color-bg-informative-solid); --info-weak: var(--seed-color-bg-informative-weak);
-    --chip: var(--seed-color-bg-neutral-weak); --r: var(--seed-radius-r3); --r-s: var(--seed-radius-r2);
-    --x1: var(--seed-dimension-x1); --x2: var(--seed-dimension-x2); --x3: var(--seed-dimension-x3); --x4: var(--seed-dimension-x4); --x5: var(--seed-dimension-x5); --x6: var(--seed-dimension-x6);
-    --t1: var(--seed-font-size-t1); --t2: var(--seed-font-size-t2); --t3: var(--seed-font-size-t3); --t4: var(--seed-font-size-t4); --t5: var(--seed-font-size-t5); --t6: var(--seed-font-size-t6); --t7: var(--seed-font-size-t7); --t8: var(--seed-font-size-t8);
-    --lh3: var(--seed-line-height-t3); --lh4: var(--seed-line-height-t4);
-    --fw-m: var(--seed-font-weight-medium); --fw-b: var(--seed-font-weight-bold);
-  }
-  /* ── 온리프 브랜드 색으로 SEED 브랜드 토큰 덮어쓰기 (config/brand/onlif.json) ── */
-  :root[data-seed] {
-    --seed-color-bg-brand-solid:#495E43; --seed-color-bg-brand-solid-pressed:#3B4C36; --seed-color-fg-brand:#495E43; --seed-color-fg-brand-contrast:#FFFFFF;
-    --seed-color-bg-brand-weak:#E7EDE5; --seed-color-bg-brand-weak-pressed:#D6E0D3; --seed-color-stroke-brand-solid:#495E43; --seed-color-stroke-brand-weak:#B9C9B4;
-    --seed-color-bg-layer-basement:#F8F8F8; --seed-color-fg-neutral:#383838;
-    --seed-color-bg-informative-weak:#E4ECF5; --seed-color-fg-informative:#3F5C80; --seed-color-bg-informative-solid:#8FA9C8; --seed-color-stroke-focus-ring:#495E43;
-  }
-  * { box-sizing:border-box }
-  [hidden] { display:none !important }
-  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif; font-size:var(--t4); line-height:var(--lh4); -webkit-font-smoothing:antialiased }
-  header { display:flex; align-items:center; gap:var(--x5); padding:0 var(--x6); background:var(--card); border-bottom:1px solid var(--line-weak); position:sticky; top:0; z-index:5; min-height:56px }
-  header h1 { font-size:var(--t6); font-weight:var(--fw-b); margin:0 }
-  header .sub { color:var(--subtle); font-size:var(--t2) }
-  nav { display:flex; gap:var(--x1); margin-left:auto; align-self:stretch }
-  nav button { border:0; background:transparent; padding:0 var(--x3); font-size:var(--t4); font-weight:var(--fw-b); cursor:pointer; color:var(--subtle); position:relative; font-family:inherit }
-  nav button.on { color:var(--ink) }
-  nav button.on::after { content:""; position:absolute; left:var(--x3); right:var(--x3); bottom:0; height:2px; background:var(--ink); border-radius:1px }
-  nav button .chip { margin-left:4px; vertical-align:1px }
-  main { padding:var(--x5) var(--x6); max-width:1500px; margin:0 auto }
-  .row { display:flex; gap:var(--x4); flex-wrap:wrap; align-items:flex-end }
-  .card { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); padding:var(--x5) }
-  label { display:flex; flex-direction:column; gap:var(--x1); font-size:var(--t2); color:var(--mute); font-weight:var(--fw-m) }
-  select, input[type=number], input[type=text], textarea { font:inherit; font-size:var(--t4); color:var(--ink); padding:0 var(--x3); min-height:40px; border:0; box-shadow:inset 0 0 0 1px var(--line); border-radius:var(--r-s); background:var(--card); min-width:120px; outline:none }
-  select:focus, input:focus, textarea:focus { box-shadow:inset 0 0 0 2px var(--seed-color-stroke-focus-ring, var(--ink)) }
-  input::placeholder { color:var(--seed-color-fg-placeholder) }
-  select { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center }
-  /* 버튼: seedify() 가 .b 에 action-button 레시피 클래스를 붙인다. 여기선 폰트만 */
-  button.b { font-family:inherit; cursor:pointer }
-  button.b:disabled { opacity:.5; cursor:default }
-  .act button.b.on-pick, .act button.b.on-reject { color:#fff }
-  h2 { font-size:var(--t6); font-weight:var(--fw-b); margin:var(--x5) 0 var(--x2) }
-  h3 { font-size:var(--t3); margin:0 0 var(--x2); color:var(--mute); font-weight:var(--fw-b) }
-  .grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:var(--x3) }
-  .bar { display:grid; grid-template-columns:118px 1fr 72px; gap:var(--x2); align-items:center; font-size:var(--t2); margin:3px 0 }
-  .bar .t { height:8px; background:var(--fill); border-radius:var(--seed-radius-full); overflow:hidden }
-  .bar .t i { display:block; height:100%; background:var(--info-bg); border-radius:inherit }
-  .bar .t i.ok { background:var(--ok-bg) } .bar .t i.bad { background:var(--bad-bg) }
-  .bar .n { text-align:right; color:var(--subtle); font-variant-numeric:tabular-nums; white-space:nowrap }
-  table { border-collapse:collapse; width:100%; font-size:var(--t3); line-height:var(--lh3) }
-  th, td { text-align:left; padding:var(--x2) var(--x3); border-bottom:1px solid var(--line-weak); vertical-align:middle }
-  th { color:var(--subtle); font-weight:var(--fw-b); font-size:var(--t2) }
-  tr.click { cursor:pointer } tr.click:hover { background:var(--seed-color-bg-layer-default-pressed) }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:var(--x3); margin-bottom:var(--x3) }
-  .kpi { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); padding:var(--x3) var(--x4) }
-  .kpi .v { font-size:var(--t8); font-weight:var(--fw-b); letter-spacing:-.01em; font-variant-numeric:tabular-nums } .kpi .l { font-size:var(--t2); color:var(--subtle); margin-top:2px }
-  /* 배지: seedify() 가 .chip 에 badge 레시피를 붙인다. 톤은 여기서 */
-  .chip { margin:2px 3px 0 0; font-weight:var(--fw-m) }
-  .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:var(--x4) }
-  .item { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); overflow:hidden }
-  .item.pick { border-color:var(--seed-color-stroke-positive-solid); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.65 }
-  .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--line-weak) }
-  .pair figure { margin:0; position:relative; aspect-ratio:4/5; background:var(--fill); display:flex; align-items:center; justify-content:center; color:var(--subtle); font-size:var(--t2) }
-  .pair img { width:100%; height:100%; object-fit:cover; display:block }
-  .pair figcaption { position:absolute; left:8px; top:8px; background:var(--seed-color-bg-overlay-muted, rgba(0,0,0,.55)); color:#fff; font-size:var(--t1); font-weight:var(--fw-b); padding:2px 8px; border-radius:var(--seed-radius-r1) }
-  .item .body { padding:var(--x3) var(--x4) var(--x4) }
-  .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--x1) }
-  .item .id { font-weight:var(--fw-b) }
-  .tags { display:flex; flex-wrap:wrap; gap:var(--x1); margin:var(--x2) 0 }
-  /* 태그 토글: seedify() 가 control-chip 레시피 + data-checked 를 붙인다 */
-  .tags button { font-family:inherit; font-size:var(--t2) }
-  .act { display:flex; gap:var(--x1); align-items:center }
-  .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--t2); white-space:pre-wrap; word-break:break-word; background:var(--fill); border-radius:var(--r-s); padding:var(--x3); color:var(--mute) }
-  .muted { color:var(--subtle); font-size:var(--t2) }
-  .empty { padding:var(--x10, 40px); text-align:center; color:var(--subtle) }
-  dialog { border:0; border-radius:var(--seed-radius-r4, 16px); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--card); color:var(--ink) }
-  dialog::backdrop { background:var(--seed-color-bg-overlay, rgba(0,0,0,.4)) }
-  dialog .in { padding:var(--x5) var(--x6); overflow:auto; max-height:88vh }
-  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(8px); background:var(--seed-color-bg-neutral-inverted); color:var(--seed-color-fg-neutral-inverted); padding:var(--x3) var(--x4); border-radius:var(--r-s); font-size:var(--t3); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; box-shadow:0 4px 16px rgba(0,0,0,.18) }
-  .toast.show { opacity:1; transform:translateX(-50%) }
-  .fixgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:var(--x2); margin-top:var(--x2) }
-  details summary { cursor:pointer; color:var(--subtle); font-size:var(--t2); font-weight:var(--fw-m) }
-  .prog { background:var(--card); border:1px solid var(--line-weak); border-radius:var(--r); padding:var(--x4) var(--x5); margin-bottom:var(--x3) }
-  .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--x2) }
-  .prog .big { font-size:var(--t7); font-weight:var(--fw-b); font-variant-numeric:tabular-nums }
-  .stack { display:flex; height:12px; border-radius:var(--seed-radius-full); overflow:hidden; background:var(--fill); margin:var(--x3) 0 var(--x2) }
-  .stack i { display:block; height:100%; transition:width .4s }
-  .st-skipped{background:var(--seed-color-bg-neutral-weak-pressed, #d9d7d1)}
-  .st-passed{background:var(--ok-bg)} .st-failed{background:var(--bad-bg)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--info-bg)} .st-retry{background:var(--warn-bg)} .st-queued{background:transparent}
-  .legend { display:flex; gap:var(--x3); flex-wrap:wrap; font-size:var(--t2); color:var(--subtle) }
-  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
-  .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:var(--x3) }
-  .cells b { width:18px; height:18px; border-radius:4px; background:var(--fill); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:var(--fw-b) }
-  .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite }
-  @keyframes pulse { 50% { opacity:.45 } }
-  .mini { display:inline-block; width:90px; height:8px; background:var(--fill); border-radius:var(--seed-radius-full); overflow:hidden; vertical-align:middle; margin-right:6px }
-  .mini i { display:block; height:100%; background:var(--info-bg) }
+/* ════════════════════════════════════════════════
+   DESIGN TOKENS — 디자인 자동화 툴(_base-template)과 같은 구조. 브랜드만 온리프 네이비
+   ════════════════════════════════════════════════ */
+:root {
+  /* 브랜드: 온리프 네이비 (가이드 메인 블루 #CCD8E8 과 같은 색상 계열의 진한 톤. 바꾸려면 이 4줄만) */
+  --primary:    #1F3A5F;
+  --pri-hov:    #172C49;
+  --pri-alpha:  rgba(31,58,95,.07);
+  --pri-border: rgba(31,58,95,.18);
+  --brand-blue: #CCD8E8;   /* 온리프 메인 블루: 강조 배경 */
+
+  /* 그레이 스케일 */
+  --ui-bg:      #F2F4F6;
+  --ui-panel:   #ffffff;
+  --ui-border:  #E5E8EB;
+  --ui-hi:      #191F28;
+  --ui-md:      #6B7684;
+  --ui-lo:      #8B95A1;
+  --ui-surface: #F7F8FA;
+
+  /* 상태색 */
+  --ok:   #1F8F55; --ok-weak:   #E3F5EA;
+  --bad:  #D64545; --bad-weak:  #FBE5E5;
+  --warn: #B87A00; --warn-weak: #FFF3D6;
+
+  /* 레이아웃 */
+  --topbar-h: 56px;
+  --panel-w:  300px;
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+
+  /* SEED 레시피(버튼·배지·칩)가 쓰는 브랜드 토큰을 네이비로 */
+  --seed-color-bg-brand-solid: var(--primary); --seed-color-bg-brand-solid-pressed: var(--pri-hov); --seed-color-fg-brand: var(--primary); --seed-color-fg-brand-contrast: #fff;
+  --seed-color-bg-brand-weak: var(--pri-alpha); --seed-color-stroke-brand-solid: var(--primary); --seed-color-stroke-focus-ring: var(--primary);
+  --seed-color-fg-neutral: var(--ui-hi); --seed-color-fg-neutral-muted: var(--ui-md); --seed-color-fg-neutral-subtle: var(--ui-lo);
+  --seed-color-stroke-neutral-muted: var(--ui-border);
+  --seed-color-bg-informative-weak: var(--brand-blue); --seed-color-fg-informative: var(--primary);
+}
+
+/* ════ RESET & BASE ════ */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+[hidden] { display:none !important }
+html, body { height:100% }
+body { font-family:'Pretendard',-apple-system,sans-serif; font-size:13px; line-height:1.5; background:var(--ui-bg); color:var(--ui-hi); -webkit-font-smoothing:antialiased; padding-top:var(--topbar-h) }
+button, input, select, textarea { font-family:inherit }
+
+/* ════ TOPBAR ════ */
+.topbar { height:var(--topbar-h); background:var(--ui-panel); border-bottom:1px solid var(--ui-border); display:flex; align-items:center; padding:0 24px; gap:12px; position:fixed; top:0; left:0; right:0; z-index:200 }
+.tb-brand { font-size:15px; font-weight:700; color:var(--ui-hi); letter-spacing:-.3px }
+.tb-sub { font-size:12px; color:var(--ui-lo) }
+.tb-space { flex:1 }
+.tb-status { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ui-md) }
+.tb-status .dot { width:8px; height:8px; border-radius:50%; background:var(--ui-lo) }
+.tb-status .dot.on { background:var(--ok); box-shadow:0 0 0 3px var(--ok-weak) }
+
+/* ════ RIGHT PANEL ════ */
+.right-panel { position:fixed; top:var(--topbar-h); right:0; width:var(--panel-w); height:calc(100vh - var(--topbar-h)); background:var(--ui-panel); border-left:1px solid var(--ui-border); overflow-y:auto; z-index:100; padding:20px 16px 32px; display:flex; flex-direction:column; gap:4px }
+.rp-group { display:flex; flex-direction:column; gap:8px; margin-bottom:8px }
+.rp-label { font-size:12px; font-weight:600; color:var(--ui-lo); letter-spacing:.05em; text-transform:uppercase; padding:0 2px; margin-bottom:2px }
+.rp-divider { height:1px; background:var(--ui-border); margin:12px 0 }
+.rp-info { font-size:12px; color:var(--ui-lo); padding:0 2px; line-height:1.5 }
+.rp-info.on { color:var(--primary); font-weight:600 }
+.rp-tab-list { display:flex; flex-direction:column; gap:2px }
+.rp-tab { width:100%; padding:9px 12px; text-align:left; border:none; border-radius:var(--radius-sm); background:none; font-size:13px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; display:flex; align-items:center; gap:8px }
+.rp-tab:hover { background:var(--ui-surface); color:var(--ui-hi) }
+.rp-tab.active { background:var(--pri-alpha); color:var(--primary); font-weight:700 }
+.rp-tab .num { width:20px; height:20px; border-radius:50%; background:var(--ui-surface); color:var(--ui-lo); font-size:11px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0 }
+.rp-tab.active .num { background:var(--primary); color:#fff }
+.rp-option-row { display:flex; gap:6px }
+.rp-option-btn { flex:1; padding:8px 4px; border-radius:var(--radius-sm); border:1.5px solid var(--ui-border); background:var(--ui-surface); font-size:12px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; text-align:center }
+.rp-option-btn:hover { border-color:var(--primary); color:var(--primary) }
+.rp-option-btn.active { border-color:var(--primary); background:var(--pri-alpha); color:var(--primary); font-weight:700 }
+.rp-option-btn:disabled { opacity:.35; cursor:not-allowed }
+.rp-btn { width:100%; padding:9px 12px; border-radius:var(--radius-sm); border:1px dashed var(--ui-border); background:none; font-size:13px; font-weight:500; color:var(--ui-md); cursor:pointer; transition:all .12s; text-align:left }
+.rp-btn:hover { border-color:var(--primary); color:var(--primary); background:var(--ui-surface) }
+.rp-btn-primary { border-style:solid; border-color:var(--primary); color:#fff; background:var(--primary); font-weight:700 }
+.rp-btn-primary:hover { background:var(--pri-hov); color:#fff; border-color:var(--pri-hov) }
+.rp-btn-accent { border-style:solid; border-color:var(--pri-border); color:var(--primary); background:var(--pri-alpha); font-weight:600 }
+.rp-btn-accent:hover { background:rgba(31,58,95,.13) }
+.rp-save-info { margin-top:auto; padding-top:16px; border-top:1px solid var(--ui-border) }
+.rp-save-clinic { font-size:11px; font-weight:600; color:var(--ui-md); margin-bottom:3px }
+.rp-save-time { font-size:10px; color:var(--ui-lo) }
+.rp-field { display:flex; flex-direction:column; gap:4px }
+.rp-field > span { font-size:12px; font-weight:600; color:var(--ui-md); padding:0 2px }
+.rp-field .hint { font-size:11px; color:var(--ui-lo); font-weight:400; padding:0 2px }
+.rp-panel-section[hidden] { display:none }
+.rp-msg { font-size:12px; color:var(--ui-md); padding:6px 2px 0; line-height:1.5; min-height:0 }
+.rp-msg.err { color:var(--bad) }
+.rp-msg.on { color:var(--primary); font-weight:600 }
+details.rp-details > summary { list-style:none; cursor:pointer; font-size:12px; font-weight:600; color:var(--ui-md); padding:8px 10px; border:1px solid var(--ui-border); border-radius:var(--radius-sm); background:var(--ui-surface) }
+details.rp-details > summary::before { content:"▸ "; color:var(--ui-lo) }
+details.rp-details[open] > summary::before { content:"▾ " }
+details.rp-details > div { padding:8px 2px 0; display:flex; flex-direction:column; gap:8px }
+
+/* 인풋 */
+select, input[type=number], input[type=text] { width:100%; height:36px; padding:0 10px; border:1px solid var(--ui-border); border-radius:var(--radius-sm); background:var(--ui-surface); color:var(--ui-hi); font-size:13px; outline:none; transition:border-color .12s, background .12s }
+select:focus, input:focus { border-color:var(--primary); background:#fff }
+input::placeholder { color:var(--ui-lo) }
+select { appearance:none; -webkit-appearance:none; padding-right:28px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 9px center }
+.fixgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.fixgrid label { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--ui-lo) }
+.fixgrid select { height:30px; font-size:12px; padding:0 22px 0 8px }
+
+/* ════ CONTENT AREA ════ */
+.tab-panel { display:none; margin-right:var(--panel-w) }
+.tab-panel.active { display:block }
+.content-wrap { padding:24px 24px 56px; max-width:1400px }
+.page-head { display:flex; align-items:baseline; gap:10px; margin-bottom:14px }
+.page-head h2 { font-size:16px; font-weight:700; letter-spacing:-.2px }
+.page-head .muted { font-size:12px; color:var(--ui-lo) }
+.card { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); padding:16px 18px }
+.card h3 { font-size:12px; font-weight:600; color:var(--ui-lo); letter-spacing:.04em; text-transform:uppercase; margin-bottom:8px }
+.grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px }
+.empty { padding:56px 24px; text-align:center; color:var(--ui-lo); font-size:13px; background:var(--ui-panel); border:1px dashed var(--ui-border); border-radius:var(--radius-md) }
+.empty b { display:block; color:var(--ui-md); font-size:14px; margin-bottom:6px }
+.muted { color:var(--ui-lo); font-size:12px }
+h2.sec { font-size:14px; font-weight:700; margin:20px 0 8px }
+
+/* 막대 */
+.bar { display:grid; grid-template-columns:118px 1fr 72px; gap:8px; align-items:center; font-size:12px; margin:3px 0 }
+.bar .t { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden }
+.bar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit }
+.bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) }
+.bar .n { text-align:right; color:var(--ui-lo); font-variant-numeric:tabular-nums; white-space:nowrap }
+
+/* 표 */
+table { border-collapse:collapse; width:100%; font-size:13px }
+th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--ui-border); vertical-align:middle }
+th { color:var(--ui-lo); font-weight:600; font-size:12px; white-space:nowrap }
+tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) }
+tbody tr:last-child td { border-bottom:none }
+
+/* KPI */
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px }
+.kpi { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); padding:12px 14px }
+.kpi .v { font-size:20px; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums } .kpi .l { font-size:12px; color:var(--ui-lo); margin-top:2px }
+
+/* 배지 (seedify → SEED badge) */
+.chip { margin:2px 3px 0 0; font-weight:500; white-space:nowrap }
+#q-table td:nth-child(-n+9), #batches td:nth-child(-n+4) { white-space:nowrap }
+
+/* 갤러리 */
+.gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px }
+.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); overflow:hidden; transition:box-shadow .15s }
+.item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.6 }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
+.pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
+.pair img { width:100%; height:100%; object-fit:cover; display:block }
+.pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
+.item .body { padding:12px 14px 14px }
+.item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px }
+.item .id { font-weight:700 }
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px }
+.tags button { font-size:11px }
+.act { display:flex; gap:6px; align-items:center }
+button.b { cursor:pointer }
+button.b:disabled { opacity:.5; cursor:default }
+.item input[type=text] { height:32px; font-size:12px }
+.mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--radius-sm); padding:10px; color:var(--ui-md); margin-top:6px }
+details summary { cursor:pointer; color:var(--ui-lo); font-size:12px; font-weight:500 }
+
+/* 진행 */
+.prog { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--radius-md); padding:14px 18px; margin-bottom:12px }
+.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px }
+.prog .big { font-size:18px; font-weight:700; font-variant-numeric:tabular-nums }
+.stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px }
+.stack i { display:block; height:100%; transition:width .4s }
+.st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
+.legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ui-lo) }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
+.cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px }
+.cells b { width:18px; height:18px; border-radius:4px; background:var(--ui-surface); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:700 }
+.cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite }
+@keyframes pulse { 50% { opacity:.45 } }
+.mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px }
+.mini i { display:block; height:100%; background:var(--primary) }
+
+/* ════ MODAL ════ */
+dialog { border:0; border-radius:var(--radius-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18) }
+dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) }
+dialog .in { padding:24px 28px; overflow:auto; max-height:88vh }
+dialog h2 { font-size:16px; font-weight:700 }
+dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px }
+
+/* ════ TOAST ════ */
+.toast { position:fixed; bottom:24px; right:calc(var(--panel-w) + 24px); background:var(--ui-hi); color:#fff; padding:12px 18px; border-radius:var(--radius-md); font-size:13px; font-weight:500; opacity:0; transform:translateY(6px); transition:opacity .2s, transform .2s; pointer-events:none; z-index:500 }
+.toast.show { opacity:1; transform:translateY(0) }
 </style>
 </head>
 <body>
-<header>
-  <div><h1>온리프 전후 사진 만들기</h1><div class="sub">시술을 고르고 장수를 정하면 AI가 전후 사진을 만들고 1차 검수까지 합니다</div></div>
-  <nav>
-    <button data-tab="request" class="on">만들기</button>
-    <button data-tab="queue">여러 시술 한 번에 <span id="q-badge" class="chip warn" hidden></span></button>
-    <button data-tab="batches">작업 기록</button>
-    <button data-tab="gallery">사진 보고 고르기</button>
-  </nav>
-</header>
-<main>
 
-<!-- ───────── 배치 요청 ───────── -->
-<section id="tab-request">
-  <div class="card">
-    <div class="row">
-      <label>어떤 시술이에요? <select id="treatment"></select></label>
-      <label>어떤 사진이 필요해요? <select id="mode"><option value="selfie">셀카 느낌 (SNS 후기용)</option><option value="clinical">병원 촬영 (임상 후기용)</option></select></label>
-      <label>몇 장 만들까요? <input type="number" id="count" value="8" min="1" max="500"></label>
-      <label>같은 결과 다시 뽑을 번호 (선택) <input type="number" id="seed" placeholder="비우면 매번 다르게"></label>
+<!-- ════ TOPBAR ════ -->
+<div class="topbar">
+  <span class="tb-brand">온리프 전후 사진 만들기</span>
+  <span class="tb-sub">시술을 고르고 장수를 정하면 AI가 전후 사진을 만들고 1차 검수까지 해요</span>
+  <div class="tb-space"></div>
+  <div class="tb-status" id="tb-status"><span class="dot"></span><span>대기열 확인 중…</span></div>
+</div>
+
+<!-- ════ RIGHT PANEL ════ -->
+<aside class="right-panel">
+  <div class="rp-group">
+    <div class="rp-label">화면</div>
+    <div class="rp-tab-list">
+      <button class="rp-tab active" data-tab="request"><span class="num">1</span>만들기</button>
+      <button class="rp-tab" data-tab="queue"><span class="num">2</span>여러 시술 한 번에 <span id="q-badge" class="chip warn" hidden></span></button>
+      <button class="rp-tab" data-tab="batches"><span class="num">3</span>작업 기록</button>
+      <button class="rp-tab" data-tab="gallery"><span class="num">4</span>사진 보고 고르기</button>
     </div>
-    <details style="margin-top:10px"><summary>조건 고정하기 (선택) — 예: 여성만, 한국인만, 정면만. 비우면 골고루 섞어요</summary><div class="fixgrid" id="fixed"></div></details>
-    <details style="margin-top:6px"><summary>AI 모델 고르기 (선택) — 사진 생성 / 시술 후 사진 / 검수</summary>
-      <span style="display:flex;gap:6px;margin-top:8px">
-        <select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
-        <select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select>
-        <select id="qa"><option>gemini</option><option>openai</option></select>
-      </span>
-    </details>
-    <div class="row" style="margin-top:14px">
-      <button class="b primary" id="btn-plan">어떤 사람·장면이 나올지 미리보기</button>
-      <button class="b" id="btn-estimate">비용 얼마나 들까?</button>
-      <button class="b" id="btn-run">진짜로 만들기</button>
-      <span class="muted" id="req-msg"></span>
-    </div>
-    <details style="margin-top:10px"><summary>테스트용 (AI 키 없이 화면만 확인)</summary>
-      <div class="row" style="margin-top:8px">
-        <button class="b" id="btn-dry">설명문만 저장 (사진 없음)</button>
-        <button class="b" id="btn-demo" title="색깔 상자 사진 + 무작위 검수 결과">예시 결과 만들기</button>
-        <button class="b" id="btn-sim" title="실제 생성 없이 진행 화면만 흘러감">진행 화면 흉내내기</button>
+  </div>
+  <div class="rp-divider"></div>
+
+  <!-- 만들기 컨트롤 -->
+  <div class="rp-panel-section" data-for="request">
+    <div class="rp-group">
+      <div class="rp-label">무엇을 만들까요</div>
+      <label class="rp-field"><span>시술</span><select id="treatment"></select></label>
+      <div class="rp-field"><span>사진 종류</span>
+        <div class="rp-option-row" id="mode-row"><button class="rp-option-btn active" data-v="selfie">셀카 느낌<br><small>SNS 후기용</small></button><button class="rp-option-btn" data-v="clinical">병원 촬영<br><small>임상 후기용</small></button></div>
+        <select id="mode" hidden><option value="selfie">셀카 느낌</option><option value="clinical">병원 촬영</option></select>
       </div>
-    </details>
+      <label class="rp-field"><span>몇 장 만들까요?</span><input type="number" id="count" value="8" min="1" max="500"></label>
+    </div>
+    <div class="rp-group">
+      <div class="rp-label">선택 사항</div>
+      <details class="rp-details"><summary>조건 고정 (여성만, 한국인만…)</summary><div><div class="rp-info">비우면 골고루 섞어요</div><div class="fixgrid" id="fixed"></div></div></details>
+      <details class="rp-details"><summary>같은 결과 다시 뽑기 · AI 모델</summary><div>
+        <label class="rp-field"><span>다시 뽑을 번호</span><input type="number" id="seed" placeholder="비우면 매번 다르게"></label>
+        <label class="rp-field"><span>사진 생성 AI</span><select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
+        <label class="rp-field"><span>시술 후 사진 AI</span><select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
+        <label class="rp-field"><span>검수 AI</span><select id="qa"><option>gemini</option><option>openai</option></select></label>
+      </div></details>
+    </div>
+    <div class="rp-divider"></div>
+    <div class="rp-group">
+      <div class="rp-label">실행</div>
+      <button class="rp-btn rp-btn-accent" id="btn-plan">어떤 사람·장면이 나올지 미리보기</button>
+      <button class="rp-btn" id="btn-estimate">비용 얼마나 들까?</button>
+      <button class="rp-btn rp-btn-primary" id="btn-run">진짜로 만들기</button>
+      <div class="rp-msg" id="req-msg"></div>
+    </div>
+    <div class="rp-group">
+      <details class="rp-details"><summary>테스트용 (AI 키 없이)</summary><div>
+        <button class="rp-btn" id="btn-dry">설명문만 저장 (사진 없음)</button>
+        <button class="rp-btn" id="btn-demo" title="색깔 상자 사진 + 무작위 검수 결과">예시 결과 만들기</button>
+        <button class="rp-btn" id="btn-sim" title="실제 생성 없이 진행 화면만 흘러감">진행 화면 흉내내기</button>
+      </div></details>
+    </div>
   </div>
 
+  <!-- 여러 시술 컨트롤 -->
+  <div class="rp-panel-section" data-for="queue" hidden>
+    <div class="rp-group">
+      <div class="rp-label">대기열에 넣기</div>
+      <div class="rp-info">고른 시술마다 작업이 하나씩 생기고 순서대로 만들어요</div>
+      <div class="rp-field"><span>시술 (여러 개)</span><div class="tags" id="q-treatments" style="margin:0"></div></div>
+      <div class="rp-field"><span>사진 종류</span><div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카 느낌</button><button data-v="clinical">병원 촬영</button></div></div>
+      <label class="rp-field"><span>시술당 몇 장 시도?</span><input type="number" id="q-count" value="30" min="1" max="500"></label>
+      <label class="rp-field"><span>쓸 수 있는 사진 몇 장 모이면 멈출까요?</span><input type="number" id="q-target" placeholder="비우면 끝까지"></label>
+      <label class="rp-field"><span>시술당 최대 비용 (달러)</span><input type="number" id="q-cap" placeholder="비우면 제한 없음" step="0.5"></label>
+      <label class="rp-field"><span>어떻게 돌릴까요?</span><select id="q-sim"><option value="1">테스트 (흉내만, 비용 없음)</option><option value="0">진짜로 만들기 (AI 키 필요)</option></select></label>
+      <details class="rp-details"><summary>다시 뽑을 번호</summary><div><input type="number" id="q-seed" placeholder="비우면 매번 다르게"></div></details>
+      <button class="rp-btn rp-btn-primary" id="q-add">대기열에 넣기</button>
+      <div class="rp-msg" id="q-msg"></div>
+    </div>
+    <div class="rp-divider"></div>
+    <div class="rp-group">
+      <div class="rp-label">대기열 조작</div>
+      <button class="rp-btn" id="q-pause">⏸ 잠깐 멈춤</button>
+      <button class="rp-btn" id="q-clear">끝난 것 정리</button>
+    </div>
+  </div>
+
+  <!-- 작업 기록 컨트롤 -->
+  <div class="rp-panel-section" data-for="batches" hidden>
+    <div class="rp-group">
+      <div class="rp-label">작업 기록</div>
+      <div class="rp-info">지금까지 만든 작업이에요. 줄을 누르면 사진을 볼 수 있어요.</div>
+      <button class="rp-btn" id="btn-refresh">새로고침</button>
+    </div>
+  </div>
+
+  <!-- 사진 보고 고르기 컨트롤 -->
+  <div class="rp-panel-section" data-for="gallery" hidden>
+    <div class="rp-group">
+      <div class="rp-label">어느 작업?</div>
+      <select id="gal-batch"></select>
+    </div>
+    <div class="rp-group">
+      <div class="rp-label">걸러보기</div>
+      <label class="rp-field"><span>보기</span><select id="gal-filter">
+        <option value="all">전부</option><option value="passed">AI 검수 통과만</option><option value="failed">AI 검수 탈락만</option>
+        <option value="unreviewed">아직 안 본 것</option><option value="pick">쓰기로 한 것</option><option value="reject">안 쓰기로 한 것</option></select></label>
+      <label class="rp-field"><span>조건</span><select id="gal-axis"><option value="">전부</option></select></label>
+      <select id="gal-axis-val"><option value="">전체</option></select>
+      <div class="rp-info on" id="gal-count"></div>
+    </div>
+    <div class="rp-divider"></div>
+    <div class="rp-info">사진마다 <b>쓸게요 / 안 써요</b>를 누르면 바로 저장돼요. 안 쓰는 이유를 눌러두면 다음 작업 때 참고해요.</div>
+  </div>
+
+  <div class="rp-save-info">
+    <div class="rp-save-clinic">온리프 · 전후 사진 자동 생성</div>
+    <div class="rp-save-time" id="rp-save-time">결과는 outputs/ 폴더에 저장돼요</div>
+  </div>
+</aside>
+
+<!-- ════ CONTENT ════ -->
+<div class="tab-panel active" id="tab-request"><div class="content-wrap">
+  <div class="empty" id="plan-empty"><b>오른쪽에서 시술과 장수를 고르고 "미리보기"를 눌러 보세요</b>어떤 사람·장면 조합이 나올지, AI에게 보내는 설명문이 어떤지 여기 보여요.</div>
   <div id="plan-out" hidden>
-    <h2>이런 사람·장면이 골고루 나와요 <span class="muted" id="plan-n"></span></h2>
+    <div class="page-head"><h2>이런 사람·장면이 골고루 나와요</h2><span class="muted" id="plan-n"></span></div>
     <div class="grid2" id="dist"></div>
-    <h2>한 장씩 보기 <span class="muted">(처음 20장 · AI에게 보내는 설명문 포함)</span></h2>
+    <h2 class="sec">한 장씩 보기 <span class="muted">(처음 20장 · AI에게 보내는 설명문 포함)</span></h2>
     <div id="prompts"></div>
   </div>
-</section>
+</div></div>
 
-<!-- ───────── 큐 ───────── -->
-<section id="tab-queue" hidden>
+<div class="tab-panel" id="tab-queue"><div class="content-wrap">
+  <div class="page-head"><h2>순서대로 만들어요</h2><span class="muted" id="q-sum"></span></div>
   <div class="card">
-    <h3>여러 시술을 한 번에 걸어두기 — 고른 시술마다 작업이 하나씩 생기고, 순서대로 만들어요</h3>
-    <div class="row">
-      <label>시술 (여러 개 선택) <div class="tags" id="q-treatments" style="margin:0"></div></label>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <label>사진 종류 <div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카 느낌</button><button data-v="clinical">병원 촬영</button></div></label>
-      <label>시술당 몇 장 시도할까요? <input type="number" id="q-count" value="30" min="1" max="500"></label>
-      <label>쓸 수 있는 사진이 몇 장 모이면 멈출까요? <input type="number" id="q-target" placeholder="비우면 끝까지"></label>
-      <label>시술당 최대 비용 (달러) <input type="number" id="q-cap" placeholder="비우면 제한 없음" step="0.5"></label>
-      <label>다시 뽑을 번호 (선택) <input type="number" id="q-seed" placeholder="비우면 매번 다르게"></label>
-      <label>어떻게 돌릴까요? <select id="q-sim"><option value="1">테스트 (흉내만, 비용 없음)</option><option value="0">진짜로 만들기 (AI 키 필요)</option></select></label>
-      <button class="b primary" id="q-add">대기열에 넣기</button>
-      <span class="muted" id="q-msg"></span>
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:14px">
-    <div class="row" style="justify-content:space-between">
-      <div><h3 style="margin:0;display:inline">순서대로 만들어요</h3> <span class="muted" id="q-sum"></span></div>
-      <div class="act">
-        <button class="b" id="q-pause">일시정지</button>
-        <button class="b" id="q-clear">끝난 것 정리</button>
-      </div>
-    </div>
-    <table id="q-table" style="margin-top:10px">
+    <table id="q-table">
       <thead><tr><th>순서</th><th>시술</th><th>사진 종류</th><th>시도 장수</th><th>목표 장수</th><th>최대 비용</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty" id="q-empty" hidden>아직 걸어둔 작업이 없어요.</div>
+    <div class="empty" id="q-empty" hidden style="border:0"><b>아직 걸어둔 작업이 없어요</b>오른쪽에서 시술을 골라 대기열에 넣어 보세요.</div>
   </div>
-</section>
+</div></div>
 
-<!-- ───────── 배치 목록 ───────── -->
-<section id="tab-batches" hidden>
+<div class="tab-panel" id="tab-batches"><div class="content-wrap">
+  <div class="page-head"><h2>지금까지 만든 작업</h2><span class="muted">줄을 누르면 사진을 볼 수 있어요</span></div>
   <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <h3 style="margin:0">지금까지 만든 작업 (줄을 누르면 사진을 볼 수 있어요)</h3>
-      <button class="b" id="btn-refresh">새로고침</button>
-    </div>
-    <table id="batches" style="margin-top:10px">
+    <table id="batches">
       <thead><tr><th>만든 때</th><th>시술</th><th>사진 종류</th><th>방식</th><th>시도 장수</th><th>쓸 수 있는 사진</th><th>성공률</th><th>1장당 시도</th><th>1장당 비용</th><th>사람이 확인</th><th>상태</th></tr></thead>
       <tbody></tbody>
     </table>
-    <div class="empty" id="batches-empty" hidden>아직 만든 게 없어요. "만들기" 탭에서 시작해 보세요.</div>
+    <div class="empty" id="batches-empty" hidden style="border:0"><b>아직 만든 게 없어요</b>"만들기"에서 시작해 보세요.</div>
   </div>
-</section>
+</div></div>
 
-<!-- ───────── 갤러리 ───────── -->
-<section id="tab-gallery" hidden>
-  <div class="row" style="margin-bottom:12px">
-    <label>어느 작업? <select id="gal-batch" style="min-width:300px"></select></label>
-    <label>보기 <select id="gal-filter">
-      <option value="all">전부</option><option value="passed">AI 검수 통과만</option><option value="failed">AI 검수 탈락만</option>
-      <option value="unreviewed">아직 안 본 것</option><option value="pick">쓰기로 한 것</option><option value="reject">안 쓰기로 한 것</option></select></label>
-    <label>조건으로 걸러보기 <select id="gal-axis"><option value="">전부</option></select></label>
-    <label>&nbsp;<select id="gal-axis-val"><option value="">전체</option></select></label>
-    <span class="muted" id="gal-count"></span>
-  </div>
+<div class="tab-panel" id="tab-gallery"><div class="content-wrap">
   <div class="prog" id="prog" hidden></div>
   <div class="kpis" id="kpis"></div>
   <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
   <div class="gal" id="gal"></div>
-  <div class="empty" id="gal-empty" hidden>보여줄 사진이 없어요.</div>
-</section>
-</main>
+  <div class="empty" id="gal-empty" hidden><b>보여줄 사진이 없어요</b>오른쪽에서 다른 작업이나 조건을 골라 보세요.</div>
+</div></div>
 
 <dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
 <div class="toast" id="toast"></div>
@@ -269,6 +391,7 @@ seedify(document.body);
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const msg = (id, text, cls) => { const el = $(id); el.textContent = text; el.className = 'rp-msg' + (cls ? ' ' + cls : ''); };
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
 const pct = x => (x*100).toFixed(0) + '%';
 const fmtBid = id => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}/.exec(id||''); return m ? `${+m[2]}/${+m[3]} ${m[4]}:${m[5]}` : id; };
@@ -301,13 +424,16 @@ let CFG, BATCHES = [], CUR = null;
 
 // ---------- 탭 ----------
 function show(tab) {
-  $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  ['request','queue','batches','gallery'].forEach(t => $('#tab-'+t).hidden = t !== tab);
+  $$('.rp-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.rp-panel-section').forEach(p => p.hidden = p.dataset.for !== tab);
+  ['request','queue','batches','gallery'].forEach(t => $('#tab-'+t).classList.toggle('active', t === tab));
   if (tab === 'batches') loadBatches();
   if (tab === 'queue') loadQueue();
   if (tab === 'gallery') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
 }
-$$('nav button').forEach(b => b.onclick = () => show(b.dataset.tab));
+$$('.rp-tab').forEach(b => b.onclick = () => show(b.dataset.tab));
+// 사진 종류 옵션 버튼 ↔ 숨은 select
+$$('#mode-row button').forEach(b => b.onclick = () => { if (b.disabled) return; $('#mode').value = b.dataset.v; $$('#mode-row button').forEach(x => x.classList.toggle('active', x === b)); renderFixed(); });
 
 // ---------- 요청 폼 ----------
 function req() {
@@ -326,9 +452,10 @@ function syncTreatmentModes() {
   const t = CFG.treatments[$('#treatment').value]; const m = $('#mode');
   [...m.options].forEach(o => o.disabled = !t.modes.includes(o.value));
   if (!t.modes.includes(m.value)) m.value = t.modes[0];
+  $$('#mode-row button').forEach(b => { b.disabled = !t.modes.includes(b.dataset.v); b.classList.toggle('active', b.dataset.v === m.value); });
   renderFixed();
 }
-$('#treatment').onchange = syncTreatmentModes; $('#mode').onchange = renderFixed;
+$('#treatment').onchange = syncTreatmentModes;
 
 function bars(obj, total, cls, axis, labelFn) {
   const entries = Object.entries(obj).sort((a,b) => (b[1].n ?? b[1]) - (a[1].n ?? a[1]));
@@ -339,12 +466,12 @@ function bars(obj, total, cls, axis, labelFn) {
 }
 $('#btn-plan').onclick = async () => {
   try {
-    $('#req-msg').textContent = '준비 중…'; const r = await api('/api/plan', req());
-    $('#plan-out').hidden = false; $('#plan-n').textContent = `${r.count}장 기준`;
+    msg('#req-msg', '준비 중…'); const r = await api('/api/plan', req());
+    $('#plan-out').hidden = false; $('#plan-empty').hidden = true; $('#plan-n').textContent = `${r.count}장 기준`;
     $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div class="card"><h3>${AXIS_KO[a]||a}</h3>${bars(d, r.count, '', a)}</div>`).join('');
     $('#prompts').innerHTML = r.items.slice(0, 20).map((s, i) => promptCard(s, i)).join('');
-    $('#req-msg').textContent = '';
-  } catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+    msg('#req-msg', '');
+  } catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 function promptCard(s, i) {
   const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
@@ -354,26 +481,26 @@ function promptCard(s, i) {
     <details><summary>시술 후 사진 설명문</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
 }
 $('#btn-estimate').onclick = async () => {
-  try { const r = await api('/api/estimate', req()); $('#req-msg').textContent = `약 $${r.expected_cost_usd} 예상 (AI 호출 약 ${r.expected_calls}번, 절반은 다시 만든다고 가정)`; }
-  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+  try { const r = await api('/api/estimate', req()); msg('#req-msg', `약 $${r.expected_cost_usd} 예상 · AI 호출 약 ${r.expected_calls}번 (절반은 다시 만든다고 가정)`, 'on'); }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 $('#btn-dry').onclick = async () => {
   try { const r = await api('/api/dryrun_save', req()); toast(`설명문 ${r.count}장 저장했어요`); CUR = null; show('gallery'); await openBatch(r.batch_id); }
-  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 $('#btn-run').onclick = async () => {
   const q = req(); if (!confirm(`${CFG.treatments[q.treatment].name_ko} · ${MODE_KO[q.mode]} · ${q.count}장을 진짜로 만들까요? AI 비용이 들어요.`)) return;
   try { const r = await api('/api/run', q); toast('만들기 시작했어요'); CUR = null; show('gallery'); await openBatch(r.batch_id); }
-  catch (e) { $('#req-msg').textContent = '지금은 못 만들어요: ' + e.message; }
+  catch (e) { msg('#req-msg', '지금은 못 만들어요: ' + e.message, 'err'); }
 };
 $('#btn-demo').onclick = async () => {
-  try { $('#req-msg').textContent = '예시 만드는 중…'; const q = req(); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast('예시 결과를 만들었어요'); $('#req-msg').textContent=''; CUR = null; show('gallery'); await openBatch(r.batch_id); }
-  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+  try { msg('#req-msg', '예시 만드는 중…'); const q = req(); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast('예시 결과를 만들었어요'); msg('#req-msg', ''); CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 
 $('#btn-sim').onclick = async () => {
   try { const q = req(); const r = await api('/api/demo_run', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 60)}); toast('진행 화면 흉내를 시작했어요'); CUR = null; show('gallery'); await openBatch(r.batch_id); }
-  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 
 // ---------- 큐 ----------
@@ -388,10 +515,10 @@ $('#q-add').onclick = async () => {
   ts.forEach(b => ms.filter(m => b.dataset.modes.split(',').includes(m)).forEach(m => jobs.push({treatment: b.dataset.v, mode: m, count: +$('#q-count').value,
     target_pass: $('#q-target').value || null, cost_cap: $('#q-cap').value || null, seed: $('#q-seed').value || null, simulate: $('#q-sim').value === '1',
     gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value})));
-  if (!jobs.length) { $('#q-msg').textContent = '시술과 사진 종류를 하나 이상 골라 주세요 (그 시술이 지원 안 하는 종류는 빠져요)'; return; }
+  if (!jobs.length) { msg('#q-msg', '시술과 사진 종류를 하나 이상 골라 주세요 (그 시술이 지원 안 하는 종류는 빠져요)', 'err'); return; }
   if (jobs.some(j => !j.simulate) && !confirm(`진짜로 만드는 작업 ${jobs.filter(j=>!j.simulate).length}개를 넣어요. AI 비용이 들어요. 계속할까요?`)) return;
-  try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개를 대기열에 넣었어요`); $('#q-msg').textContent = ''; loadQueue(); }
-  catch (e) { $('#q-msg').textContent = '오류: ' + e.message; }
+  try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개를 대기열에 넣었어요`); msg('#q-msg', ''); loadQueue(); }
+  catch (e) { msg('#q-msg', '오류: ' + e.message, 'err'); }
 };
 $('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
 $('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
@@ -399,7 +526,7 @@ async function loadQueue() {
   const q = await api('/api/queue'); const tb = $('#q-table tbody');
   $('#q-pause').textContent = q.paused ? '▶ 다시 시작' : '⏸ 잠깐 멈춤';
   $('#q-sum').textContent = `기다리는 작업 ${q.queued_count}개 · ${q.running ? '지금 만드는 중' : '쉬는 중'} · 남은 예상 비용 약 $${q.est_total}${q.paused ? ' · 멈춰 있어요 (지금 작업만 끝내고 다음은 안 해요)' : ''}`;
-  const badge = $('#q-badge'); const n = q.queued_count + (q.running ? 1 : 0); badge.hidden = !n; badge.textContent = n;
+  setQueueStatus(q);
   $('#q-empty').hidden = q.jobs.length > 0;
   const stKo = {queued:'<span class="chip">기다림</span>', running:'<span class="chip warn">만드는 중</span>', done:'<span class="chip ok">끝</span>', error:'<span class="chip bad">문제 생김</span>', cancelled:'<span class="chip">취소함</span>'};
   tb.innerHTML = q.jobs.map((j, i) => { const p = j.progress, r = j.result || {};
@@ -417,10 +544,15 @@ async function loadQueue() {
     if (a === 'up' || a === 'down') await api('/api/queue/move', {job_id: id, direction: a});
     loadQueue();
   });
-  tb.querySelectorAll('button.b').forEach(b => { b.style.padding = '3px 8px'; b.style.fontSize = '12px'; });
 }
-setInterval(() => { if (!$('#tab-queue').hidden) loadQueue(); }, 2500);
-setInterval(async () => { if ($('#tab-queue').hidden) { try { const q = await api('/api/queue'); const n = q.queued_count + (q.running ? 1 : 0); $('#q-badge').hidden = !n; $('#q-badge').textContent = n; } catch {} } }, 5000);
+setInterval(() => { if ($('#tab-queue').classList.contains('active')) loadQueue(); }, 2500);
+function setQueueStatus(q) {
+  const n = q.queued_count + (q.running ? 1 : 0); const badge = $('#q-badge'); badge.hidden = !n; badge.textContent = n;
+  const st = $('#tb-status'); const r = q.running;
+  st.innerHTML = r ? `<span class="dot on"></span><span>지금 <b>${CFG.treatments[r.treatment]?.name_ko || r.treatment}</b> 만드는 중${q.queued_count ? ` · ${q.queued_count}개 기다림` : ''}</span>`
+                   : q.paused ? `<span class="dot"></span><span>대기열 멈춤${q.queued_count ? ` · ${q.queued_count}개 기다림` : ''}</span>` : `<span class="dot"></span><span>쉬는 중</span>`;
+}
+setInterval(async () => { if (!$('#tab-queue').classList.contains('active')) { try { setQueueStatus(await api('/api/queue')); } catch {} } }, 5000);
 
 // ---------- 배치 목록 ----------
 async function loadBatches() {
@@ -437,7 +569,7 @@ async function loadBatches() {
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches;
-setInterval(() => { if (!$('#tab-batches').hidden && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
+setInterval(() => { if ($('#tab-batches').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 갤러리 ----------
 async function openBatch(id) {
@@ -563,7 +695,7 @@ function detail(id) {
   $('#treatment').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<option value="${k}">${t.name_ko}</option>`).join('');
   syncTreatmentModes(); renderQueueForm();
   $('#gen').value = 'gemini';
-  api('/api/queue').then(q => { const n = q.queued_count + (q.running ? 1 : 0); $('#q-badge').hidden = !n; $('#q-badge').textContent = n; });
+  api('/api/queue').then(setQueueStatus);
   if (location.hash === '#gallery') show('gallery'); else if (location.hash === '#batches') show('batches'); else if (location.hash === '#queue') show('queue');
 })();
 </script>
