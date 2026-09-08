@@ -154,7 +154,7 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .g-dash { grid-template-columns:1fr 320px; align-items:start } .col { display:flex; flex-direction:column; gap:var(--gap) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
 .kpi .t .up { color:var(--ok); font-weight:700 } .kpi .t .down { color:var(--bad); font-weight:700 } .kpi.hero .t .up, .kpi.hero .t .down { color:#fff }
-.report-row { display:flex; justify-content:space-between; align-items:baseline; padding:var(--sp-2) 0; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
+.report-row { display:flex; justify-content:space-between; align-items:baseline; padding:var(--sp-2) 0; min-height:48px; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
 .report-row .k { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md) } .report-row .v { font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums; letter-spacing:-.04em } .report-row .v small { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:3px }
 .report-row .v.ok { color:var(--ok) } .report-row .v.plain { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) }
 .hbar { display:grid; grid-template-columns:110px 1fr 70px; gap:var(--sp-2); align-items:center; font-size:var(--fs-sm); margin:var(--sp-1) 0 } .hbar .t { height:14px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .hbar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit } .hbar .n { text-align:right; color:var(--ui-md); font-weight:var(--fw-m); white-space:nowrap; letter-spacing:-.02em; font-variant-numeric:tabular-nums }
@@ -225,32 +225,32 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div class="grid g-dash">
         <div class="col">
           <div>
-            <div class="card-head"><h3>생성 요약</h3><span class="muted" id="home-window"></span><div class="tb-space"></div><div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
+            <div class="card-head" style="margin-bottom:var(--sp-2)"><h3>생성 요약</h3><span class="muted" id="home-window"></span><div class="tb-space"></div><div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
             <div class="grid g-kpi" id="home-kpis"></div>
           </div>
           <div class="card">
-            <div class="card-head"><h3>생성 성과</h3><span class="muted">일별 생성 장수(막대) · 통과율(선)</span></div>
+            <div class="card-head"><h3>생성 성과</h3><div class="tb-space"></div><span class="muted">일별 생성 장수 · 통과율</span></div>
             <div id="chart-combo"></div>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr">
-            <div class="card"><div class="card-head"><h3>검수 성과</h3><span class="muted">일별 통과 · 탈락 사유</span></div><div id="chart-stack"></div></div>
-            <div class="card"><div class="card-head"><h3>시술별 통과율</h3><span class="muted">누적</span></div><div id="chart-treat"></div></div>
+            <div class="card"><div class="card-head"><h3>검수 성과</h3><div class="tb-space"></div><span class="muted">일별 통과 · 탈락 사유</span></div><div id="chart-stack"></div></div>
+            <div class="card"><div class="card-head"><h3>시술별 통과율</h3><div class="tb-space"></div><span class="muted">누적</span></div><div id="chart-treat"></div></div>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr">
             <div class="card">
-              <div class="card-head"><h3>조건별 통과율</h3></div>
-              <div class="pill" id="axis-pick" style="flex-wrap:wrap;margin-bottom:10px"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
+              <div class="card-head"><h3>조건별 통과율</h3><div class="tb-space"></div><span class="muted">누적</span></div>
+              <div class="toolbar pill" id="axis-pick" style="flex-wrap:wrap;border:0;padding-bottom:0"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
               <div id="chart-axis"></div>
             </div>
             <div class="card">
               <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
-              <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>생성</th><th>통과</th><th>통과율</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+              <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>통과 / 생성</th><th>상태</th></tr></thead><tbody></tbody></table></div>
             </div>
           </div>
         </div>
         <div class="col">
           <div class="card">
-            <div class="card-head"><h3>오늘의 보고서</h3><span class="muted" id="home-today-date"></span></div>
+            <div class="card-head"><h3>오늘의 보고서</h3><div class="tb-space"></div><span class="muted" id="home-today-date"></span></div>
             <h4>시간대별 생성</h4><div id="chart-today"></div>
             <div id="home-today-rows"></div>
           </div>
@@ -454,21 +454,21 @@ let SEARCH = '', OUT_DIR = '';
 
 // ---------- 대시보드 ----------
 let OV = null, HOME_DAYS = 14, AXIS_A = 'angle';
-const trend = (cur, prev, inv) => prev ? `<span class="${(cur >= prev) !== !!inv ? 'up' : 'down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs((cur - prev) / prev * 100).toFixed(0)}%</span> 이전 기간 대비` : '이전 기간 없음';
+const trend = (cur, prev, inv) => prev ? `<span class="${(cur >= prev) !== !!inv ? 'up' : 'down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs((cur - prev) / prev * 100).toFixed(0)}%</span> vs 이전` : '이전 기간 없음';
 async function loadHome() {
   const [ov, batches] = await Promise.all([api('/api/overview?days=' + HOME_DAYS), api('/api/batches')]);
   OV = ov; BATCHES = batches; const w = ov.window, p = ov.prev;
   $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}`;
   $('#home-kpis').innerHTML = [
-    ['hero', '생성 장수', w.total, '장', trend(w.total, p.total)],
-    ['', 'AI 검수 통과', w.passed, '장', `통과율 <b>${w.total ? pct(w.passed / w.total) : '—'}</b> · ${trend(w.total ? w.passed / w.total : 0, p.total ? p.passed / p.total : 0)}`],
+    ['hero', '생성 장수', w.total, '장', p.total ? trend(w.total, p.total) : `오늘 ${OV.today.total}장`],
+    ['', 'AI 검수 통과', w.passed, '장', `통과율 ${w.total ? pct(w.passed / w.total) : '—'}${p.total ? ' · ' + trend(w.passed / Math.max(1, w.total), p.passed / p.total) : ''}`],
     ['', '평균 시도', ov.avg_attempt ?? '—', '회', '통과 1장당'],
-    ['', '비용', `$${w.cost.toFixed(2)}`, '', `장당 $${w.passed ? (w.cost / w.passed).toFixed(3) : '—'} · ${trend(w.cost, p.cost, true)}`]
+    ['', '비용', `$${w.cost.toFixed(2)}`, '', `장당 $${w.passed ? (w.cost / w.passed).toFixed(3) : '—'}`]
   ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
   chartCombo(); chartStack(); chartTreat(); chartAxis(); chartToday(); renderLive(); renderHomeLib();
   const tb = $('#home-recent tbody');
   tb.innerHTML = batches.slice(0, 6).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : '<span class="chip ok">완료</span>';
-    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||''}</td><td>${s.total ?? ''}</td><td>${b.kind==='dry_run' ? '—' : s.passed ?? 0}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${st}</td></tr>`; }).join('');
+    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||''}</td><td>${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''} <span class="muted">${pct(s.pass_rate||0)}</span>`}</td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
 }
 // ── SVG 헬퍼 ──
@@ -484,7 +484,7 @@ function chartCombo() {
   const line = withData.map(([k, i], j) => `${j ? 'L' : 'M'}${(x(i)+bw/2).toFixed(1)},${yr(d[k].passed/d[k].total).toFixed(1)}`).join(' ');
   const pts = withData.map(([k, i]) => `<circle class="ptok" cx="${x(i)+bw/2}" cy="${yr(d[k].passed/d[k].total)}" r="3.5"><title>${k.slice(5)} 통과율 ${pct(d[k].passed/d[k].total)}</title></circle>`).join('');
   const step = Math.ceil(n / 8); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-8}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
-  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:6px"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>통과율</span></div>`;
+  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>통과율</span></div>`;
 }
 const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:fingers','손가락','st5'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
 function chartStack() {
@@ -495,7 +495,7 @@ function chartStack() {
   const bars = keys.map((k, i) => { let acc = 0; const segs = [['passed', d[k].passed], ...Object.entries(d[k].fails)]; return segs.map(([g, v]) => { if (!v) return ''; const meta = FAIL_GROUP.find(f => f[0] === g) || [g, g, 'st5']; used.add(meta[0]); const s = `<rect class="${meta[2]}" x="${x(i)+bw*.2}" y="${y(acc+v)}" width="${bw*.6}" height="${y(acc)-y(acc+v)}"><title>${k.slice(5)} · ${meta[1]} ${v}</title></rect>`; acc += v; return s; }).join(''); }).join('');
   const step = Math.ceil(n / 5); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
   const cls = {st0:'var(--ok)', st1:'#D64545', st2:'#E98A2E', st3:'#8FA9C8', st4:'#B8A0D9', st5:'#C4C9D1'};
-  $('#chart-stack').innerHTML = svgOpen(W, H) + grid + bars + labels + '</svg>' + `<div class="legend" style="margin-top:6px">${FAIL_GROUP.filter(f => used.has(f[0])).map(f => `<span><i style="background:${cls[f[2]]}"></i>${f[1]}</span>`).join('')}</div>`;
+  $('#chart-stack').innerHTML = svgOpen(W, H) + grid + bars + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)">${FAIL_GROUP.filter(f => used.has(f[0])).map(f => `<span><i style="background:${cls[f[2]]}"></i>${f[1]}</span>`).join('')}</div>`;
 }
 function chartTreat() {
   const rows = Object.entries(OV.by_treatment).filter(([,a]) => a.total).sort((a,b) => b[1].total - a[1].total);
@@ -516,7 +516,7 @@ function chartToday() {
   const peak = h.indexOf(Math.max(...h)); const pk = h[peak] ? `<circle class="pt" cx="${x(peak)}" cy="${y(h[peak])}" r="3.5"/><text class="axis" x="${x(peak)}" y="${y(h[peak])-8}" text-anchor="middle" style="fill:var(--primary);font-weight:700">${h[peak]}</text>` : '';
   $('#chart-today').innerHTML = svgOpen(W, H, 'short') + `<defs><linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1F3A5F" stop-opacity=".25"/><stop offset="1" stop-color="#1F3A5F" stop-opacity="0"/></linearGradient></defs><path class="area" d="${area}"/><path class="line" d="${path(h)}"/>${pk}${labels}</svg>`;
   $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
-  $('#home-today-rows').innerHTML = `<div class="report-row"><span class="k">오늘 생성</span><span class="v">${t.total}<small>장</small></span></div><div class="report-row"><span class="k">오늘 통과</span><span class="v ok">${t.passed}<small>장 · ${t.total ? pct(t.passed/t.total) : '—'}</small></span></div><div class="report-row"><span class="k">오늘 비용</span><span class="v">$${(t.cost||0).toFixed(2)}</span></div>`;
+  $('#home-today-rows').innerHTML = `<div style="height:var(--sp-2)"></div><div class="report-row"><span class="k">오늘 생성</span><span class="v">${t.total}<small>장</small></span></div><div class="report-row"><span class="k">오늘 통과</span><span class="v ok">${t.passed}<small>장 · ${t.total ? pct(t.passed/t.total) : '—'}</small></span></div><div class="report-row"><span class="k">오늘 비용</span><span class="v">$${(t.cost||0).toFixed(2)}</span></div>`;
 }
 async function renderLive() {
   const q = OV.queue; const el = $('#home-running'); const r = q.running;
