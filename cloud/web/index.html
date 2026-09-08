@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="/vendor/seed/base.min.css">
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
 <style>
-:root {
+:root, :root[data-seed][data-seed-color-mode] {
   --primary:#1F3A5F; --pri-hov:#172C49; --pri-alpha:rgba(31,58,95,.08); --pri-border:rgba(31,58,95,.18); --brand-blue:#CCD8E8;
   --ui-bg:#F4F5F7; --ui-panel:#fff; --ui-border:#EAECEF; --ui-hi:#191F28; --ui-md:#6B7684; --ui-lo:#8B95A1; --ui-surface:#F7F8FA;
   --ok:#1F8F55; --ok-weak:#E3F5EA; --bad:#D64545; --bad-weak:#FBE5E5; --warn:#B87A00; --warn-weak:#FFF3D6;
@@ -131,15 +131,90 @@ tbody tr:last-child td { border-bottom:none }
 .list-row .v { font-weight:var(--fw-b); font-size:var(--fs-md); white-space:nowrap }
 .chip { margin:2px 3px 0 0; font-weight:500; white-space:nowrap }
 .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--sp-4) }
-.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md); overflow:hidden }
-.item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.6 }
-.pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
+.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md) }
+.item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { border-color:var(--bad); box-shadow:0 0 0 2px var(--bad-weak) }
+.pick-line { font-size:var(--fs-sm,12px); color:var(--muted,#77808a); margin:6px 0 2px } .pick-line.ok { color:var(--ok,#1a7f4b) } .pick-line.bad { color:var(--bad,#c0392b) }
+.item .act button[disabled], .rev-act button[disabled], .dd-opt input[disabled] { opacity:.45; cursor:not-allowed }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border); border-radius:var(--r-md) var(--r-md) 0 0; overflow:hidden }
 .pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
 .pair img { width:100%; height:100%; object-fit:cover; display:block }
 .pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
-.item .body { padding:var(--sp-3) } .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--sp-1) } .item .id { font-weight:var(--fw-b) }
-.tags { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px } .tags button { font-size:11px }
-.act { display:flex; gap:6px; align-items:center } button.b { cursor:pointer } button.b:disabled { opacity:.5 }
+.item .body { padding:var(--sp-2) var(--sp-3) var(--sp-3) } .item .head { display:flex; align-items:center; gap:var(--sp-1); margin-bottom:2px } .item .id { font-weight:var(--fw-b); color:var(--ui-lo) }
+.item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
+.act { display:grid; grid-template-columns:1fr 1fr; gap:8px } .act .b { height:40px; font-size:var(--fs-md) }
+.dd { position:relative; margin-bottom:8px }
+.item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
+.dd-btn { display:flex; align-items:center; gap:8px; height:36px; padding:0 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:#fff; font-size:var(--fs-sm); cursor:pointer; user-select:none }
+.dd[open] .dd-btn { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha) }
+.dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
+.dd-menu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20; background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-sm); box-shadow:0 8px 24px rgba(25,31,40,.12); padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px }
+.dd-opt { display:flex; align-items:center; gap:8px; height:34px; padding:0 8px; border-radius:6px; font-size:var(--fs-sm); cursor:pointer } .dd-opt:hover { background:var(--ui-surface) } .dd-opt input { accent-color:var(--primary); width:16px; height:16px; margin:0 }
+/* 검수 모드 크기 (2026-09-08 성연서님 "너무 크게 보여서 한 페이지에 다 들어오지 않아").
+   실측: 문서 1944px / 창 900px → 채택·제외 버튼이 화면 밖이라 매번 스크롤해야 했다.
+   레버 둘: ①검수 중엔 위쪽 지표·통계 카드를 접는다 ②사진을 창 높이에 맞춘다.
+   ⚠ 사진은 cover(잘라 채우기)가 아니라 contain(전체 보이기)이다 — 잘린 손·머리끝을
+      못 보면 검수 자체가 안 된다. */
+.rev { display:grid; grid-template-columns:minmax(0,1fr) 340px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+#batches-wrap { max-height:340px }
+/* 작업을 고른 뒤엔 목록을 접는다(2026-09-08 성연서님 "스크롤을 해야 사진들이 등장"). */
+body.list-folded #batches-wrap, body.list-folded #batches-empty { display:none }
+body.list-folded #tab-jobs > .card:first-child { padding-bottom:10px }
+.stats-fold > summary { cursor:pointer; list-style:none; font-size:var(--fs-sm); color:var(--ui-md);
+  padding:8px 12px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff; width:fit-content }
+.stats-fold > summary::-webkit-details-marker { display:none }
+.stats-fold > summary::after { content:' ▾' }
+.stats-fold[open] > summary::after { content:' ▴' }
+.stats-fold[open] > summary { margin-bottom:var(--gap) }
+/* ⚠ 이 높이는 CSS 로 둔다 — 인라인 style 로 두면 아래 검수 모드 규칙이 못 이겨서
+   목록이 안 접히고 검수 화면이 그만큼 아래로 밀린다(2026-09-08 실측 503px). */
+body.reviewing #kpis, body.reviewing #gal-stats, body.reviewing #prog { display:none }
+body.reviewing #batches-wrap, body.reviewing #batches-empty { display:none }
+body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360px) }
+body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
+/* ⚠ overflow:auto 로 되돌리지 마라 — 그게 '불필요한 스크롤'의 정체였다(09-08).
+   칸을 잘라 스크롤을 만드는 대신 **내용을 줄여** 통째로 보이게 한다. */
+body.reviewing .rev-side { padding:10px 14px; gap:6px }
+body.reviewing .th { flex-basis:40px }
+body.reviewing .thumbs { padding:6px 12px }
+/* 남은 세로는 카드 여백에서 짜낸다 — 검수 중엔 제목·목록보다 사진이 먼저다 */
+body.reviewing #tab-jobs > .card:first-child > .card-head { display:none }
+body.reviewing #tab-jobs > .card:first-child { padding-top:12px; padding-bottom:8px }
+body.reviewing #detail-body > .card:first-child { padding-top:12px; padding-bottom:12px }
+body.reviewing #detail-body > .card:first-child .card-head { margin-bottom:0 }
+body.reviewing #detail { margin-top:8px }
+body.reviewing #tab-jobs { padding-bottom:52px }   /* 기본 64px 中 12px 회수 — 서브픽셀 반올림으로 1px 스크롤바가 뜨는 걸 막는다 */
+body.reviewing #detail-body > .card:last-child { margin-top:6px }
+body.reviewing #detail-body > .card:last-child > .card-head { margin-bottom:8px }
+.rev-main { min-width:0; display:flex; flex-direction:column } .rev-main .pair { border-radius:var(--r-md) 0 0 0 } .rev-main .pair figure { aspect-ratio:4/5 }
+.thumbs { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--ui-border) } .th-row { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none } .th-row::-webkit-scrollbar { display:none }
+.th { flex:0 0 56px; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--ui-surface); cursor:pointer } .th img { width:100%; height:100%; object-fit:cover; display:block }
+.th.pick { border-color:var(--ok) } .th.reject { border-color:var(--bad) } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
+.rev-side { border-left:1px solid var(--ui-border); padding:20px; display:flex; flex-direction:column; gap:20px } .rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-md); margin-bottom:6px }
+.scores { display:flex; flex-direction:column; gap:6px }
+/* 검수 모드 오른쪽 칸은 사진 높이만큼만 쓴다 — 넘치면 사유 칸이 숨어 스크롤이 생긴다
+   (2026-09-08 실측 내용 609px / 칸 444px). 점수를 2열로 접어 세로를 벌었다. */
+body.reviewing .rev-side .scores { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px }
+body.reviewing .rev-side .score > span:first-child { width:74px }
+body.reviewing .rev-side .score b { width:16px }
+.cond-line { line-height:1.5 } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
+.rev-act { margin-top:auto } .rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
+.rev-side .reason { border-top:0; padding-top:0 } body.reviewing .rev-side .reason { margin-top:2px } body.reviewing .rev-side .reason > .muted { margin-bottom:2px }
+/* 안내 문구를 버튼과 같은 높이로 늘려 그 안에서 가운데 맞춘다 — align-items:center 만으로는
+   버튼 안쪽 여백 때문에 2px 어긋난다(2026-09-08 실측 버튼 중심 1120 vs 문구 중심 1118). */
+/* 안내 문구를 버튼과 **같은 높이 박스**로 만들어 그 안에서 가운데 맞춘다.
+   align-items:center 만으로는 버튼 안쪽 여백 때문에 2px 어긋난다(2026-09-08 실측). */
+.reason-foot { display:flex; align-items:center; gap:8px; margin-top:8px }
+.reason-foot > * { align-self:center }
+/* ⚠ margin:0 을 빼지 마라 — 바로 위 `.reason .muted { margin-bottom:4px }` 가 여기까지 새어
+   들어와, 컨테이너가 4px 높아지면서 버튼만 2px 내려간다(2026-09-08 실측 버튼 927 vs 문구 925). */
+.reason-foot .muted { display:flex; align-items:center; height:var(--btn-h,32px); line-height:1; min-width:0; margin:0 }
+.reason-foot .b { height:var(--btn-h,32px); margin:0 }
+.verdict { font-weight:var(--fw-m); font-size:var(--fs-sm); color:var(--ui-md); white-space:nowrap; flex-shrink:0 } .verdict.ok { color:var(--ok) } .verdict.bad { color:var(--bad) }
+.why { font-size:var(--fs-xs); color:var(--ui-md); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
+.conds { font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:var(--sp-2) }
+.reason { margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:1px dashed var(--ui-border) } .reason > .muted { margin-bottom:4px }   /* ⚠ 직접 자식만 — 그냥 `.reason .muted` 로 두면 아래 저장됨 줄의 안내 문구까지 4px 밀려 버튼과 어긋난다(2026-09-08) */
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px } .tags button { font-size:11px }
+button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .item input[type=text] { height:32px; font-size:12px }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
@@ -168,7 +243,9 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
 .lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px } .lib .item .body { padding:8px 10px 10px } .lib .item .id { font-size:12px }
-dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18) }
+/* ⚠ margin:auto 를 빼지 마라 — 리셋 CSS 의 `margin:0` 이 브라우저 기본 가운데 정렬을 지워
+   모달이 좌상단에 붙는다(2026-09-08 실측 left 0·top 0). inset:0 과 한 쌍이다. */
+dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
 dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:var(--fs-xl); font-weight:var(--fw-b) }
 dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
 .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
@@ -199,6 +276,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
     <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="sim">시뮬레이션</button><button data-kind="demo">샘플</button></div>
+    <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
     <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
     <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
     <div class="foot" id="side-foot"></div>
@@ -312,15 +390,15 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="list-toggle">접기</button><button class="btn sm" id="btn-refresh">새로고침</button></div>
         <div class="toolbar">
           <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
           <span class="sep"></span>
-          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select>
+          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option></select>
           <select id="gal-axis"><option value="">조건 전체</option></select><select id="gal-axis-val" hidden><option value="">값 전체</option></select>
           <span class="tb-space"></span><span class="muted" id="gal-count"></span>
         </div>
-        <div class="tbl-wrap" style="max-height:340px"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
       </div>
       <div id="detail" style="margin-top:var(--gap)">
@@ -328,7 +406,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div id="detail-body" hidden>
           <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
           <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
-          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3></div><div class="gal" id="gal"></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
     </section>
@@ -336,14 +414,24 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 라이브러리 ═══ -->
     <section class="page" id="tab-library">
       <div class="card">
-        <div class="card-head"><h3>선택된 사진</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
+        <div class="card-head"><h3>채택한 사진 · 드라이브 저장본</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
         <div class="toolbar">
           <select id="lib-treatment"><option value="">시술 전체</option></select>
           <select id="lib-mode"><option value="">종류 전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select>
         </div>
         <div class="msg" id="lib-msg"></div><div id="lib-exports"></div>
       </div>
-      <div style="margin-top:var(--gap)"><div id="lib-groups"></div><div class="card empty" id="lib-empty" hidden>선택된 사진이 없습니다</div></div>
+      <div style="margin-top:var(--gap)"><div id="lib-groups"></div><div class="card empty" id="lib-empty" hidden>채택한 사진이 없습니다</div></div>
+    </section>
+
+    <section class="page" id="tab-lessons">
+      <div class="card"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
+        <div id="les-body" class="muted">불러오는 중…</div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>지금 프롬프트에 붙는 문장</h3></div><div id="les-preview" class="muted"></div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>메모 → 규칙으로 승격</h3></div>
+        <div id="les-notes"></div><div class="msg" id="les-msg"></div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>규칙 성적표</h3></div>
+        <div id="les-score"></div></div>
     </section>
 
     <!-- ═══ 설정 · 도움말 ═══ -->
@@ -354,10 +442,11 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-help">
       <div class="card"><div class="card-head"><h3>도움말</h3></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
-          <div><h4>홈</h4><div class="muted">전체 생성·통과·선택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
+          <div><h4>홈</h4><div class="muted">전체 생성·통과·채택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
           <div><h4>생성</h4><div class="muted">시술(복수)·사진 종류·장수·목표 통과 장수·비용 상한을 정해 생성 시작. 모든 작업은 대기열로 들어가 순서대로 실행.</div></div>
-          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 선택/제외와 사유 태그.</div></div>
-          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 선택한 사진 모음. 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
+          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 채택(드라이브 저장)/제외(저장 안 함)와 제외 사유.</div></div>
+          <div><h4>학습</h4><div class="muted">제외 사유가 쌓여 다음 생성 프롬프트를 고칩니다. 메모는 사람이 확인해 「규칙으로 승격」해야 반영됩니다.</div></div>
+          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 채택한 사진 모음(드라이브 저장본). 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
         </div>
       </div>
     </section>
@@ -365,6 +454,16 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 </div>
 
 <dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
+<script>
+// 딤(모달 바깥 어두운 부분)을 누르면 닫는다 (2026-09-08 성연서님 지시).
+// ⚠ dialog 는 딤을 눌러도 click 대상이 dialog 자신이라, 안쪽(.in)에서 올라온 클릭과 구분해야 한다.
+//   좌표가 모달 상자 밖일 때만 닫는다 — 안 그러면 표를 긁어도 닫힌다.
+document.getElementById('dlg').addEventListener('click', (e) => {
+  const d = e.currentTarget; if (e.target !== d) return;
+  const r = d.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
+});
+</script>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -395,6 +494,7 @@ new MutationObserver(ms => ms.forEach(m => {
   if (m.type === 'attributes' && m.target instanceof Element) { const t = m.target; if (t.matches('.tags button')) SEED.tag(t); else if (t.matches('button.b')) SEED.btn(t); }
 })).observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['class']});
 seedify(document.body);
+document.addEventListener('click', e => { document.querySelectorAll('details.dd[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
@@ -409,6 +509,11 @@ const MODE_KO = {selfie:'셀카형', clinical:'임상형'};
 const KIND_KO = {demo:'샘플', dry_run:'프롬프트만', run:'실제', sim:'시뮬레이션'};
 const FAIL_KO = {structure:'얼굴 정렬 불일치', identity:'동일 인물 아님', duplicate:'유사 이미지 중복', 'vision:hair':'머리카락 부자연', 'vision:ai_look':'AI 생성 티', 'vision:fingers':'손가락 오류', 'vision:skin_texture':'피부 질감 부자연', 'vision:drift':'시술 부위 외 변화', 'vision:effect_visible':'효과 미확인', 'vision:identity':'동일 인물 아님'};
 const SCORE_KO = {fingers:'손가락', skin_texture:'피부 질감', hair:'머리카락', identity:'동일 인물', drift:'부위 외 변화 없음', effect_visible:'효과 확인', ai_look:'자연스러움'};
+// AI 검수 점수의 정본 모양은 `{item: {score, note}}` 다(src/bna/qa/vision.py).
+// 2026-09-08 성연서님 "AI 점수항목 오류" — 화면이 이걸 숫자로 다뤄 [object Object]·NaN% 가 나왔다.
+// 옛 평면 모양(숫자)도 받아 준다 — 예전 배치의 meta.json 이 그 모양이면 화면이 통째로 깨지면 안 된다.
+const scoreOf = v => { const n = (v && typeof v === 'object') ? v.score : v; return typeof n === 'number' && isFinite(n) ? n : null; };
+const noteOf = v => (v && typeof v === 'object' && typeof v.note === 'string') ? v.note : '';
 const VAL_KO = {
   country:{korea:'한국인', japan:'일본인', china:'중국인', sea:'동남아', west:'서양인'}, age:{late_teens:'10대 후반', early_20s:'20대 초', late_20s:'20대 후', '30s':'30대', '40s':'40대', '50s':'50대', '60s':'60대'}, gender:{female:'여성', male:'남성'},
   face_shape:{oval:'계란형', round:'둥근형', square:'각진형', long:'긴형', heart:'하트형'}, skin_tone:{fair:'아주 밝은 피부', light:'밝은 피부', medium:'중간 피부', tan:'그을린 피부', deep:'어두운 피부'},
@@ -428,10 +533,32 @@ const failKo = r => FAIL_KO[r] || r;
 let POLL = null;
 const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
+// 검수 버튼 문구 정본 한 곳.
+// ⚠ 내부 값(pick/reject)은 그대로다 — 바꾸면 저장된 review.json·통계 축이 갈린다.
+const PICK = {
+  pick:   {btn: '채택', on: '채택함'},
+  reject: {btn: '제외', on: '제외함'},
+};
+// 2026-09-08 성연서님 "나는 지금 PC에서 진행하고 있거든!" — 검수를 클라우드에서도 열었다.
+// 그래서 잠기는 축이 둘로 갈렸다: 검수(RO)는 이제 거의 항상 열려 있고,
+// 사진 만들기·내보내기(NO_CREATE)만 인터넷 화면에서 막힌다(사진 파일이 그 PC 에만 있어서다).
+const RO = () => !!(CFG && CFG.readonly);          // 검수 잠김 — 저장소가 끊겼을 때만 참
+const NO_CREATE = () => !!(CFG && CFG.no_create);  // 생성·내보내기 잠김 — 인터넷 화면
+// 판정 아래 줄 (2026-09-08 성연서님 "설명문 다 삭제 불필요해").
+// 설명 문장은 뺐다 — 버튼 문구와 라이브러리 제목이 이미 "채택 = 드라이브 저장"을 말한다.
+// ⚠ 남긴 건 **설명이 아니라 상태**다: 채택한 사진이 실제로 올라갔는지 여부.
+//   이건 다른 데 없는 사실이라 지우면 올라간 줄 알고 넘어간다.
+function pickLine(rv) {
+  rv = rv || {};
+  if (rv.pick !== 'pick') return '';
+  return `<div class="pick-line ok">${rv.drive === 'uploaded' ? '드라이브 저장 완료' : '드라이브 저장 대기'}</div>`;
+}
 let CFG, BATCHES = [], CUR = null;
 
 let QSTAT = null, LIB = null, EXPORTS = [];
-const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', settings:'설정', help:'도움말'};
+let STATS_OPEN = false;
+try { STATS_OPEN = localStorage.getItem('statsOpen') === '1'; } catch {}
+const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', lessons:'학습', settings:'설정', help:'도움말'};
 
 // ---------- 화면 ----------
 function show(tab) {
@@ -440,8 +567,10 @@ function show(tab) {
   $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
   if (tab === 'home') loadHome();
   if (tab === 'create') loadQueue();
+  document.body.classList.toggle('reviewing', tab === 'jobs' && VIEW === 'review');
   if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
   if (tab === 'library') loadLibrary();
+  if (tab === 'lessons') loadLessons();
   if (tab === 'settings') renderSettings();
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
@@ -531,7 +660,7 @@ async function renderLive() {
 }
 function renderHomeLib() {
   const l = OV.library; const rows = Object.entries(l.summary).map(([t, m]) => [t, Object.values(m).reduce((a,b)=>a+b,0), m]).sort((a,b) => b[1]-a[1]);
-  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">선택된 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
+  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">채택한 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
 }
 setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
 let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); chartStack(); chartToday(); } }, 150); });
@@ -592,6 +721,7 @@ $('#btn-estimate').onclick = async () => {
   catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 $('#btn-run').onclick = async () => {
+  if (NO_CREATE()) { msg('#req-msg', CFG.cloud_msg || '이 화면에서는 사진을 만들 수 없습니다.', 'err'); return; }
   const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
   if (jobs.some(j => !j.simulate) && !confirm(`실제 생성 작업 ${jobs.filter(j=>!j.simulate).length}개를 시작합니다. API 비용이 발생합니다.`)) return;
   try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개 시작`); msg('#req-msg', ''); loadQueue(); }
@@ -658,16 +788,32 @@ async function loadBatches() {
     const dry = b.kind === 'dry_run';
     return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td><td>${dry ? '—' : (s.attempts_per_pass ?? '')}</td><td>${dry ? '—' : (s.cost_per_pass ?? '')}</td>
-      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
+      <td>${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches; $('#jobs-kind').onchange = loadBatches;
+$('#list-toggle').onclick = () => setListOpen(!LIST_OPEN);
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
-async function openBatch(id, scrollTo_ = false) {
+// 작업을 고르면 목록을 접는다 — 고르고 나면 목록은 자리만 차지하고,
+// 그만큼 사진이 화면 밖으로 밀린다. 헤더를 누르면 다시 펼친다.
+let LIST_OPEN = true;
+function setListOpen(open) {
+  LIST_OPEN = open;
+  document.body.classList.toggle('list-folded', !open);
+  const t = $('#list-toggle'); if (t) t.textContent = open ? '접기' : '작업 바꾸기';
+}
+/**
+ * byUser = 사람이 목록에서 줄을 눌러 고른 경우.
+ * ⚠ 목록 접기는 **byUser 일 때만** 한다. 새로고침하면 첫 작업이 자동으로 열리는데,
+ *   거기서도 접으면 고른 적 없는 목록이 사라져 "리스트가 사라지는 버그"가 된다
+ *   (2026-09-08 성연서님 신고 — 내가 같은 날 넣은 결함).
+ */
+async function openBatch(id, byUser = false) {
   CUR = await api('/api/batches/' + id);
+  if (byUser) setListOpen(false);
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
@@ -676,7 +822,7 @@ async function openBatch(id, scrollTo_ = false) {
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
   renderStats(); renderGallery(); startPoll();
-  if (scrollTo_) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
+  if (byUser) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
 }
 async function startPoll() {
   clearInterval(POLL); POLL = null; $('#prog').hidden = true;
@@ -715,13 +861,19 @@ function renderStats() {
   const s = CUR.stats, dry = CUR.kind === 'dry_run';
   $('#kpis').innerHTML = [
     ['생성 장수', s.total], ['AI 검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['장당 시도', dry ? '—' : `${s.attempts_per_pass}회`], ['장당 비용', dry ? '—' : `$${s.cost_per_pass}`],
-    ['검수 완료', `${s.reviewed} / ${s.total}`], ['선택 · 제외', `${s.picked} · ${s.rejected}`]
+    ['검수 완료', `${s.reviewed} / ${s.total}`], ['채택 · 제외', `${s.picked} · ${s.rejected}`]
   ].map(([l, v]) => `<div class="kpi compact" style="background:var(--ui-surface)"><div class="l">${l}</div><div class="v">${v ?? '—'}</div></div>`).join('');
   let html = '';
   if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
   if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h4>제외 사유</h4>${bars(s.review_tags, s.total, 'bad')}</div>`;
   if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h4>${AXIS_KO[a]||a}별 통과율</h4>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
-  $('#gal-stats').innerHTML = html;
+  // 통계는 가끔 보는 값이다 — 항상 펼쳐 두면 매번 사진이 화면 밖으로 밀린다
+  // (2026-09-08 실측: 사진까지 1108px 스크롤). 접어 두고 필요할 때 펼친다.
+  $('#gal-stats').innerHTML = html
+    ? `<details class="stats-fold"${STATS_OPEN ? ' open' : ''}><summary>지표 자세히 보기</summary><div class="grid g-stats">${html}</div></details>`
+    : '';
+  const d = $('#gal-stats details');
+  if (d) d.ontoggle = () => { STATS_OPEN = d.open; try { localStorage.setItem('statsOpen', d.open ? '1' : '0'); } catch {} };
 }
 function renderGallery() {
   const f = $('#gal-filter').value, ax = $('#gal-axis').value, av = $('#gal-axis-val').value;
@@ -732,53 +884,168 @@ function renderGallery() {
     if (ax && av && it.variation?.[ax]?.key !== av) return false; return true;
   });
   $('#gal-count').textContent = `${items.length} / ${CUR.items.length}장`; $('#gal-empty').hidden = items.length > 0;
+  GAL_ITEMS = items; $('#gal').hidden = VIEW === 'review'; $('#rev').hidden = VIEW !== 'review';
+  if (VIEW === 'review') { if (REV_IDX >= items.length) REV_IDX = Math.max(0, items.length - 1); renderReview(); $('#gal').innerHTML = ''; return; }
   $('#gal').innerHTML = items.map(itemCard).join('');
-  $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct);
-  $('#gal').querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+  bindActs($('#gal'));
+}
+function bindActs(root) {
+  root.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); root.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct);
+  root.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+}
+// ── 검수 모드: 한 장씩 크게, 판단 근거를 옆에. ←→ 이동, 1 선택, 2 제외 ──
+let VIEW = 'grid', REV_IDX = 0, GAL_ITEMS = [];
+function renderReview() {
+  const el = $('#rev'), it = GAL_ITEMS[REV_IDX];
+  if (!it) { el.innerHTML = '<div class="empty">표시할 항목이 없습니다</div>'; return; }
+  const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
+  const img = (file, cap) => file ? `<figure><img src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  const fails = (it.fail_reasons||[]).map(r => esc(failKo(r))).join(' · ');
+  const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>' : it.passed ? '<span class="verdict ok">AI 검수 통과</span>' : '<span class="verdict bad">AI 검수 탈락</span>';
+  const scores = it.vision?.scores ? Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v);
+    return `<div class="score" title="${esc(noteOf(v) || '')}"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n != null && n < 5 ? 'bad' : ''}" style="width:${n == null ? 0 : n*10}%"></i></span><b class="${n != null && n < 5 ? 'bad' : ''}">${n == null ? '—' : n}</b></div>`;
+  }).join('') : '<div class="muted">점수 없음</div>';
+  const cond = (ks) => ks.filter(k => v[k]).map(k => esc(val(k, v[k].key))).join(' · ');
+  const thumbs = GAL_ITEMS.map((x, i) => `<button class="th ${i === REV_IDX ? 'cur' : ''} ${x.review?.pick||''}" data-idx="${i}" title="${+x.item_id+1}">${x.after_file ? `<img loading="lazy" src="/files/${b}/${x.item_id}/${x.after_file}">` : ''}</button>`).join('');
+  const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
+  el.innerHTML = `<div class="rev">
+    <div class="rev-main">
+      <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
+      <div class="thumbs"><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
+    </div>
+    <div class="rev-side">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px"><b style="font-size:var(--fs-lg)">${+it.item_id+1}번 사진</b>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+        ${fails ? `<div class="muted">${fails}</div>` : ''}
+      </div>
+      <div><div class="rev-h">AI 점수</div><div class="scores">${scores}</div></div>
+      <div><div class="rev-h">생성 조건</div><div class="muted cond-line">${cond(['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'])}</div></div>
+      <div class="rev-act">
+        <div class="act">
+          <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn} <kbd>1</kbd></button>
+          <button class="b ${rv.pick==='reject'?'on-reject':''}"${RO()?' disabled':''} data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?PICK.reject.on:PICK.reject.btn} <kbd>2</kbd></button>
+        </div>
+        ${pickLine(rv)}
+        ${reasonBlock(it, rv.pick === 'reject')}
+      </div>
+    </div></div>`;
+  bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; renderReview(); });
+  el.querySelector('.th.cur')?.scrollIntoView({block:'nearest', inline:'center'});
+}
+$('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => {
+  VIEW = bt.dataset.v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt));
+  renderGallery();
+  // 검수 모드에선 위쪽 지표·통계를 접고(CSS) 사진 카드로 스크롤한다 — 매번 스크롤해서 내려오지 않게.
+  document.body.classList.toggle('reviewing', VIEW === 'review');
+  if (VIEW === 'review') setTimeout(() => $('#rev')?.scrollIntoView({behavior:'smooth', block:'center'}), 60);
+});
+document.addEventListener('keydown', e => {
+  if (VIEW !== 'review' || $('#rev').hidden || !CUR || (e.target instanceof Element && e.target.matches('input, textarea, select'))) return;
+  const it = GAL_ITEMS[REV_IDX]; if (!it) return;
+  if (e.key === 'ArrowRight' && REV_IDX < GAL_ITEMS.length - 1) { REV_IDX++; renderReview(); }
+  else if (e.key === 'ArrowLeft' && REV_IDX > 0) { REV_IDX--; renderReview(); }
+  else if (e.key === '1' || e.key === '2') { $('#rev').querySelector(`[data-act=${e.key === '1' ? 'pick' : 'reject'}]`)?.click(); }
+  else return; e.preventDefault();
+});
+const DIRTY = new Set(); // 사유(태그·메모)를 고쳤지만 아직 저장 안 한 사진
+function reasonFoot(it) {
+  const rv = it.review || {}, has = (rv.tags||[]).length || rv.note, dirty = DIRTY.has(it.item_id);
+  return dirty ? `<button class="b primary" data-act="savereason" data-id="${it.item_id}">사유 저장</button><span class="muted">저장 안 됨</span>`
+    : has ? `<button class="b" disabled>저장됨 ✓</button><span class="muted">사유가 저장됐어요</span>`
+    : `<button class="b" disabled>사유 저장</button><span class="muted">사유는 선택 사항이에요</span>`;
+}
+function reasonBlock(it, open) {
+  const rv = it.review || {};
+  return `<div class="reason" ${open ? '' : 'hidden'}>
+        <div class="muted">왜 제외했나요?</div>
+        <details class="dd"><summary class="dd-btn"><span class="dd-val ${(rv.tags||[]).length?'':'empty'}">${(rv.tags||[]).length ? esc(rv.tags.join(', ')) : '제외 사유 선택'}</span><span class="dd-caret">▾</span></summary>
+          <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox"${RO()?' disabled':''} data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
+        <input type="text"${RO()?' disabled':''} placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+        <div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div>
+</div>`;
 }
 function itemCard(it) {
   const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
   const img = (file, cap) => file ? `<figure><img loading="lazy" src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
-  const status = it.passed === null ? '<span class="chip">프롬프트만</span>' : it.passed ? '<span class="chip ok">통과</span>' : `<span class="chip bad">탈락</span>`;
-  const fails = (it.fail_reasons||[]).map(r => `<span class="chip bad">${esc(failKo(r))}</span>`).join('');
-  const badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  // 판정 한 줄: AI 검수 결과 + 탈락이면 사유를 같은 줄에
+  const fails = (it.fail_reasons||[]).map(r => esc(failKo(r)));
+  const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>'
+    : it.passed ? '<span class="verdict ok">AI 검수 통과</span>'
+    : `<span class="verdict bad">AI 검수 탈락</span>${fails.length ? `<span class="why">${fails.join(' · ')}</span>` : ''}`;
+  // 생성 조건 9개: 칩 대신 한 줄 텍스트(넘치면 말줄임, 전체는 상세에서)
+  const conds = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => esc(val(k, v[k].key)));
+  const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
+  const open = rv.pick === 'reject';
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
     <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
     <div class="body">
-      <div class="head"><span class="id">${+it.item_id+1} ${status}</span><span class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)} <button class="b" data-detail="${it.item_id}">상세</button></span></div>
-      <div>${badges}</div>${fails ? `<div style="margin-top:4px">${fails}</div>` : ''}
-      <div class="act" style="margin-top:8px">
-        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">선택</button>
-        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">제외</button>
-        <button class="b" data-act="clear" data-id="${it.item_id}">초기화</button>
+      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+      <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
+      <div class="act">
+        <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn}</button>
+        <button class="b ${rv.pick==='reject'?'on-reject':''}"${RO()?' disabled':''} data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?PICK.reject.on:PICK.reject.btn}</button>
       </div>
-      <div class="tags">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
-      <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+      ${pickLine(rv)}
+      ${reasonBlock(it, open)}
     </div></div>`;
 }
+function refreshFoot(it) { const f = $('#rf-'+it.item_id); if (!f) return; f.innerHTML = reasonFoot(it); f.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); seedify(f); }
 async function onAct(e) {
-  const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id); const rv = it.review = it.review || {tags:[]};
+  const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id);
+  if (!it) { toast('사진을 찾지 못했습니다 — 새로고침해 주세요'); return; }
   const act = el.dataset.act;
-  if (act === 'note') { el.onkeydown = ev => { if (ev.key === 'Enter') { rv.note = el.value; save(it); } }; return; }
+  if (RO() && act !== 'note') { toast('지금은 검수를 저장할 수 없습니다 — 저장소 연결을 확인해 주세요'); return; }
+  if (SAVING.has(id) && act !== 'note') return;          // 앞 저장이 끝나기 전엔 안 받는다(연타 경쟁 방지)
+  const prev = JSON.parse(JSON.stringify(it.review || {}));   // 저장이 실패하면 여기로 되돌린다
+  const rv = it.review = it.review || {tags:[]};
+  // 사유(태그·메모)는 로컬에만 두고 [사유 저장]으로 한 번에 저장
+  if (act === 'note') { el.oninput = () => { rv.note = el.value; DIRTY.add(id); refreshFoot(it); }; el.onkeydown = ev => { if (ev.key === 'Enter' && DIRTY.has(id)) { DIRTY.delete(id); save(it); } }; return; }
+  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const v = el.closest('.dd').querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
+  if (act === 'savereason') { DIRTY.delete(id); await save(it, prev); return; }
   if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
-  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; }
-  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; rv.tags.includes(t) ? rv.tags.splice(rv.tags.indexOf(t),1) : rv.tags.push(t); if (!rv.pick) rv.pick = 'reject'; }
-  await save(it);
+  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; DIRTY.delete(id); }
+  await save(it, prev);
 }
-async function save(it) {
-  const rv = it.review; await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick, tags: rv.tags||[], note: rv.note||''});
+// 2026-09-08 수리 — 종전엔 ①실패해도 조용(try/catch 없음: 클라우드 보기 전용 405 가 흔적 없이 삼켜졌다)
+// ②화면을 먼저 바꾸고 저장(실패하면 화면과 디스크가 갈려, 새로고침하면 원복 = "눌렀는데 안 먹었다")
+// ③서버 응답을 안 씀 ④연타 시 요청이 겹침.
+const SAVING = new Set();
+async function save(it, prev) {
+  SAVING.add(it.item_id);
+  try {
+    const rv = it.review;
+    const saved = await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick ?? null, tags: rv.tags||[], note: rv.note||''});
+    it.review = {pick: saved.pick ?? null, tags: saved.tags || [], note: saved.note || '', updated_at: saved.updated_at, drive: saved.drive};
+    if (saved.drive === 'uploaded') toast('채택 · 드라이브에 저장했습니다');
+    else if (saved.drive === 'removed') toast('제외 · 드라이브 채택본에서 내렸습니다');
+  } catch (e) {
+    if (prev !== undefined) it.review = prev;            // 저장이 안 됐으면 화면도 되돌린다
+    DIRTY.delete(it.item_id);
+    toast('저장 실패 — ' + e.message);
+  } finally { SAVING.delete(it.item_id); }
   const s = CUR.stats, all = CUR.items.map(x => x.review||{}); s.reviewed = all.filter(r => r.pick || (r.tags||[]).length || r.note).length;
   s.picked = all.filter(r => r.pick === 'pick').length; s.rejected = all.filter(r => r.pick === 'reject').length;
   s.review_tags = {}; all.forEach(r => (r.tags||[]).forEach(t => s.review_tags[t] = (s.review_tags[t]||0)+1));
-  renderStats(); loadBatches(); const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
+  renderStats(); loadBatches().catch(() => {});
+  if (VIEW === 'review') { renderReview(); return; }
+  const old = $('#it-'+it.item_id);
+  // 메모를 치는 중이면 카드를 갈아끼우지 않는다 — 커서가 튀고 입력이 끊긴다
+  if (old && !(old.contains(document.activeElement) && document.activeElement.tagName === 'INPUT')) {
+    const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild);
+    bindActs($('#it-'+it.item_id));
+  }
 }
 function detail(id) {
   const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
   const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
-  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok', null, k => SCORE_KO[k]||k).replace(/장<\/span>/g, '점</span>')}` : '';
+  // 점수는 {score, note} 객체다. note 는 AI 가 그렇게 준 이유라 같이 보여 준다(검수의 근거).
+  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3><div class="scores lg">${
+    Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v), why = noteOf(v);
+      return `<div class="score"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n != null && n < 5 ? 'bad' : ''}" style="width:${n == null ? 0 : n*10}%"></i></span><b class="${n != null && n < 5 ? 'bad' : ''}">${n == null ? '—' : n}</b></div>${
+        why ? `<div class="score-why">${esc(why)}</div>` : ''}`; }).join('')}</div>` : '';
   const chk = [it.structure && `얼굴 정렬: ${it.structure.passed ? '통과' : '불일치'}`, it.identity && `동일 인물: ${it.identity.hard_fail ? '불일치' : '통과'}`].filter(Boolean).join(' · ');
   $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
-    <p class="muted">${chk || ''} ${it.prompt_version ? '· 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
+    <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>생성 조건</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후 변경</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
     <h3 style="margin-top:14px">시술 전 프롬프트</h3><div class="mono">${esc(it.before_prompt)}</div>
     <h3 style="margin-top:10px">시술 후 프롬프트</h3><div class="mono">${esc(it.after_prompt)}</div>`;
@@ -802,7 +1069,7 @@ function renderLibrary() {
     return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
   $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
   $('#lib-groups').querySelectorAll('[data-unpick]').forEach(b => b.onclick = async () => { const [bid, iid] = b.dataset.unpick.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
-    await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('선택 해제'); loadLibrary(); });
+    await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('채택을 취소했습니다'); loadLibrary(); });
 }
 function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
@@ -813,6 +1080,7 @@ function libCard(i) {
 }
 $('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
 $('#btn-export').onclick = async () => {
+  if (NO_CREATE()) { msg('#lib-msg', CFG.cloud_msg || '이 화면에서는 내보내기를 할 수 없습니다.', 'err'); return; }
   try { msg('#lib-msg', '내보내는 중…'); const r = await api('/api/export', {treatment: $('#lib-treatment').value || null, mode: $('#lib-mode').value || null});
     EXPORTS.unshift(r); msg('#lib-msg', `${r.count}장 내보냄`, 'on'); renderExports(); }
   catch (e) { msg('#lib-msg', e.message, 'err'); }
@@ -821,6 +1089,43 @@ function renderExports() {
   $('#lib-exports').innerHTML = EXPORTS.slice(0, 5).map(r => `<div class="muted" style="margin-top:6px;word-break:break-all"><a href="${r.zip}" style="color:var(--primary);font-weight:600">${r.name}.zip</a> · ${r.count}장 · ${(r.zip_bytes/1024).toFixed(0)}KB<br><span style="font-size:10px">${esc(r.dir)}</span></div>`).join('');
 }
 
+
+// ---------- 학습 (제외 사유 → 프롬프트) ----------
+let LES = null;
+async function loadLessons() {
+  try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
+  const L = LES, tags = Object.entries(L.tags || {});
+  $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장`;
+  $('#les-body').innerHTML = tags.length
+    ? `<div>${tags.map(([t, n]) => `<span class="chip ${L.active.from_tags.includes(t) ? 'bad' : ''}" title="${L.active.from_tags.includes(t) ? '지금 프롬프트에 반영 중' : '아직 반영 기준(2회) 미달'}">${esc(t)} ${n}</span>`).join(' ')}</div>`
+      + (Object.keys(L.active.weights || {}).length
+        ? `<div style="margin-top:10px"><b>덜 뽑는 조건</b><div style="margin-top:4px">${
+            Object.entries(L.active.weights).map(([a, vs]) => Object.keys(vs).map(k => `<span class="chip warn">${AXIS_KO[a] || a} · ${esc(val(a, k))}</span>`).join(' ')).join(' ')}</div></div>` : '')
+    : '아직 제외한 사진이 없습니다.';
+  const pv = L.preview || {};
+  $('#les-preview').innerHTML = Object.keys(pv).length
+    ? Object.entries(pv).map(([w, t]) => `<div style="margin-bottom:8px"><b>${w === 'before' ? '시술 전' : '시술 후'}</b><div class="mono">${esc(t)}</div></div>`).join('')
+    : '아직 붙는 문장이 없습니다';
+  $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => `
+    <div class="list-row" style="cursor:default;align-items:flex-start">
+      <div class="t" style="flex:1"><b>${esc(n.note)}</b><span>${fmtBid(n.batch)} · ${+n.item + 1}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
+        <input type="text" id="les-en-${i}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" style="width:100%;margin-top:6px">
+      </div>
+      <button class="b" data-promote="${i}">규칙으로 승격</button>
+    </div>`).join('') : '<div class="muted">승격할 메모가 없습니다.</div>';
+  $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
+    const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
+    if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
+    try { const r = await api('/api/lessons/promote', {note: LES.notes[i].note, en, where: ['before', 'after']});
+      if (r.error) throw new Error(r.error);
+      msg('#les-msg', `규칙 ${r.count}개 — 다음 생성부터 붙습니다`, 'on'); loadLessons(); }
+    catch (e) { msg('#les-msg', e.message, 'err'); }
+  });
+  $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th>넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th></tr></thead><tbody>${
+    L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="muted">아직 승격된 규칙이 없습니다.</div>';
+  const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
+}
 
 // ---------- 설정 ----------
 function renderSettings() {
@@ -834,6 +1139,13 @@ function renderSettings() {
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
+  // ⚠ 안내 카드는 2026-09-08 성연서님 지시로 뺐다("이런 주석들 있는거 다 삭제 불필요해").
+  //    되살리지 마라. "여기선 생성이 안 된다"는 사실은 **버튼 자체**가 말한다(아래) —
+  //    화면 위에 문단으로 또 적지 않는다.
+  if (CFG.no_create) {
+    const r = $('#btn-run'); if (r) { r.disabled = true; r.textContent = '생성은 생성 컴퓨터에서'; r.title = CFG.cloud_msg || ''; }
+    const x = $('#btn-export'); if (x) { x.disabled = true; x.title = CFG.cloud_msg || ''; }
+  }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
   $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';

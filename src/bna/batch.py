@@ -26,6 +26,13 @@ class Batch:
         self.dir = ROOT / "outputs" / self.batch_id
         self.dir.mkdir(parents=True, exist_ok=True)
         self.pv = prompt_version()
+        # 제외 사유에서 배운 금지문·조건 회피. 배치 시작 시 한 번 읽어 회차 내내 같은 규칙을 쓴다
+        # (아이템마다 다시 읽으면 도중에 검수한 게 섞여 들어가 이 배치의 조건이 갈린다).
+        try:
+            from . import lessons
+            self.avoid = lessons.active(ROOT / "outputs", treatment, mode)
+        except Exception:                                   # noqa: BLE001
+            self.avoid = {"lines": {}, "weights": {}}       # 학습이 실패해도 생성은 돈다(fail-open)
         self.pricing = load("pricing.yaml")
         self.p_gen, self.p_edit, self.p_qa = providers.get(gen), providers.get(edit), providers.get(qa)
         self.registry = dedup.Registry()
@@ -37,7 +44,8 @@ class Batch:
 
     # ---------- 단일 아이템 ----------
     async def run_item(self, idx: int, variation: dict) -> dict:
-        spec = build_prompts(self.treatment, self.mode, variation, None if self.seed is None else self.seed * 1000 + idx)
+        spec = build_prompts(self.treatment, self.mode, variation, None if self.seed is None else self.seed * 1000 + idx,
+                             avoid=(self.avoid or {}).get("lines"))
         item_id = f"{idx:04d}"
         meta = {**spec, "item_id": item_id, "batch_id": self.batch_id, "prompt_version": self.pv, "cost": 0.0, "fail_reasons": []}
         t = load("treatments.yaml")[self.treatment]
@@ -126,7 +134,7 @@ class Batch:
 
     # ---------- 배치 ----------
     async def run(self):
-        plans = plan_batch(self.mode, self.count, self.seed, self.fixed)
+        plans = plan_batch(self.mode, self.count, self.seed, self.fixed, (self.avoid or {}).get("weights"))
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
         self.progress = Progress(self.dir, len(plans))

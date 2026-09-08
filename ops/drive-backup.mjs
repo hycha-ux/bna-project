@@ -33,6 +33,8 @@ const KEYS = process.env.TEEMO_KEYS || 'C:\\Users\\medib\\teemo\\keys.env';
 const MANIFEST = path.join(HERE, '.drive-manifest.json');
 const LOG = path.join(ROOT, 'outputs', 'drive-backup.log');
 const DRY = process.argv.includes('--dry');
+const FULL = !process.argv.includes('--no-full');     // 전량 안전망 레인(기본 켬)
+const argVal = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
 
 // 백업 대상: 생성물 + 참조 사진. 로그·임시·zip 은 다시 만들 수 있으니 뺀다(용량만 먹는다).
 export const TARGETS = ['outputs', 'samples'];
@@ -127,6 +129,87 @@ export function plan(root = ROOT, manifest = {}) {
   return { files, todo };
 }
 
+// ── 검수 결과에 따른 레인 배치 (2026-09-08 성연서님 지시 "선택하면 드라이브에 등록,
+//    제외하면 넣지 않게") ────────────────────────────────────────────────────
+//
+// 드라이브 안에서 두 레인으로 갈린다. 목적이 달라서 합치지 않는다:
+//   채택본/       — 사람이 **채택**한 사진만. 이게 실제로 쓰는 창고다.
+//                   제외·미검수는 여기 절대 안 들어온다(지시 그대로).
+//   _원본안전망/  — 전량 사본. PC 가 죽었을 때를 위한 것이지 창고가 아니다
+//                   (2026-09-08 어제 지시로 만든 레인 — `--no-full` 로 끌 수 있다).
+//   _제외됨/      — 채택했다가 나중에 제외한 사진이 **여기로 옮겨진다**.
+//
+// ⚠ 내릴 때 지우지 않고 옮기는 이유: 이 백업은 단방향이고 삭제 권한을 안 쓴다.
+//   오판으로 제외를 눌러도 파일은 `_제외됨/` 에 그대로 남아 되돌릴 수 있다.
+export const LANE_PICKED = '채택본';
+export const LANE_FULL = '_원본안전망';
+export const LANE_OUT = '_제외됨';
+const IMG_RE = /\.(jpe?g|png|webp)$/i;
+
+/** outputs/<배치>/<아이템>/<파일> → "<배치>/<아이템>". 그 밖이면 null. */
+export function itemKeyOf(rel) {
+  const m = /^outputs\/([^/]+)\/([^/]+)\//.exec(rel);
+  return m && m[2] !== 'exports' ? `${m[1]}/${m[2]}` : null;
+}
+
+/** 디스크의 review.json + meta.json 을 읽어 아이템별 판정을 모은다(값 판단은 여기 한 곳). */
+export function reviews(root = ROOT) {
+  const out = {};
+  const base = path.join(root, 'outputs');
+  if (!existsSync(base)) return out;
+  for (const b of readdirSync(base, { withFileTypes: true })) {
+    if (!b.isDirectory() || b.name === 'exports') continue;
+    for (const it of readdirSync(path.join(base, b.name), { withFileTypes: true })) {
+      if (!it.isDirectory()) continue;
+      const d = path.join(base, b.name, it.name);
+      const rf = path.join(d, 'review.json');
+      if (!existsSync(rf)) continue;
+      let rv = {}, meta = {};
+      try { rv = JSON.parse(readFileSync(rf, 'utf8')); } catch { continue; }
+      try { meta = JSON.parse(readFileSync(path.join(d, 'meta.json'), 'utf8')); } catch { /* 메타 없으면 unknown */ }
+      out[`${b.name}/${it.name}`] = { pick: rv.pick || null, treatment: meta.treatment || 'unknown', mode: meta.mode || 'unknown' };
+    }
+  }
+  return out;
+}
+
+/** 파일 하나가 드라이브 어느 자리로 갈지. 여러 자리일 수 있다(창고 + 안전망). */
+export function targetsFor(rel, rv, { full = true } = {}) {
+  const out = [];
+  if (full) out.push({ dest: `${LANE_FULL}/${rel}`, key: null });
+  const key = itemKeyOf(rel);
+  const r = key && rv[key];
+  if (r && r.pick === 'pick' && IMG_RE.test(rel))
+    out.push({ dest: `${LANE_PICKED}/${r.treatment}_${r.mode}/${key.replace('/', '_')}_${path.posix.basename(rel)}`, key });
+  return out;
+}
+
+/** 올릴 것 + 내릴 것. 순수 함수 — 회귀가 여기를 본다. */
+export function planLanes(root = ROOT, manifest = {}, opts = {}) {
+  const rv = opts.reviews || reviews(root);
+  const files = [];
+  for (const t of TARGETS) for (const f of walk(path.join(root, t), root)) files.push(f);
+  const todo = [];
+  const wanted = new Set();
+  for (const f of files)
+    for (const t of targetsFor(f.rel, rv, opts)) {
+      wanted.add(t.dest);
+      if (manifest[t.dest]?.sig !== f.sig) todo.push({ ...f, dest: t.dest, key: t.key });
+    }
+  // 채택본 레인에 있는데 더 이상 채택이 아닌 것 → 내린다(지우지 않고 _제외됨/ 으로 옮긴다)
+  const evict = Object.entries(manifest)
+    .filter(([dest, m]) => dest.startsWith(LANE_PICKED + '/') && m.id && !wanted.has(dest))
+    .map(([dest, m]) => ({ dest, id: m.id, key: m.key || null }));
+  return { files, todo, evict, reviews: rv };
+}
+
+/** 아이템 하나의 현재 드라이브 상태 — 화면 배지가 이걸 쓴다. */
+export function driveStateOf(key, manifest = {}) {
+  for (const [dest, m] of Object.entries(manifest))
+    if (dest.startsWith(LANE_PICKED + '/') && m.key === key && m.id) return 'uploaded';
+  return 'pending';
+}
+
 // ── 드라이브 (여기서부터 네트워크) ──────────────────────────────────────────
 const API = 'https://www.googleapis.com/drive/v3';
 const UP = 'https://www.googleapis.com/upload/drive/v3';
@@ -205,6 +288,18 @@ async function upload(file, tok, rootId, cache, prevId) {
   return r.id;
 }
 
+/**
+ * 채택본에서 내린다 — **지우지 않고** `_제외됨/` 으로 부모만 바꾼다.
+ * 이 백업은 삭제 권한을 쓰지 않는다(단방향 원칙). 오판이면 드라이브에서 도로 끌어오면 된다.
+ */
+async function moveOut(e, tok, rootId, cache) {
+  const dest = `${LANE_OUT}/${e.dest.split('/').slice(1, -1).join('/')}`;
+  const to = await folderFor(dest.replace(/\/$/, ''), tok, rootId, cache);
+  const cur = await gj(`${API}/files/${e.id}?fields=parents&${COMMON}`, tok);
+  const from = (cur.parents || []).join(',');
+  await gj(`${API}/files/${e.id}?addParents=${to}${from ? `&removeParents=${from}` : ''}&fields=id&${COMMON}`, tok, { method: 'PATCH' });
+}
+
 function log(line) {
   try {
     mkdirSync(path.dirname(LOG), { recursive: true });
@@ -216,14 +311,21 @@ function log(line) {
 
 async function main() {
   const man = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, 'utf8')) : {};
-  const { files, todo } = plan(ROOT, man);
+  const only = argVal('--item');                       // "<배치>/<아이템>" — 검수 직후 그 한 장만 (즉시 반영)
+  let { files, todo, evict } = planLanes(ROOT, man, { full: FULL });
+  if (only) {
+    todo = todo.filter((f) => f.key === only);
+    evict = evict.filter((e) => e.key === only);
+  }
   const mb = (n) => (n / 1024 / 1024).toFixed(1);
   const bytes = todo.reduce((s, f) => s + Number(f.sig.split(':')[0]), 0);
+  const lane = (d) => d.split('/')[0];
 
   if (DRY) {
-    console.log(`[dry] 대상 ${files.length}개 · 올릴 것 ${todo.length}개(${mb(bytes)}MB) · 업로드 0`);
-    for (const f of todo.slice(0, 10)) console.log('  +', f.rel);
+    console.log(`[dry] 대상 ${files.length}개 · 올릴 것 ${todo.length}개(${mb(bytes)}MB) · 내릴 것 ${evict.length}개 · 업로드 0`);
+    for (const f of todo.slice(0, 10)) console.log(`  + [${lane(f.dest)}] ${f.dest}`);
     if (todo.length > 10) console.log(`  … 외 ${todo.length - 10}개`);
+    for (const e of evict.slice(0, 10)) console.log(`  - [제외] ${e.dest}`);
     return;
   }
 
@@ -236,8 +338,8 @@ async function main() {
     process.exit(3); // 고장이 아니라 '아직'이다. 감시가 이 코드를 빨간불로 세지 않게 한다.
   }
 
-  if (!todo.length) {
-    console.log(`백업할 새 파일 없음 (대상 ${files.length}개 전부 최신)`);
+  if (!todo.length && !evict.length) {
+    console.log(`올리거나 내릴 것 없음 (대상 ${files.length}개 전부 최신)`);
     return;
   }
 
@@ -245,26 +347,39 @@ async function main() {
   const cache = new Map();
   let done = 0;
   let failed = 0;
+  let moved = 0;
   for (const f of todo) {
     try {
-      const id = await upload(f, tok, keys.GDRIVE_BACKUP_FOLDER_ID, cache, man[f.rel]?.id);
-      man[f.rel] = { sig: f.sig, id, at: Date.now() };
+      const id = await upload({ ...f, rel: f.dest }, tok, keys.GDRIVE_BACKUP_FOLDER_ID, cache, man[f.dest]?.id);
+      man[f.dest] = { sig: f.sig, id, at: Date.now(), key: f.key || undefined };
       done++;
     } catch (e) {
       failed++;
-      log(`실패 ${f.rel} — ${e.message}`);
+      log(`실패 ${f.dest} — ${e.message}`);
       if (String(e.message).includes('storageQuotaExceeded')) throw e; // 전부 같은 이유로 실패한다
     }
     if (done % 25 === 0) writeFileSync(MANIFEST, JSON.stringify(man)); // 중간에 죽어도 한 일은 남긴다
   }
+  // 제외로 바뀐 것 내리기 — 삭제가 아니라 `_제외됨/` 으로 이동이다(오판을 되돌릴 수 있게)
+  for (const e of evict) {
+    try {
+      await moveOut(e, tok, keys.GDRIVE_BACKUP_FOLDER_ID, cache);
+      delete man[e.dest];
+      moved++;
+    } catch (err) {
+      failed++;
+      log(`내리기 실패 ${e.dest} — ${err.message}`);
+    }
+  }
   writeFileSync(MANIFEST, JSON.stringify(man));
-  const line = `백업 ${done}개 올림(${mb(bytes)}MB)${failed ? ` · 실패 ${failed}` : ''} · 누적 ${Object.keys(man).length}개 · 방식 ${mode}`;
+  const line = `백업 ${done}개 올림(${mb(bytes)}MB)${moved ? ` · 제외로 ${moved}개 내림` : ''}${failed ? ` · 실패 ${failed}` : ''} · 누적 ${Object.keys(man).length}개 · 방식 ${mode}`;
   console.log(line);
   log(line);
   if (failed) process.exit(1);
 }
 
-if (import.meta.url === `file:///${process.argv[1].split(path.sep).join('/')}`) {
+// argv[1] 은 `node -e` 로 부르면 없다 — 없다고 import 자체가 터지면 회귀가 이 모듈을 못 읽는다
+if (process.argv[1] && import.meta.url === `file:///${process.argv[1].split(path.sep).join('/')}`) {
   main().catch((e) => {
     console.error('백업 실패:', e.message);
     log(`중단 — ${e.message}`);
