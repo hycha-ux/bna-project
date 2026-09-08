@@ -139,9 +139,15 @@ cd cloud && npx vercel --prod --yes     # 화면 코드를 고쳤을 때만 필�
 
 ### 자동 갱신 · 데모 제외 (2026-09-08)
 
-- 예약작업 **`TeemoBnaCloudPush`** — 07:05부터 **30분마다** `cloud/push-cloud.mjs` 실행(15분 상한,
-  배터리 조건 해제, `StartWhenAvailable`). PC가 꺼져 있으면 안 돈다 = 화면이 그 시각에 멈춘다.
-  멈춤 여부는 화면 하단 "사무실 PC 기준 …" 시각으로 읽는다.
+- 예약작업 **`TeemoBnaCloudPush`** — 07:05부터 **10분마다** `cloud/push-cloud.mjs` 실행(15분 상한,
+  배터리 조건 해제, `StartWhenAvailable`, `MultipleInstances=IgnoreNew`). PC가 꺼져 있으면 안 돈다
+  = 화면이 그 시각에 멈춘다. 멈춤 여부는 화면 하단 "사무실 PC 기준 …" 시각으로 읽는다.
+  - **왜 밀어 올리는가**: 화면은 인터넷(Vercel)에 있고 사진·원장은 이 PC 안에 있다. 밖에서 이 PC로
+    들어올 길이 없으니(공인 주소·포트 개방 없음) PC 쪽에서 내보내는 것 말고는 방법이 없다.
+    이 PC에서는 로컬 화면(`http://localhost:8765`)이 저장 즉시 보인다 — 지연은 *남의 브라우저*에만 있다.
+  - 주기는 기술 한계가 아니라 그냥 설정이다. 09-08 실측 푸시 1초(배치 8·이미지 6장·스냅샷 55KB)라
+    30분 → **10분**으로 줄였다(성연서님 문의). 더 줄이는 대신 **생성이 끝나는 순간 1회 푸시**(큐 러너
+    `_loop` 완료 지점 훅)가 다음 단계다 — 주기를 1분으로 깎는 것보다 싸고 정확하다.
 - **`kind: 'demo'` 배치는 올리지 않는다.** `--demo` 가 만든 가짜 그림이 공유 화면에 섞이면
   보는 사람이 실제 성과로 읽는다(09-08 실측: 화면의 15장 중 **12장이 데모**였고 통과율 53%도
   그 데모가 만든 값이었다. 걷어내니 실제는 3장 생성·0장 통과).
@@ -164,10 +170,14 @@ cd cloud && npx vercel --prod --yes     # 화면 코드를 고쳤을 때만 필�
 - **커밋해야 배포된다** — 로컬에서만 고친 파일은 아무 일도 일어나지 않는다.
 
 **여전히 사람(또는 예약작업)이 하는 일** — 이건 배포가 아니다:
-- **데이터 갱신**은 `cloud/push-cloud.mjs`(예약작업 `TeemoBnaCloudPush`, 30분)다.
+- **데이터 갱신**은 `cloud/push-cloud.mjs`(예약작업 `TeemoBnaCloudPush`, 10분)다.
   코드를 배포해도 화면 숫자는 안 바뀌고, 데이터를 올려도 재배포는 필요 없다. **둘은 별개다.**
 - 환경변수(`AUTH_SECRET`·`SIGNUP_CODE`·`BLOB_READ_WRITE_TOKEN`)는 Vercel 프로젝트 설정에 있고
   git 에 없다. 바꾸면 재배포가 있어야 반영된다.
 
 ⚠ 저장소가 **공개**라 커밋 전에 값이 섞이지 않았는지 본다. `cloud/.env.local`·`cloud/.vercel` 은
 `cloud/.gitignore` 가 막고 있으니 그 두 줄을 지우지 마라.
+
+- 예약작업 정의는 **`ops/task-defs/TeemoBnaCloudPush.xml`** 에 덤프해 둔다(트리거는 코드에 없어서
+  코드만 복구하면 자동 갱신이 안 살아난다). 주기·시각을 바꾸면 같은 커밋에서 다시 덤프하라:
+  `powershell -NoProfile -Command "Export-ScheduledTask -TaskName 'TeemoBnaCloudPush' | Set-Content ops/task-defs/TeemoBnaCloudPush.xml -Encoding UTF8"`
