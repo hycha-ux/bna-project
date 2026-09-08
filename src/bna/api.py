@@ -17,9 +17,12 @@
   POST /api/queue/add              {jobs:[{treatment, mode, count, seed, fixed, target_pass, cost_cap, simulate}]} 또는 단일
   POST /api/queue/cancel|remove|move|pause|clear_finished
   POST /api/review                 {batch, item, pick, tags, note} → outputs/<batch>/<item>/review.json
+  GET  /api/library                선택(pick)된 항목 전체 (배치 무관), 시술·유형 요약
+  POST /api/export                 {treatment?, mode?} → outputs/exports/<ts>/ 에 선택 항목 복사 + manifest.csv + zip
+  GET  /exports/<name>.zip         내보낸 zip 다운로드
   GET  /files/<batch>/<item>/<f>   이미지
 """
-import argparse, asyncio, json, random, threading, time, uuid, webbrowser
+import argparse, asyncio, csv, json, random, shutil, threading, time, uuid, webbrowser
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
@@ -134,7 +137,7 @@ def batch_summary(d: Path):
 def batches_payload():
     if not OUT.exists():
         return []
-    return sorted((batch_summary(d) for d in OUT.iterdir() if d.is_dir()), key=lambda b: b["mtime"], reverse=True)
+    return sorted((batch_summary(d) for d in OUT.iterdir() if d.is_dir() and d.name != "exports"), key=lambda b: b["mtime"], reverse=True)
 
 
 def batch_detail(bid: str):
@@ -158,6 +161,52 @@ def save_review(req):
     rv = {"pick": req.get("pick"), "tags": req.get("tags", []), "note": req.get("note", ""), "updated_at": time.time()}
     (d / "review.json").write_text(json.dumps(rv, ensure_ascii=False, indent=1), encoding="utf-8")
     return rv, 200
+
+
+# ---------- 라이브러리 · 내보내기 ----------
+def library_payload():
+    items = []
+    if OUT.exists():
+        for r in OUT.glob("*/*/review.json"):
+            rv = json.loads(r.read_text(encoding="utf-8"))
+            if rv.get("pick") != "pick":
+                continue
+            d = r.parent; m = d / "meta.json"
+            if not m.exists():
+                continue
+            meta = json.loads(m.read_text(encoding="utf-8")); files = sorted(p.name for p in d.glob("*.jpg"))
+            items.append({"batch_id": d.parent.name, "item_id": d.name, "treatment": meta.get("treatment"), "mode": meta.get("mode"),
+                          "variation": meta.get("variation", {}), "review": rv, "passed": meta.get("passed"), "demo": meta.get("demo", False),
+                          "before_file": next((f for f in files if f.endswith("_before.jpg")), None),
+                          "after_file": next((f for f in files if f.endswith("_after.jpg")), None), "picked_at": rv.get("updated_at")})
+    items.sort(key=lambda x: x.get("picked_at") or 0, reverse=True)
+    summary = {}
+    for it in items:
+        summary.setdefault(it["treatment"], {}).setdefault(it["mode"], 0); summary[it["treatment"]][it["mode"]] += 1
+    return {"items": items, "summary": summary, "total": len(items)}
+
+
+def export_payload(req):
+    lib = library_payload()["items"]
+    sel = [i for i in lib if (not req.get("treatment") or i["treatment"] == req["treatment"]) and (not req.get("mode") or i["mode"] == req["mode"])]
+    if not sel:
+        return {"error": "내보낼 선택 항목이 없습니다"}, 400
+    name = time.strftime("%Y%m%d-%H%M%S") + "-" + (req.get("treatment") or "all") + "-" + (req.get("mode") or "all")
+    root = OUT / "exports" / name; root.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for i in sel:
+        sub = root / f'{i["treatment"]}_{i["mode"]}'; sub.mkdir(exist_ok=True); src = OUT / i["batch_id"] / i["item_id"]
+        for f in (i["before_file"], i["after_file"]):
+            if f:
+                shutil.copy2(src / f, sub / f)
+        v = i["variation"]
+        rows.append([i["treatment"], i["mode"], i["batch_id"], i["item_id"], i["before_file"], i["after_file"],
+                     v.get("country", {}).get("key"), v.get("age", {}).get("key"), v.get("gender", {}).get("key"), v.get("angle", {}).get("key"),
+                     v.get("framing", {}).get("key"), "|".join(i["review"].get("tags", [])), i["review"].get("note", "")])
+    with (root / "manifest.csv").open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f); w.writerow(["treatment", "mode", "batch", "item", "before", "after", "country", "age", "gender", "angle", "framing", "tags", "note"]); w.writerows(rows)
+    zip_path = shutil.make_archive(str(root), "zip", root_dir=root)
+    return {"name": name, "count": len(sel), "dir": str(root), "zip": f"/exports/{name}.zip", "zip_bytes": Path(zip_path).stat().st_size}, 200
 
 
 # ---------- 데모 배치 (키 없이 화면 확인용) ----------
@@ -333,6 +382,14 @@ class Handler(SimpleHTTPRequestHandler):
                 r = prog.read(OUT / p.split("/")[3]); return self._json(r or {"error": "no progress"}, 200 if r else 404)
             if p.startswith("/api/batches/"):
                 r = batch_detail(p.split("/")[3]); return self._json(r or {"error": "not found"}, 200 if r else 404)
+            if p == "/api/library":
+                return self._json(library_payload())
+            if p.startswith("/exports/") and p.endswith(".zip"):
+                f = (OUT / "exports" / p[len("/exports/"):]).resolve()
+                if (OUT / "exports").resolve() in f.parents and f.is_file():
+                    data = f.read_bytes(); self.send_response(200); self.send_header("Content-Type", "application/zip")
+                    self.send_header("Content-Disposition", f'attachment; filename="{f.name}"'); self.send_header("Content-Length", str(len(data))); self.end_headers(); return self.wfile.write(data)
+                return self._json({"error": "not found"}, 404)
             if p.startswith("/files/"):
                 f = (OUT / p[len("/files/"):]).resolve()
                 if OUT.resolve() in f.parents and f.is_file():
@@ -357,6 +414,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(dryrun_save(req))
             if p == "/api/run":
                 r, code = start_run(req); return self._json(r, code)
+            if p == "/api/export":
+                r, code = export_payload(req); return self._json(r, code)
             if p == "/api/review":
                 r, code = save_review(req); return self._json(r, code)
             if p == "/api/demo_run":
