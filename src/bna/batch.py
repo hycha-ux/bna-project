@@ -15,7 +15,8 @@ MAX_ATTEMPTS = 3
 
 
 class Batch:
-    def __init__(self, treatment, mode, count, seed=None, fixed=None, gen="gemini", edit="gemini", qa="gemini", ab_prompt=None):
+    def __init__(self, treatment, mode, count, seed=None, fixed=None, gen="gemini", edit="gemini", qa="gemini", ab_prompt=None,
+                 target_pass=None, cost_cap=None):
         self.treatment, self.mode, self.count, self.seed = treatment, mode, count, seed
         self.fixed = fixed or {}
         self.batch_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
@@ -28,6 +29,8 @@ class Batch:
         self.ab_prompt = ab_prompt   # A6: 실험용 대체 프롬프트 파일 접미사 (예: "v2")
         self.state_path = self.dir / "state.json"
         self.progress = None   # run() 에서 생성
+        self.target_pass, self.cost_cap = target_pass, cost_cap   # 정지 조건: 통과작 수 / 누적 비용(USD)
+        self.stopped = None
 
     # ---------- 단일 아이템 ----------
     async def run_item(self, idx: int, variation: dict) -> dict:
@@ -92,9 +95,19 @@ class Batch:
             meta["passed"] = not meta["fail_reasons"]
             self._save(item_id, meta, before_out, after_out)
             if meta["passed"]:
-                self._p(item_id, "passed", passed=True, fail_reasons=[]); break
-            self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]))
+                self._p(item_id, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
+            self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
         return meta
+
+    def _should_stop(self):
+        if self.stopped or not self.progress:
+            return self.stopped
+        passed, cost = self.progress.totals()
+        if self.target_pass and passed >= self.target_pass:
+            self.stopped = f"target_pass:{passed}"
+        elif self.cost_cap and cost >= self.cost_cap:
+            self.stopped = f"cost_cap:{cost:.2f}"
+        return self.stopped
 
     def _p(self, item_id, stage, **kw):
         if self.progress:
@@ -120,6 +133,8 @@ class Batch:
             if f"{i:04d}" in done:
                 return None
             async with sem:
+                if self._should_stop():
+                    return None
                 m = await self.run_item(i, v)
             done.add(m["item_id"]); self.state_path.write_text(json.dumps({"done": sorted(done)}))
             return m
@@ -129,8 +144,9 @@ class Batch:
         except Exception as e:
             self.progress.finish(error=repr(e)); raise
         write_manifest(self.dir, results)
-        s = summarize(results); (self.dir / "stats.json").write_text(json.dumps(s, ensure_ascii=False, indent=1))
-        self.progress.finish()
+        s = summarize(results); s["stopped"] = self.stopped
+        (self.dir / "stats.json").write_text(json.dumps(s, ensure_ascii=False, indent=1))
+        self.progress.finish(stopped=self.stopped)
         return s
 
     def estimate(self, expected_pass_rate=0.5) -> dict:

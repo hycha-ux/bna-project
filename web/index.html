@@ -72,6 +72,7 @@
   .prog .big { font-size:18px; font-weight:700 }
   .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--chip); margin:10px 0 6px }
   .stack i { display:block; height:100%; transition:width .4s }
+  .st-skipped{background:#d9d7d1}
   .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--acc)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
   .legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--mute) }
   .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
@@ -88,6 +89,7 @@
   <div><h1>온리프 B&A 대시보드</h1><div class="sub">배치 요청 → 생성 → 검수 → 갤러리 (로컬 · outputs/ 기준)</div></div>
   <nav>
     <button data-tab="request" class="on">배치 요청</button>
+    <button data-tab="queue">큐 <span id="q-badge" class="chip warn" hidden></span></button>
     <button data-tab="batches">배치 목록</button>
     <button data-tab="gallery">갤러리 · 리뷰</button>
   </nav>
@@ -127,6 +129,41 @@
     <div class="grid2" id="dist"></div>
     <h2>프롬프트 <span class="muted">(처음 20개)</span></h2>
     <div id="prompts"></div>
+  </div>
+</section>
+
+<!-- ───────── 큐 ───────── -->
+<section id="tab-queue" hidden>
+  <div class="card">
+    <h3>큐에 추가 — 시술 × 모드 조합마다 작업 하나</h3>
+    <div class="row">
+      <label>시술 (복수) <div class="tags" id="q-treatments" style="margin:0"></div></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label>모드 <div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카용</button><button data-v="clinical">후기용</button></div></label>
+      <label>작업당 수량 <input type="number" id="q-count" value="30" min="1" max="500"></label>
+      <label>목표 통과작 수 (도달하면 정지) <input type="number" id="q-target" placeholder="예: 20"></label>
+      <label>작업당 비용 상한 USD <input type="number" id="q-cap" placeholder="예: 5" step="0.5"></label>
+      <label>시드 <input type="number" id="q-seed" placeholder="비우면 무작위"></label>
+      <label>실행 방식 <select id="q-sim"><option value="1">시뮬레이션 (키 없음)</option><option value="0">실제 실행 (키 필요)</option></select></label>
+      <button class="b primary" id="q-add">큐에 추가</button>
+      <span class="muted" id="q-msg"></span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between">
+      <div><h3 style="margin:0;display:inline">대기열</h3> <span class="muted" id="q-sum"></span></div>
+      <div class="act">
+        <button class="b" id="q-pause">일시정지</button>
+        <button class="b" id="q-clear">끝난 작업 지우기</button>
+      </div>
+    </div>
+    <table id="q-table" style="margin-top:10px">
+      <thead><tr><th>#</th><th>시술</th><th>모드</th><th>수량</th><th>목표 통과</th><th>비용 상한</th><th>예상 $</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty" id="q-empty" hidden>큐가 비어 있습니다.</div>
   </div>
 </section>
 
@@ -174,7 +211,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
 const pct = x => (x*100).toFixed(0) + '%';
 const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
-const STAGE_KO = {queued:'대기', before:'Before 생성', after:'After 생성', postprocess:'후처리', qa:'검수', retry:'재시도 대기', passed:'통과', failed:'불합격'};
+const STAGE_KO = {skipped:'건너뜀', queued:'대기', before:'Before 생성', after:'After 생성', postprocess:'후처리', qa:'검수', retry:'재시도 대기', passed:'통과', failed:'불합격'};
 let POLL = null;
 const AXIS_KO = {country:'나라', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부상태', body_type:'체형', hair_style:'헤어', hair_color:'모발색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'맥락', lighting:'조명', color:'색감', quality:'화질', before_severity:'Before 강도', effect_level:'효과 강도', timeline:'경과'};
 const TAGS = ['손·손가락','피부 질감','머리카락','동일성','AI티','효과 과함','효과 없음','장면 어색','각도 이상','팔자 위치'];
@@ -183,8 +220,9 @@ let CFG, BATCHES = [], CUR = null;
 // ---------- 탭 ----------
 function show(tab) {
   $$('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  ['request','batches','gallery'].forEach(t => $('#tab-'+t).hidden = t !== tab);
+  ['request','queue','batches','gallery'].forEach(t => $('#tab-'+t).hidden = t !== tab);
   if (tab === 'batches') loadBatches();
+  if (tab === 'queue') loadQueue();
   if (tab === 'gallery') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
 }
 $$('nav button').forEach(b => b.onclick = () => show(b.dataset.tab));
@@ -256,6 +294,52 @@ $('#btn-sim').onclick = async () => {
   catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 
+// ---------- 큐 ----------
+const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 통과 ${s.split(':')[1]}장 도달` : s.startsWith('cost_cap') ? `비용 상한 $${s.split(':')[1]} 도달` : s;
+function renderQueueForm() {
+  $('#q-treatments').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('');
+  $$('#q-treatments button, #q-modes button').forEach(b => b.onclick = () => b.classList.toggle('on'));
+}
+$('#q-add').onclick = async () => {
+  const ts = $$('#q-treatments button.on'), ms = $$('#q-modes button.on').map(b => b.dataset.v);
+  const jobs = [];
+  ts.forEach(b => ms.filter(m => b.dataset.modes.split(',').includes(m)).forEach(m => jobs.push({treatment: b.dataset.v, mode: m, count: +$('#q-count').value,
+    target_pass: $('#q-target').value || null, cost_cap: $('#q-cap').value || null, seed: $('#q-seed').value || null, simulate: $('#q-sim').value === '1',
+    gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value})));
+  if (!jobs.length) { $('#q-msg').textContent = '시술과 모드를 하나 이상 고르세요 (지원 안 하는 조합은 제외됨)'; return; }
+  if (jobs.some(j => !j.simulate) && !confirm(`실제 실행 작업 ${jobs.filter(j=>!j.simulate).length}개를 큐에 넣습니다. 비용이 발생합니다.`)) return;
+  try { const r = await api('/api/queue/add', {jobs}); toast(`${r.added.length}개 작업 추가`); $('#q-msg').textContent = ''; loadQueue(); }
+  catch (e) { $('#q-msg').textContent = '오류: ' + e.message; }
+};
+$('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
+$('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
+async function loadQueue() {
+  const q = await api('/api/queue'); const tb = $('#q-table tbody');
+  $('#q-pause').textContent = q.paused ? '▶ 재개' : '⏸ 일시정지';
+  $('#q-sum').textContent = `대기 ${q.queued_count} · ${q.running ? '실행 중 1' : '실행 중 0'} · 남은 예상 비용 $${q.est_total}${q.paused ? ' · 일시정지됨' : ''}`;
+  const badge = $('#q-badge'); const n = q.queued_count + (q.running ? 1 : 0); badge.hidden = !n; badge.textContent = n;
+  $('#q-empty').hidden = q.jobs.length > 0;
+  const stKo = {queued:'<span class="chip">대기</span>', running:'<span class="chip warn">실행 중</span>', done:'<span class="chip ok">완료</span>', error:'<span class="chip bad">오류</span>', cancelled:'<span class="chip">취소</span>'};
+  tb.innerHTML = q.jobs.map((j, i) => { const p = j.progress, r = j.result || {};
+    const progress = p ? `<span class="mini"><i style="width:${(p.done/p.planned*100).toFixed(0)}%"></i></span>${p.done}/${p.planned}${p.running && p.eta_s!=null ? ' · 약 '+fmtS(p.eta_s) : ''}` : '';
+    const result = j.status==='done' ? `통과 ${r.passed ?? '?'}/${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ' · <span class="chip acc">'+STOP_KO(r.stopped)+'</span>' : ''}` : j.status==='error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error||'').slice(0,60))}</span>` : '';
+    const ctl = j.status==='queued' ? `<button class="b" data-q="up" data-id="${j.job_id}" title="위로">↑</button> <button class="b" data-q="down" data-id="${j.job_id}" title="아래로">↓</button> <button class="b danger" data-q="cancel" data-id="${j.job_id}">취소</button>`
+              : j.status==='running' ? '' : `<button class="b" data-q="remove" data-id="${j.job_id}">지우기</button>`;
+    return `<tr><td>${i+1}</td><td>${CFG.treatments[j.treatment]?.name_ko || j.treatment}</td><td>${j.mode}</td><td>${j.count}</td><td>${j.target_pass ?? '—'}</td><td>${j.cost_cap != null ? '$'+j.cost_cap : '—'}</td><td>$${j.est_cost}</td>
+      <td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
+      <td style="white-space:nowrap">${j.batch_id ? `<button class="b" data-q="open" data-id="${j.batch_id}">갤러리</button> ` : ''}${ctl}</td></tr>`; }).join('');
+  tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.q, id = b.dataset.id;
+    if (a === 'open') { show('gallery'); openBatch(id); return; }
+    if (a === 'cancel' || a === 'remove') await api(`/api/queue/${a}`, {job_id: id});
+    if (a === 'up' || a === 'down') await api('/api/queue/move', {job_id: id, direction: a});
+    loadQueue();
+  });
+  tb.querySelectorAll('button.b').forEach(b => { b.style.padding = '3px 8px'; b.style.fontSize = '12px'; });
+}
+setInterval(() => { if (!$('#tab-queue').hidden) loadQueue(); }, 2500);
+setInterval(async () => { if ($('#tab-queue').hidden) { try { const q = await api('/api/queue'); const n = q.queued_count + (q.running ? 1 : 0); $('#q-badge').hidden = !n; $('#q-badge').textContent = n; } catch {} } }, 5000);
+
 // ---------- 배치 목록 ----------
 async function loadBatches() {
   BATCHES = await api('/api/batches');
@@ -263,7 +347,7 @@ async function loadBatches() {
   tb.innerHTML = BATCHES.map(b => { const s = b.stats || {}; const kind = {demo:'데모', dry_run:'프롬프트만', run:'실행', sim:'시뮬레이션'}[b.kind] || b.kind;
     return `<tr class="click" data-id="${b.batch_id}"><td>${b.batch_id}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${s.passed ?? ''}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${b.kind==='dry_run' ? '—' : (s.attempts_per_pass ?? '')}</td><td>${b.kind==='dry_run' ? '—' : (s.cost_per_pass ?? '')}</td>
-      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 반려 ${s.rejected||0})</span></td><td>${b.status==='running'&&b.progress?`<span class="mini"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.eta_s!=null?' · 약 '+fmtS(b.progress.eta_s)+' 남음':''}`:b.status==='running'?'<span class="chip warn">진행 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">오류</span>`:'<span class="chip ok">완료</span>'}</td></tr>`; }).join('');
+      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 반려 ${s.rejected||0})</span></td><td>${b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span> ` : ''}${b.status==='running'&&b.progress?`<span class="mini"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.eta_s!=null?' · 약 '+fmtS(b.progress.eta_s)+' 남음':''}`:b.status==='running'?'<span class="chip warn">진행 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">오류</span>`:'<span class="chip ok">완료</span>'}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('gallery'); openBatch(tr.dataset.id); });
   const sel = $('#gal-batch'); const cur = sel.value;
   sel.innerHTML = BATCHES.map(b => `<option value="${b.batch_id}">${b.batch_id} · ${CFG.treatments[b.treatment]?.name_ko || b.treatment||''} · ${b.mode||''}</option>`).join('');
@@ -300,11 +384,11 @@ async function startPoll() {
 }
 function renderProgress(pg) {
   const s = pg.summary, c = s.counts, el = $('#prog'); el.hidden = false;
-  const order = ['passed','failed','before','after','postprocess','qa','retry','queued'];
+  const order = ['passed','failed','before','after','postprocess','qa','retry','skipped','queued'];
   const seg = order.map(k => `<i class="st-${k}" style="width:${(c[k]/s.planned*100).toFixed(1)}%" title="${STAGE_KO[k]} ${c[k]}"></i>`).join('');
   const ids = Object.keys(pg.items).sort();
   const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="#${id} ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.join(','):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
-  const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>`;
+  const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · 나머지 ${c.skipped} 건너뜀</span>` : '');
   el.innerHTML = `<div class="top"><div><span class="big">${s.done} / ${s.planned}</span> <span class="muted">항목 완료</span> ${state}</div>
       <div class="muted">동시 처리 ${s.active} · 재시도 ${s.retries}회 · 지금까지 통과율 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 경과 ${fmtS(s.elapsed_s)}${s.running?` · 남은 시간 약 ${fmtS(s.eta_s)}`:''}</div></div>
     <div class="stack">${seg}</div>
@@ -395,9 +479,10 @@ function detail(id) {
 (async () => {
   CFG = await api('/api/config');
   $('#treatment').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<option value="${k}">${t.name_ko} (${k})</option>`).join('');
-  syncTreatmentModes();
+  syncTreatmentModes(); renderQueueForm();
   $('#gen').value = 'gemini';
-  if (location.hash === '#gallery') show('gallery'); else if (location.hash === '#batches') show('batches');
+  api('/api/queue').then(q => { const n = q.queued_count + (q.running ? 1 : 0); $('#q-badge').hidden = !n; $('#q-badge').textContent = n; });
+  if (location.hash === '#gallery') show('gallery'); else if (location.hash === '#batches') show('batches'); else if (location.hash === '#queue') show('queue');
 })();
 </script>
 </body>

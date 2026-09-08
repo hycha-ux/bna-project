@@ -1,12 +1,12 @@
 """배치 진행 기록: outputs/<batch>/progress.json. 대시보드가 2초 간격으로 읽는다.
 
 스키마: {planned, started_at, finished_at, error, items: {item_id: {stage, attempt, passed, fail_reasons, updated_at, elapsed}}}
-stage: queued → before → after → postprocess → qa → (retry → before …) → passed | failed
+stage: queued → before → after → postprocess → qa → (retry → before …) → passed | failed | skipped(정지 조건 도달로 미실행)
 """
 import json, os, threading, time
 from pathlib import Path
 
-STAGES = ["queued", "before", "after", "postprocess", "qa", "retry", "passed", "failed"]
+STAGES = ["queued", "before", "after", "postprocess", "qa", "retry", "passed", "failed", "skipped"]
 
 
 class Progress:
@@ -30,9 +30,17 @@ class Progress:
                 it["elapsed"] = round(now - self._t0[item_id], 1)
             self._flush()
 
-    def finish(self, error=None):
+    def finish(self, error=None, stopped=None):
         with self.lock:
-            self.data["finished_at"] = time.time(); self.data["error"] = error; self._flush()
+            for it in self.data["items"].values():
+                if it["stage"] == "queued":
+                    it["stage"] = "skipped"
+            self.data["finished_at"] = time.time(); self.data["error"] = error; self.data["stopped"] = stopped; self._flush()
+
+    def totals(self):
+        with self.lock:
+            its = self.data["items"].values()
+            return sum(1 for i in its if i["stage"] == "passed"), sum(float(i.get("cost") or 0) for i in its)
 
     def _flush(self):
         tmp = self.path.with_suffix(".tmp")
@@ -52,12 +60,12 @@ def read(batch_dir: Path):
     counts = {s: 0 for s in STAGES}
     for it in items:
         counts[it["stage"]] = counts.get(it["stage"], 0) + 1
-    done = counts["passed"] + counts["failed"]
+    done = counts["passed"] + counts["failed"] + counts["skipped"]
     active = [it for it in items if it["stage"] not in ("queued", "passed", "failed")]
     elapsed = (d["finished_at"] or time.time()) - d["started_at"]
     per_item = elapsed / done if done else None
     remaining = d["planned"] - done
     d["summary"] = {"counts": counts, "done": done, "planned": d["planned"], "active": len(active), "retries": sum(max(0, it["attempt"] - 1) for it in items),
                     "elapsed_s": round(elapsed), "eta_s": round(per_item * remaining / max(1, len(active) or 1)) if per_item and remaining else None,
-                    "running": d["finished_at"] is None, "pass_rate": round(counts["passed"] / done, 3) if done else None}
+                    "running": d["finished_at"] is None, "stopped": d.get("stopped"), "cost": round(sum(float(i.get("cost") or 0) for i in items), 4), "pass_rate": round(counts["passed"] / (counts["passed"] + counts["failed"]), 3) if (counts["passed"] + counts["failed"]) else None}
     return d

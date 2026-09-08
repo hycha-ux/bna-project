@@ -13,6 +13,9 @@
   GET  /api/batches/<id>           배치 아이템 전체 (meta + review)
   GET  /api/batches/<id>/progress  진행 상황 (progress.json 요약)
   POST /api/demo_run               가짜 실행 시뮬레이션 (키 없이 진행 화면 검증용, 항목당 수 초)
+  GET  /api/queue                  큐 상태 (jobs, paused, 예상 비용)
+  POST /api/queue/add              {jobs:[{treatment, mode, count, seed, fixed, target_pass, cost_cap, simulate}]} 또는 단일
+  POST /api/queue/cancel|remove|move|pause|clear_finished
   POST /api/review                 {batch, item, pick, tags, note} → outputs/<batch>/<item>/review.json
   GET  /files/<batch>/<item>/<f>   이미지
 """
@@ -25,6 +28,7 @@ from .spec import ROOT, load, build_prompts, PERSON_AXES, SCENE_AXES
 from .planner import plan_batch, distribution
 from .stats import load_items, summarize
 from . import progress as prog
+from .queue import Queue
 
 OUT = ROOT / "outputs"
 WEB = ROOT / "web"
@@ -188,17 +192,34 @@ def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
     return bid
 
 
-def demo_run(treatment="nasolabial", mode="selfie", count=12, seed=None, item_seconds=2.0, concurrency=3):
-    """실제 호출 없이 progress.json 을 시간에 따라 갱신하고, 끝난 항목은 make_demo 와 같은 자리표시 결과를 쓴다."""
+def sim_batch(treatment="nasolabial", mode="selfie", count=12, seed=None, item_seconds=2.0, concurrency=3, target_pass=None, cost_cap=None,
+              fixed=None, on_batch=None):
+    """실제 호출 없이 progress.json 을 시간에 따라 갱신하고, 끝난 항목은 make_demo 와 같은 자리표시 결과를 쓴다. 블로킹."""
     from PIL import Image, ImageDraw
+    from concurrent.futures import ThreadPoolExecutor
     seed = seed if seed is not None else random.randint(0, 9999); rng = random.Random(seed)
     bid = time.strftime("%Y%m%d-%H%M%S") + "-sim"; d = OUT / bid; d.mkdir(parents=True, exist_ok=True)
-    plans = plan_batch(mode, count, seed); checklist = list(load("qa_checklist.yaml")["items"])
+    plans = plan_batch(mode, count, seed, fixed or {}); checklist = list(load("qa_checklist.yaml")["items"])
     (d / "batch.json").write_text(json.dumps({"batch_id": bid, "treatment": treatment, "mode": mode, "count": count, "kind": "sim", "seed": seed,
-                                              "created_at": time.time()}, ensure_ascii=False))
+                                              "target_pass": target_pass, "cost_cap": cost_cap, "created_at": time.time()}, ensure_ascii=False))
     pgs = prog.Progress(d, count); RUNNING[bid] = {"status": "running", "started": time.time(), "error": None}
+    if on_batch:
+        on_batch(bid)
+    stopped = [None]
+
+    def should_stop():
+        if stopped[0]:
+            return True
+        passed, cost = pgs.totals()
+        if target_pass and passed >= target_pass:
+            stopped[0] = f"target_pass:{passed}"
+        elif cost_cap and cost >= cost_cap:
+            stopped[0] = f"cost_cap:{cost:.2f}"
+        return bool(stopped[0])
 
     def one(i, v):
+        if should_stop():
+            return None
         spec = build_prompts(treatment, mode, v, seed * 1000 + i); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
         meta = None
         for attempt in range(1, 4):
@@ -216,21 +237,67 @@ def demo_run(treatment="nasolabial", mode="selfie", count=12, seed=None, item_se
                     "vision": {"scores": {k: rng.randint(6, 10) for k in checklist}, "failed_items": [f.split(":")[1] for f in fails if f.startswith("vision:")]}}
             (d / iid / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
             if passed:
-                pgs.set(iid, "passed", passed=True, fail_reasons=[]); break
-            pgs.set(iid, "retry" if attempt < 3 else "failed", passed=False, fail_reasons=fails)
+                pgs.set(iid, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
+            pgs.set(iid, "retry" if attempt < 3 else "failed", passed=False, fail_reasons=fails, cost=meta["cost"])
         return meta
 
-    def worker():
-        from concurrent.futures import ThreadPoolExecutor
-        try:
-            with ThreadPoolExecutor(concurrency) as ex:
-                items = list(ex.map(lambda iv: one(*iv), enumerate(plans)))
-            (d / "stats.json").write_text(json.dumps(summarize(items), ensure_ascii=False, indent=1), encoding="utf-8")
-            pgs.finish(); RUNNING[bid]["status"] = "done"
-        except Exception as e:                      # noqa
-            pgs.finish(error=repr(e)); RUNNING[bid].update(status="error", error=repr(e))
-    threading.Thread(target=worker, daemon=True).start()
-    return bid
+    try:
+        with ThreadPoolExecutor(concurrency) as ex:
+            items = [m for m in ex.map(lambda iv: one(*iv), enumerate(plans)) if m]
+        st = summarize(items); st["stopped"] = stopped[0]
+        (d / "stats.json").write_text(json.dumps(st, ensure_ascii=False, indent=1), encoding="utf-8")
+        pgs.finish(stopped=stopped[0]); RUNNING[bid]["status"] = "done"
+        return bid, st
+    except Exception as e:                      # noqa
+        pgs.finish(error=repr(e)); RUNNING[bid].update(status="error", error=repr(e)); raise
+
+
+def demo_run(**kw):
+    """sim_batch 를 백그라운드로. batch_id 는 폴더가 생기는 즉시 돌려준다."""
+    got = threading.Event(); box = {}
+    def on_batch(bid): box["bid"] = bid; got.set()
+    threading.Thread(target=lambda: sim_batch(on_batch=on_batch, **kw), daemon=True).start()
+    got.wait(10); return box.get("bid")
+
+
+# ---------- 큐 ----------
+def run_job(job, on_batch):
+    common = dict(treatment=job["treatment"], mode=job["mode"], count=job["count"], seed=job["seed"], fixed=job["fixed"],
+                  target_pass=job["target_pass"], cost_cap=job["cost_cap"])
+    if job["simulate"]:
+        return sim_batch(on_batch=on_batch, **common)
+    from .batch import Batch
+    b = Batch(gen=job["gen"], edit=job["edit"], qa=job["qa"], **common)
+    (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count, "kind": "run",
+                                                  "target_pass": b.target_pass, "cost_cap": b.cost_cap, "job_id": job["job_id"], "created_at": time.time()}, ensure_ascii=False))
+    RUNNING[b.batch_id] = {"status": "running", "started": time.time(), "error": None}; on_batch(b.batch_id)
+    try:
+        st = asyncio.run(b.run()); RUNNING[b.batch_id]["status"] = "done"; return b.batch_id, st
+    except Exception as e:                      # noqa
+        RUNNING[b.batch_id].update(status="error", error=repr(e)); raise
+
+
+QUEUE = None
+def queue():
+    global QUEUE
+    if QUEUE is None:
+        QUEUE = Queue(OUT, run_job)
+    return QUEUE
+
+
+def queue_payload():
+    snap = queue().snapshot(); p = load("pricing.yaml")
+    for j in snap["jobs"]:
+        per_try = p[j["gen"]]["generate"] + p[j["edit"]]["edit" if j["mode"] == "clinical" else "generate"] + p[j["qa"]]["qa"]
+        j["est_cost"] = round(per_try * j["count"] * 2, 2)          # 통과율 50% 가정 (항목당 2회)
+        if j["cost_cap"]:
+            j["est_cost"] = min(j["est_cost"], j["cost_cap"])
+        if j["batch_id"] and (OUT / j["batch_id"]).is_dir():
+            pg = prog.read(OUT / j["batch_id"]); j["progress"] = pg["summary"] if pg else None
+    snap["running"] = next((j for j in snap["jobs"] if j["status"] == "running"), None)
+    snap["queued_count"] = sum(1 for j in snap["jobs"] if j["status"] == "queued")
+    snap["est_total"] = round(sum(j["est_cost"] for j in snap["jobs"] if j["status"] in ("queued", "running")), 2)
+    return snap
 
 
 # ---------- HTTP ----------
@@ -260,6 +327,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(config_payload())
             if p == "/api/batches":
                 return self._json(batches_payload())
+            if p == "/api/queue":
+                return self._json(queue_payload())
             if p.startswith("/api/batches/") and p.endswith("/progress"):
                 r = prog.read(OUT / p.split("/")[3]); return self._json(r or {"error": "no progress"}, 200 if r else 404)
             if p.startswith("/api/batches/"):
@@ -291,7 +360,20 @@ class Handler(SimpleHTTPRequestHandler):
             if p == "/api/review":
                 r, code = save_review(req); return self._json(r, code)
             if p == "/api/demo_run":
-                return self._json({"batch_id": demo_run(req.get("treatment", "nasolabial"), req.get("mode", "selfie"), int(req.get("count", 12)))})
+                return self._json({"batch_id": demo_run(treatment=req.get("treatment", "nasolabial"), mode=req.get("mode", "selfie"), count=int(req.get("count", 12)),
+                                                        target_pass=req.get("target_pass") or None, cost_cap=req.get("cost_cap") or None)})
+            if p == "/api/queue/add":
+                jobs = [queue().add(j) for j in (req.get("jobs") or [req])]; return self._json({"added": [j["job_id"] for j in jobs]})
+            if p == "/api/queue/cancel":
+                return self._json({"ok": bool(queue().cancel(req["job_id"]))})
+            if p == "/api/queue/remove":
+                return self._json({"ok": queue().remove(req["job_id"])})
+            if p == "/api/queue/move":
+                return self._json({"ok": queue().move(req["job_id"], req.get("direction", "up"))})
+            if p == "/api/queue/pause":
+                queue().set_paused(bool(req.get("paused", True))); return self._json({"paused": bool(req.get("paused", True))})
+            if p == "/api/queue/clear_finished":
+                queue().clear_finished(); return self._json({"ok": True})
             if p == "/api/demo":
                 return self._json({"batch_id": make_demo(req.get("treatment", "nasolabial"), req.get("mode", "selfie"), int(req.get("count", 12)))})
             return self._json({"error": "unknown"}, 404)
@@ -306,6 +388,7 @@ def main():
     a = ap.parse_args()
     if a.demo:
         print("demo batch:", make_demo())
+    queue()   # 러너 스레드 시작 (재시작 전 남은 작업 이어서 처리)
     srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
     url = f"http://localhost:{a.port}"; print("B&A dashboard:", url)
     if not a.no_open:
