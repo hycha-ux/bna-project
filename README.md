@@ -14,6 +14,7 @@
 - [셀카 프롬프트 1차 확정](docs/selfie-prompt-v1-0908-buildy.md) — 프레이밍·맥락 축, 시점별 After 드리프트(직후=병원), 피부 상태 잠금, Before 강도 3단계, 드리프트 버그 수정 (2026-09-08)
 - [셀카 프롬프트 v1 실측 + 확인 6종 답변](docs/selfie-prompt-v1-review-0908-teemo.md) — GPT·Gemini 4쌍 실생성, 프레이밍 준수 4/4 vs 0/4, 부분 크롭에서 동일인 게이트 무력화 (2026-09-08)
 - [동일인 검수기 보완안](docs/identity-gate-0908-teemo.md) — 부분 크롭에서 게이트가 꺼지는 문제: 레터박스 재시도로 검출 4/8→7/8, 3값 게이트, 문턱 재캘리브레이션은 보류 (2026-09-08)
+- [드라이브 백업 설치 요청서](docs/drive-backup-setup-0908-teemo.md) — 파트장님 클릭 순서(A: 공유 드라이브+서비스 계정 / B: 계정 위임) (2026-09-08)
 - [원본 보관 자리 검토](docs/archive-options-0908-teemo.md) — 구글드라이브·노션 판정: 즉시성(훅으로 해결)과 백업(드라이브 권고)은 다른 문제 (2026-09-08)
 - [KOS 이미지 수급 검토](docs/kos-image-review-0907-teemo.md) — 실제 고객 사진을 쓸 수 있나(권리·기술·설계 3층, 2026-09-07 검토 전용)
 - [사용 정책](docs/usage-policy.md) — 임시: 전부 오픈, 법무 가이드 추후
@@ -169,6 +170,27 @@ cd cloud && npx vercel --prod --yes     # 화면 코드를 고쳤을 때만 필�
   옮김). 주입은 `app.js` 쪽이라 `web/index.html` 을 고치지 않는다 — 빌디가 다시 구워도 안 지워진다.
   ⚠ 대신 `#tb-profile`·`#menu` 마크업이 사라지면 조용히 안 뜬다 → 못 찾으면 우측 상단 대체
   알약으로 떨어진다(fail-open). 하단 띠에는 **스냅샷 시각만** 남긴다(지우지 마라).
+
+### 원본 백업 — 구글드라이브 (2026-09-08 성연서님 지시)
+
+`outputs/` 는 이 PC 한 곳에만 있고 git 에도 없다(얼굴 사진이라 의도). Blob 사본은 `prune` 이
+지우므로 백업이 아니다 → **매일 23:00 드라이브로 단방향 복사**한다.
+
+- 실행 `node ops/drive-backup.mjs [--dry]` · 예약작업 **`TeemoBnaDriveBackup`**(23:00, 2시간 상한).
+- **단방향이다.** 로컬에서 지운 파일을 드라이브에서 지우지 않는다 — 회귀가 DELETE 호출의 부재를
+  단언한다. 백업이 원본을 따라 사라지면 그건 백업이 아니라 복제다.
+- 새것·바뀐 것만 올린다(크기+수정시각). 원장 `ops/.drive-manifest.json`(gitignore).
+  바뀐 파일은 새로 만들지 않고 **갱신**한다 — 안 그러면 같은 이름이 드라이브에 둘 생긴다.
+- **키가 없으면 exit 3 으로 조용히 멈춘다** — '고장'이 아니라 '아직'이다. 감시가 매일 빨간불을
+  내지 않게 하려는 것이니 이 코드를 1로 바꾸지 마라. 필요한 이름은 `authMode()` 하나가 정한다.
+- 자격증명은 `teemo\keys.env` 에서만 읽고 값은 어디에도 안 찍는다. 두 길 중 하나:
+  **A** `GOOGLE_SA_JSON_B64`(서비스 계정) · **B** `GDRIVE_CLIENT_ID/_SECRET/_REFRESH_TOKEN`(계정 위임).
+  공통으로 `GDRIVE_BACKUP_FOLDER_ID`.
+- ⚠ **A안은 공유 드라이브에서만 된다.** 서비스 계정은 제 저장용량이 0이라 개인 My Drive 폴더에
+  올리면 `storageQuotaExceeded` 로 전량 실패한다(그 오류만 따로 잡아 사람이 읽을 문장으로 바꿔 둔다).
+  개인 폴더뿐이면 B안 — `node ops/drive-oauth-setup.mjs` 가 브라우저 동의 1회로 토큰을 받아 온다.
+- 설치 절차(파트장님 클릭 순서) = `docs/drive-backup-setup-0908-teemo.md`.
+- 회귀 `node ops/drive-backup-tests.mjs`(16종, 네트워크 0).
 
 ### 배포 규칙 — `main` 에 푸시하면 자동 배포 (2026-09-08 성연서님 지시)
 
