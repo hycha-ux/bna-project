@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="ko" data-seed data-seed-color-mode="light-only">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>B&amp;A 이미지</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="/vendor/seed/base.min.css">
+<link rel="stylesheet" href="/vendor/seed/recipes.css">
+<style>
+:root {
+  --primary:#1F3A5F; --pri-hov:#172C49; --pri-alpha:rgba(31,58,95,.08); --pri-border:rgba(31,58,95,.18); --brand-blue:#CCD8E8;
+  --ui-bg:#F4F5F7; --ui-panel:#fff; --ui-border:#EAECEF; --ui-hi:#191F28; --ui-md:#6B7684; --ui-lo:#8B95A1; --ui-surface:#F7F8FA;
+  --ok:#1F8F55; --ok-weak:#E3F5EA; --bad:#D64545; --bad-weak:#FBE5E5; --warn:#B87A00; --warn-weak:#FFF3D6;
+  --rail-w:72px; --side-w:240px; --top-h:68px; --r-sm:8px; --r-md:12px; --r-lg:16px; --gap:24px;
+  --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-num:32px; --fs-num-sm:24px;
+  --fw-r:400; --fw-m:600; --fw-b:700; --fw-num:800;
+  --sp-1:8px; --sp-2:12px; --sp-3:16px; --sp-4:24px; --sp-5:32px;
+  --card-pad:var(--sp-4) 28px;
+  --seed-color-bg-brand-solid:var(--primary); --seed-color-bg-brand-solid-pressed:var(--pri-hov); --seed-color-fg-brand:var(--primary); --seed-color-fg-brand-contrast:#fff;
+  --seed-color-bg-brand-weak:var(--pri-alpha); --seed-color-stroke-brand-solid:var(--primary); --seed-color-stroke-focus-ring:var(--primary);
+  --seed-color-fg-neutral:var(--ui-hi); --seed-color-fg-neutral-muted:var(--ui-md); --seed-color-fg-neutral-subtle:var(--ui-lo); --seed-color-stroke-neutral-muted:var(--ui-border);
+  --seed-color-bg-informative-weak:var(--brand-blue); --seed-color-fg-informative:var(--primary);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+[hidden] { display:none !important }
+html, body { height:100% }
+body { font-family:'Pretendard',-apple-system,sans-serif; font-size:var(--fs-md); line-height:1.5; letter-spacing:-.01em; background:var(--ui-bg); color:var(--ui-hi); -webkit-font-smoothing:antialiased }
+button, input, select, textarea { font-family:inherit }
+a { color:var(--primary) }
+
+/* ════ 레이아웃: 레일 | 사이드바 | 콘텐츠 ════ */
+.app { display:grid; grid-template-columns:var(--side-w) 1fr; min-height:100vh; transition:grid-template-columns .2s }
+.app.collapsed { grid-template-columns:var(--rail-w) 1fr }
+.side { background:var(--ui-panel); border-right:1px solid var(--ui-border); padding:var(--sp-3) var(--sp-2); position:sticky; top:0; height:100vh; display:flex; flex-direction:column; overflow:hidden }
+.side .brand-row { display:flex; align-items:center; gap:var(--sp-2); padding:4px var(--sp-1) var(--sp-4) }
+.side .logo { width:36px; height:36px; border-radius:9px; flex-shrink:0; display:block; object-fit:contain }
+.side .toggle { margin-left:auto; width:28px; height:28px; border:0; background:none; border-radius:8px; color:var(--ui-lo); cursor:pointer } .side .toggle:hover { background:var(--ui-surface); color:var(--ui-hi) }
+.side .toggle svg { width:16px; height:16px }
+.collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
+.collapsed .side .brand-row { flex-direction:column; align-items:center; gap:8px; padding-bottom:10px } .collapsed .side .toggle { margin:0; width:36px; height:32px }
+.collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
+.sub { display:flex; flex-direction:column; padding:2px 0 var(--sp-1) 30px } .sub button { border:0; background:none; text-align:left; padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-r); color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:var(--fw-m) }
+.nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
+.side .brand { font-size:var(--fs-lg); font-weight:var(--fw-b); color:var(--ui-hi); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
+.side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
+.nav-item { width:100%; padding:var(--sp-2) var(--sp-2); border:0; border-radius:var(--r-sm); background:none; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:var(--sp-2); text-align:left; margin-bottom:4px }
+.nav-item svg { width:18px; height:18px; flex-shrink:0 }
+.nav-item:hover { background:var(--ui-surface); color:var(--ui-hi) }
+.nav-item.active { background:var(--pri-alpha); color:var(--primary); font-weight:var(--fw-b) }
+.nav-item .chip { margin-left:auto }
+.side .divider { height:1px; background:var(--ui-border); margin:12px 4px }
+.side .foot { margin-top:auto; padding:var(--sp-2); font-size:var(--fs-xs); color:var(--ui-lo); line-height:1.5 }
+
+/* ════ 상단 바 ════ */
+.main { min-width:0 }
+.topbar { height:var(--top-h); background:var(--ui-panel); border-bottom:1px solid var(--ui-border); display:flex; align-items:center; gap:var(--sp-4); padding:0 var(--sp-5); position:sticky; top:0; z-index:50 }
+.topbar h1 { font-size:var(--fs-xl); font-weight:var(--fw-b); letter-spacing:-.3px; white-space:nowrap }
+.search { flex:1; max-width:520px; display:flex; align-items:center; gap:var(--sp-1); height:42px; padding:0 var(--sp-3); background:var(--ui-surface); border-radius:999px; color:var(--ui-lo) }
+.search input, .search input:focus { flex:1; border:0; background:none; outline:none; font-size:var(--fs-md); color:var(--ui-hi); height:100%; border-color:transparent }
+.search:focus-within { background:#fff; box-shadow:inset 0 0 0 1px var(--ui-border) }
+.search svg { width:16px; height:16px }
+.tb-space { flex:1 }
+.tb-icon { position:relative; width:38px; height:38px; border:0; background:none; border-radius:10px; color:var(--ui-md); cursor:pointer; display:flex; align-items:center; justify-content:center }
+.tb-icon:hover { background:var(--ui-surface) }
+.tb-icon svg { width:20px; height:20px }
+.tb-icon .dot { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; background:var(--bad); border:2px solid #fff }
+.tb-icon .dot.on { background:var(--ok) }
+.status-pill { display:flex; align-items:center; gap:var(--sp-1); height:38px; padding:0 var(--sp-3) 0 var(--sp-2); border-radius:999px; border:1px solid var(--ui-border); background:#fff; font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer }
+.status-pill:hover { background:var(--ui-surface) } .status-pill .dot { width:8px; height:8px; border-radius:50%; background:var(--ui-lo) } .status-pill.on { color:var(--primary); border-color:var(--pri-border); background:var(--pri-alpha) } .status-pill.on .dot { background:var(--ok); box-shadow:0 0 0 3px var(--ok-weak) }
+.profile { display:flex; align-items:center; gap:var(--sp-1); padding:4px var(--sp-1) 4px 4px; border-radius:999px; border:0; background:none; cursor:pointer; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-hi) }
+.profile:hover { background:var(--ui-surface) }
+.profile .avatar { width:36px; height:36px; border-radius:50%; background:var(--brand-blue); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px }
+.menu { position:absolute; right:28px; top:calc(var(--top-h) - 6px); width:200px; background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md); box-shadow:0 10px 30px rgba(0,0,0,.12); padding:6px; z-index:60 }
+.menu button { width:100%; padding:var(--sp-2); border:0; background:none; border-radius:var(--r-sm); text-align:left; font-size:var(--fs-md); font-weight:var(--fw-r); color:var(--ui-hi); cursor:pointer; display:flex; gap:10px; align-items:center }
+.menu button:hover { background:var(--ui-surface) }
+.menu .mi-sep { height:1px; background:var(--ui-border); margin:4px 6px }
+
+/* ════ 콘텐츠 ════ */
+.page { padding:var(--sp-5) var(--sp-5) 64px; display:none } .page.active { display:block }
+.page-title { display:flex; align-items:baseline; gap:var(--sp-2); margin-bottom:var(--sp-3) } .page-title h2 { font-size:var(--fs-xl); font-weight:var(--fw-b); letter-spacing:-.3px }
+.card { background:var(--ui-panel); border-radius:var(--r-lg); padding:var(--card-pad); box-shadow:0 1px 2px rgba(25,31,40,.04) }
+.card-head { display:flex; align-items:center; gap:var(--sp-2); margin-bottom:var(--sp-3); min-height:36px } .card-head h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); letter-spacing:-.2px } .card-head .tb-space { flex:1 }
+.toolbar { display:flex; align-items:center; gap:var(--sp-1); margin:calc(-1 * var(--sp-1)) 0 var(--sp-3); padding-bottom:var(--sp-3); border-bottom:1px solid var(--ui-border) }
+.toolbar select { width:auto; min-width:120px; height:38px; font-size:var(--fs-sm) } .toolbar .tl { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin:0 4px 0 2px } .toolbar .sep { width:1px; height:22px; background:var(--ui-border); margin:0 var(--sp-2) }
+.card h4 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
+.grid { display:grid; gap:var(--gap) } .grid > * { min-width:0 }
+.g-kpi { grid-template-columns:repeat(4,1fr) }
+.g-main { grid-template-columns:1fr 340px }
+.g-stats { grid-template-columns:repeat(auto-fill,minmax(250px,1fr)) }
+.g-create { grid-template-columns:360px 1fr; align-items:start }
+.kpi { background:var(--ui-panel); border-radius:var(--r-lg); padding:var(--card-pad) }
+.kpi .l { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md) } .kpi .v { font-size:var(--fs-num); font-weight:var(--fw-num); letter-spacing:-.04em; margin:var(--sp-1) 0 var(--sp-1); font-variant-numeric:tabular-nums; line-height:1.15 }
+.kpi .t { font-size:var(--fs-xs); color:var(--ui-lo) } .kpi .t b { color:var(--ok); font-weight:700 } .kpi .t b.down { color:var(--bad) }
+.kpi.compact .v { font-size:var(--fs-num-sm) }
+.muted { color:var(--ui-lo); font-size:var(--fs-xs); font-weight:var(--fw-r) }
+.empty { padding:48px var(--sp-4); text-align:center; color:var(--ui-lo); font-size:var(--fs-md) }
+.row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap }
+.field { display:flex; flex-direction:column; gap:6px } .field > span { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md) }
+select, input[type=number], input[type=text] { width:100%; height:42px; padding:0 var(--sp-2); border:1px solid var(--ui-border); border-radius:var(--r-sm); background:var(--ui-surface); color:var(--ui-hi); font-size:var(--fs-md); outline:none }
+select:focus, input:focus { border-color:var(--primary); background:#fff }
+input::placeholder { color:var(--ui-lo) }
+select { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center }
+.form { display:flex; flex-direction:column; gap:var(--sp-3) }
+.fixgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px }
+.fixgrid label { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--ui-lo) }
+.fixgrid select { height:32px; font-size:12px; padding:0 22px 0 8px }
+details.opt > summary { list-style:none; cursor:pointer; font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md); padding:var(--sp-2); border:1px solid var(--ui-border); border-radius:var(--r-sm); background:var(--ui-surface) }
+details.opt > summary::before { content:"▸ "; color:var(--ui-lo) } details.opt[open] > summary::before { content:"▾ " }
+details.opt > div { padding:10px 2px 0; display:flex; flex-direction:column; gap:10px }
+.btn { width:100%; height:44px; border-radius:var(--r-sm); border:1px solid var(--ui-border); background:#fff; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-hi); cursor:pointer }
+.btn:hover { background:var(--ui-surface) }
+.btn.primary { background:var(--primary); border-color:var(--primary); color:#fff } .btn.primary:hover { background:var(--pri-hov) }
+.btn.accent { background:var(--pri-alpha); border-color:var(--pri-border); color:var(--primary) }
+.btn.sm { width:auto; height:36px; padding:0 var(--sp-3); font-size:var(--fs-sm) }
+.msg { font-size:var(--fs-sm); color:var(--ui-md); min-height:20px } .msg.err { color:var(--bad) } .msg.on { color:var(--primary); font-weight:600 }
+.bar { display:grid; grid-template-columns:120px 1fr 76px; gap:var(--sp-1); align-items:center; font-size:var(--fs-sm); margin:6px 0 }
+.bar .t { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .bar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit }
+.bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) } .bar .n { text-align:right; color:var(--ui-lo); font-variant-numeric:tabular-nums; white-space:nowrap }
+table { border-collapse:collapse; width:100%; font-size:var(--fs-md); font-variant-numeric:tabular-nums }
+td { letter-spacing:-.01em }
+th, td { text-align:left; padding:var(--sp-2) var(--sp-2); border-bottom:1px solid var(--ui-border); vertical-align:middle }
+th { color:var(--ui-lo); font-weight:var(--fw-m); font-size:var(--fs-sm); white-space:nowrap }
+tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.sel { background:var(--pri-alpha) }
+tbody tr:last-child td { border-bottom:none }
+.tbl-wrap { overflow:auto } .tbl-wrap td { white-space:nowrap }
+.list { display:flex; flex-direction:column } .list-row { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) 0; border-bottom:1px solid var(--ui-border); cursor:pointer } .list-row:last-child { border-bottom:0 }
+.list-row .n { width:18px; color:var(--ui-lo); font-size:12px } .list-row .thumb { width:40px; height:40px; border-radius:8px; background:var(--ui-surface); object-fit:cover; flex-shrink:0 }
+.list-row .t { flex:1; min-width:0 } .list-row .t b { display:block; font-size:var(--fs-md); font-weight:var(--fw-m); white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .list-row .t span { font-size:var(--fs-xs); color:var(--ui-lo) }
+.list-row .v { font-weight:var(--fw-b); font-size:var(--fs-md); white-space:nowrap }
+.chip { margin:2px 3px 0 0; font-weight:500; white-space:nowrap }
+.gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--sp-4) }
+.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md); overflow:hidden }
+.item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.6 }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
+.pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
+.pair img { width:100%; height:100%; object-fit:cover; display:block }
+.pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
+.item .body { padding:var(--sp-3) } .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--sp-1) } .item .id { font-weight:var(--fw-b) }
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px } .tags button { font-size:11px }
+.act { display:flex; gap:6px; align-items:center } button.b { cursor:pointer } button.b:disabled { opacity:.5 }
+.item input[type=text] { height:32px; font-size:12px }
+.mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
+details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
+.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--sp-2) } .prog .lead { display:flex; align-items:center; gap:var(--sp-2) } .prog .ttl { font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md) } .prog .big small { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:4px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
+.stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px } .stack i { display:block; height:100%; transition:width .4s }
+.st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
+.legend { display:flex; gap:var(--sp-3); flex-wrap:wrap; font-size:var(--fs-xs); color:var(--ui-lo) } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
+.cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:20px; height:20px; border-radius:4px; background:var(--ui-surface); display:block; font-size:10px; color:#fff; text-align:center; line-height:20px; font-weight:700 } .cells b.st-queued, .cells b.st-skipped { color:var(--ui-lo) }
+.cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
+.mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px } .mini i { display:block; height:100%; background:var(--primary) }
+/* 대시보드 */
+.g-dash { grid-template-columns:1fr 320px; align-items:start } .col { display:flex; flex-direction:column; gap:var(--gap) }
+.kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
+.kpi .t .up { color:var(--ok); font-weight:700 } .kpi .t .down { color:var(--bad); font-weight:700 } .kpi.hero .t .up, .kpi.hero .t .down { color:#fff }
+.report-row { display:flex; justify-content:space-between; align-items:baseline; padding:var(--sp-2) 0; min-height:48px; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
+.report-row .k { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md) } .report-row .v { font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums; letter-spacing:-.04em } .report-row .v small { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:3px }
+.report-row .v.ok { color:var(--ok) } .report-row .v.plain { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) }
+.hbar { display:grid; grid-template-columns:110px 1fr 70px; gap:var(--sp-2); align-items:center; font-size:var(--fs-sm); margin:var(--sp-1) 0 } .hbar .t { height:14px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .hbar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit } .hbar .n { text-align:right; color:var(--ui-md); font-weight:var(--fw-m); white-space:nowrap; letter-spacing:-.02em; font-variant-numeric:tabular-nums }
+.hbar .t i.ok { background:var(--ok) }
+.pill { display:inline-flex; gap:4px } .pill button { border:1px solid var(--ui-border); background:#fff; font-size:var(--fs-xs); font-weight:var(--fw-m); padding:5px 12px; border-radius:999px; color:var(--ui-md); cursor:pointer } .pill button.on { background:var(--primary); border-color:var(--primary); color:#fff }
+/* 차트 (SVG) */
+.chart { display:block; max-width:100%; overflow:visible } 
+.chart .bar { fill:var(--primary); opacity:.85 } .chart .bar:hover { opacity:1 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:var(--ok); stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:var(--ok); stroke-width:2 }
+.chart .st0{fill:var(--ok)} .chart .st1{fill:#D64545} .chart .st2{fill:#E98A2E} .chart .st3{fill:#8FA9C8} .chart .st4{fill:#B8A0D9} .chart .st5{fill:#C4C9D1} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:12px }
+.chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
+.chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
+.lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
+.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px } .lib .item .body { padding:8px 10px 10px } .lib .item .id { font-size:12px }
+dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18) }
+dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:var(--fs-xl); font-weight:var(--fw-b) }
+dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
+.toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
+.toast.show { opacity:1; transform:translate(-50%,0) }
+@media (max-width:1280px) { .g-kpi { grid-template-columns:repeat(2,1fr) } .g-main, .g-create { grid-template-columns:1fr } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="6" r="1.3" fill="currentColor"/><circle cx="4" cy="12" r="1.3" fill="currentColor"/><circle cx="4" cy="18" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="i-lib" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 15l5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="16" cy="9" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3v18" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+</defs></svg>
+
+<div class="app" id="app">
+  <nav class="side">
+    <div class="brand-row"><img class="logo" src="/assets/medibuilder-logo.png" alt="메디빌더"><div class="brand">B&amp;A 이미지</div><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
+    <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">홈</span></button>
+    <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
+    <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
+    <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="sim">시뮬레이션</button><button data-kind="demo">샘플</button></div>
+    <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
+    <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
+    <div class="foot" id="side-foot"></div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <h1 id="page-h1">홈</h1>
+      <div class="search"><svg><use href="#i-search"/></svg><input id="search" placeholder="작업 검색 (시술, 유형, 날짜)"></div>
+      <div class="tb-space"></div>
+      <button class="status-pill" id="tb-status"><span class="dot"></span><span id="tb-status-text">확인 중</span></button>
+      <button class="profile" id="tb-profile"><span class="avatar">OL</span><span>온리프</span><span class="muted">▾</span></button>
+      <div class="menu" id="menu" hidden>
+        <button data-tab="settings"><svg width="18" height="18"><use href="#i-user"/></svg>프로필</button>
+        <button data-tab="help"><svg width="18" height="18"><use href="#i-help"/></svg>도움말</button>
+        <button data-tab="settings"><svg width="18" height="18"><use href="#i-gear"/></svg>설정</button>
+        <div class="mi-sep"></div>
+        <button id="menu-open-out"><svg width="18" height="18"><use href="#i-folder"/></svg>결과 폴더 경로</button>
+      </div>
+    </div>
+
+    <!-- ═══ 대시보드 ═══ -->
+    <section class="page active" id="tab-home">
+      <div class="grid g-dash">
+        <div class="col">
+          <div>
+            <div class="card-head" style="margin-bottom:var(--sp-2)"><h3>생성 요약</h3><span class="muted" id="home-window"></span><div class="tb-space"></div><div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
+            <div class="grid g-kpi" id="home-kpis"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>생성 성과</h3><div class="tb-space"></div><span class="muted">일별 생성 장수 · 통과율</span></div>
+            <div id="chart-combo"></div>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div class="card"><div class="card-head"><h3>검수 성과</h3><div class="tb-space"></div><span class="muted">일별 통과 · 탈락 사유</span></div><div id="chart-stack"></div></div>
+            <div class="card"><div class="card-head"><h3>시술별 통과율</h3><div class="tb-space"></div><span class="muted">누적</span></div><div id="chart-treat"></div></div>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div class="card">
+              <div class="card-head"><h3>조건별 통과율</h3><div class="tb-space"></div><span class="muted">누적</span></div>
+              <div class="toolbar pill" id="axis-pick" style="flex-wrap:wrap;border:0;padding-bottom:0"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
+              <div id="chart-axis"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
+              <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>통과 / 생성</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="card">
+            <div class="card-head"><h3>오늘의 보고서</h3><div class="tb-space"></div><span class="muted" id="home-today-date"></span></div>
+            <h4>시간대별 생성</h4><div id="chart-today"></div>
+            <div id="home-today-rows"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>실시간</h3><div class="tb-space"></div><button class="btn sm" data-goto="create">대기열</button></div>
+            <div id="home-running"></div>
+            <div id="home-live-rows"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>라이브러리</h3><div class="tb-space"></div><button class="btn sm" data-goto="library">보기</button></div>
+            <div id="home-lib"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 생성 ═══ -->
+    <section class="page" id="tab-create">
+      <div class="grid g-create">
+        <div class="card">
+          <div class="card-head"><h3>생성 조건</h3></div>
+          <div class="form">
+            <div class="field"><span>시술</span><div class="tags" id="q-treatments" style="margin:0"></div></div>
+            <div class="field"><span>사진 종류</span><div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카형</button><button data-v="clinical">임상형</button></div></div>
+            <div class="row"><label class="field" style="flex:1"><span>시술당 생성 장수</span><input type="number" id="count" value="10" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
+            <div class="row"><label class="field" style="flex:1"><span>시술당 비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label><label class="field" style="flex:1"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성</option><option value="1">시뮬레이션</option></select></label></div>
+            <details class="opt"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
+            <details class="opt"><summary>시드 · AI 모델</summary><div>
+              <label class="field"><span>시드 (재현용)</span><input type="number" id="seed" placeholder="비우면 무작위"></label>
+              <div class="muted" id="prov-default"></div>
+              <label class="field"><span>생성 모델</span><select id="gen"><option value="">모드 기본값</option><option>openai</option><option>gemini</option><option>higgsfield</option></select></label>
+              <label class="field"><span>시술 후 생성 모델</span><select id="edit"><option value="">모드 기본값</option><option>openai</option><option>gemini</option><option>higgsfield</option></select></label>
+              <label class="field"><span>검수 모델</span><select id="qa"><option value="">모드 기본값</option><option>openai</option><option>gemini</option></select></label>
+            </div></details>
+            <div class="row"><button class="btn accent" id="btn-plan" style="flex:1">미리보기</button><button class="btn" id="btn-estimate" style="flex:1">비용 예상</button></div>
+            <button class="btn primary" id="btn-run">생성 시작</button>
+            <div class="msg" id="req-msg"></div>
+            <details class="opt"><summary>테스트</summary><div class="row"><button class="btn sm" id="btn-dry">프롬프트만 저장</button><button class="btn sm" id="btn-demo">샘플 결과 생성</button></div></details>
+          </div>
+        </div>
+        <div>
+          <div class="card prog" id="prog-create" hidden></div>
+          <div class="card" style="margin-top:0">
+            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
+            <div class="tbl-wrap"><table id="q-table"><thead><tr><th>순서</th><th>시술</th><th>유형</th><th>생성 장수</th><th>목표 통과</th><th>비용 상한</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
+          </div>
+          <div id="plan-out" hidden style="margin-top:var(--gap)">
+            <div class="card"><div class="card-head"><h3>미리보기</h3><span class="muted" id="plan-n"></span></div><div class="grid g-stats" id="dist"></div></div>
+            <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>개별 항목</h3><span class="muted">처음 20장</span></div><div id="prompts"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 작업 ═══ -->
+    <section class="page" id="tab-jobs">
+      <div class="card">
+        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="toolbar">
+          <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
+          <span class="sep"></span>
+          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select>
+          <select id="gal-axis"><option value="">조건 전체</option></select><select id="gal-axis-val" hidden><option value="">값 전체</option></select>
+          <span class="tb-space"></span><span class="muted" id="gal-count"></span>
+        </div>
+        <div class="tbl-wrap" style="max-height:340px"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
+      </div>
+      <div id="detail" style="margin-top:var(--gap)">
+        <div class="card empty" id="detail-empty">작업을 선택하세요</div>
+        <div id="detail-body" hidden>
+          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
+          <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3></div><div class="gal" id="gal"></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 라이브러리 ═══ -->
+    <section class="page" id="tab-library">
+      <div class="card">
+        <div class="card-head"><h3>선택된 사진</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
+        <div class="toolbar">
+          <select id="lib-treatment"><option value="">시술 전체</option></select>
+          <select id="lib-mode"><option value="">종류 전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select>
+        </div>
+        <div class="msg" id="lib-msg"></div><div id="lib-exports"></div>
+      </div>
+      <div style="margin-top:var(--gap)"><div id="lib-groups"></div><div class="card empty" id="lib-empty" hidden>선택된 사진이 없습니다</div></div>
+    </section>
+
+    <!-- ═══ 설정 · 도움말 ═══ -->
+    <section class="page" id="tab-settings">
+      <div class="grid g-main"><div class="card"><div class="card-head"><h3>설정</h3></div><div id="settings-body"></div></div>
+      <div class="card"><div class="card-head"><h3>API 키</h3></div><div class="muted">`.env`에 GEMINI_API_KEY / OPENAI_API_KEY / HIGGSFIELD_API_KEY 를 넣고 서버를 재시작하면 실제 생성이 열립니다. 키가 없으면 시뮬레이션·샘플만 동작합니다.</div></div></div>
+    </section>
+    <section class="page" id="tab-help">
+      <div class="card"><div class="card-head"><h3>도움말</h3></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+          <div><h4>홈</h4><div class="muted">전체 생성·통과·선택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
+          <div><h4>생성</h4><div class="muted">시술(복수)·사진 종류·장수·목표 통과 장수·비용 상한을 정해 생성 시작. 모든 작업은 대기열로 들어가 순서대로 실행.</div></div>
+          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 선택/제외와 사유 태그.</div></div>
+          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 선택한 사진 모음. 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="dlg"><div class="in" id="dlg-in"></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SEED 레시피 매핑: 시맨틱 클래스(.b/.chip/.tags button)에 SEED 클래스를 자동 부여 ──
+const setCls = (el, c) => { if (el.className !== c) el.className = c; };   // 같은 값이면 안 건드림 (옵저버 루프 방지)
+const SEED = {
+  btn: (el) => {
+    const v = el.classList.contains('primary') ? 'brandSolid' : el.classList.contains('danger') ? 'criticalSolid' : el.classList.contains('on-pick') ? 'brandSolid' : el.classList.contains('on-reject') ? 'criticalSolid' : 'neutralOutline';
+    const size = el.closest('.item, td, .prog') ? 'xsmall' : 'small';
+    setCls(el, el.className.replace(/\bseed-action-button\S*/g, '').trim().replace(/\s+/g, ' ') + ` seed-action-button seed-action-button--variant_${v} seed-action-button--size_${size} seed-action-button--size_${size}-layout_withText seed-action-button--layout_withText`);
+  },
+  chip: (el) => {
+    const tone = el.classList.contains('ok') ? 'positive' : el.classList.contains('bad') ? 'critical' : el.classList.contains('warn') ? 'warning' : el.classList.contains('acc') ? 'informative' : 'neutral';
+    setCls(el, el.className.replace(/\bseed-badge\S*/g, '').trim().replace(/\s+/g, ' ') + ` seed-badge__root seed-badge__root--size_medium seed-badge__root--variant_weak seed-badge__root--tone_${tone}-variant_weak`);
+  },
+  tag: (el) => {
+    if (!el.classList.contains('seed-control-chip')) el.classList.add('seed-control-chip', 'seed-control-chip--size_small', 'seed-control-chip--size_small-layout_withText', 'seed-control-chip--layout_withText');
+    if (el.classList.contains('on')) { if (!el.hasAttribute('data-checked')) el.setAttribute('data-checked', ''); } else el.removeAttribute('data-checked');
+  }
+};
+function seedify(root) {
+  if (!(root instanceof Element)) return;
+  const q = sel => [...(root.matches(sel) ? [root] : []), ...root.querySelectorAll(sel)];
+  q('button.b').forEach(SEED.btn); q('.chip').forEach(SEED.chip); q('.tags button').forEach(SEED.tag);
+}
+new MutationObserver(ms => ms.forEach(m => {
+  m.addedNodes.forEach(seedify);
+  if (m.type === 'attributes' && m.target instanceof Element) { const t = m.target; if (t.matches('.tags button')) SEED.tag(t); else if (t.matches('button.b')) SEED.btn(t); }
+})).observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['class']});
+seedify(document.body);
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const msg = (id, text, cls) => { const el = $(id); el.textContent = text; el.className = 'rp-msg' + (cls ? ' ' + cls : ''); };
+const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
+const pct = x => (x*100).toFixed(0) + '%';
+const fmtBid = id => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}/.exec(id||''); return m ? `${+m[2]}/${+m[3]} ${m[4]}:${m[5]}` : id; };
+const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
+const STAGE_KO = {skipped:'생략(목표 도달)', queued:'대기', before:'시술 전 생성', after:'시술 후 생성', postprocess:'후처리', qa:'AI 검수', retry:'재생성 대기', passed:'통과', failed:'탈락'};
+const MODE_KO = {selfie:'셀카형', clinical:'임상형'};
+const KIND_KO = {demo:'샘플', dry_run:'프롬프트만', run:'실제', sim:'시뮬레이션'};
+const FAIL_KO = {structure:'얼굴 정렬 불일치', identity:'동일 인물 아님', duplicate:'유사 이미지 중복', 'vision:hair':'머리카락 부자연', 'vision:ai_look':'AI 생성 티', 'vision:fingers':'손가락 오류', 'vision:skin_texture':'피부 질감 부자연', 'vision:drift':'시술 부위 외 변화', 'vision:effect_visible':'효과 미확인', 'vision:identity':'동일 인물 아님'};
+const SCORE_KO = {fingers:'손가락', skin_texture:'피부 질감', hair:'머리카락', identity:'동일 인물', drift:'부위 외 변화 없음', effect_visible:'효과 확인', ai_look:'자연스러움'};
+const VAL_KO = {
+  country:{korea:'한국인', japan:'일본인', china:'중국인', sea:'동남아', west:'서양인'}, age:{late_teens:'10대 후반', early_20s:'20대 초', late_20s:'20대 후', '30s':'30대', '40s':'40대', '50s':'50대', '60s':'60대'}, gender:{female:'여성', male:'남성'},
+  face_shape:{oval:'계란형', round:'둥근형', square:'각진형', long:'긴형', heart:'하트형'}, skin_tone:{fair:'아주 밝은 피부', light:'밝은 피부', medium:'중간 피부', tan:'그을린 피부', deep:'어두운 피부'},
+  skin_condition:{clear:'깨끗한 피부', freckles:'주근깨', moles:'점', acne_marks:'여드름 자국', redness:'홍조', oily:'지성'}, body_type:{slim:'마른 편', average:'보통', full:'통통한 편'},
+  hair_style:{long_straight:'긴 생머리', long_wavy:'긴 웨이브', bob:'단발', short:'짧은 머리', ponytail:'포니테일', bun:'올림머리', buzz:'삭발에 가까움', bangs:'앞머리'}, hair_color:{black:'검정', dark_brown:'진갈색', brown:'갈색', light_brown:'밝은 갈색', ash:'애쉬', grey:'새치'},
+  eyes:{monolid:'홑꺼풀', double:'쌍꺼풀', hooded:'처진 눈꺼풀', deep_set:'깊은 눈'}, extras:{none:'없음', glasses:'얇은 안경', glasses_thick:'뿔테', earrings:'귀걸이', beard_light:'수염 약간', beard_full:'수염', mask_chin:'턱에 마스크', makeup_light:'옅은 화장', makeup_none:'민낯', tired:'피곤한 얼굴'},
+  background:{clinic:'병원 벽', home:'집 거실', cafe:'카페', outdoor:'길거리', car:'차 안', bathroom:'욕실 거울', clinic_waiting:'병원 대기실', clinic_mirror:'병원 거울', clinic_bed:'시술 베드', car_after:'병원 나온 차 안'},
+  angle:{front:'정면', three_quarter:'45도', side:'옆모습', selfie_high:'위에서 셀카', selfie_low:'아래서 셀카', selfie_3q:'살짝 돌린 셀카', selfie_side:'옆 셀카', chin_up:'턱 든 각도', tilted:'고개 기울임'},
+  framing:{full_face:'얼굴 전체', forehead_cut:'이마 잘림', lower_face:'코 아래만', one_cheek:'한쪽 볼', nose_to_neck:'코~목'},
+  context:{none:'없음', pajamas:'잠옷', home_tee:'홈티', towel_headband:'수건 헤어밴드', cap:'모자', necklace:'목걸이', hair_in_face:'잔머리', finger_on_cheek:'볼 가리킴', outing_top:'외출복', clinic_headband:'병원 헤어밴드', hair_flat_after:'눌린 머리', cotton_pad:'솜·연고'},
+  lighting:{ring:'링라이트', window:'창가 자연광', fluorescent:'형광등', night:'밤 실내', backlit:'역광', ceiling_harsh:'천장등 번들거림', mixed:'혼합광'}, color:{neutral:'기본 색감', warm:'따뜻한', cool:'차가운', iphone:'아이폰 느낌', galaxy:'갤럭시 느낌', filter:'약한 필터'},
+  quality:{flagship:'최신폰 화질', mid:'보통 폰', old:'구형 폰', front_cam:'전면 카메라', app_upload:'앱 업로드 화질'},
+  before_severity:{mild:'약함', moderate:'보통', marked:'뚜렷함'}, effect_level:{subtle:'은은하게', moderate:'눈에 띄게'}, timeline:{immediate:'시술 직후', '1w':'1주 뒤', '2w':'2주 뒤', '4w':'4주 뒤'},
+};
+const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
+const failKo = r => FAIL_KO[r] || r;
+let POLL = null;
+const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
+const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
+let CFG, BATCHES = [], CUR = null;
+
+let QSTAT = null, LIB = null, EXPORTS = [];
+const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', settings:'설정', help:'도움말'};
+
+// ---------- 화면 ----------
+function show(tab) {
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.page').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+  $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
+  if (tab === 'home') loadHome();
+  if (tab === 'create') loadQueue();
+  if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
+  if (tab === 'library') loadLibrary();
+  if (tab === 'settings') renderSettings();
+}
+$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
+$('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
+try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
+$$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); loadBatches(); });
+$$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
+$('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
+document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
+$('#tb-status').onclick = () => show('create');
+$('#menu-open-out').onclick = () => { prompt('결과 폴더', OUT_DIR || 'outputs/'); $('#menu').hidden = true; };
+$('#search').oninput = () => { const q = $('#search').value.trim(); if (q) { SEARCH = q; show('jobs'); } else { SEARCH = ''; if ($('#tab-jobs').classList.contains('active')) loadBatches(); } };
+let SEARCH = '', OUT_DIR = '';
+
+// ---------- 대시보드 ----------
+let OV = null, HOME_DAYS = 14, AXIS_A = 'angle';
+const trend = (cur, prev, inv) => prev ? `<span class="${(cur >= prev) !== !!inv ? 'up' : 'down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs((cur - prev) / prev * 100).toFixed(0)}%</span> vs 이전` : '이전 기간 없음';
+async function loadHome() {
+  const [ov, batches] = await Promise.all([api('/api/overview?days=' + HOME_DAYS), api('/api/batches')]);
+  OV = ov; BATCHES = batches; const w = ov.window, p = ov.prev;
+  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}`;
+  $('#home-kpis').innerHTML = [
+    ['hero', '생성 장수', w.total, '장', p.total ? trend(w.total, p.total) : `오늘 ${OV.today.total}장`],
+    ['', 'AI 검수 통과', w.passed, '장', `통과율 ${w.total ? pct(w.passed / w.total) : '—'}${p.total ? ' · ' + trend(w.passed / Math.max(1, w.total), p.passed / p.total) : ''}`],
+    ['', '평균 시도', ov.avg_attempt ?? '—', '회', '통과 1장당'],
+    ['', '비용', `$${w.cost.toFixed(2)}`, '', `장당 $${w.passed ? (w.cost / w.passed).toFixed(3) : '—'}`]
+  ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
+  chartCombo(); chartStack(); chartTreat(); chartAxis(); chartToday(); renderLive(); renderHomeLib();
+  const tb = $('#home-recent tbody');
+  tb.innerHTML = batches.slice(0, 6).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : '<span class="chip ok">완료</span>';
+    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||''}</td><td>${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''} <span class="muted">${pct(s.pass_rate||0)}</span>`}</td><td>${st}</td></tr>`; }).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
+}
+// ── SVG 헬퍼 ──
+const cw = (sel, fallback) => Math.max(200, Math.floor(document.querySelector(sel)?.clientWidth || fallback));
+const svgOpen = (W, H, cls='') => `<svg class="chart ${cls}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+function chartCombo() {
+  const keys = OV.day_keys, d = OV.daily; const W = cw('#chart-combo', 760), H = 240, L = 36, R = 40, T = 16, B = 26; const n = keys.length;
+  const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max), yr = r => T + (H - T - B) * (1 - r);
+  const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
+  const rgrid = [0, .5, 1].map(f => `<text class="axis" x="${W-R+6}" y="${yr(f)+4}">${f*100}%</text>`).join('');
+  const bars = keys.map((k, i) => `<rect class="bar" x="${x(i)+bw*.2}" y="${y(d[k].total)}" width="${bw*.6}" height="${y(0)-y(d[k].total)}" rx="3"><title>${k.slice(5)} · 생성 ${d[k].total} · 통과 ${d[k].passed}</title></rect>`).join('');
+  const withData = keys.map((k, i) => [k, i]).filter(([k]) => d[k].total);
+  const line = withData.map(([k, i], j) => `${j ? 'L' : 'M'}${(x(i)+bw/2).toFixed(1)},${yr(d[k].passed/d[k].total).toFixed(1)}`).join(' ');
+  const pts = withData.map(([k, i]) => `<circle class="ptok" cx="${x(i)+bw/2}" cy="${yr(d[k].passed/d[k].total)}" r="3.5"><title>${k.slice(5)} 통과율 ${pct(d[k].passed/d[k].total)}</title></circle>`).join('');
+  const step = Math.ceil(n / 8); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-8}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
+  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>통과율</span></div>`;
+}
+const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:fingers','손가락','st5'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
+function chartStack() {
+  const keys = OV.day_keys, d = OV.daily; const W = cw('#chart-stack', 360), H = 200, L = 32, R = 8, T = 10, B = 24; const n = keys.length;
+  const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max);
+  const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-5}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
+  const used = new Set(['passed']);
+  const bars = keys.map((k, i) => { let acc = 0; const segs = [['passed', d[k].passed], ...Object.entries(d[k].fails)]; return segs.map(([g, v]) => { if (!v) return ''; const meta = FAIL_GROUP.find(f => f[0] === g) || [g, g, 'st5']; used.add(meta[0]); const s = `<rect class="${meta[2]}" x="${x(i)+bw*.2}" y="${y(acc+v)}" width="${bw*.6}" height="${y(acc)-y(acc+v)}"><title>${k.slice(5)} · ${meta[1]} ${v}</title></rect>`; acc += v; return s; }).join(''); }).join('');
+  const step = Math.ceil(n / 5); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
+  const cls = {st0:'var(--ok)', st1:'#D64545', st2:'#E98A2E', st3:'#8FA9C8', st4:'#B8A0D9', st5:'#C4C9D1'};
+  $('#chart-stack').innerHTML = svgOpen(W, H) + grid + bars + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)">${FAIL_GROUP.filter(f => used.has(f[0])).map(f => `<span><i style="background:${cls[f[2]]}"></i>${f[1]}</span>`).join('')}</div>`;
+}
+function chartTreat() {
+  const rows = Object.entries(OV.by_treatment).filter(([,a]) => a.total).sort((a,b) => b[1].total - a[1].total);
+  $('#chart-treat').innerHTML = rows.length ? rows.map(([t, a]) => `<div class="hbar"><span title="${t}">${CFG.treatments[t]?.name_ko || t}</span><span class="t"><i class="${a.passed/a.total >= .6 ? 'ok' : ''}" style="width:${(a.passed/a.total*100).toFixed(0)}%"></i></span><span class="n">${pct(a.passed/a.total)} <span class="muted">${a.total}</span></span></div>`).join('') : '<div class="empty">기록 없음</div>';
+}
+function chartAxis() {
+  const d = OV.by_axis[AXIS_A] || {}; const rows = Object.entries(d).sort((a,b) => b[1].n - a[1].n).slice(0, 8);
+  $('#chart-axis').innerHTML = rows.length ? rows.map(([k, a]) => `<div class="hbar"><span title="${k}">${val(AXIS_A, k)}</span><span class="t"><i style="width:${(a.pass/a.n*100).toFixed(0)}%"></i></span><span class="n">${pct(a.pass/a.n)} <span class="muted">${a.n}</span></span></div>`).join('') : '<div class="empty">기록 없음</div>';
+}
+$$('#axis-pick button').forEach(b => b.onclick = () => { $$('#axis-pick button').forEach(x => x.classList.toggle('on', x === b)); AXIS_A = b.dataset.a; chartAxis(); });
+$$('#home-range button').forEach(b => b.onclick = () => { $$('#home-range button').forEach(x => x.classList.toggle('on', x === b)); HOME_DAYS = +b.dataset.d; loadHome(); });
+function chartToday() {
+  const t = OV.today; const h = t.hourly, hp = t.hourly_pass; const W = cw('#chart-today', 280), H = 120, L = 8, R = 8, T = 14, B = 18; const max = Math.max(3, ...h);
+  const x = i => L + i * (W - L - R) / 23, y = v => T + (H - T - B) * (1 - v / max);
+  const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = path(h) + ` L${x(23)},${y(0)} L${x(0)},${y(0)} Z`;
+  const labels = [0, 6, 12, 18, 23].map(i => `<text class="axis" x="${x(i)}" y="${H-4}" text-anchor="middle">${i}시</text>`).join('');
+  const peak = h.indexOf(Math.max(...h)); const pk = h[peak] ? `<circle class="pt" cx="${x(peak)}" cy="${y(h[peak])}" r="3.5"/><text class="axis" x="${x(peak)}" y="${y(h[peak])-8}" text-anchor="middle" style="fill:var(--primary);font-weight:700">${h[peak]}</text>` : '';
+  $('#chart-today').innerHTML = svgOpen(W, H, 'short') + `<defs><linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1F3A5F" stop-opacity=".25"/><stop offset="1" stop-color="#1F3A5F" stop-opacity="0"/></linearGradient></defs><path class="area" d="${area}"/><path class="line" d="${path(h)}"/>${pk}${labels}</svg>`;
+  $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
+  $('#home-today-rows').innerHTML = `<div style="height:var(--sp-2)"></div><div class="report-row"><span class="k">오늘 생성</span><span class="v">${t.total}<small>장</small></span></div><div class="report-row"><span class="k">오늘 통과</span><span class="v ok">${t.passed}<small>장 · ${t.total ? pct(t.passed/t.total) : '—'}</small></span></div><div class="report-row"><span class="k">오늘 비용</span><span class="v">$${(t.cost||0).toFixed(2)}</span></div>`;
+}
+async function renderLive() {
+  const q = OV.queue; const el = $('#home-running'); const r = q.running;
+  if (r && r.batch_id) { try { const pg = await api(`/api/batches/${r.batch_id}/progress`); el.className = 'prog'; renderProgress(pg, el, `${CFG.treatments[r.treatment]?.name_ko || r.treatment} · ${MODE_KO[r.mode]}`); el.querySelector('.cells')?.remove(); } catch { el.innerHTML = ''; } }
+  else { el.className = ''; el.innerHTML = `<div class="muted" style="padding:6px 0 10px">진행 중인 작업이 없습니다${q.paused ? ' · 일시정지' : ''}</div>`; }
+  const w = OV.window;
+  $('#home-live-rows').innerHTML = `<div class="report-row"><span class="k">대기 작업</span><span class="v">${q.queued}<small>개</small></span></div><div class="report-row"><span class="k">기간 통과율</span><span class="v ok">${w.total ? pct(w.passed/w.total) : '—'}</span></div><div class="report-row"><span class="k">탈락 최다 사유</span><span class="v plain">${Object.entries(OV.fails_total).sort((a,b)=>b[1]-a[1])[0]?.[0] ? failKo(Object.entries(OV.fails_total).sort((a,b)=>b[1]-a[1])[0][0]) : '—'}</span></div>`;
+}
+function renderHomeLib() {
+  const l = OV.library; const rows = Object.entries(l.summary).map(([t, m]) => [t, Object.values(m).reduce((a,b)=>a+b,0), m]).sort((a,b) => b[1]-a[1]);
+  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">선택된 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
+}
+setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
+let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); chartStack(); chartToday(); } }, 150); });
+
+// ---------- 생성 조건 ----------
+function selTreatments() { return $$('#q-treatments button.on').map(b => b.dataset.v); }
+function selModes() { return $$('#q-modes button.on').map(b => b.dataset.v); }
+function renderTreatmentChips() {
+  $('#q-treatments').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('');
+  $$('#q-treatments button, #q-modes button').forEach(b => b.onclick = () => { b.classList.toggle('on'); renderFixed(); renderProvDefault(); });
+}
+function renderFixed() {
+  const modes = selModes(); const rules = modes.length === 1 ? (CFG.mode_rules[modes[0]] || {}) : {};
+  $('#fixed').innerHTML = Object.entries(CFG.axes).map(([a, opts]) => {
+    const allowed = rules[a] || opts;
+    return `<label>${AXIS_KO[a]||a}<select data-axis="${a}"><option value="">전체</option>${allowed.map(o => `<option value="${o}">${val(a, o)}</option>`).join('')}</select></label>`;
+  }).join('');
+}
+function renderProvDefault() { const el = $('#prov-default'); if (!el || !CFG.default_provider) return; el.innerHTML = selModes().map(m => { const d = CFG.default_provider[m]; return d ? `${MODE_KO[m]} 기본: 생성 ${d.gen} · 시술 후 ${d.edit} · 검수 ${d.qa}` : ''; }).filter(Boolean).join('<br>') || '사진 종류를 선택하세요'; }
+function fixedVals() { const fixed = {}; $$('#fixed select').forEach(s => { if (s.value) fixed[s.dataset.axis] = s.value; }); return fixed; }
+function jobsFromForm() {
+  const ts = selTreatments(), ms = selModes(), jobs = [];
+  ts.forEach(t => ms.filter(m => CFG.treatments[t].modes.includes(m)).forEach(m => jobs.push({treatment: t, mode: m, count: +$('#count').value,
+    target_pass: $('#q-target').value || null, cost_cap: $('#q-cap').value || null, seed: $('#seed').value || null, fixed: fixedVals(),
+    simulate: $('#q-sim').value === '1', gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value})));
+  return jobs;
+}
+function firstReq() { const j = jobsFromForm()[0]; return j && {treatment: j.treatment, mode: j.mode, count: j.count, seed: j.seed, fixed: j.fixed, gen: j.gen, edit: j.edit, qa: j.qa}; }
+
+function bars(obj, total, cls, axis, labelFn) {
+  const entries = Object.entries(obj).sort((a,b) => (b[1].n ?? b[1]) - (a[1].n ?? a[1]));
+  return entries.map(([k, v]) => {
+    const n = v.n ?? v, ratio = v.pass != null ? v.pass : n/total; const label = labelFn ? labelFn(k) : axis ? val(axis, k) : k;
+    return `<div class="bar"><span title="${esc(k)}">${esc(label)}</span><span class="t"><i class="${cls||''}" style="width:${(ratio*100).toFixed(0)}%"></i></span><span class="n">${v.pass != null ? pct(v.pass)+' · '+n+'장' : n+'장'}</span></div>`;
+  }).join('');
+}
+$('#btn-plan').onclick = async () => {
+  const q = firstReq(); if (!q) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
+  try {
+    msg('#req-msg', '준비 중…'); const r = await api('/api/plan', q); const n = jobsFromForm().length;
+    $('#plan-out').hidden = false; $('#plan-n').textContent = `${CFG.treatments[q.treatment].name_ko} · ${MODE_KO[q.mode]} · ${r.count}장${n > 1 ? ` (작업 ${n}개 중 첫 번째)` : ''}`;
+    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div><h4>${AXIS_KO[a]||a}</h4>${bars(d, r.count, '', a)}</div>`).join('');
+    $('#prompts').innerHTML = r.items.slice(0, 20).map((s, i) => promptCard(s, i)).join('');
+    msg('#req-msg', ''); $('#plan-out').scrollIntoView({behavior:'smooth'});
+  } catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
+};
+function promptCard(s, i) {
+  const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  return `<div style="padding:12px 0;border-bottom:1px solid var(--ui-border)"><div class="head" style="display:flex;justify-content:space-between"><b>${i+1}</b><span class="muted">시술 후 변경: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
+    <div>${badges}</div>
+    <details style="margin-top:8px"><summary>시술 전 프롬프트</summary><div class="mono">${esc(s.before_prompt)}</div></details>
+    <details><summary>시술 후 프롬프트</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
+}
+$('#btn-estimate').onclick = async () => {
+  const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
+  try { let cost = 0, calls = 0; for (const j of jobs) { const r = await api('/api/estimate', j); cost += r.expected_cost_usd; calls += r.expected_calls; }
+    msg('#req-msg', `작업 ${jobs.length}개 · 예상 비용 약 $${cost.toFixed(2)} · API 호출 약 ${calls}회 (통과율 50% 가정)`, 'on'); }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
+};
+$('#btn-run').onclick = async () => {
+  const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
+  if (jobs.some(j => !j.simulate) && !confirm(`실제 생성 작업 ${jobs.filter(j=>!j.simulate).length}개를 시작합니다. API 비용이 발생합니다.`)) return;
+  try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개 시작`); msg('#req-msg', ''); loadQueue(); }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
+};
+$('#btn-dry').onclick = async () => {
+  const q = firstReq(); if (!q) return;
+  try { const r = await api('/api/dryrun_save', q); toast(`프롬프트 ${r.count}장 저장`); CUR = null; show('jobs'); await openBatch(r.batch_id); }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
+};
+$('#btn-demo').onclick = async () => {
+  const q = firstReq(); if (!q) return;
+  try { msg('#req-msg', '샘플 생성 중…'); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast('샘플 결과 생성 완료'); msg('#req-msg', ''); CUR = null; show('jobs'); await openBatch(r.batch_id); }
+  catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
+};
+
+// ---------- 대기열 ----------
+const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 ${s.split(':')[1]}장 도달` : s.startsWith('cost_cap') ? `비용 상한 $${s.split(':')[1]} 도달` : s;
+$('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
+$('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
+let CREATE_PROG = null;
+async function loadQueue() {
+  const q = await api('/api/queue'); const tb = $('#q-table tbody');
+  $('#q-pause').textContent = q.paused ? '재개' : '일시정지';
+  $('#q-sum').textContent = `대기 ${q.queued_count} · ${q.running ? '실행 중 1' : '실행 중 0'} · 남은 예상 비용 $${q.est_total}${q.paused ? ' · 일시정지' : ''}`;
+  setQueueStatus(q);
+  $('#q-empty').hidden = q.jobs.length > 0;
+  const stKo = {queued:'<span class="chip">대기</span>', running:'<span class="chip warn">실행 중</span>', done:'<span class="chip ok">완료</span>', error:'<span class="chip bad">오류</span>', cancelled:'<span class="chip">취소</span>'};
+  tb.innerHTML = q.jobs.map((j, i) => { const p = j.progress, r = j.result || {};
+    const progress = p ? `<span class="mini"><i style="width:${(p.done/p.planned*100).toFixed(0)}%"></i></span>${p.done}/${p.planned}${p.running && p.eta_s!=null ? ' · ' + fmtS(p.eta_s) : ''}` : '';
+    const result = j.status==='done' ? `통과 ${r.passed ?? '?'} / 생성 ${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ' · <span class="chip acc">'+STOP_KO(r.stopped)+'</span>' : ''}` : j.status==='error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error||'').slice(0,60))}</span>` : '';
+    const ctl = j.status==='queued' ? `<button class="b" data-q="up" data-id="${j.job_id}">↑</button> <button class="b" data-q="down" data-id="${j.job_id}">↓</button> <button class="b danger" data-q="cancel" data-id="${j.job_id}">취소</button>`
+              : j.status==='running' ? '' : `<button class="b" data-q="remove" data-id="${j.job_id}">삭제</button>`;
+    return `<tr><td>${i+1}</td><td>${CFG.treatments[j.treatment]?.name_ko || j.treatment}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.count}</td><td>${j.target_pass ?? '—'}</td><td>${j.cost_cap != null ? '$'+j.cost_cap : '—'}</td><td>$${j.est_cost}</td>
+      <td>${j.simulate ? '<span class="chip">시뮬레이션</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
+      <td style="white-space:nowrap">${j.batch_id ? `<button class="b" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
+  tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.q, id = b.dataset.id;
+    if (a === 'open') { show('jobs'); openBatch(id); return; }
+    if (a === 'cancel' || a === 'remove') await api(`/api/queue/${a}`, {job_id: id});
+    if (a === 'up' || a === 'down') await api('/api/queue/move', {job_id: id, direction: a});
+    loadQueue();
+  });
+  // 실행 중 작업 진행 패널
+  const r = q.running; const el = $('#prog-create');
+  if (r && r.batch_id) { try { const pg = await api(`/api/batches/${r.batch_id}/progress`); renderProgress(pg, el, `${CFG.treatments[r.treatment]?.name_ko || r.treatment} · ${MODE_KO[r.mode]}`); } catch { el.hidden = true; } }
+  else el.hidden = true;
+}
+function setQueueStatus(q) {
+  QSTAT = q; const n = q.queued_count + (q.running ? 1 : 0); const badge = $('#q-badge'); badge.hidden = !n; badge.textContent = n;
+  const r = q.running; const pill = $('#tb-status'); pill.classList.toggle('on', !!r);
+  $('#tb-status-text').textContent = r ? `${CFG.treatments[r.treatment]?.name_ko || r.treatment} 생성 중${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}` : q.paused ? `일시정지${q.queued_count ? ` · 대기 ${q.queued_count}` : ''}` : q.queued_count ? `대기 ${q.queued_count}` : '대기 중';
+}
+setInterval(() => { if ($('#tab-create').classList.contains('active')) loadQueue(); }, 2500);
+setInterval(async () => { if (!$('#tab-create').classList.contains('active')) { try { setQueueStatus(await api('/api/queue')); } catch {} } }, 5000);
+
+// ---------- 작업 목록 ----------
+async function loadBatches() {
+  BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const q = SEARCH.toLowerCase();
+  const list = BATCHES.filter(b => (!kind || b.kind === kind) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
+  const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
+  tb.innerHTML = list.map(b => { const s = b.stats || {};
+    const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
+    const dry = b.kind === 'dry_run';
+    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
+      <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td><td>${dry ? '—' : (s.attempts_per_pass ?? '')}</td><td>${dry ? '—' : (s.cost_per_pass ?? '')}</td>
+      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
+  return BATCHES;
+}
+$('#btn-refresh').onclick = loadBatches; $('#jobs-kind').onchange = loadBatches;
+setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
+
+// ---------- 작업 상세 ----------
+async function openBatch(id, scrollTo_ = false) {
+  CUR = await api('/api/batches/' + id);
+  $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
+  $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
+  const b = CUR, s = b.stats || {};
+  $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment} · ${MODE_KO[b.mode]||b.mode}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
+  const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
+  $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
+  $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
+  renderStats(); renderGallery(); startPoll();
+  if (scrollTo_) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
+}
+async function startPoll() {
+  clearInterval(POLL); POLL = null; $('#prog').hidden = true;
+  if (!CUR || !CUR.progress) return;
+  const tick = async () => {
+    let pg; try { pg = await api(`/api/batches/${CUR.batch_id}/progress`); } catch { return; }
+    renderProgress(pg, $('#prog'));
+    const seen = CUR.items.length, doneNow = pg.summary.done;
+    if (doneNow !== seen || !pg.summary.running) {
+      const fresh = await api('/api/batches/' + CUR.batch_id); if (!CUR || CUR.batch_id !== fresh.batch_id) return;
+      const rv = Object.fromEntries(CUR.items.map(i => [i.item_id, i.review])); fresh.items.forEach(i => { if (rv[i.item_id]) i.review = rv[i.item_id]; });
+      CUR = fresh; renderStats(); renderGallery();
+    }
+    if (!pg.summary.running) { clearInterval(POLL); POLL = null; loadBatches(); }
+  };
+  await tick(); if (CUR.progress && CUR.progress.running) POLL = setInterval(tick, 2000);
+}
+function renderProgress(pg, el, title) {
+  const s = pg.summary, c = s.counts; el.hidden = false;
+  const order = ['passed','failed','before','after','postprocess','qa','retry','skipped','queued'];
+  const seg = order.map(k => `<i class="st-${k}" style="width:${(c[k]/s.planned*100).toFixed(1)}%" title="${STAGE_KO[k]} ${c[k]}"></i>`).join('');
+  const ids = Object.keys(pg.items).sort();
+  const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="${+id+1} · ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.map(failKo).join(', '):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
+  const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · ${c.skipped}장 생략</span>` : '');
+  el.innerHTML = `<div class="top"><div class="lead">${title ? `<b class="ttl">${title}</b>` : ''}<span class="big">${s.done}<small>/ ${s.planned}</small></span>${state}</div>
+      <div class="muted">동시 ${s.active} · 재생성 ${s.retries}회 · 통과율 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 경과 ${fmtS(s.elapsed_s)}${s.running?` · 남은 시간 약 ${fmtS(s.eta_s)}`:''}</div></div>
+    <div class="stack">${seg}</div>
+    <div class="legend">${order.filter(k => c[k]).map(k=>`<span><i class="st-${k}" style="${k==='queued'?'background:var(--ui-border)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}</div>
+    ${s.running ? `<div class="cells">${cells}</div>` : ''}`;
+}
+$('#gal-filter').onchange = renderGallery;
+$('#gal-axis').onchange = () => { const a = $('#gal-axis').value; const vals = new Set(CUR.items.map(it => it.variation?.[a]?.key).filter(Boolean));
+  $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>' + [...vals].map(v => `<option value="${v}">${val(a, v)}</option>`).join(''); $('#gal-axis-val').hidden = !a; renderGallery(); };
+$('#gal-axis-val').onchange = renderGallery;
+function renderStats() {
+  const s = CUR.stats, dry = CUR.kind === 'dry_run';
+  $('#kpis').innerHTML = [
+    ['생성 장수', s.total], ['AI 검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['장당 시도', dry ? '—' : `${s.attempts_per_pass}회`], ['장당 비용', dry ? '—' : `$${s.cost_per_pass}`],
+    ['검수 완료', `${s.reviewed} / ${s.total}`], ['선택 · 제외', `${s.picked} · ${s.rejected}`]
+  ].map(([l, v]) => `<div class="kpi compact" style="background:var(--ui-surface)"><div class="l">${l}</div><div class="v">${v ?? '—'}</div></div>`).join('');
+  let html = '';
+  if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
+  if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h4>제외 사유</h4>${bars(s.review_tags, s.total, 'bad')}</div>`;
+  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h4>${AXIS_KO[a]||a}별 통과율</h4>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
+  $('#gal-stats').innerHTML = html;
+}
+function renderGallery() {
+  const f = $('#gal-filter').value, ax = $('#gal-axis').value, av = $('#gal-axis-val').value;
+  const items = CUR.items.filter(it => {
+    const rv = it.review?.pick;
+    if (f === 'passed' && !it.passed) return false; if (f === 'failed' && (it.passed || it.passed === null)) return false;
+    if (f === 'unreviewed' && rv) return false; if (f === 'pick' && rv !== 'pick') return false; if (f === 'reject' && rv !== 'reject') return false;
+    if (ax && av && it.variation?.[ax]?.key !== av) return false; return true;
+  });
+  $('#gal-count').textContent = `${items.length} / ${CUR.items.length}장`; $('#gal-empty').hidden = items.length > 0;
+  $('#gal').innerHTML = items.map(itemCard).join('');
+  $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct);
+  $('#gal').querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+}
+function itemCard(it) {
+  const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
+  const img = (file, cap) => file ? `<figure><img loading="lazy" src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  const status = it.passed === null ? '<span class="chip">프롬프트만</span>' : it.passed ? '<span class="chip ok">통과</span>' : `<span class="chip bad">탈락</span>`;
+  const fails = (it.fail_reasons||[]).map(r => `<span class="chip bad">${esc(failKo(r))}</span>`).join('');
+  const badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
+    <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
+    <div class="body">
+      <div class="head"><span class="id">${+it.item_id+1} ${status}</span><span class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)} <button class="b" data-detail="${it.item_id}">상세</button></span></div>
+      <div>${badges}</div>${fails ? `<div style="margin-top:4px">${fails}</div>` : ''}
+      <div class="act" style="margin-top:8px">
+        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">선택</button>
+        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">제외</button>
+        <button class="b" data-act="clear" data-id="${it.item_id}">초기화</button>
+      </div>
+      <div class="tags">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
+      <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+    </div></div>`;
+}
+async function onAct(e) {
+  const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id); const rv = it.review = it.review || {tags:[]};
+  const act = el.dataset.act;
+  if (act === 'note') { el.onkeydown = ev => { if (ev.key === 'Enter') { rv.note = el.value; save(it); } }; return; }
+  if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
+  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; }
+  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; rv.tags.includes(t) ? rv.tags.splice(rv.tags.indexOf(t),1) : rv.tags.push(t); if (!rv.pick) rv.pick = 'reject'; }
+  await save(it);
+}
+async function save(it) {
+  const rv = it.review; await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick, tags: rv.tags||[], note: rv.note||''});
+  const s = CUR.stats, all = CUR.items.map(x => x.review||{}); s.reviewed = all.filter(r => r.pick || (r.tags||[]).length || r.note).length;
+  s.picked = all.filter(r => r.pick === 'pick').length; s.rejected = all.filter(r => r.pick === 'reject').length;
+  s.review_tags = {}; all.forEach(r => (r.tags||[]).forEach(t => s.review_tags[t] = (s.review_tags[t]||0)+1));
+  renderStats(); loadBatches(); const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
+}
+function detail(id) {
+  const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
+  const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
+  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok', null, k => SCORE_KO[k]||k).replace(/장<\/span>/g, '점</span>')}` : '';
+  const chk = [it.structure && `얼굴 정렬: ${it.structure.passed ? '통과' : '불일치'}`, it.identity && `동일 인물: ${it.identity.hard_fail ? '불일치' : '통과'}`].filter(Boolean).join(' · ');
+  $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
+    <p class="muted">${chk || ''} ${it.prompt_version ? '· 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>생성 조건</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후 변경</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
+    <h3 style="margin-top:14px">시술 전 프롬프트</h3><div class="mono">${esc(it.before_prompt)}</div>
+    <h3 style="margin-top:10px">시술 후 프롬프트</h3><div class="mono">${esc(it.after_prompt)}</div>`;
+  $('#dlg').showModal();
+}
+
+
+// ---------- 라이브러리 ----------
+async function loadLibrary() {
+  LIB = await api('/api/library'); const t = $('#lib-treatment'); const cur = t.value;
+  t.innerHTML = '<option value="">시술 전체</option>' + Object.keys(LIB.summary).map(k => `<option value="${k}">${CFG.treatments[k]?.name_ko || k} (${Object.values(LIB.summary[k]).reduce((a,b)=>a+b,0)})</option>`).join(''); t.value = cur;
+  renderLibrary();
+}
+function renderLibrary() {
+  const ft = $('#lib-treatment').value, fm = $('#lib-mode').value;
+  const items = LIB.items.filter(i => (!ft || i.treatment === ft) && (!fm || i.mode === fm));
+  $('#lib-count').textContent = `${items.length} / ${LIB.total}장`; $('#lib-badge').hidden = !LIB.total; $('#lib-badge').textContent = LIB.total;
+  $('#lib-empty').hidden = items.length > 0;
+  const groups = {}; items.forEach(i => { const k = `${i.treatment}|${i.mode}`; (groups[k] = groups[k] || []).push(i); });
+  $('#lib-groups').innerHTML = Object.entries(groups).map(([k, arr]) => { const [t, m] = k.split('|');
+    return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
+  $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
+  $('#lib-groups').querySelectorAll('[data-unpick]').forEach(b => b.onclick = async () => { const [bid, iid] = b.dataset.unpick.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
+    await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('선택 해제'); loadLibrary(); });
+}
+function libCard(i) {
+  const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  const badges = ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  return `<div class="item"><div class="pair">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
+    <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}</span><span class="act"><button class="b" data-open="${i.batch_id}">작업</button><button class="b" data-unpick="${i.batch_id}/${i.item_id}">해제</button></span></div>
+    <div>${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
+}
+$('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
+$('#btn-export').onclick = async () => {
+  try { msg('#lib-msg', '내보내는 중…'); const r = await api('/api/export', {treatment: $('#lib-treatment').value || null, mode: $('#lib-mode').value || null});
+    EXPORTS.unshift(r); msg('#lib-msg', `${r.count}장 내보냄`, 'on'); renderExports(); }
+  catch (e) { msg('#lib-msg', e.message, 'err'); }
+};
+function renderExports() {
+  $('#lib-exports').innerHTML = EXPORTS.slice(0, 5).map(r => `<div class="muted" style="margin-top:6px;word-break:break-all"><a href="${r.zip}" style="color:var(--primary);font-weight:600">${r.name}.zip</a> · ${r.count}장 · ${(r.zip_bytes/1024).toFixed(0)}KB<br><span style="font-size:10px">${esc(r.dir)}</span></div>`).join('');
+}
+
+
+// ---------- 설정 ----------
+function renderSettings() {
+  $('#settings-body').innerHTML = `<div class="list">
+    <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>모드별 기본 AI 모델</b><span>${Object.entries(CFG.default_provider||{}).map(([m,d]) => `${MODE_KO[m]||m}: ${d.gen} / ${d.edit} / ${d.qa}`).join(' · ')}</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
+}
+
+// ---------- init ----------
+(async () => {
+  CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
+  renderTreatmentChips(); renderFixed(); renderProvDefault();
+  api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
+  $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
+  const h = location.hash.slice(1); show(TITLES[h] ? h : 'home');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+.vercel
+.env*.local
+node_modules
+# 어떤 이미지를 이미 올렸는지 기억하는 이 PC 전용 장부 — 기기마다 다르다.
+.push-manifest.json

@@ -78,3 +78,36 @@ PYTHONPATH=src python3 -m bna.api --demo   # 키 없이 화면 확인용 샘플 
 - **라이브러리**: 모든 작업에서 "선택"한 사진만 시술·유형별로 모아 보고, 현재 필터로 내보내기 → `outputs/exports/<ts>/<treatment>_<mode>/` + manifest.csv + zip
 
 디자인: 레이아웃은 네이버 부동산 대시보드 레퍼런스(Behance 194113213) 구조 — 왼쪽 아이콘 레일 + 라벨 사이드바, 상단 바(제목·검색·알림·프로필 메뉴), 카드형 콘텐츠(KPI 행 + 차트 + 우측 목록). 회색 토큰은 디자인 자동화 툴(`AI-Tools/platform/common/_base-template.html`)과 동일. 브랜드색은 온리프 네이비(`--primary` #1F3A5F). 버튼·배지·칩은 SEED Design 레시피(`web/vendor/seed/`, `seedify()` 자동 매핑). 워딩은 간결한 용어(생성·작업·통과·장당 비용, 조건값 한국어).
+
+## 대시보드 (클라우드 · 보기 전용)
+
+https://onlif-bna.vercel.app — Vercel 프로젝트 `bna-dashboard`(hycha-ux 계정), 비밀번호 게이트.
+
+**왜 보기 전용인가.** 생성은 한 장에 수십 초~수 분이 걸리고 유료 API를 부른다. Vercel 함수는
+요청 단위로 떴다 지므로 큐·워커를 얹을 수 없고, 파일시스템도 휘발성이라 `outputs/`를 둘 수 없다.
+그래서 **주방(생성·큐·검수)은 사무실 PC, 진열대(보기)만 클라우드**로 나눴다. 쓰기 계열
+(`/api/run`·`/api/queue/*`·`/api/review`·`/api/export`)은 클라우드에서 **405**로 막는다 —
+돈 쓰는 버튼을 인터넷에 두지 않는다.
+
+**갱신 절차 (배치를 돌린 뒤)**
+```bash
+node build-cloud.mjs                    # web/ → cloud/web·cloud/public (산출물, 손으로 고치지 마라)
+node cloud/push-cloud.mjs --dry         # 무엇을 올릴지 확인
+node cloud/push-cloud.mjs               # 스냅샷 + 이미지 → Blob
+cd cloud && npx vercel --prod --yes     # 화면 코드를 고쳤을 때만 필요
+```
+`push-cloud.mjs`만 다시 돌리면 재배포 없이 화면 값이 바뀐다(함수가 Blob을 읽는다).
+
+**집계 정본은 로컬 API 하나다.** push 스크립트는 `src/bna/api.py`를 띄워 그 응답을 그대로 긁어
+올린다 — 클라우드에서 다시 계산하지 않는다. 두 곳에서 따로 세면 화면 둘이 조용히 갈린다.
+
+**함정**
+- ⚠ push 스크립트가 로컬 API를 직접 띄우면 `api.py`의 큐 러너도 같이 깨어난다 = 밀린 작업이 있으면
+  **돈이 나간다**. 그래서 큐가 비어 있지 않으면 띄우지 않고 멈춘다(이미 8765에 떠 있으면 그걸 쓴다).
+- ⚠ 스냅샷은 **이미지보다 나중에** 올린다. 먼저 올리면 화면이 아직 없는 사진을 부른다.
+- ⚠ `DASH_PW`가 없으면 사이트가 503으로 닫힌다(fail-closed). 생성 이미지가 사람 얼굴이라
+  게이트가 유일한 방어라서, 열어 두느니 안 뜨는 쪽을 택했다.
+- ⚠ 이미지는 **private Blob**이고 함수가 쿠키를 확인한 뒤에만 프록시한다. 배포본에 사진을 굽지
+  않는 이유는, 구우면 지난 배포 URL에 영구히 남아 나중에 지울 수 없기 때문이다.
+- ⚠ 화면 하단 배너의 "사무실 PC 기준 …" 시각이 스냅샷 시각이다. 실시간이 아니다 — 지우지 마라.
+- ⚠ `cloud/web/`·`cloud/public/`은 `build-cloud.mjs` 산출물이다. 고칠 자리는 `web/`.
