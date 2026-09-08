@@ -146,6 +146,15 @@ tbody tr:last-child td { border-bottom:none }
 .dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
 .dd-menu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20; background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-sm); box-shadow:0 8px 24px rgba(25,31,40,.12); padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px }
 .dd-opt { display:flex; align-items:center; gap:8px; height:34px; padding:0 8px; border-radius:6px; font-size:var(--fs-sm); cursor:pointer } .dd-opt:hover { background:var(--ui-surface) } .dd-opt input { accent-color:var(--primary); width:16px; height:16px; margin:0 }
+.rev { display:grid; grid-template-columns:minmax(0,1fr) 320px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+.rev-main { min-width:0; display:flex; flex-direction:column } .rev-main .pair { border-radius:var(--r-md) 0 0 0 } .rev-main .pair figure { aspect-ratio:4/5 }
+.thumbs { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--ui-border) } .th-row { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none } .th-row::-webkit-scrollbar { display:none }
+.th { flex:0 0 56px; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--ui-surface); cursor:pointer } .th img { width:100%; height:100%; object-fit:cover; display:block }
+.th.pick { border-color:var(--ok) } .th.reject { opacity:.45 } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
+.rev-side { border-left:1px solid var(--ui-border); padding:20px; display:flex; flex-direction:column; gap:20px } .rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-md); margin-bottom:6px }
+.scores { display:flex; flex-direction:column; gap:6px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
+.rev-act { margin-top:auto } .rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
+.rev-side .reason { border-top:0; padding-top:0 }
 .reason-foot { display:flex; align-items:center; gap:8px; margin-top:8px }
 .verdict { font-weight:var(--fw-m); font-size:var(--fs-sm); color:var(--ui-md); white-space:nowrap; flex-shrink:0 } .verdict.ok { color:var(--ok) } .verdict.bad { color:var(--bad) }
 .why { font-size:var(--fs-xs); color:var(--ui-md); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
@@ -338,7 +347,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div id="detail-body" hidden>
           <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
           <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
-          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3></div><div class="gal" id="gal"></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
     </section>
@@ -743,16 +752,77 @@ function renderGallery() {
     if (ax && av && it.variation?.[ax]?.key !== av) return false; return true;
   });
   $('#gal-count').textContent = `${items.length} / ${CUR.items.length}장`; $('#gal-empty').hidden = items.length > 0;
+  GAL_ITEMS = items; $('#gal').hidden = VIEW === 'review'; $('#rev').hidden = VIEW !== 'review';
+  if (VIEW === 'review') { if (REV_IDX >= items.length) REV_IDX = Math.max(0, items.length - 1); renderReview(); $('#gal').innerHTML = ''; return; }
   $('#gal').innerHTML = items.map(itemCard).join('');
-  $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); $('#gal').querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct);
-  $('#gal').querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+  bindActs($('#gal'));
 }
+function bindActs(root) {
+  root.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); root.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct);
+  root.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+}
+// ── 검수 모드: 한 장씩 크게, 판단 근거를 옆에. ←→ 이동, 1 선택, 2 제외 ──
+let VIEW = 'grid', REV_IDX = 0, GAL_ITEMS = [];
+function renderReview() {
+  const el = $('#rev'), it = GAL_ITEMS[REV_IDX];
+  if (!it) { el.innerHTML = '<div class="empty">표시할 항목이 없습니다</div>'; return; }
+  const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
+  const img = (file, cap) => file ? `<figure><img src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  const fails = (it.fail_reasons||[]).map(r => esc(failKo(r))).join(' · ');
+  const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>' : it.passed ? '<span class="verdict ok">AI 검수 통과</span>' : '<span class="verdict bad">AI 검수 탈락</span>';
+  const scores = it.vision?.scores ? Object.entries(it.vision.scores).map(([k, n]) => `<div class="score"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n < 5 ? 'bad' : ''}" style="width:${n*10}%"></i></span><b class="${n < 5 ? 'bad' : ''}">${n}</b></div>`).join('') : '<div class="muted">점수 없음</div>';
+  const cond = (ks) => ks.filter(k => v[k]).map(k => esc(val(k, v[k].key))).join(' · ');
+  const thumbs = GAL_ITEMS.map((x, i) => `<button class="th ${i === REV_IDX ? 'cur' : ''} ${x.review?.pick||''}" data-idx="${i}" title="${+x.item_id+1}">${x.after_file ? `<img loading="lazy" src="/files/${b}/${x.item_id}/${x.after_file}">` : ''}</button>`).join('');
+  const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
+  el.innerHTML = `<div class="rev">
+    <div class="rev-main">
+      <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
+      <div class="thumbs"><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
+    </div>
+    <div class="rev-side">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px"><b style="font-size:var(--fs-lg)">${+it.item_id+1}번 사진</b>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+        ${fails ? `<div class="muted">${fails}</div>` : ''}
+      </div>
+      <div><div class="rev-h">AI 점수</div><div class="scores">${scores}</div></div>
+      <div><div class="rev-h">생성 조건</div><div class="muted" style="line-height:1.7"><div>${cond(['country','age','gender'])}</div><div>${cond(['angle','framing','background'])}</div><div>${cond(['before_severity','effect_level','timeline'])}</div></div></div>
+      <div class="rev-act">
+        <div class="act">
+          <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?'선택함':'선택'} <kbd>1</kbd></button>
+          <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?'제외함':'제외'} <kbd>2</kbd></button>
+        </div>
+        ${reasonBlock(it, rv.pick === 'reject')}
+        <div class="muted" style="margin-top:8px">← → 로 이전·다음 사진</div>
+      </div>
+    </div></div>`;
+  bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; renderReview(); });
+  el.querySelector('.th.cur')?.scrollIntoView({block:'nearest', inline:'center'});
+}
+$('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => { VIEW = bt.dataset.v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt)); renderGallery(); });
+document.addEventListener('keydown', e => {
+  if (VIEW !== 'review' || $('#rev').hidden || !CUR || (e.target instanceof Element && e.target.matches('input, textarea, select'))) return;
+  const it = GAL_ITEMS[REV_IDX]; if (!it) return;
+  if (e.key === 'ArrowRight' && REV_IDX < GAL_ITEMS.length - 1) { REV_IDX++; renderReview(); }
+  else if (e.key === 'ArrowLeft' && REV_IDX > 0) { REV_IDX--; renderReview(); }
+  else if (e.key === '1' || e.key === '2') { $('#rev').querySelector(`[data-act=${e.key === '1' ? 'pick' : 'reject'}]`)?.click(); }
+  else return; e.preventDefault();
+});
 const DIRTY = new Set(); // 사유(태그·메모)를 고쳤지만 아직 저장 안 한 사진
 function reasonFoot(it) {
   const rv = it.review || {}, has = (rv.tags||[]).length || rv.note, dirty = DIRTY.has(it.item_id);
   return dirty ? `<button class="b primary" data-act="savereason" data-id="${it.item_id}">사유 저장</button><span class="muted">저장 안 됨</span>`
     : has ? `<button class="b" disabled>저장됨 ✓</button><span class="muted">사유가 저장됐어요</span>`
     : `<button class="b" disabled>사유 저장</button><span class="muted">사유는 선택 사항이에요</span>`;
+}
+function reasonBlock(it, open) {
+  const rv = it.review || {};
+  return `<div class="reason" ${open ? '' : 'hidden'}>
+        <div class="muted">왜 제외했나요?</div>
+        <details class="dd"><summary class="dd-btn"><span class="dd-val ${(rv.tags||[]).length?'':'empty'}">${(rv.tags||[]).length ? esc(rv.tags.join(', ')) : '제외 사유 선택'}</span><span class="dd-caret">▾</span></summary>
+          <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox" data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
+        <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+        <div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div>
+</div>`;
 }
 function itemCard(it) {
   const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
@@ -775,13 +845,7 @@ function itemCard(it) {
         <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?'선택함':'선택'}</button>
         <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?'제외함':'제외'}</button>
       </div>
-      <div class="reason" ${open ? '' : 'hidden'}>
-        <div class="muted">왜 제외했나요?</div>
-        <details class="dd"><summary class="dd-btn"><span class="dd-val ${(rv.tags||[]).length?'':'empty'}">${(rv.tags||[]).length ? esc(rv.tags.join(', ')) : '제외 사유 선택'}</span><span class="dd-caret">▾</span></summary>
-          <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox" data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
-        <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
-        <div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div>
-      </div>
+      ${reasonBlock(it, open)}
     </div></div>`;
 }
 function refreshFoot(it) { const f = $('#rf-'+it.item_id); if (!f) return; f.innerHTML = reasonFoot(it); f.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); seedify(f); }
@@ -801,7 +865,7 @@ async function save(it) {
   const s = CUR.stats, all = CUR.items.map(x => x.review||{}); s.reviewed = all.filter(r => r.pick || (r.tags||[]).length || r.note).length;
   s.picked = all.filter(r => r.pick === 'pick').length; s.rejected = all.filter(r => r.pick === 'reject').length;
   s.review_tags = {}; all.forEach(r => (r.tags||[]).forEach(t => s.review_tags[t] = (s.review_tags[t]||0)+1));
-  renderStats(); loadBatches(); const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
+  renderStats(); loadBatches(); if (VIEW === 'review') { renderReview(); return; } const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
 }
 function detail(id) {
   const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
