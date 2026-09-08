@@ -6,6 +6,8 @@ stage: queued → before → after → postprocess → qa → (retry → before 
 import json, os, threading, time
 from pathlib import Path
 
+from . import cloudpush   # 사진 1장이 판정될 때마다 클라우드로 밀어 올린다(막지 않는 fire-and-forget)
+
 STAGES = ["queued", "before", "after", "postprocess", "qa", "retry", "passed", "failed", "skipped"]
 
 
@@ -29,6 +31,9 @@ class Progress:
             if stage in ("passed", "failed") and item_id in self._t0:
                 it["elapsed"] = round(now - self._t0[item_id], 1)
             self._flush()
+        # 락 밖에서 부른다 — 훅은 즉시 반환하지만, 락 안에서 부르는 습관은 언젠가 생성을 멈춘다.
+        if stage in ("passed", "failed"):
+            cloudpush.nudge(f"사진 판정 {item_id} {stage}")
 
     def finish(self, error=None, stopped=None):
         with self.lock:
@@ -36,6 +41,7 @@ class Progress:
                 if it["stage"] == "queued":
                     it["stage"] = "skipped"
             self.data["finished_at"] = time.time(); self.data["error"] = error; self.data["stopped"] = stopped; self._flush()
+        cloudpush.nudge("배치 종료")
 
     def totals(self):
         with self.lock:

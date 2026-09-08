@@ -104,6 +104,42 @@ l_src = open("src/bna/qa/landmarks.py", encoding="utf-8").read()
 ok("mp.solutions.face_mesh.FaceMesh(" not in l_src and "FaceLandmarker" in l_src,
    "landmarks 는 옛 FaceMesh 호출이 아니라 Tasks API(FaceLandmarker)를 써야 한다")
 
+# ⑭ 즉시 업로드 훅이 '완료 지점' 두 곳에 살아 있는가 (2026-09-08 성연서님 "최대한 즉각적으로")
+#    빠지면 아무 오류 없이 최대 10분 지연으로 되돌아간다 — 화면만 보고는 못 알아챈다.
+pr_src = open("src/bna/progress.py", encoding="utf-8").read()
+q_src = open("src/bna/queue.py", encoding="utf-8").read()
+ok("cloudpush.nudge" in pr_src, "progress.set(사진 1장 판정)이 끝나면 클라우드로 밀어 올려야 한다")
+ok("cloudpush.nudge" in q_src, "queue 러너가 배치를 끝내면 클라우드로 밀어 올려야 한다")
+
+# ⑮ 스위치가 실제로 먹는가 — 꺼 두면 프로세스를 띄우지 않는다(다른 PC·CI 에서 조용히)
+import os as _os
+from bna import cloudpush
+_os.environ["BNA_AUTO_PUSH"] = "0"
+ok(cloudpush.nudge("회귀") is False and cloudpush.enabled()[0] is False,
+   "BNA_AUTO_PUSH=0 이면 업로드를 시도하지 않아야 한다")
+_os.environ.pop("BNA_AUTO_PUSH")
+
+# ⑯ 겹쳐 돌지 않는가 — 사진 10장이 연달아 끝나도 업로드는 접혀야 한다(leading + trailing)
+import tempfile, time as _time, shutil as _shutil
+from pathlib import Path as _Path
+if _shutil.which("node"):
+    tmp = _Path(tempfile.mkdtemp())
+    stub, counter = tmp / "stub.mjs", tmp / "runs.txt"
+    stub.write_text("import {appendFileSync} from 'node:fs';\n"
+                    f"appendFileSync('{counter.as_posix()}', 'x');\n"
+                    "await new Promise(r => setTimeout(r, 400));\n", encoding="utf-8")
+    cloudpush.SCRIPT, cloudpush.ENVFILE, cloudpush.LOG = stub, stub, tmp / "push.log"
+    cloudpush.MIN_INTERVAL = 0
+    for _ in range(10):
+        cloudpush.nudge("회귀")
+    _time.sleep(2.0)
+    runs = len(counter.read_text(encoding="utf-8")) if counter.exists() else 0
+    ok(1 <= runs <= 2, f"nudge 10회는 업로드 1~2회로 접혀야 한다 — 실제 {runs}회")
+    _shutil.rmtree(tmp, ignore_errors=True)
+else:
+    print("SKIP  node 없음 — 훅 겹침 검사 건너뜀")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

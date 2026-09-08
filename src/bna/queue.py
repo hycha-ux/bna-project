@@ -7,6 +7,8 @@ job: {job_id, treatment, mode, count, seed, fixed, gen, edit, qa, target_pass, c
 import json, os, threading, time, uuid
 from pathlib import Path
 
+from . import cloudpush   # 배치가 끝나면 그 자리에서 클라우드로 올린다(주기 회차를 기다리지 않는다)
+
 ACTIVE = ("queued", "running")
 
 
@@ -104,6 +106,7 @@ class Queue:
                     j.update(status="error", error=repr(e), finished_at=time.time())
             with self.lock:
                 self._flush()
+            cloudpush.nudge(f"배치 {j['status']} ({j.get('treatment')}/{j.get('mode')})")
 
     def _set_bid(self, j, bid):
         with self.lock:
