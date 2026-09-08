@@ -18,6 +18,7 @@
   POST /api/queue/cancel|remove|move|pause|clear_finished
   POST /api/review                 {batch, item, pick, tags, note} → outputs/<batch>/<item>/review.json
   GET  /api/library                선택(pick)된 항목 전체 (배치 무관), 시술·유형 요약
+  GET  /api/overview?days=14       대시보드 집계 (일별 생성·통과·탈락 사유, 시술·조건별 통과율, 오늘 시간대별)
   POST /api/export                 {treatment?, mode?} → outputs/exports/<ts>/ 에 선택 항목 복사 + manifest.csv + zip
   GET  /exports/<name>.zip         내보낸 zip 다운로드
   GET  /files/<batch>/<item>/<f>   이미지
@@ -161,6 +162,57 @@ def save_review(req):
     rv = {"pick": req.get("pick"), "tags": req.get("tags", []), "note": req.get("note", ""), "updated_at": time.time()}
     (d / "review.json").write_text(json.dumps(rv, ensure_ascii=False, indent=1), encoding="utf-8")
     return rv, 200
+
+
+# ---------- 대시보드 집계 ----------
+def overview_payload(days=14):
+    """일별 생성·통과·탈락 사유, 시술별·조건별 통과율, 오늘 시간대별, 라이브러리 요약. dry_run 제외."""
+    import datetime as dt
+    now = time.time(); today = dt.date.today()
+    day_keys = [(today - dt.timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
+    daily = {k: {"total": 0, "passed": 0, "cost": 0.0, "fails": {}} for k in day_keys}
+    prev = {"total": 0, "passed": 0, "cost": 0.0}
+    hourly = [0] * 24; hourly_pass = [0] * 24
+    by_treat = {}; by_axis = {a: {} for a in ("angle", "framing", "background", "lighting", "before_severity", "age", "country", "gender")}
+    fails_total = {}; attempts = [0, 0]
+    if OUT.exists():
+        for d in OUT.iterdir():
+            if not d.is_dir() or d.name == "exports":
+                continue
+            info = json.loads((d / "batch.json").read_text(encoding="utf-8")) if (d / "batch.json").exists() else {}
+            if info.get("kind") == "dry_run":
+                continue
+            created = info.get("created_at") or d.stat().st_mtime
+            key = dt.date.fromtimestamp(created).isoformat(); in_win = key in daily
+            in_prev = not in_win and created >= now - 2 * days * 86400
+            for m in d.glob("*/meta.json"):
+                it = json.loads(m.read_text(encoding="utf-8"))
+                if it.get("dry_run"):
+                    continue
+                p = bool(it.get("passed")); c = float(it.get("cost") or 0)
+                if in_win:
+                    dd = daily[key]; dd["total"] += 1; dd["passed"] += p; dd["cost"] += c
+                    for r in it.get("fail_reasons", []):
+                        g = r.split(":")[0] if not r.startswith("vision") else r
+                        dd["fails"][g] = dd["fails"].get(g, 0) + 1; fails_total[g] = fails_total.get(g, 0) + 1
+                elif in_prev:
+                    prev["total"] += 1; prev["passed"] += p; prev["cost"] += c
+                if key == today.isoformat():
+                    h = dt.datetime.fromtimestamp(created).hour; hourly[h] += 1; hourly_pass[h] += p
+                t = by_treat.setdefault(it.get("treatment"), {"total": 0, "passed": 0, "cost": 0.0}); t["total"] += 1; t["passed"] += p; t["cost"] += c
+                attempts[0] += int(it.get("attempt") or 0); attempts[1] += 1
+                for a, dct in by_axis.items():
+                    k = (it.get("variation") or {}).get(a, {}).get("key")
+                    if k:
+                        e = dct.setdefault(k, {"n": 0, "pass": 0}); e["n"] += 1; e["pass"] += p
+    q = queue().snapshot(); lib = library_payload()
+    tot = sum(v["total"] for v in daily.values()); pas = sum(v["passed"] for v in daily.values()); cost = sum(v["cost"] for v in daily.values())
+    tk = today.isoformat()
+    return {"days": days, "day_keys": day_keys, "daily": daily, "window": {"total": tot, "passed": pas, "cost": round(cost, 3)}, "prev": prev,
+            "today": {**daily.get(tk, {"total": 0, "passed": 0, "cost": 0.0}), "hourly": hourly, "hourly_pass": hourly_pass},
+            "by_treatment": by_treat, "by_axis": by_axis, "fails_total": fails_total, "avg_attempt": round(attempts[0] / attempts[1], 2) if attempts[1] else None,
+            "queue": {"running": next((j for j in q["jobs"] if j["status"] == "running"), None), "queued": sum(1 for j in q["jobs"] if j["status"] == "queued"), "paused": q["paused"]},
+            "library": {"total": lib["total"], "summary": lib["summary"]}}
 
 
 # ---------- 라이브러리 · 내보내기 ----------
@@ -384,6 +436,9 @@ class Handler(SimpleHTTPRequestHandler):
                 r = batch_detail(p.split("/")[3]); return self._json(r or {"error": "not found"}, 200 if r else 404)
             if p == "/api/library":
                 return self._json(library_payload())
+            if p.startswith("/api/overview"):
+                from urllib.parse import parse_qs
+                days = int(parse_qs(urlparse(self.path).query).get("days", ["14"])[0]); return self._json(overview_payload(days))
             if p.startswith("/exports/") and p.endswith(".zip"):
                 f = (OUT / "exports" / p[len("/exports/"):]).resolve()
                 if (OUT / "exports").resolve() in f.parents and f.is_file():

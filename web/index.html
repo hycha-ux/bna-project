@@ -13,7 +13,7 @@
   --primary:#1F3A5F; --pri-hov:#172C49; --pri-alpha:rgba(31,58,95,.08); --pri-border:rgba(31,58,95,.18); --brand-blue:#CCD8E8;
   --ui-bg:#F4F5F7; --ui-panel:#fff; --ui-border:#EAECEF; --ui-hi:#191F28; --ui-md:#6B7684; --ui-lo:#8B95A1; --ui-surface:#F7F8FA;
   --ok:#1F8F55; --ok-weak:#E3F5EA; --bad:#D64545; --bad-weak:#FBE5E5; --warn:#B87A00; --warn-weak:#FFF3D6;
-  --rail-w:72px; --side-w:220px; --top-h:64px; --r-sm:8px; --r-md:12px; --r-lg:16px; --gap:20px;
+  --rail-w:68px; --side-w:224px; --top-h:64px; --r-sm:8px; --r-md:12px; --r-lg:16px; --gap:20px;
   --seed-color-bg-brand-solid:var(--primary); --seed-color-bg-brand-solid-pressed:var(--pri-hov); --seed-color-fg-brand:var(--primary); --seed-color-fg-brand-contrast:#fff;
   --seed-color-bg-brand-weak:var(--pri-alpha); --seed-color-stroke-brand-solid:var(--primary); --seed-color-stroke-focus-ring:var(--primary);
   --seed-color-fg-neutral:var(--ui-hi); --seed-color-fg-neutral-muted:var(--ui-md); --seed-color-fg-neutral-subtle:var(--ui-lo); --seed-color-stroke-neutral-muted:var(--ui-border);
@@ -27,16 +27,19 @@ button, input, select, textarea { font-family:inherit }
 a { color:var(--primary) }
 
 /* ════ 레이아웃: 레일 | 사이드바 | 콘텐츠 ════ */
-.app { display:grid; grid-template-columns:var(--rail-w) var(--side-w) 1fr; min-height:100vh }
-.rail { background:var(--ui-panel); border-right:1px solid var(--ui-border); display:flex; flex-direction:column; align-items:center; padding:14px 0; gap:6px; position:sticky; top:0; height:100vh }
-.rail .logo { width:44px; height:44px; border-radius:12px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; letter-spacing:-.5px; margin-bottom:14px }
-.rail button { width:44px; height:44px; border:0; background:none; border-radius:12px; color:var(--ui-lo); cursor:pointer; display:flex; align-items:center; justify-content:center }
-.rail button:hover { background:var(--ui-surface); color:var(--ui-hi) }
-.rail button.active { background:var(--pri-alpha); color:var(--primary) }
-.rail .spacer { flex:1 }
-.rail svg { width:20px; height:20px }
-.side { background:var(--ui-panel); border-right:1px solid var(--ui-border); padding:16px 12px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column }
-.side .brand { font-size:15px; font-weight:800; color:var(--primary); padding:6px 12px 18px; letter-spacing:-.3px }
+.app { display:grid; grid-template-columns:var(--side-w) 1fr; min-height:100vh; transition:grid-template-columns .2s }
+.app.collapsed { grid-template-columns:var(--rail-w) 1fr }
+.side { background:var(--ui-panel); border-right:1px solid var(--ui-border); padding:14px 12px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column; overflow:hidden }
+.side .brand-row { display:flex; align-items:center; gap:10px; padding:4px 6px 16px }
+.side .logo { width:36px; height:36px; border-radius:10px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0 }
+.side .toggle { margin-left:auto; width:28px; height:28px; border:0; background:none; border-radius:8px; color:var(--ui-lo); cursor:pointer } .side .toggle:hover { background:var(--ui-surface); color:var(--ui-hi) }
+.side .toggle svg { width:16px; height:16px }
+.collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
+.collapsed .side .brand-row { justify-content:center; padding-bottom:12px } .collapsed .side .toggle { margin:6px 0 0; }
+.collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
+.sub { display:flex; flex-direction:column; padding:2px 0 6px 28px } .sub button { border:0; background:none; text-align:left; padding:6px 10px; font-size:12.5px; color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:700 }
+.nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
+.side .brand { font-size:14px; font-weight:800; color:var(--primary); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
 .side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
 .nav-item { width:100%; padding:10px 12px; border:0; border-radius:var(--r-sm); background:none; font-size:13.5px; font-weight:500; color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:10px; text-align:left; margin-bottom:2px }
 .nav-item svg { width:18px; height:18px; flex-shrink:0 }
@@ -137,8 +140,20 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:12px; font-weigh
 .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:18px; height:18px; border-radius:4px; background:var(--ui-surface); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:700 }
 .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
 .mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px } .mini i { display:block; height:100%; background:var(--primary) }
+/* 대시보드 */
+.g-dash { grid-template-columns:1fr 320px; align-items:start } .col { display:flex; flex-direction:column; gap:var(--gap) }
+.kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:14px; font-weight:600; margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
+.kpi .t .up { color:var(--ok); font-weight:700 } .kpi .t .down { color:var(--bad); font-weight:700 } .kpi.hero .t .up, .kpi.hero .t .down { color:#fff }
+.report-row { display:flex; justify-content:space-between; align-items:baseline; padding:10px 0; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
+.report-row .k { font-size:13px; font-weight:600; color:var(--ui-md) } .report-row .v { font-size:20px; font-weight:800; color:var(--primary); font-variant-numeric:tabular-nums } .report-row .v small { font-size:12px; font-weight:600; color:var(--ui-lo); margin-left:3px }
+.report-row .v.ok { color:var(--ok) } .report-row .v.plain { font-size:14px; color:var(--ui-hi) }
+.hbar { display:grid; grid-template-columns:96px 1fr 60px; gap:10px; align-items:center; font-size:12px; margin:7px 0 } .hbar .t { height:14px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .hbar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit } .hbar .n { text-align:right; color:var(--ui-md); font-weight:600; white-space:nowrap }
+.hbar .t i.ok { background:var(--ok) }
+.pill { display:inline-flex; gap:4px } .pill button { border:1px solid var(--ui-border); background:#fff; font-size:11px; padding:3px 9px; border-radius:999px; color:var(--ui-md); cursor:pointer } .pill button.on { background:var(--primary); border-color:var(--primary); color:#fff }
 /* 차트 (SVG) */
-.chart { width:100%; height:220px } .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:11px }
+.chart { width:100%; height:220px; overflow:visible } .chart.tall { height:260px } .chart.short { height:150px }
+.chart .bar { fill:var(--primary); opacity:.85 } .chart .bar:hover { opacity:1 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:var(--ok); stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:var(--ok); stroke-width:2 }
+.chart .st0{fill:var(--ok)} .chart .st1{fill:#D64545} .chart .st2{fill:#E98A2E} .chart .st3{fill:#8FA9C8} .chart .st4{fill:#B8A0D9} .chart .st5{fill:#C4C9D1} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:11px }
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
 .chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:14px; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px }
@@ -163,28 +178,22 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3v18" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
 </defs></svg>
 
-<div class="app">
-  <div class="rail">
-    <div class="logo">OL</div>
-    <button data-tab="home" class="active" title="대시보드"><svg><use href="#i-home"/></svg></button>
-    <button data-tab="create" title="생성"><svg><use href="#i-plus"/></svg></button>
-    <button data-tab="jobs" title="작업"><svg><use href="#i-list"/></svg></button>
-    <button data-tab="library" title="라이브러리"><svg><use href="#i-lib"/></svg></button>
-    <div class="spacer"></div>
-    <button data-tab="settings" title="설정"><svg><use href="#i-gear"/></svg></button>
-  </div>
+<div class="app" id="app">
   <nav class="side">
-    <div class="brand">ONLIF <small>전후 사진 생성</small></div>
-    <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg>대시보드</button>
-    <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg>생성 <span id="q-badge" class="chip warn" hidden></span></button>
-    <button class="nav-item" data-tab="jobs"><svg><use href="#i-list"/></svg>작업</button>
-    <button class="nav-item" data-tab="library"><svg><use href="#i-lib"/></svg>라이브러리 <span id="lib-badge" class="chip ok" hidden></span></button>
+    <div class="brand-row"><div class="logo">OL</div><div class="brand">ONLIF<br><small style="font-size:11px;font-weight:500;color:var(--ui-lo)">전후 사진 생성</small></div><button class="toggle" id="side-toggle" title="사이드바 접기"><svg><use href="#i-menu"/></svg></button></div>
+    <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">대시보드</span></button>
+    <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
+    <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
+    <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="sim">시뮬레이션</button><button data-kind="demo">샘플</button></div>
+    <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
+    <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
     <div class="divider"></div>
-    <button class="nav-item" data-tab="settings"><svg><use href="#i-gear"/></svg>설정</button>
-    <button class="nav-item" data-tab="help"><svg><use href="#i-help"/></svg>도움말</button>
+    <button class="nav-item" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl">설정</span></button>
+    <button class="nav-item" data-tab="help"><svg><use href="#i-help"/></svg><span class="lbl">도움말</span></button>
     <div class="foot" id="side-foot"></div>
   </nav>
 
@@ -206,25 +215,40 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
 
     <!-- ═══ 대시보드 ═══ -->
     <section class="page active" id="tab-home">
-      <div class="grid g-kpi" id="home-kpis"></div>
-      <div class="grid g-main" style="margin-top:var(--gap)">
-        <div class="card">
-          <div class="card-head"><h3>생성 추이</h3><span class="muted">최근 14일 · 생성 / 통과 장수</span><div class="tb-space"></div><select id="home-range" style="width:110px;height:32px"><option value="14">2주</option><option value="30">1개월</option><option value="90">3개월</option></select></div>
-          <div id="home-chart"></div>
+      <div class="grid g-dash">
+        <div class="col">
+          <div>
+            <div class="card-head" style="margin-bottom:10px"><h3>생성 요약</h3><span class="muted" id="home-window"></span><div class="tb-space"></div><div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
+            <div class="grid g-kpi" id="home-kpis"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>생성 성과</h3><span class="muted">일별 생성 장수(막대) · 통과율(선)</span></div>
+            <div id="chart-combo"></div>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div class="card"><div class="card-head"><h3>검수 성과</h3><span class="muted">일별 통과 · 탈락 사유</span></div><div id="chart-stack"></div></div>
+            <div class="card"><div class="card-head"><h3>시술별 통과율</h3><span class="muted">누적</span></div><div id="chart-treat"></div></div>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div class="card"><div class="card-head"><h3>조건별 통과율</h3></div><div class="pill" id="axis-pick" style="flex-wrap:wrap;margin-bottom:10px"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div></div><div id="chart-axis"></div></div>
+            <div class="card"><div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div><div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>생성</th><th>통과</th><th>통과율</th><th>상태</th></tr></thead><tbody></tbody></table></div></div>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-head"><h3>시술별 통과율</h3></div>
-          <div id="home-treat"></div>
-        </div>
-      </div>
-      <div class="grid g-main" style="margin-top:var(--gap)">
-        <div class="card">
-          <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
-          <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>생성</th><th>통과</th><th>통과율</th><th>상태</th></tr></thead><tbody></tbody></table></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>진행 중</h3><div class="tb-space"></div><button class="btn sm" data-goto="create">대기열</button></div>
-          <div id="home-running"></div>
+        <div class="col">
+          <div class="card">
+            <div class="card-head"><h3>오늘의 보고서</h3><span class="muted" id="home-today-date"></span></div>
+            <h4>시간대별 생성</h4><div id="chart-today"></div>
+            <div id="home-today-rows"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>실시간</h3><div class="tb-space"></div><button class="btn sm" data-goto="create">대기열</button></div>
+            <div id="home-running"></div>
+            <div id="home-live-rows"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>라이브러리</h3><div class="tb-space"></div><button class="btn sm" data-goto="library">보기</button></div>
+            <div id="home-lib"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -394,7 +418,7 @@ const TITLES = {home:'대시보드', create:'생성', jobs:'작업', library:'�
 
 // ---------- 화면 ----------
 function show(tab) {
-  $$('.nav-item, .rail button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
   $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
   if (tab === 'home') loadHome();
@@ -403,7 +427,11 @@ function show(tab) {
   if (tab === 'library') loadLibrary();
   if (tab === 'settings') renderSettings();
 }
-$$('.nav-item, .rail button, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
+$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
+$('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
+try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
+$$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); loadBatches(); });
+$$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
 $('#tb-bell').onclick = () => show('create');
@@ -412,50 +440,82 @@ $('#search').oninput = () => { const q = $('#search').value.trim(); if (q) { SEA
 let SEARCH = '', OUT_DIR = '';
 
 // ---------- 대시보드 ----------
+let OV = null, HOME_DAYS = 14, AXIS_A = 'angle';
+const trend = (cur, prev, inv) => prev ? `<span class="${(cur >= prev) !== !!inv ? 'up' : 'down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs((cur - prev) / prev * 100).toFixed(0)}%</span> 이전 기간 대비` : '이전 기간 없음';
 async function loadHome() {
-  const [batches, q, lib] = await Promise.all([api('/api/batches'), api('/api/queue'), api('/api/library')]);
-  BATCHES = batches; setQueueStatus(q);
-  const real = batches.filter(b => b.kind !== 'dry_run');
-  const tot = real.reduce((a, b) => a + (b.stats?.total || 0), 0), pas = real.reduce((a, b) => a + (b.stats?.passed || 0), 0);
-  const cost = real.reduce((a, b) => a + (b.progress?.cost || (b.stats?.cost_per_pass || 0) * (b.stats?.passed || 0)), 0);
-  const today = new Date().toDateString(); const todayB = real.filter(b => new Date((b.created_at||0)*1000).toDateString() === today);
-  const todayN = todayB.reduce((a, b) => a + (b.stats?.total || 0), 0);
+  const [ov, batches] = await Promise.all([api('/api/overview?days=' + HOME_DAYS), api('/api/batches')]);
+  OV = ov; BATCHES = batches; const w = ov.window, p = ov.prev;
+  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}`;
   $('#home-kpis').innerHTML = [
-    ['생성 장수', tot, `오늘 ${todayN}장`], ['AI 검수 통과', pas, tot ? `통과율 <b>${pct(pas/tot)}</b>` : '—'],
-    ['선택된 사진', lib.total, `${Object.keys(lib.summary).length}개 시술`], ['누적 비용', `$${cost.toFixed(2)}`, pas ? `장당 $${(cost/pas).toFixed(3)}` : '—']
-  ].map(([l, v, t]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="t">${t}</div></div>`).join('');
-  renderHomeChart(real); renderHomeTreat(real);
+    ['hero', '생성 장수', w.total, '장', trend(w.total, p.total)],
+    ['', 'AI 검수 통과', w.passed, '장', `통과율 <b>${w.total ? pct(w.passed / w.total) : '—'}</b> · ${trend(w.total ? w.passed / w.total : 0, p.total ? p.passed / p.total : 0)}`],
+    ['', '평균 시도', ov.avg_attempt ?? '—', '회', '통과 1장당'],
+    ['', '비용', `$${w.cost.toFixed(2)}`, '', `장당 $${w.passed ? (w.cost / w.passed).toFixed(3) : '—'} · ${trend(w.cost, p.cost, true)}`]
+  ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
+  chartCombo(); chartStack(); chartTreat(); chartAxis(); chartToday(); renderLive(); renderHomeLib();
   const tb = $('#home-recent tbody');
   tb.innerHTML = batches.slice(0, 6).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : '<span class="chip ok">완료</span>';
     return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||''}</td><td>${s.total ?? ''}</td><td>${b.kind==='dry_run' ? '—' : s.passed ?? 0}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
-  const r = q.running; const el = $('#home-running');
-  if (r && r.batch_id) { try { const pg = await api(`/api/batches/${r.batch_id}/progress`); el.classList.add('prog'); renderProgress(pg, el, `${CFG.treatments[r.treatment]?.name_ko || r.treatment} · ${MODE_KO[r.mode]}`); } catch { el.innerHTML = '<div class="empty">진행 중인 작업이 없습니다</div>'; } }
-  else el.innerHTML = `<div class="empty">진행 중인 작업이 없습니다${q.queued_count ? `<br><span class="muted">대기 ${q.queued_count}개${q.paused ? ' · 일시정지' : ''}</span>` : ''}</div>`;
 }
-function renderHomeChart(batches) {
-  const days = +$('#home-range').value; const now = new Date(); const keys = [], map = {};
-  for (let i = days - 1; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); const k = d.toISOString().slice(0, 10); keys.push(k); map[k] = {t:0, p:0, label:`${d.getMonth()+1}/${d.getDate()}`}; }
-  batches.forEach(b => { const k = new Date((b.created_at||0)*1000).toISOString().slice(0,10); if (map[k]) { map[k].t += b.stats?.total || 0; map[k].p += b.stats?.passed || 0; } });
-  const W = 760, H = 220, L = 36, R = 10, T = 14, B = 28; const max = Math.max(5, ...keys.map(k => map[k].t));
-  const x = i => L + i * (W - L - R) / Math.max(1, keys.length - 1), y = v => T + (H - T - B) * (1 - v / max);
-  const path = (f) => keys.map((k, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(map[k][f]).toFixed(1)}`).join(' ');
-  const area = path('t') + ` L${x(keys.length-1).toFixed(1)},${y(0)} L${x(0)},${y(0)} Z`;
-  const ticks = [0, .25, .5, .75, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
-  const step = Math.ceil(keys.length / 7);
-  const labels = keys.map((k, i) => i % step === 0 || i === keys.length-1 ? `<text class="axis" x="${x(i)}" y="${H-8}" text-anchor="middle">${map[k].label}</text>` : '').join('');
-  const pts = keys.map((k, i) => map[k].t ? `<circle class="pt" cx="${x(i)}" cy="${y(map[k].t)}" r="3.5"><title>${map[k].label} · 생성 ${map[k].t} · 통과 ${map[k].p}</title></circle>` : '').join('');
-  $('#home-chart').innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1F3A5F" stop-opacity=".18"/><stop offset="1" stop-color="#1F3A5F" stop-opacity="0"/></linearGradient></defs>${ticks}<path class="area" d="${area}"/><path class="line2" d="${path('p')}"/><path class="line" d="${path('t')}"/>${pts}${labels}</svg>
-    <div class="legend" style="margin-top:6px"><span><i style="background:var(--primary)"></i>생성</span><span><i style="background:#8FA9C8"></i>통과</span></div>`;
+// ── SVG 헬퍼 ──
+const svgOpen = (W, H, cls='') => `<svg class="chart ${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+function chartCombo() {
+  const keys = OV.day_keys, d = OV.daily; const W = 760, H = 240, L = 34, R = 34, T = 16, B = 26; const n = keys.length;
+  const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max), yr = r => T + (H - T - B) * (1 - r);
+  const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
+  const rgrid = [0, .5, 1].map(f => `<text class="axis" x="${W-R+6}" y="${yr(f)+4}">${f*100}%</text>`).join('');
+  const bars = keys.map((k, i) => `<rect class="bar" x="${x(i)+bw*.2}" y="${y(d[k].total)}" width="${bw*.6}" height="${y(0)-y(d[k].total)}" rx="3"><title>${k.slice(5)} · 생성 ${d[k].total} · 통과 ${d[k].passed}</title></rect>`).join('');
+  const withData = keys.map((k, i) => [k, i]).filter(([k]) => d[k].total);
+  const line = withData.map(([k, i], j) => `${j ? 'L' : 'M'}${(x(i)+bw/2).toFixed(1)},${yr(d[k].passed/d[k].total).toFixed(1)}`).join(' ');
+  const pts = withData.map(([k, i]) => `<circle class="ptok" cx="${x(i)+bw/2}" cy="${yr(d[k].passed/d[k].total)}" r="3.5"><title>${k.slice(5)} 통과율 ${pct(d[k].passed/d[k].total)}</title></circle>`).join('');
+  const step = Math.ceil(n / 8); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-8}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
+  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:6px"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>통과율</span></div>`;
 }
-function renderHomeTreat(batches) {
-  const agg = {}; batches.forEach(b => { const a = agg[b.treatment] = agg[b.treatment] || {n:0, p:0}; a.n += b.stats?.total || 0; a.p += b.stats?.passed || 0; });
-  const rows = Object.entries(agg).filter(([,a]) => a.n).sort((a,b) => b[1].n - a[1].n);
-  $('#home-treat').innerHTML = rows.length ? rows.map(([t, a], i) => `<div class="list-row" data-t="${t}"><span class="n">${i+1}</span><div class="t"><b>${CFG.treatments[t]?.name_ko || t}</b><span>생성 ${a.n} · 통과 ${a.p}</span></div><span class="v" style="color:${a.p/a.n >= .6 ? 'var(--ok)' : 'var(--ui-hi)'}">${pct(a.p/a.n)}</span></div>`).join('') : '<div class="empty">아직 생성 기록이 없습니다</div>';
-  $('#home-treat').querySelectorAll('.list-row').forEach(r => r.onclick = () => { $('#search').value = CFG.treatments[r.dataset.t]?.name_ko || r.dataset.t; SEARCH = $('#search').value; show('jobs'); });
+const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:fingers','손가락','st5'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
+function chartStack() {
+  const keys = OV.day_keys, d = OV.daily; const W = 360, H = 200, L = 30, R = 8, T = 10, B = 24; const n = keys.length;
+  const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max);
+  const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-5}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
+  const used = new Set(['passed']);
+  const bars = keys.map((k, i) => { let acc = 0; const segs = [['passed', d[k].passed], ...Object.entries(d[k].fails)]; return segs.map(([g, v]) => { if (!v) return ''; const meta = FAIL_GROUP.find(f => f[0] === g) || [g, g, 'st5']; used.add(meta[0]); const s = `<rect class="${meta[2]}" x="${x(i)+bw*.2}" y="${y(acc+v)}" width="${bw*.6}" height="${y(acc)-y(acc+v)}"><title>${k.slice(5)} · ${meta[1]} ${v}</title></rect>`; acc += v; return s; }).join(''); }).join('');
+  const step = Math.ceil(n / 5); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
+  const cls = {st0:'var(--ok)', st1:'#D64545', st2:'#E98A2E', st3:'#8FA9C8', st4:'#B8A0D9', st5:'#C4C9D1'};
+  $('#chart-stack').innerHTML = svgOpen(W, H) + grid + bars + labels + '</svg>' + `<div class="legend" style="margin-top:6px">${FAIL_GROUP.filter(f => used.has(f[0])).map(f => `<span><i style="background:${cls[f[2]]}"></i>${f[1]}</span>`).join('')}</div>`;
 }
-$('#home-range').onchange = loadHome;
-setInterval(() => { if ($('#tab-home').classList.contains('active') && QSTAT?.running) loadHome(); }, 4000);
+function chartTreat() {
+  const rows = Object.entries(OV.by_treatment).filter(([,a]) => a.total).sort((a,b) => b[1].total - a[1].total);
+  $('#chart-treat').innerHTML = rows.length ? rows.map(([t, a]) => `<div class="hbar"><span title="${t}">${CFG.treatments[t]?.name_ko || t}</span><span class="t"><i class="${a.passed/a.total >= .6 ? 'ok' : ''}" style="width:${(a.passed/a.total*100).toFixed(0)}%"></i></span><span class="n">${pct(a.passed/a.total)} <span class="muted">${a.total}</span></span></div>`).join('') : '<div class="empty">기록 없음</div>';
+}
+function chartAxis() {
+  const d = OV.by_axis[AXIS_A] || {}; const rows = Object.entries(d).sort((a,b) => b[1].n - a[1].n).slice(0, 8);
+  $('#chart-axis').innerHTML = rows.length ? rows.map(([k, a]) => `<div class="hbar"><span title="${k}">${val(AXIS_A, k)}</span><span class="t"><i style="width:${(a.pass/a.n*100).toFixed(0)}%"></i></span><span class="n">${pct(a.pass/a.n)} <span class="muted">${a.n}</span></span></div>`).join('') : '<div class="empty">기록 없음</div>';
+}
+$$('#axis-pick button').forEach(b => b.onclick = () => { $$('#axis-pick button').forEach(x => x.classList.toggle('on', x === b)); AXIS_A = b.dataset.a; chartAxis(); });
+$$('#home-range button').forEach(b => b.onclick = () => { $$('#home-range button').forEach(x => x.classList.toggle('on', x === b)); HOME_DAYS = +b.dataset.d; loadHome(); });
+function chartToday() {
+  const t = OV.today; const h = t.hourly, hp = t.hourly_pass; const W = 300, H = 120, L = 6, R = 6, T = 10, B = 18; const max = Math.max(3, ...h);
+  const x = i => L + i * (W - L - R) / 23, y = v => T + (H - T - B) * (1 - v / max);
+  const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = path(h) + ` L${x(23)},${y(0)} L${x(0)},${y(0)} Z`;
+  const labels = [0, 6, 12, 18, 23].map(i => `<text class="axis" x="${x(i)}" y="${H-4}" text-anchor="middle">${i}시</text>`).join('');
+  const peak = h.indexOf(Math.max(...h)); const pk = h[peak] ? `<circle class="pt" cx="${x(peak)}" cy="${y(h[peak])}" r="3.5"/><text class="axis" x="${x(peak)}" y="${y(h[peak])-8}" text-anchor="middle" style="fill:var(--primary);font-weight:700">${h[peak]}</text>` : '';
+  $('#chart-today').innerHTML = svgOpen(W, H, 'short') + `<defs><linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1F3A5F" stop-opacity=".25"/><stop offset="1" stop-color="#1F3A5F" stop-opacity="0"/></linearGradient></defs><path class="area" d="${area}"/><path class="line" d="${path(h)}"/>${pk}${labels}</svg>`;
+  $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
+  $('#home-today-rows').innerHTML = `<div class="report-row"><span class="k">오늘 생성</span><span class="v">${t.total}<small>장</small></span></div><div class="report-row"><span class="k">오늘 통과</span><span class="v ok">${t.passed}<small>장 · ${t.total ? pct(t.passed/t.total) : '—'}</small></span></div><div class="report-row"><span class="k">오늘 비용</span><span class="v">$${(t.cost||0).toFixed(2)}</span></div>`;
+}
+async function renderLive() {
+  const q = OV.queue; const el = $('#home-running'); const r = q.running;
+  if (r && r.batch_id) { try { const pg = await api(`/api/batches/${r.batch_id}/progress`); el.className = 'prog'; renderProgress(pg, el, `${CFG.treatments[r.treatment]?.name_ko || r.treatment} · ${MODE_KO[r.mode]}`); el.querySelector('.cells')?.remove(); } catch { el.innerHTML = ''; } }
+  else { el.className = ''; el.innerHTML = `<div class="muted" style="padding:6px 0 10px">진행 중인 작업이 없습니다${q.paused ? ' · 일시정지' : ''}</div>`; }
+  const w = OV.window;
+  $('#home-live-rows').innerHTML = `<div class="report-row"><span class="k">대기 작업</span><span class="v">${q.queued}<small>개</small></span></div><div class="report-row"><span class="k">기간 통과율</span><span class="v ok">${w.total ? pct(w.passed/w.total) : '—'}</span></div><div class="report-row"><span class="k">탈락 최다 사유</span><span class="v plain">${Object.entries(OV.fails_total).sort((a,b)=>b[1]-a[1])[0]?.[0] ? failKo(Object.entries(OV.fails_total).sort((a,b)=>b[1]-a[1])[0][0]) : '—'}</span></div>`;
+}
+function renderHomeLib() {
+  const l = OV.library; const rows = Object.entries(l.summary).map(([t, m]) => [t, Object.values(m).reduce((a,b)=>a+b,0), m]).sort((a,b) => b[1]-a[1]);
+  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">선택된 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
+}
+setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
 
 // ---------- 생성 조건 ----------
 function selTreatments() { return $$('#q-treatments button.on').map(b => b.dataset.v); }
