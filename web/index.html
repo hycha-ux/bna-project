@@ -76,6 +76,7 @@ button, input, select, textarea { font-family:inherit }
 .nav-foot { margin-top:auto; padding:12px 10px 0; border-top:1px solid var(--ui-border); font-size:11px; color:var(--ui-lo); line-height:1.6 }
 
 /* ════ RIGHT PANEL ════ */
+.right-panel.hidden-panel { display:none }
 .right-panel { position:fixed; top:var(--topbar-h); right:0; width:var(--panel-w); height:calc(100vh - var(--topbar-h)); background:var(--ui-panel); border-left:1px solid var(--ui-border); overflow-y:auto; z-index:100; padding:20px 16px 32px; display:flex; flex-direction:column; gap:4px }
 .rp-group { display:flex; flex-direction:column; gap:8px; margin-bottom:8px }
 .rp-label { font-size:12px; font-weight:600; color:var(--ui-lo); letter-spacing:.05em; text-transform:uppercase; padding:0 2px; margin-bottom:2px }
@@ -208,15 +209,17 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
 .toast { position:fixed; bottom:24px; right:calc(var(--panel-w) + 24px); background:var(--ui-hi); color:#fff; padding:12px 18px; border-radius:var(--radius-md); font-size:13px; font-weight:500; opacity:0; transform:translateY(6px); transition:opacity .2s, transform .2s; pointer-events:none; z-index:500 }
 .toast.show { opacity:1; transform:translateY(0) }
 
-/* ════ 작업: 마스터·디테일 ════ */
-.split { display:grid; grid-template-columns:400px 1fr; gap:16px; align-items:start }
-.job-list { position:sticky; top:calc(var(--topbar-h) + 24px); max-height:calc(100vh - var(--topbar-h) - 48px); overflow:auto; padding:0 }
-.job-list table { font-size:12px } .job-list th, .job-list td { padding:8px 8px }
+/* ════ 작업: 필터 → 리스트 → 세부 (세로) ════ */
+.jobs-wrap { display:flex; flex-direction:column; gap:14px }
+.tab-panel#tab-jobs { margin-right:0 }
+.filter-bar { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; padding:12px 16px }
+.filter-bar .rp-field { min-width:150px }
+.job-list { padding:0; max-height:360px; overflow:auto }
+.job-list table { font-size:12px } .job-list th, .job-list td { padding:8px 10px; white-space:nowrap }
+.job-list thead th { position:sticky; top:0; background:var(--ui-panel); z-index:1 }
 .job-list tr.sel { background:var(--pri-alpha) } .job-list tr.sel td:first-child { box-shadow:inset 3px 0 0 var(--primary) }
 .detail-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px }
 .detail-head h2 { font-size:16px; font-weight:700 } .detail-head .muted { font-size:12px }
-.split .gal { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)) }
-.split .kpis { grid-template-columns:repeat(auto-fit,minmax(110px,1fr)) }
 /* ════ 생성: 진행 + 대기열 ════ */
 .queue-card table { font-size:12px }
 /* ════ 라이브러리 ════ */
@@ -286,25 +289,6 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
     </div>
   </div>
 
-  <!-- 작업 -->
-  <div class="rp-panel-section" data-for="jobs" hidden>
-    <div class="rp-group">
-      <div class="rp-label">필터</div>
-      <label class="rp-field"><span>보기</span><select id="gal-filter">
-        <option value="all">전체</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option>
-        <option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select></label>
-      <label class="rp-field"><span>조건</span><select id="gal-axis"><option value="">전체</option></select></label>
-      <select id="gal-axis-val"><option value="">전체</option></select>
-      <div class="rp-info on" id="gal-count"></div>
-    </div>
-    <div class="rp-divider"></div>
-    <div class="rp-group">
-      <div class="rp-label">목록</div>
-      <label class="rp-field"><span>방식</span><select id="jobs-kind"><option value="">전체</option><option value="run">실제</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select></label>
-      <button class="rp-btn" id="btn-refresh">새로고침</button>
-    </div>
-  </div>
-
   <!-- 라이브러리 -->
   <div class="rp-panel-section" data-for="library" hidden>
     <div class="rp-group">
@@ -343,25 +327,34 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); text-transform:
 </div></div>
 
 <!-- 작업 -->
-<div class="tab-panel" id="tab-jobs"><div class="content-wrap">
-  <div class="split">
-    <div class="card job-list">
-      <table id="batches">
-        <thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>통과</th><th>상태</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="empty" id="batches-empty" hidden style="border:0">생성 기록이 없습니다</div>
-    </div>
-    <div id="detail">
-      <div class="empty" id="detail-empty">작업을 선택하세요</div>
-      <div id="detail-body" hidden>
-        <div class="detail-head" id="detail-head"></div>
-        <div class="prog" id="prog" hidden></div>
-        <div class="kpis" id="kpis"></div>
-        <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
-        <div class="gal" id="gal"></div>
-        <div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div>
-      </div>
+<div class="tab-panel" id="tab-jobs"><div class="content-wrap jobs-wrap">
+  <div class="card filter-bar">
+    <label class="rp-field"><span>보기</span><select id="gal-filter">
+      <option value="all">전체</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option>
+      <option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select></label>
+    <label class="rp-field"><span>조건</span><select id="gal-axis"><option value="">전체</option></select></label>
+    <label class="rp-field"><span>&nbsp;</span><select id="gal-axis-val"><option value="">전체</option></select></label>
+    <label class="rp-field"><span>방식</span><select id="jobs-kind"><option value="">전체</option><option value="run">실제</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select></label>
+    <div class="rp-info on" id="gal-count" style="align-self:flex-end;padding-bottom:9px"></div>
+    <div class="tb-space"></div>
+    <button class="b" id="btn-refresh">새로고침</button>
+  </div>
+  <div class="card job-list">
+    <table id="batches">
+      <thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="empty" id="batches-empty" hidden style="border:0">생성 기록이 없습니다</div>
+  </div>
+  <div id="detail">
+    <div class="empty" id="detail-empty">작업을 선택하세요</div>
+    <div id="detail-body" hidden>
+      <div class="detail-head" id="detail-head"></div>
+      <div class="prog" id="prog" hidden></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
+      <div class="gal" id="gal"></div>
+      <div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div>
     </div>
   </div>
 </div></div>
@@ -444,6 +437,7 @@ let JOBS_SEL = null, LIB = null, EXPORTS = [];
 function show(tab) {
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.rp-panel-section').forEach(p => p.hidden = p.dataset.for !== tab);
+  $('.right-panel').classList.toggle('hidden-panel', tab === 'jobs');
   ['create','jobs','library'].forEach(t => $('#tab-'+t).classList.toggle('active', t === tab));
   if (tab === 'create') loadQueue();
   if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
@@ -569,16 +563,18 @@ async function loadBatches() {
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
-    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}<div class="muted" style="font-size:10px">${KIND_KO[b.kind]||b.kind}</div></td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td>
-      <td>${b.kind==='dry_run' ? '—' : `${s.passed ?? 0}/${s.total ?? b.count ?? ''}`}${s.picked ? `<div class="muted" style="font-size:10px">선택 ${s.picked}</div>` : ''}</td><td>${st}</td></tr>`; }).join('');
-  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id));
+    const dry = b.kind === 'dry_run';
+    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
+      <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td><td>${dry ? '—' : (s.attempts_per_pass ?? '')}</td><td>${dry ? '—' : (s.cost_per_pass ?? '')}</td>
+      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
+  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches; $('#jobs-kind').onchange = loadBatches;
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
-async function openBatch(id) {
+async function openBatch(id, scrollTo_ = false) {
   CUR = await api('/api/batches/' + id);
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
@@ -588,6 +584,7 @@ async function openBatch(id) {
   $('#gal-axis').innerHTML = '<option value="">전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">전체</option>';
   renderStats(); renderGallery(); startPoll();
+  if (scrollTo_) $('#detail').scrollIntoView({behavior:'smooth', block:'start'});
 }
 async function startPoll() {
   clearInterval(POLL); POLL = null; $('#prog').hidden = true;
