@@ -405,14 +405,12 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 
     <section class="page" id="tab-lessons">
       <div class="card"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
-        <div class="muted" style="margin-bottom:8px">사진을 <b>제외</b>하고 사유를 고르면 여기에 쌓이고, <b>다음 생성부터 프롬프트가 그 실수를 피하도록</b> 바뀝니다.</div>
         <div id="les-body" class="muted">불러오는 중…</div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>지금 프롬프트에 붙는 문장</h3></div><div id="les-preview" class="muted"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>메모 → 규칙으로 승격</h3></div>
-        <div class="muted" style="margin-bottom:8px">한글 메모는 자동으로 프롬프트에 안 들어갑니다(오타·환자 정보가 섞일 수 있어서요). 영어 한 문장으로 다듬어 올리면 그때부터 매번 붙습니다.</div>
         <div id="les-notes"></div><div class="msg" id="les-msg"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>규칙 성적표</h3></div>
-        <div class="muted" style="margin-bottom:8px">규칙을 넣은 뒤 그 실수가 정말 줄었는지 봅니다. 안 줄면 문장이 약한 겁니다.</div><div id="les-score"></div></div>
+        <div id="les-score"></div></div>
     </section>
 
     <!-- ═══ 설정 · 도움말 ═══ -->
@@ -514,27 +512,25 @@ const failKo = r => FAIL_KO[r] || r;
 let POLL = null;
 const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
-// 검수 워딩 정본 한 곳 (2026-09-08 성연서님 지시 "선택/제외 워딩을 더 명확하게").
-// '선택·제외'만으로는 눌렀을 때 무슨 일이 생기는지 안 보인다 → 결과(드라이브 저장 여부)를 옆에 적는다.
-// 버튼 글자는 짧게 둔다(검수 모드 한 줄이 좁다) — 결과는 바로 아래 한 줄이 말한다.
-// 내부 값(pick/reject)은 그대로다. 바꾸면 저장된 review.json·통계 축이 갈린다.
+// 검수 버튼 문구 정본 한 곳.
+// ⚠ 내부 값(pick/reject)은 그대로다 — 바꾸면 저장된 review.json·통계 축이 갈린다.
 const PICK = {
-  pick:   {btn:'채택', on:'채택함', line:'→ 구글드라이브 「채택본」에 저장됩니다', tone:'ok'},
-  reject: {btn:'제외', on:'제외함', line:'→ 드라이브에 올리지 않습니다 (이미 올라갔으면 내립니다)', tone:'bad'},
-  none:   {line:'→ 아직 정하지 않았습니다. 드라이브에 올라가지 않습니다', tone:''},
+  pick:   {btn: '채택', on: '채택함'},
+  reject: {btn: '제외', on: '제외함'},
 };
 // 2026-09-08 성연서님 "나는 지금 PC에서 진행하고 있거든!" — 검수를 클라우드에서도 열었다.
 // 그래서 잠기는 축이 둘로 갈렸다: 검수(RO)는 이제 거의 항상 열려 있고,
 // 사진 만들기·내보내기(NO_CREATE)만 인터넷 화면에서 막힌다(사진 파일이 그 PC 에만 있어서다).
 const RO = () => !!(CFG && CFG.readonly);          // 검수 잠김 — 저장소가 끊겼을 때만 참
 const NO_CREATE = () => !!(CFG && CFG.no_create);  // 생성·내보내기 잠김 — 인터넷 화면
-// 판정 아래 한 줄: 지금 무슨 일이 일어나는지. 채택본은 실제 드라이브 상태까지 말한다.
+// 판정 아래 줄 (2026-09-08 성연서님 "설명문 다 삭제 불필요해").
+// 설명 문장은 뺐다 — 버튼 문구와 라이브러리 제목이 이미 "채택 = 드라이브 저장"을 말한다.
+// ⚠ 남긴 건 **설명이 아니라 상태**다: 채택한 사진이 실제로 올라갔는지 여부.
+//   이건 다른 데 없는 사실이라 지우면 올라간 줄 알고 넘어간다.
 function pickLine(rv) {
   rv = rv || {};
-  if (rv.pick === 'pick') return `<div class="pick-line ok">${PICK.pick.line}${
-    rv.drive === 'uploaded' ? ' <b>· 저장 완료</b>' : ' <b>· 저장 대기</b>'}</div>`;
-  if (rv.pick === 'reject') return `<div class="pick-line bad">${PICK.reject.line}</div>`;
-  return `<div class="pick-line">${PICK.none.line}</div>`;
+  if (rv.pick !== 'pick') return '';
+  return `<div class="pick-line ok">${rv.drive === 'uploaded' ? '드라이브 저장 완료' : '드라이브 저장 대기'}</div>`;
 }
 let CFG, BATCHES = [], CUR = null;
 
@@ -920,7 +916,7 @@ function reasonBlock(it, open) {
         <div class="muted">왜 제외했나요?</div>
         <details class="dd"><summary class="dd-btn"><span class="dd-val ${(rv.tags||[]).length?'':'empty'}">${(rv.tags||[]).length ? esc(rv.tags.join(', ')) : '제외 사유 선택'}</span><span class="dd-caret">▾</span></summary>
           <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox"${RO()?' disabled':''} data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
-        <input type="text"${RO()?' disabled':''} placeholder="제외 사유 메모 — 적으면 다음 생성 프롬프트가 이 실수를 피합니다" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+        <input type="text"${RO()?' disabled':''} placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
         <div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div>
 </div>`;
 }
@@ -1059,13 +1055,13 @@ async function loadLessons() {
   $('#les-body').innerHTML = tags.length
     ? `<div>${tags.map(([t, n]) => `<span class="chip ${L.active.from_tags.includes(t) ? 'bad' : ''}" title="${L.active.from_tags.includes(t) ? '지금 프롬프트에 반영 중' : '아직 반영 기준(2회) 미달'}">${esc(t)} ${n}</span>`).join(' ')}</div>`
       + (Object.keys(L.active.weights || {}).length
-        ? `<div style="margin-top:10px"><b>덜 뽑는 조건</b> <span class="muted">— 제외가 몰려서 다음 생성에서 확률을 낮춥니다(아예 빼지는 않습니다)</span><div style="margin-top:4px">${
+        ? `<div style="margin-top:10px"><b>덜 뽑는 조건</b><div style="margin-top:4px">${
             Object.entries(L.active.weights).map(([a, vs]) => Object.keys(vs).map(k => `<span class="chip warn">${AXIS_KO[a] || a} · ${esc(val(a, k))}</span>`).join(' ')).join(' ')}</div></div>` : '')
-    : '아직 제외한 사진이 없습니다. 사진을 제외하고 사유를 고르면 여기가 채워집니다.';
+    : '아직 제외한 사진이 없습니다.';
   const pv = L.preview || {};
   $('#les-preview').innerHTML = Object.keys(pv).length
     ? Object.entries(pv).map(([w, t]) => `<div style="margin-bottom:8px"><b>${w === 'before' ? '시술 전' : '시술 후'}</b><div class="mono">${esc(t)}</div></div>`).join('')
-    : '아직 붙는 문장이 없습니다 <span class="muted">— 같은 사유가 2번 이상 나오면 켜집니다</span>';
+    : '아직 붙는 문장이 없습니다';
   $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => `
     <div class="list-row" style="cursor:default;align-items:flex-start">
       <div class="t" style="flex:1"><b>${esc(n.note)}</b><span>${fmtBid(n.batch)} · ${+n.item + 1}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
@@ -1099,26 +1095,12 @@ function renderSettings() {
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
-  // 무엇이 되고 무엇이 안 되는지를 화면이 먼저 말한다.
-  // ⚠ 종전 문구("사무실 PC에서 진행합니다")는 보는 분이 PC 앞에 계실 때 "나 지금 PC인데?"가 된다.
-  //   갈리는 기준은 PC 냐 아니냐가 아니라 **사진 파일이 어느 컴퓨터에 있느냐**다.
-  if (CFG.no_create || CFG.readonly) {
-    const b = document.createElement('div'); b.className = 'card';
-    b.style.cssText = 'margin:0 0 12px;border-left:4px solid var(--primary,#1F3A5F)';
-    b.innerHTML = CFG.readonly
-      ? `<b>지금은 검수를 저장할 수 없습니다</b><div class="muted" style="margin-top:4px">저장소 연결이 끊겨 있어 채택·제외가 잠겼습니다. 잠시 뒤 새로고침해 주세요.</div>`
-      : `<b>여기서 되는 것 · 안 되는 것</b>
-         <div class="muted" style="margin-top:6px;line-height:1.8">
-           <div>✅ <b>됩니다</b> — 사진 보기, <b>채택·제외 검수</b>, 제외 사유·메모, 학습 확인</div>
-           <div>🚫 <b>안 됩니다</b> — 새 사진 만들기, zip 내보내기</div>
-           <div style="margin-top:6px">사진 파일 원본이 <b>생성 컴퓨터</b> 안에만 있어서, 그 두 가지는 거기서만 돌아갑니다.
-           여기서 누른 채택·제외는 <b>바로 저장</b>되고, 10분마다 그 컴퓨터로 옮겨져 드라이브 저장·프롬프트 학습까지 이어집니다.</div>
-         </div>`;
-    ($('#detail') || document.querySelector('main') || document.body).prepend(b);
-    if (CFG.no_create) {                              // 눌러 보고 알게 하지 말고 버튼에 먼저 적는다
-      const r = $('#btn-run'); if (r) { r.disabled = true; r.textContent = '생성은 생성 컴퓨터에서'; r.title = CFG.cloud_msg || ''; }
-      const x = $('#btn-export'); if (x) { x.disabled = true; x.title = CFG.cloud_msg || ''; }
-    }
+  // ⚠ 안내 카드는 2026-09-08 성연서님 지시로 뺐다("이런 주석들 있는거 다 삭제 불필요해").
+  //    되살리지 마라. "여기선 생성이 안 된다"는 사실은 **버튼 자체**가 말한다(아래) —
+  //    화면 위에 문단으로 또 적지 않는다.
+  if (CFG.no_create) {
+    const r = $('#btn-run'); if (r) { r.disabled = true; r.textContent = '생성은 생성 컴퓨터에서'; r.title = CFG.cloud_msg || ''; }
+    const x = $('#btn-export'); if (x) { x.disabled = true; x.title = CFG.cloud_msg || ''; }
   }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
