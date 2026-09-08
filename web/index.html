@@ -133,6 +133,8 @@ tbody tr:last-child td { border-bottom:none }
 .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--sp-4) }
 .item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md) }
 .item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { border-color:var(--bad); box-shadow:0 0 0 2px var(--bad-weak) }
+.pick-line { font-size:var(--fs-sm,12px); color:var(--muted,#77808a); margin:6px 0 2px } .pick-line.ok { color:var(--ok,#1a7f4b) } .pick-line.bad { color:var(--bad,#c0392b) }
+.item .act button[disabled], .rev-act button[disabled], .dd-opt input[disabled] { opacity:.45; cursor:not-allowed }
 .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border); border-radius:var(--r-md) var(--r-md) 0 0; overflow:hidden }
 .pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
 .pair img { width:100%; height:100%; object-fit:cover; display:block }
@@ -222,6 +224,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
     <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="sim">시뮬레이션</button><button data-kind="demo">샘플</button></div>
+    <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
     <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
     <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
     <div class="foot" id="side-foot"></div>
@@ -336,7 +339,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div class="toolbar">
           <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
           <span class="sep"></span>
-          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">선택됨</option><option value="reject">제외됨</option></select>
+          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option></select>
           <select id="gal-axis"><option value="">조건 전체</option></select><select id="gal-axis-val" hidden><option value="">값 전체</option></select>
           <span class="tb-space"></span><span class="muted" id="gal-count"></span>
         </div>
@@ -356,14 +359,26 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 라이브러리 ═══ -->
     <section class="page" id="tab-library">
       <div class="card">
-        <div class="card-head"><h3>선택된 사진</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
+        <div class="card-head"><h3>채택한 사진 · 드라이브 저장본</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
         <div class="toolbar">
           <select id="lib-treatment"><option value="">시술 전체</option></select>
           <select id="lib-mode"><option value="">종류 전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select>
         </div>
         <div class="msg" id="lib-msg"></div><div id="lib-exports"></div>
       </div>
-      <div style="margin-top:var(--gap)"><div id="lib-groups"></div><div class="card empty" id="lib-empty" hidden>선택된 사진이 없습니다</div></div>
+      <div style="margin-top:var(--gap)"><div id="lib-groups"></div><div class="card empty" id="lib-empty" hidden>채택한 사진이 없습니다</div></div>
+    </section>
+
+    <section class="page" id="tab-lessons">
+      <div class="card"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
+        <div class="muted" style="margin-bottom:8px">사진을 <b>제외</b>하고 사유를 고르면 여기에 쌓이고, <b>다음 생성부터 프롬프트가 그 실수를 피하도록</b> 바뀝니다.</div>
+        <div id="les-body" class="muted">불러오는 중…</div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>지금 프롬프트에 붙는 문장</h3></div><div id="les-preview" class="muted"></div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>메모 → 규칙으로 승격</h3></div>
+        <div class="muted" style="margin-bottom:8px">한글 메모는 자동으로 프롬프트에 안 들어갑니다(오타·환자 정보가 섞일 수 있어서요). 영어 한 문장으로 다듬어 올리면 그때부터 매번 붙습니다.</div>
+        <div id="les-notes"></div><div class="msg" id="les-msg"></div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>규칙 성적표</h3></div>
+        <div class="muted" style="margin-bottom:8px">규칙을 넣은 뒤 그 실수가 정말 줄었는지 봅니다. 안 줄면 문장이 약한 겁니다.</div><div id="les-score"></div></div>
     </section>
 
     <!-- ═══ 설정 · 도움말 ═══ -->
@@ -374,10 +389,11 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-help">
       <div class="card"><div class="card-head"><h3>도움말</h3></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
-          <div><h4>홈</h4><div class="muted">전체 생성·통과·선택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
+          <div><h4>홈</h4><div class="muted">전체 생성·통과·채택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
           <div><h4>생성</h4><div class="muted">시술(복수)·사진 종류·장수·목표 통과 장수·비용 상한을 정해 생성 시작. 모든 작업은 대기열로 들어가 순서대로 실행.</div></div>
-          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 선택/제외와 사유 태그.</div></div>
-          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 선택한 사진 모음. 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
+          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 채택(드라이브 저장)/제외(저장 안 함)와 제외 사유.</div></div>
+          <div><h4>학습</h4><div class="muted">제외 사유가 쌓여 다음 생성 프롬프트를 고칩니다. 메모는 사람이 확인해 「규칙으로 승격」해야 반영됩니다.</div></div>
+          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 채택한 사진 모음(드라이브 저장본). 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
         </div>
       </div>
     </section>
@@ -449,10 +465,28 @@ const failKo = r => FAIL_KO[r] || r;
 let POLL = null;
 const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
+// 검수 워딩 정본 한 곳 (2026-09-08 성연서님 지시 "선택/제외 워딩을 더 명확하게").
+// '선택·제외'만으로는 눌렀을 때 무슨 일이 생기는지 안 보인다 → 결과(드라이브 저장 여부)를 옆에 적는다.
+// 버튼 글자는 짧게 둔다(검수 모드 한 줄이 좁다) — 결과는 바로 아래 한 줄이 말한다.
+// 내부 값(pick/reject)은 그대로다. 바꾸면 저장된 review.json·통계 축이 갈린다.
+const PICK = {
+  pick:   {btn:'채택', on:'채택함', line:'→ 구글드라이브 「채택본」에 저장됩니다', tone:'ok'},
+  reject: {btn:'제외', on:'제외함', line:'→ 드라이브에 올리지 않습니다 (이미 올라갔으면 내립니다)', tone:'bad'},
+  none:   {line:'→ 아직 정하지 않았습니다. 드라이브에 올라가지 않습니다', tone:''},
+};
+const RO = () => !!(CFG && CFG.readonly);          // 클라우드 배포본은 쓰기 405 다
+// 판정 아래 한 줄: 지금 무슨 일이 일어나는지. 채택본은 실제 드라이브 상태까지 말한다.
+function pickLine(rv) {
+  rv = rv || {};
+  if (rv.pick === 'pick') return `<div class="pick-line ok">${PICK.pick.line}${
+    rv.drive === 'uploaded' ? ' <b>· 저장 완료</b>' : ' <b>· 저장 대기</b>'}</div>`;
+  if (rv.pick === 'reject') return `<div class="pick-line bad">${PICK.reject.line}</div>`;
+  return `<div class="pick-line">${PICK.none.line}</div>`;
+}
 let CFG, BATCHES = [], CUR = null;
 
 let QSTAT = null, LIB = null, EXPORTS = [];
-const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', settings:'설정', help:'도움말'};
+const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', lessons:'학습', settings:'설정', help:'도움말'};
 
 // ---------- 화면 ----------
 function show(tab) {
@@ -463,6 +497,7 @@ function show(tab) {
   if (tab === 'create') loadQueue();
   if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
   if (tab === 'library') loadLibrary();
+  if (tab === 'lessons') loadLessons();
   if (tab === 'settings') renderSettings();
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
@@ -552,7 +587,7 @@ async function renderLive() {
 }
 function renderHomeLib() {
   const l = OV.library; const rows = Object.entries(l.summary).map(([t, m]) => [t, Object.values(m).reduce((a,b)=>a+b,0), m]).sort((a,b) => b[1]-a[1]);
-  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">선택된 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
+  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">채택한 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
 }
 setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
 let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); chartStack(); chartToday(); } }, 150); });
@@ -679,7 +714,7 @@ async function loadBatches() {
     const dry = b.kind === 'dry_run';
     return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td><td>${dry ? '—' : (s.attempts_per_pass ?? '')}</td><td>${dry ? '—' : (s.cost_per_pass ?? '')}</td>
-      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
+      <td>${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
@@ -736,7 +771,7 @@ function renderStats() {
   const s = CUR.stats, dry = CUR.kind === 'dry_run';
   $('#kpis').innerHTML = [
     ['생성 장수', s.total], ['AI 검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['장당 시도', dry ? '—' : `${s.attempts_per_pass}회`], ['장당 비용', dry ? '—' : `$${s.cost_per_pass}`],
-    ['검수 완료', `${s.reviewed} / ${s.total}`], ['선택 · 제외', `${s.picked} · ${s.rejected}`]
+    ['검수 완료', `${s.reviewed} / ${s.total}`], ['채택 · 제외', `${s.picked} · ${s.rejected}`]
   ].map(([l, v]) => `<div class="kpi compact" style="background:var(--ui-surface)"><div class="l">${l}</div><div class="v">${v ?? '—'}</div></div>`).join('');
   let html = '';
   if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
@@ -789,9 +824,10 @@ function renderReview() {
       <div><div class="rev-h">생성 조건</div><div class="muted" style="line-height:1.7"><div>${cond(['country','age','gender'])}</div><div>${cond(['angle','framing','background'])}</div><div>${cond(['before_severity','effect_level','timeline'])}</div></div></div>
       <div class="rev-act">
         <div class="act">
-          <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?'선택함':'선택'} <kbd>1</kbd></button>
-          <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?'제외함':'제외'} <kbd>2</kbd></button>
+          <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn} <kbd>1</kbd></button>
+          <button class="b ${rv.pick==='reject'?'on-reject':''}"${RO()?' disabled':''} data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?PICK.reject.on:PICK.reject.btn} <kbd>2</kbd></button>
         </div>
+        ${pickLine(rv)}
         ${reasonBlock(it, rv.pick === 'reject')}
         <div class="muted" style="margin-top:8px">← → 로 이전·다음 사진</div>
       </div>
@@ -820,8 +856,8 @@ function reasonBlock(it, open) {
   return `<div class="reason" ${open ? '' : 'hidden'}>
         <div class="muted">왜 제외했나요?</div>
         <details class="dd"><summary class="dd-btn"><span class="dd-val ${(rv.tags||[]).length?'':'empty'}">${(rv.tags||[]).length ? esc(rv.tags.join(', ')) : '제외 사유 선택'}</span><span class="dd-caret">▾</span></summary>
-          <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox" data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
-        <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+          <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox"${RO()?' disabled':''} data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
+        <input type="text"${RO()?' disabled':''} placeholder="제외 사유 메모 — 적으면 다음 생성 프롬프트가 이 실수를 피합니다" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
         <div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div>
 </div>`;
 }
@@ -843,30 +879,58 @@ function itemCard(it) {
       <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
       <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
       <div class="act">
-        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?'선택함':'선택'}</button>
-        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?'제외함':'제외'}</button>
+        <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn}</button>
+        <button class="b ${rv.pick==='reject'?'on-reject':''}"${RO()?' disabled':''} data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?PICK.reject.on:PICK.reject.btn}</button>
       </div>
+      ${pickLine(rv)}
       ${reasonBlock(it, open)}
     </div></div>`;
 }
 function refreshFoot(it) { const f = $('#rf-'+it.item_id); if (!f) return; f.innerHTML = reasonFoot(it); f.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); seedify(f); }
 async function onAct(e) {
-  const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id); const rv = it.review = it.review || {tags:[]};
+  const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id);
+  if (!it) { toast('사진을 찾지 못했습니다 — 새로고침해 주세요'); return; }
   const act = el.dataset.act;
+  if (RO() && act !== 'note') { toast(CFG.readonly_msg || '이 화면은 보기 전용입니다.'); return; }
+  if (SAVING.has(id) && act !== 'note') return;          // 앞 저장이 끝나기 전엔 안 받는다(연타 경쟁 방지)
+  const prev = JSON.parse(JSON.stringify(it.review || {}));   // 저장이 실패하면 여기로 되돌린다
+  const rv = it.review = it.review || {tags:[]};
   // 사유(태그·메모)는 로컬에만 두고 [사유 저장]으로 한 번에 저장
   if (act === 'note') { el.oninput = () => { rv.note = el.value; DIRTY.add(id); refreshFoot(it); }; el.onkeydown = ev => { if (ev.key === 'Enter' && DIRTY.has(id)) { DIRTY.delete(id); save(it); } }; return; }
   if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const v = el.closest('.dd').querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
-  if (act === 'savereason') { DIRTY.delete(id); await save(it); return; }
+  if (act === 'savereason') { DIRTY.delete(id); await save(it, prev); return; }
   if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
   if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; DIRTY.delete(id); }
-  await save(it);
+  await save(it, prev);
 }
-async function save(it) {
-  const rv = it.review; await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick, tags: rv.tags||[], note: rv.note||''});
+// 2026-09-08 수리 — 종전엔 ①실패해도 조용(try/catch 없음: 클라우드 보기 전용 405 가 흔적 없이 삼켜졌다)
+// ②화면을 먼저 바꾸고 저장(실패하면 화면과 디스크가 갈려, 새로고침하면 원복 = "눌렀는데 안 먹었다")
+// ③서버 응답을 안 씀 ④연타 시 요청이 겹침.
+const SAVING = new Set();
+async function save(it, prev) {
+  SAVING.add(it.item_id);
+  try {
+    const rv = it.review;
+    const saved = await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick ?? null, tags: rv.tags||[], note: rv.note||''});
+    it.review = {pick: saved.pick ?? null, tags: saved.tags || [], note: saved.note || '', updated_at: saved.updated_at, drive: saved.drive};
+    if (saved.drive === 'uploaded') toast('채택 · 드라이브에 저장했습니다');
+    else if (saved.drive === 'removed') toast('제외 · 드라이브 채택본에서 내렸습니다');
+  } catch (e) {
+    if (prev !== undefined) it.review = prev;            // 저장이 안 됐으면 화면도 되돌린다
+    DIRTY.delete(it.item_id);
+    toast('저장 실패 — ' + e.message);
+  } finally { SAVING.delete(it.item_id); }
   const s = CUR.stats, all = CUR.items.map(x => x.review||{}); s.reviewed = all.filter(r => r.pick || (r.tags||[]).length || r.note).length;
   s.picked = all.filter(r => r.pick === 'pick').length; s.rejected = all.filter(r => r.pick === 'reject').length;
   s.review_tags = {}; all.forEach(r => (r.tags||[]).forEach(t => s.review_tags[t] = (s.review_tags[t]||0)+1));
-  renderStats(); loadBatches(); if (VIEW === 'review') { renderReview(); return; } const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
+  renderStats(); loadBatches().catch(() => {});
+  if (VIEW === 'review') { renderReview(); return; }
+  const old = $('#it-'+it.item_id);
+  // 메모를 치는 중이면 카드를 갈아끼우지 않는다 — 커서가 튀고 입력이 끊긴다
+  if (old && !(old.contains(document.activeElement) && document.activeElement.tagName === 'INPUT')) {
+    const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild);
+    bindActs($('#it-'+it.item_id));
+  }
 }
 function detail(id) {
   const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
@@ -898,7 +962,7 @@ function renderLibrary() {
     return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
   $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
   $('#lib-groups').querySelectorAll('[data-unpick]').forEach(b => b.onclick = async () => { const [bid, iid] = b.dataset.unpick.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
-    await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('선택 해제'); loadLibrary(); });
+    await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('채택을 취소했습니다'); loadLibrary(); });
 }
 function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
@@ -918,6 +982,43 @@ function renderExports() {
 }
 
 
+// ---------- 학습 (제외 사유 → 프롬프트) ----------
+let LES = null;
+async function loadLessons() {
+  try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
+  const L = LES, tags = Object.entries(L.tags || {});
+  $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장`;
+  $('#les-body').innerHTML = tags.length
+    ? `<div>${tags.map(([t, n]) => `<span class="chip ${L.active.from_tags.includes(t) ? 'bad' : ''}" title="${L.active.from_tags.includes(t) ? '지금 프롬프트에 반영 중' : '아직 반영 기준(2회) 미달'}">${esc(t)} ${n}</span>`).join(' ')}</div>`
+      + (Object.keys(L.active.weights || {}).length
+        ? `<div style="margin-top:10px"><b>덜 뽑는 조건</b> <span class="muted">— 제외가 몰려서 다음 생성에서 확률을 낮춥니다(아예 빼지는 않습니다)</span><div style="margin-top:4px">${
+            Object.entries(L.active.weights).map(([a, vs]) => Object.keys(vs).map(k => `<span class="chip warn">${AXIS_KO[a] || a} · ${esc(val(a, k))}</span>`).join(' ')).join(' ')}</div></div>` : '')
+    : '아직 제외한 사진이 없습니다. 사진을 제외하고 사유를 고르면 여기가 채워집니다.';
+  const pv = L.preview || {};
+  $('#les-preview').innerHTML = Object.keys(pv).length
+    ? Object.entries(pv).map(([w, t]) => `<div style="margin-bottom:8px"><b>${w === 'before' ? '시술 전' : '시술 후'}</b><div class="mono">${esc(t)}</div></div>`).join('')
+    : '아직 붙는 문장이 없습니다 <span class="muted">— 같은 사유가 2번 이상 나오면 켜집니다</span>';
+  $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => `
+    <div class="list-row" style="cursor:default;align-items:flex-start">
+      <div class="t" style="flex:1"><b>${esc(n.note)}</b><span>${fmtBid(n.batch)} · ${+n.item + 1}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
+        <input type="text" id="les-en-${i}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" style="width:100%;margin-top:6px">
+      </div>
+      <button class="b" data-promote="${i}">규칙으로 승격</button>
+    </div>`).join('') : '<div class="muted">승격할 메모가 없습니다.</div>';
+  $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
+    const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
+    if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
+    try { const r = await api('/api/lessons/promote', {note: LES.notes[i].note, en, where: ['before', 'after']});
+      if (r.error) throw new Error(r.error);
+      msg('#les-msg', `규칙 ${r.count}개 — 다음 생성부터 붙습니다`, 'on'); loadLessons(); }
+    catch (e) { msg('#les-msg', e.message, 'err'); }
+  });
+  $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th>넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th></tr></thead><tbody>${
+    L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="muted">아직 승격된 규칙이 없습니다.</div>';
+  const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
+}
+
 // ---------- 설정 ----------
 function renderSettings() {
   $('#settings-body').innerHTML = `<div class="list">
@@ -930,6 +1031,12 @@ function renderSettings() {
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
+  if (CFG.readonly) {                                  // 보기 전용이면 화면이 먼저 말한다 — 눌러 놓고 아무 일도 안 나는 게 제일 나쁘다
+    const b = document.createElement('div'); b.className = 'card';
+    b.style.cssText = 'margin:0 0 12px;border-left:4px solid var(--warn,#c98a00)';
+    b.innerHTML = `<b>보기 전용 화면입니다</b><div class="muted" style="margin-top:4px">${esc(CFG.readonly_msg || '검수·생성·내보내기는 사무실 PC에서 진행합니다.')} 채택/제외 버튼은 잠겨 있습니다.</div>`;
+    ($('#detail') || document.querySelector('main') || document.body).prepend(b);
+  }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
   $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
