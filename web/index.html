@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="/vendor/seed/base.min.css">
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
 <style>
-:root {
+:root, :root[data-seed][data-seed-color-mode] {
   --primary:#1F3A5F; --pri-hov:#172C49; --pri-alpha:rgba(31,58,95,.08); --pri-border:rgba(31,58,95,.18); --brand-blue:#CCD8E8;
   --ui-bg:#F4F5F7; --ui-panel:#fff; --ui-border:#EAECEF; --ui-hi:#191F28; --ui-md:#6B7684; --ui-lo:#8B95A1; --ui-surface:#F7F8FA;
   --ok:#1F8F55; --ok-weak:#E3F5EA; --bad:#D64545; --bad-weak:#FBE5E5; --warn:#B87A00; --warn-weak:#FFF3D6;
@@ -131,15 +131,28 @@ tbody tr:last-child td { border-bottom:none }
 .list-row .v { font-weight:var(--fw-b); font-size:var(--fs-md); white-space:nowrap }
 .chip { margin:2px 3px 0 0; font-weight:500; white-space:nowrap }
 .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--sp-4) }
-.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md); overflow:hidden }
+.item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md) }
 .item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { opacity:.6 }
-.pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border); border-radius:var(--r-md) var(--r-md) 0 0; overflow:hidden }
 .pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
 .pair img { width:100%; height:100%; object-fit:cover; display:block }
 .pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
-.item .body { padding:var(--sp-3) } .item .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--sp-1) } .item .id { font-weight:var(--fw-b) }
-.tags { display:flex; flex-wrap:wrap; gap:4px; margin:6px 0 8px } .tags button { font-size:11px }
-.act { display:flex; gap:6px; align-items:center } button.b { cursor:pointer } button.b:disabled { opacity:.5 }
+.item .body { padding:var(--sp-2) var(--sp-3) var(--sp-3) } .item .head { display:flex; align-items:center; gap:var(--sp-1); margin-bottom:2px } .item .id { font-weight:var(--fw-b); color:var(--ui-lo) }
+.item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
+.act { display:grid; grid-template-columns:1fr 1fr; gap:8px } .act .b { height:40px; font-size:var(--fs-md) }
+.dd { position:relative; margin-bottom:8px } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
+.dd-btn { display:flex; align-items:center; gap:8px; height:36px; padding:0 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:#fff; font-size:var(--fs-sm); cursor:pointer; user-select:none }
+.dd[open] .dd-btn { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha) }
+.dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
+.dd-menu { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20; background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-sm); box-shadow:0 8px 24px rgba(25,31,40,.12); padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:2px }
+.dd-opt { display:flex; align-items:center; gap:8px; height:34px; padding:0 8px; border-radius:6px; font-size:var(--fs-sm); cursor:pointer } .dd-opt:hover { background:var(--ui-surface) } .dd-opt input { accent-color:var(--primary); width:16px; height:16px; margin:0 }
+.reason-foot { display:flex; align-items:center; gap:8px; margin-top:8px }
+.verdict { font-weight:var(--fw-m); font-size:var(--fs-sm); color:var(--ui-md); white-space:nowrap; flex-shrink:0 } .verdict.ok { color:var(--ok) } .verdict.bad { color:var(--bad) }
+.why { font-size:var(--fs-xs); color:var(--ui-md); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
+.conds { font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:var(--sp-2) }
+.reason { margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:1px dashed var(--ui-border) } .reason .muted { margin-bottom:4px }
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px } .tags button { font-size:11px }
+button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .item input[type=text] { height:32px; font-size:12px }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
@@ -392,6 +405,7 @@ new MutationObserver(ms => ms.forEach(m => {
   if (m.type === 'attributes' && m.target instanceof Element) { const t = m.target; if (t.matches('.tags button')) SEED.tag(t); else if (t.matches('button.b')) SEED.btn(t); }
 })).observe(document.documentElement, {childList: true, subtree: true, attributes: true, attributeFilter: ['class']});
 seedify(document.body);
+document.addEventListener('click', e => { document.querySelectorAll('details.dd[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
@@ -730,36 +744,56 @@ function renderGallery() {
   });
   $('#gal-count').textContent = `${items.length} / ${CUR.items.length}장`; $('#gal-empty').hidden = items.length > 0;
   $('#gal').innerHTML = items.map(itemCard).join('');
-  $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct);
+  $('#gal').querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); $('#gal').querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct);
   $('#gal').querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail));
+}
+const DIRTY = new Set(); // 사유(태그·메모)를 고쳤지만 아직 저장 안 한 사진
+function reasonFoot(it) {
+  const rv = it.review || {}, has = (rv.tags||[]).length || rv.note, dirty = DIRTY.has(it.item_id);
+  return dirty ? `<button class="b primary" data-act="savereason" data-id="${it.item_id}">사유 저장</button><span class="muted">저장 안 됨</span>`
+    : has ? `<button class="b" disabled>저장됨 ✓</button><span class="muted">사유가 저장됐어요</span>`
+    : `<button class="b" disabled>사유 저장</button><span class="muted">사유는 선택 사항이에요</span>`;
 }
 function itemCard(it) {
   const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
   const img = (file, cap) => file ? `<figure><img loading="lazy" src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
-  const status = it.passed === null ? '<span class="chip">프롬프트만</span>' : it.passed ? '<span class="chip ok">통과</span>' : `<span class="chip bad">탈락</span>`;
-  const fails = (it.fail_reasons||[]).map(r => `<span class="chip bad">${esc(failKo(r))}</span>`).join('');
-  const badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  // 판정 한 줄: AI 검수 결과 + 탈락이면 사유를 같은 줄에
+  const fails = (it.fail_reasons||[]).map(r => esc(failKo(r)));
+  const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>'
+    : it.passed ? '<span class="verdict ok">AI 검수 통과</span>'
+    : `<span class="verdict bad">AI 검수 탈락</span>${fails.length ? `<span class="why">${fails.join(' · ')}</span>` : ''}`;
+  // 생성 조건 9개: 칩 대신 한 줄 텍스트(넘치면 말줄임, 전체는 상세에서)
+  const conds = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => esc(val(k, v[k].key)));
+  const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
+  const open = rv.pick === 'reject';
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
     <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
     <div class="body">
-      <div class="head"><span class="id">${+it.item_id+1} ${status}</span><span class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)} <button class="b" data-detail="${it.item_id}">상세</button></span></div>
-      <div>${badges}</div>${fails ? `<div style="margin-top:4px">${fails}</div>` : ''}
-      <div class="act" style="margin-top:8px">
-        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">선택</button>
-        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">제외</button>
-        <button class="b" data-act="clear" data-id="${it.item_id}">초기화</button>
+      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+      <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
+      <div class="act">
+        <button class="b ${rv.pick==='pick'?'on-pick':''}" data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?'선택함':'선택'}</button>
+        <button class="b ${rv.pick==='reject'?'on-reject':''}" data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?'제외함':'제외'}</button>
       </div>
-      <div class="tags">${TAGS.map(t => `<button data-act="tag" data-id="${it.item_id}" data-tag="${t}" class="${(rv.tags||[]).includes(t)?'on':''}">${t}</button>`).join('')}</div>
-      <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+      <div class="reason" ${open ? '' : 'hidden'}>
+        <div class="muted">왜 제외했나요?</div>
+        <details class="dd"><summary class="dd-btn"><span class="dd-val ${(rv.tags||[]).length?'':'empty'}">${(rv.tags||[]).length ? esc(rv.tags.join(', ')) : '제외 사유 선택'}</span><span class="dd-caret">▾</span></summary>
+          <div class="dd-menu">${TAGS.map(t => `<label class="dd-opt"><input type="checkbox" data-act="tag" data-id="${it.item_id}" data-tag="${t}" ${(rv.tags||[]).includes(t)?'checked':''}><span>${t}</span></label>`).join('')}</div></details>
+        <input type="text" placeholder="메모" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%">
+        <div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div>
+      </div>
     </div></div>`;
 }
+function refreshFoot(it) { const f = $('#rf-'+it.item_id); if (!f) return; f.innerHTML = reasonFoot(it); f.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); seedify(f); }
 async function onAct(e) {
   const el = e.currentTarget, id = el.dataset.id, it = CUR.items.find(x => x.item_id === id); const rv = it.review = it.review || {tags:[]};
   const act = el.dataset.act;
-  if (act === 'note') { el.onkeydown = ev => { if (ev.key === 'Enter') { rv.note = el.value; save(it); } }; return; }
+  // 사유(태그·메모)는 로컬에만 두고 [사유 저장]으로 한 번에 저장
+  if (act === 'note') { el.oninput = () => { rv.note = el.value; DIRTY.add(id); refreshFoot(it); }; el.onkeydown = ev => { if (ev.key === 'Enter' && DIRTY.has(id)) { DIRTY.delete(id); save(it); } }; return; }
+  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const v = el.closest('.dd').querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
+  if (act === 'savereason') { DIRTY.delete(id); await save(it); return; }
   if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
-  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; }
-  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; rv.tags.includes(t) ? rv.tags.splice(rv.tags.indexOf(t),1) : rv.tags.push(t); if (!rv.pick) rv.pick = 'reject'; }
+  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; DIRTY.delete(id); }
   await save(it);
 }
 async function save(it) {
@@ -767,7 +801,7 @@ async function save(it) {
   const s = CUR.stats, all = CUR.items.map(x => x.review||{}); s.reviewed = all.filter(r => r.pick || (r.tags||[]).length || r.note).length;
   s.picked = all.filter(r => r.pick === 'pick').length; s.rejected = all.filter(r => r.pick === 'reject').length;
   s.review_tags = {}; all.forEach(r => (r.tags||[]).forEach(t => s.review_tags[t] = (s.review_tags[t]||0)+1));
-  renderStats(); loadBatches(); const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
+  renderStats(); loadBatches(); const old = $('#it-'+it.item_id); if (old) { const tmp = document.createElement('div'); tmp.innerHTML = itemCard(it); old.replaceWith(tmp.firstElementChild); const n = $('#it-'+it.item_id); n.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); n.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct); n.querySelectorAll('[data-detail]').forEach(b => b.onclick = () => detail(b.dataset.detail)); }
 }
 function detail(id) {
   const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
@@ -775,7 +809,7 @@ function detail(id) {
   const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3>${bars(Object.fromEntries(Object.entries(it.vision.scores).map(([k,s]) => [k, {n:s, pass:s/10}])), 10, 'ok', null, k => SCORE_KO[k]||k).replace(/장<\/span>/g, '점</span>')}` : '';
   const chk = [it.structure && `얼굴 정렬: ${it.structure.passed ? '통과' : '불일치'}`, it.identity && `동일 인물: ${it.identity.hard_fail ? '불일치' : '통과'}`].filter(Boolean).join(' · ');
   $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
-    <p class="muted">${chk || ''} ${it.prompt_version ? '· 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
+    <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>생성 조건</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후 변경</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
     <h3 style="margin-top:14px">시술 전 프롬프트</h3><div class="mono">${esc(it.before_prompt)}</div>
     <h3 style="margin-top:10px">시술 후 프롬프트</h3><div class="mono">${esc(it.after_prompt)}</div>`;
