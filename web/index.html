@@ -280,9 +280,10 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
             <details class="opt"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
             <details class="opt"><summary>시드 · AI 모델</summary><div>
               <label class="field"><span>시드 (재현용)</span><input type="number" id="seed" placeholder="비우면 무작위"></label>
-              <label class="field"><span>생성 모델</span><select id="gen"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
-              <label class="field"><span>시술 후 생성 모델</span><select id="edit"><option>gemini</option><option>openai</option><option>higgsfield</option></select></label>
-              <label class="field"><span>검수 모델</span><select id="qa"><option>gemini</option><option>openai</option></select></label>
+              <div class="muted" id="prov-default"></div>
+              <label class="field"><span>생성 모델</span><select id="gen"><option value="">모드 기본값</option><option>openai</option><option>gemini</option><option>higgsfield</option></select></label>
+              <label class="field"><span>시술 후 생성 모델</span><select id="edit"><option value="">모드 기본값</option><option>openai</option><option>gemini</option><option>higgsfield</option></select></label>
+              <label class="field"><span>검수 모델</span><select id="qa"><option value="">모드 기본값</option><option>openai</option><option>gemini</option></select></label>
             </div></details>
             <div class="row"><button class="btn accent" id="btn-plan" style="flex:1">미리보기</button><button class="btn" id="btn-estimate" style="flex:1">비용 예상</button></div>
             <button class="btn primary" id="btn-run">생성 시작</button>
@@ -537,7 +538,7 @@ function selTreatments() { return $$('#q-treatments button.on').map(b => b.datas
 function selModes() { return $$('#q-modes button.on').map(b => b.dataset.v); }
 function renderTreatmentChips() {
   $('#q-treatments').innerHTML = Object.entries(CFG.treatments).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('');
-  $$('#q-treatments button, #q-modes button').forEach(b => b.onclick = () => { b.classList.toggle('on'); renderFixed(); });
+  $$('#q-treatments button, #q-modes button').forEach(b => b.onclick = () => { b.classList.toggle('on'); renderFixed(); renderProvDefault(); });
 }
 function renderFixed() {
   const modes = selModes(); const rules = modes.length === 1 ? (CFG.mode_rules[modes[0]] || {}) : {};
@@ -546,6 +547,7 @@ function renderFixed() {
     return `<label>${AXIS_KO[a]||a}<select data-axis="${a}"><option value="">전체</option>${allowed.map(o => `<option value="${o}">${val(a, o)}</option>`).join('')}</select></label>`;
   }).join('');
 }
+function renderProvDefault() { const el = $('#prov-default'); if (!el || !CFG.default_provider) return; el.innerHTML = selModes().map(m => { const d = CFG.default_provider[m]; return d ? `${MODE_KO[m]} 기본: 생성 ${d.gen} · 시술 후 ${d.edit} · 검수 ${d.qa}` : ''; }).filter(Boolean).join('<br>') || '사진 종류를 선택하세요'; }
 function fixedVals() { const fixed = {}; $$('#fixed select').forEach(s => { if (s.value) fixed[s.dataset.axis] = s.value; }); return fixed; }
 function jobsFromForm() {
   const ts = selTreatments(), ms = selModes(), jobs = [];
@@ -621,7 +623,7 @@ async function loadQueue() {
     const ctl = j.status==='queued' ? `<button class="b" data-q="up" data-id="${j.job_id}">↑</button> <button class="b" data-q="down" data-id="${j.job_id}">↓</button> <button class="b danger" data-q="cancel" data-id="${j.job_id}">취소</button>`
               : j.status==='running' ? '' : `<button class="b" data-q="remove" data-id="${j.job_id}">삭제</button>`;
     return `<tr><td>${i+1}</td><td>${CFG.treatments[j.treatment]?.name_ko || j.treatment}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.count}</td><td>${j.target_pass ?? '—'}</td><td>${j.cost_cap != null ? '$'+j.cost_cap : '—'}</td><td>$${j.est_cost}</td>
-      <td>${j.simulate ? '<span class="chip">시뮬레이션</span>' : '<span class="chip acc">실제</span>'}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
+      <td>${j.simulate ? '<span class="chip">시뮬레이션</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
       <td style="white-space:nowrap">${j.batch_id ? `<button class="b" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
     const a = b.dataset.q, id = b.dataset.id;
@@ -822,14 +824,14 @@ function renderSettings() {
   $('#settings-body').innerHTML = `<div class="list">
     <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
-    <div class="list-row" style="cursor:default"><div class="t"><b>기본 AI 모델</b><span>생성 ${$('#gen').value} · 시술 후 ${$('#edit').value} · 검수 ${$('#qa').value}</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>모드별 기본 AI 모델</b><span>${Object.entries(CFG.default_provider||{}).map(([m,d]) => `${MODE_KO[m]||m}: ${d.gen} / ${d.edit} / ${d.qa}`).join(' · ')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
 }
 
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
-  renderTreatmentChips(); renderFixed();
+  renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
   $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
   const h = location.hash.slice(1); show(TITLES[h] ? h : 'home');

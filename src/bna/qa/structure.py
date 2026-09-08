@@ -10,7 +10,14 @@ def check(before: Image.Image, after: Image.Image, mode: str, region: str) -> di
     pb, pa = L.detect(before), L.detect(after)
     out = {"face_detected": pb is not None and pa is not None}
     if not out["face_detected"]:
-        return {**out, "passed": False, "reason": "face not detected (or mediapipe missing)"}
+        # ⚠ 미검출은 '실패'가 아니라 **'못 잼'** 이다 — identity 게이트와 같은 규칙(3값).
+        #   종전엔 passed=False 로 떨어뜨려 배치가 MAX_ATTEMPTS 만큼 재생성했다.
+        #   2026-09-08 실집행 실측: framing=one_cheek(한쪽 볼) 컷이 3회 재시도 후에도 당연히 미검출,
+        #   **$1.14 를 태우고 실패**했다. 랜드마크가 없는 건 그림이 나빠서가 아니라 눈이 프레임 밖이라
+        #   생기는 일이고, 다시 뽑아도 같은 변주면 또 미검출이다(재시도가 원리적으로 무의미).
+        #   → passed=None(미판정). 상위(batch)가 None 을 실패로 세지 않으므로 비전 채점으로 넘어간다.
+        return {**out, "passed": None, "measured": False,
+                "reason": "얼굴 미검출 — 부분 크롭·측면이면 정상이다(구조 검사 미측정, 비전 채점으로 판정)"}
 
     kb, ka = L.key_points(pb), L.key_points(pa)
     ipd_b = np.linalg.norm(kb["eye_r"] - kb["eye_l"])

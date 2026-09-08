@@ -33,7 +33,7 @@ class Queue:
                "started_at": None, "finished_at": None, "result": None, "error": None,
                "treatment": spec["treatment"], "mode": spec["mode"], "count": int(spec.get("count", 10)),
                "seed": spec.get("seed") or None, "fixed": {k: v for k, v in (spec.get("fixed") or {}).items() if v},
-               "gen": spec.get("gen", "gemini"), "edit": spec.get("edit", "gemini"), "qa": spec.get("qa", "gemini"),
+               "gen": spec.get("gen") or None, "edit": spec.get("edit") or None, "qa": spec.get("qa") or None,   # None = 모드 기본값(providers.yaml)
                "target_pass": int(spec["target_pass"]) if spec.get("target_pass") else None,
                "cost_cap": float(spec["cost_cap"]) if spec.get("cost_cap") else None,
                "simulate": bool(spec.get("simulate", False)), "label": spec.get("label", "")}

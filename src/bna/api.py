@@ -28,7 +28,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .spec import ROOT, load, build_prompts, PERSON_AXES, SCENE_AXES
+from .spec import ROOT, load, build_prompts, PERSON_AXES, SCENE_AXES, defaults_for
 from .planner import plan_batch, distribution
 from .stats import load_items, summarize
 from . import progress as prog
@@ -45,7 +45,8 @@ def config_payload():
     axes = {a: list(v[a]) for a in PERSON_AXES + SCENE_AXES}
     return {"treatments": {k: {"name_ko": x.get("name_ko", k), "modes": list(x.get("modes", {}))} for k, x in t.items()},
             "modes": ["selfie", "clinical"], "axes": axes, "mode_rules": v.get("mode_rules", {}),
-            "pricing": load("pricing.yaml"), "checklist": list(load("qa_checklist.yaml")["items"]), "out_dir": str(OUT)}
+            "pricing": load("pricing.yaml"), "checklist": list(load("qa_checklist.yaml")["items"]), "out_dir": str(OUT),
+            "default_provider": load("providers.yaml")["default_provider"]}
 
 
 def _plans(req):
@@ -61,7 +62,8 @@ def plan_payload(req):
 
 
 def estimate_payload(req, expected_pass_rate=0.5):
-    p = load("pricing.yaml"); gen, edit, qa = req.get("gen", "gemini"), req.get("edit", "gemini"), req.get("qa", "gemini")
+    p = load("pricing.yaml"); d = defaults_for(req["mode"])
+    gen, edit, qa = req.get("gen") or d["gen"], req.get("edit") or d["edit"], req.get("qa") or d["qa"]
     per_try = p[gen]["generate"] + p[edit]["edit" if req["mode"] == "clinical" else "generate"] + p[qa]["qa"]
     n = int(req.get("count", 1)); tries = n * min(3, 1 / max(expected_pass_rate, 0.05))
     return {"items": n, "expected_calls": round(tries), "expected_cost_usd": round(per_try * tries, 2), "per_try_usd": round(per_try, 4)}
@@ -88,7 +90,7 @@ def start_run(req):
     try:
         from .batch import Batch
         b = Batch(req["treatment"], req["mode"], int(req.get("count", 1)), req.get("seed") or None, req.get("fixed") or {},
-                  req.get("gen", "gemini"), req.get("edit", "gemini"), req.get("qa", "gemini"))
+                  req.get("gen") or None, req.get("edit") or None, req.get("qa") or None)
     except providers.NotConfigured as e:
         return {"error": f"프로바이더 키 없음: {e}"}, 400
     (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count,
@@ -368,7 +370,7 @@ def run_job(job, on_batch):
     if job["simulate"]:
         return sim_batch(on_batch=on_batch, **common)
     from .batch import Batch
-    b = Batch(gen=job["gen"], edit=job["edit"], qa=job["qa"], **common)
+    b = Batch(gen=job.get("gen") or None, edit=job.get("edit") or None, qa=job.get("qa") or None, **common)
     (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count, "kind": "run",
                                                   "target_pass": b.target_pass, "cost_cap": b.cost_cap, "job_id": job["job_id"], "created_at": time.time()}, ensure_ascii=False))
     RUNNING[b.batch_id] = {"status": "running", "started": time.time(), "error": None}; on_batch(b.batch_id)
@@ -389,7 +391,9 @@ def queue():
 def queue_payload():
     snap = queue().snapshot(); p = load("pricing.yaml")
     for j in snap["jobs"]:
-        per_try = p[j["gen"]]["generate"] + p[j["edit"]]["edit" if j["mode"] == "clinical" else "generate"] + p[j["qa"]]["qa"]
+        d = defaults_for(j["mode"]); g, e, q = j.get("gen") or d["gen"], j.get("edit") or d["edit"], j.get("qa") or d["qa"]
+        j["providers"] = f"{g}/{e}/{q}"
+        per_try = p[g]["generate"] + p[e]["edit" if j["mode"] == "clinical" else "generate"] + p[q]["qa"]
         j["est_cost"] = round(per_try * j["count"] * 2, 2)          # 통과율 50% 가정 (항목당 2회)
         if j["cost_cap"]:
             j["est_cost"] = min(j["est_cost"], j["cost_cap"])

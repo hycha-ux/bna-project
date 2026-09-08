@@ -1,5 +1,5 @@
 import argparse, asyncio, json
-from .spec import build_prompts
+from .spec import build_prompts, defaults_for
 from .planner import plan_batch, distribution
 
 
@@ -14,10 +14,14 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="프롬프트만 출력 (키 불필요)")
     p.add_argument("--estimate", action="store_true", help="예상 호출 수·비용")
     p.add_argument("--run", action="store_true", help="실제 배치 실행")
-    p.add_argument("--gen", default="gemini"); p.add_argument("--edit", default="gemini"); p.add_argument("--qa", default="gemini")
+    # 기본 프로바이더는 모드가 정한다 (config/providers.yaml 의 default_provider).
+    # 2026-09-08 성연서님 확정: 셀카 = GPT. 플래그를 주면 그게 이긴다.
+    p.add_argument("--gen"); p.add_argument("--edit"); p.add_argument("--qa")
     a = p.parse_args()
 
     fixed = dict(f.split("=", 1) for f in a.fix)
+    d = defaults_for(a.mode)
+    gen, edit, qa = a.gen or d["gen"], a.edit or d["edit"], a.qa or d["qa"]
     plans = plan_batch(a.mode, a.count, a.seed, fixed)
     if a.plan:
         print(json.dumps(distribution(plans), ensure_ascii=False, indent=1)); return
@@ -26,7 +30,7 @@ def main():
             print(json.dumps(build_prompts(a.treatment, a.mode, v, None if a.seed is None else a.seed * 1000 + i), ensure_ascii=False, indent=2))
         return
     from .batch import Batch
-    b = Batch(a.treatment, a.mode, a.count, a.seed, fixed, a.gen, a.edit, a.qa)
+    b = Batch(a.treatment, a.mode, a.count, a.seed, fixed, gen, edit, qa)
     if a.estimate:
         print(json.dumps(b.estimate(), indent=1)); return
     if a.run:
