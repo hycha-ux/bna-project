@@ -37,6 +37,13 @@ class OpenAIProvider(Provider):
             h["Content-Type"] = "application/json"
         return h
 
+    def _fidelity(self) -> dict:
+        """input_fidelity 는 모델이 지원할 때만 보낸다.
+        ⚠ 2026-09-08 실측: gpt-image-2 는 **미지원**이다(400 invalid_input_fidelity_model).
+          gpt-image-1 계열로 돌아갈 때를 위해 설정 키는 남겨 뒀다 — providers.yaml 에서 값을 주면 보낸다."""
+        v = self.cfg.get("input_fidelity")
+        return {"input_fidelity": v} if v else {}
+
     def _size(self, aspect: str) -> str:
         sizes = self.cfg["aspect_size"]
         if aspect not in sizes:
@@ -52,14 +59,21 @@ class OpenAIProvider(Provider):
         return base64.b64decode(data[0]["b64_json"])
 
     def _post(self, path, *, files=None, data=None, body=None, retry_without=()):
-        """400 이 '모르는 파라미터' 때문이면 그 파라미터를 빼고 1회만 재시도한다(fail-open).
-        API 가 옵션을 늘리거나 줄여도 파이프라인 전체가 멈추지는 않게."""
+        """400 이 '모르는 파라미터' 때문이면 그 파라미터를 빼고 재시도한다(fail-open).
+        API 가 옵션을 늘리거나 줄여도 파이프라인 전체가 멈추지는 않게.
+
+        ⚠ 재시도 전에 파일 스트림을 되감아야 한다. requests 가 첫 요청에서 BytesIO 를 끝까지 읽어
+          두 번째엔 **0바이트**가 나가고, API 는 그걸 'invalid_image_file' 로 답한다 —
+          즉 진짜 원인(모르는 파라미터)이 엉뚱한 오류로 둔갑한다 (2026-09-08 실측, 첫 실집행에서 물림).
+        """
         for drop in (None,) + tuple(retry_without):
             if drop is not None:
                 if data is not None:
                     data = {k: v for k, v in data.items() if k != drop}
                 if body is not None:
                     body = {k: v for k, v in body.items() if k != drop}
+            for _, (_, stream, _) in (files or []):
+                stream.seek(0)
             r = (requests.post(f"{API}{path}", headers=self._headers(False), files=files, data=data, timeout=TIMEOUT)
                  if files is not None else
                  requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=TIMEOUT))
@@ -80,10 +94,10 @@ class OpenAIProvider(Provider):
     def generate(self, prompt, aspect, ref=None, style_refs=None, seed=None) -> bytes:
         refs = ([ref] if ref else []) + list(style_refs or [])
         if refs:
-            # 인물 참조가 있으면 edits 다 — 레퍼런스 충실도(input_fidelity)를 쓸 수 있는 쪽이 여기다.
+            # 인물 참조가 있으면 generations 가 아니라 edits 다 — 참조 이미지를 받는 쪽이 여기다.
             files = [self._part("image[]", b, i) for i, b in enumerate(refs)]
             data = {"model": self.cfg["image_model"], "prompt": prompt, "size": self._size(aspect),
-                    "quality": self.cfg["quality"], "input_fidelity": self.cfg["input_fidelity"], "n": "1"}
+                    "quality": self.cfg["quality"], "n": "1", **self._fidelity()}
             return self._first_image(self._post("/images/edits", files=files, data=data,
                                                 retry_without=("input_fidelity",)))
         body = {"model": self.cfg["image_model"], "prompt": prompt, "size": self._size(aspect),
@@ -96,7 +110,7 @@ class OpenAIProvider(Provider):
         if mask:
             files.append(self._part("mask", mask))
         data = {"model": self.cfg["image_model"], "prompt": prompt,
-                "quality": self.cfg["quality"], "input_fidelity": self.cfg["input_fidelity"], "n": "1"}
+                "quality": self.cfg["quality"], "n": "1", **self._fidelity()}
         return self._first_image(self._post("/images/edits", files=files, data=data,
                                             retry_without=("input_fidelity",)))
 

@@ -30,6 +30,9 @@ def summarize(items: list) -> dict:
     gates = Counter(i.get("identity", {}).get("gate", "?") for i in items)
     out["identity_gate"] = {**dict(gates),
                             "measured_rate": round((n - gates.get("n/a", 0) - gates.get("?", 0)) / n, 3) if n else 0}
+    # 구조 검사도 같은 축으로 낸다. '못 잼'이 많으면 검수가 아니라 변주 설계(프레이밍)를 봐야 한다.
+    st_na = sum(1 for i in items if i.get("structure", {}).get("passed") is None)
+    out["structure_gate"] = {"measured_rate": round((n - st_na) / n, 3) if n else 0, "n/a": st_na}
 
     out["by_axis"] = {a: {k: {"n": v[0], "pass": round(v[1] / v[0], 2)} for k, v in d.items()} for a, d in out["by_axis"].items()}
     out["by_prompt_version"] = {k: {"n": v[0], "pass": round(v[1] / v[0], 2)} for k, v in out["by_prompt_version"].items()}

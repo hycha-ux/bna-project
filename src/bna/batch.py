@@ -72,7 +72,9 @@ class Batch:
 
             # ④ 검수 3단
             st = structure.check(before_pp, after_pp, self.mode, t["mask_region"]); meta["structure"] = st
-            if not st.get("passed"):
+            # passed 는 3값이다 — True(통과) / False(탈락) / None(못 잼).
+            # None 을 실패로 세면 재시도해도 결과가 같은 컷(부분 크롭·측면)에 돈만 쓴다.
+            if st.get("passed") is False:
                 meta["fail_reasons"].append("structure")
             idn = identity.check(before_pp, after_pp); meta["identity"] = idn
             if idn["hard_fail"]:

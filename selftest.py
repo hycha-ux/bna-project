@@ -83,6 +83,27 @@ if len(shots) == 8:
 else:
     print(f"SKIP  시료 8장이 없어 검출률 실측 생략 ({FIX})")
 
+# ⑩ 구조 검사도 3값이어야 한다 — 미검출을 실패로 세면 같은 컷을 3번 다시 뽑는다(2026-09-08 $1.14 소각)
+import re
+st_src = open("src/bna/qa/structure.py", encoding="utf-8").read()
+ok('"passed": None' in st_src, "structure.check 의 미검출은 passed=None(못 잼)이어야 한다")
+b_src = open("src/bna/batch.py", encoding="utf-8").read()
+ok('st.get("passed") is False' in b_src, "batch 는 structure passed 가 False 일 때만 실패로 세야 한다")
+
+# ⑪ GPT 는 input_fidelity 를 안 받는다(실측) — 설정이 비어 있어야 그 파라미터를 안 보낸다
+pcfg = load("providers.yaml")["openai"]
+ok(not pcfg.get("input_fidelity"),
+   f"gpt-image-2 는 input_fidelity 미지원 — providers.yaml 값이 비어 있어야 한다(실제 {pcfg.get('input_fidelity')!r})")
+
+# ⑫ 재시도 전 파일 스트림 되감기 (안 하면 2회차에 0바이트가 나가 엉뚱한 오류로 둔갑)
+o_src = open("src/bna/providers/openai_img.py", encoding="utf-8").read()
+ok("stream.seek(0)" in o_src, "_post 는 재시도 전에 파일 스트림을 되감아야 한다")
+
+# ⑬ 랜드마크는 Tasks API 여야 한다 (mediapipe 1.x 에 mp.solutions 가 없다)
+l_src = open("src/bna/qa/landmarks.py", encoding="utf-8").read()
+ok("mp.solutions.face_mesh.FaceMesh(" not in l_src and "FaceLandmarker" in l_src,
+   "landmarks 는 옛 FaceMesh 호출이 아니라 Tasks API(FaceLandmarker)를 써야 한다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
