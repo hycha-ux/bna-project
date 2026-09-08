@@ -82,7 +82,7 @@ a { color:var(--primary) }
 .g-stats { grid-template-columns:repeat(auto-fill,minmax(250px,1fr)) }
 .g-create { grid-template-columns:360px 1fr; align-items:start }
 .kpi { background:var(--ui-panel); border-radius:var(--r-lg); padding:18px 22px }
-.kpi .l { font-size:13px; font-weight:600; color:var(--ui-md) } .kpi .v { font-size:26px; font-weight:800; letter-spacing:-.5px; margin:6px 0 8px; font-variant-numeric:tabular-nums }
+.kpi .l { font-size:13px; font-weight:600; color:var(--ui-md) } .kpi .v { font-size:26px; font-weight:800; letter-spacing:-.04em; margin:6px 0 8px; font-variant-numeric:tabular-nums }
 .kpi .t { font-size:12px; color:var(--ui-lo) } .kpi .t b { color:var(--ok); font-weight:700 } .kpi .t b.down { color:var(--bad) }
 .kpi.compact .v { font-size:20px }
 .muted { color:var(--ui-lo); font-size:12px }
@@ -109,7 +109,8 @@ details.opt > div { padding:10px 2px 0; display:flex; flex-direction:column; gap
 .bar { display:grid; grid-template-columns:118px 1fr 72px; gap:8px; align-items:center; font-size:12px; margin:4px 0 }
 .bar .t { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .bar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit }
 .bar .t i.ok { background:var(--ok) } .bar .t i.bad { background:var(--bad) } .bar .n { text-align:right; color:var(--ui-lo); font-variant-numeric:tabular-nums; white-space:nowrap }
-table { border-collapse:collapse; width:100%; font-size:13px }
+table { border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums }
+td { letter-spacing:-.01em }
 th, td { text-align:left; padding:10px 10px; border-bottom:1px solid var(--ui-border); vertical-align:middle }
 th { color:var(--ui-lo); font-weight:600; font-size:12px; white-space:nowrap }
 tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.sel { background:var(--pri-alpha) }
@@ -133,7 +134,7 @@ tbody tr:last-child td { border-bottom:none }
 .item input[type=text] { height:32px; font-size:12px }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:12px; font-weight:500 }
-.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px } .prog .big { font-size:18px; font-weight:800; font-variant-numeric:tabular-nums }
+.prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px } .prog .big { font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
 .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px } .stack i { display:block; height:100%; transition:width .4s }
 .st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
 .legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ui-lo) } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
@@ -145,13 +146,13 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:12px; font-weigh
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:14px; font-weight:600; margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
 .kpi .t .up { color:var(--ok); font-weight:700 } .kpi .t .down { color:var(--bad); font-weight:700 } .kpi.hero .t .up, .kpi.hero .t .down { color:#fff }
 .report-row { display:flex; justify-content:space-between; align-items:baseline; padding:10px 0; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
-.report-row .k { font-size:13px; font-weight:600; color:var(--ui-md) } .report-row .v { font-size:20px; font-weight:800; color:var(--primary); font-variant-numeric:tabular-nums } .report-row .v small { font-size:12px; font-weight:600; color:var(--ui-lo); margin-left:3px }
+.report-row .k { font-size:13px; font-weight:600; color:var(--ui-md) } .report-row .v { font-size:20px; font-weight:800; color:var(--primary); font-variant-numeric:tabular-nums; letter-spacing:-.04em } .report-row .v small { font-size:12px; font-weight:600; color:var(--ui-lo); margin-left:3px }
 .report-row .v.ok { color:var(--ok) } .report-row .v.plain { font-size:14px; color:var(--ui-hi) }
-.hbar { display:grid; grid-template-columns:96px 1fr 60px; gap:10px; align-items:center; font-size:12px; margin:7px 0 } .hbar .t { height:14px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .hbar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit } .hbar .n { text-align:right; color:var(--ui-md); font-weight:600; white-space:nowrap }
+.hbar { display:grid; grid-template-columns:96px 1fr 60px; gap:10px; align-items:center; font-size:12px; margin:7px 0 } .hbar .t { height:14px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .hbar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit } .hbar .n { text-align:right; color:var(--ui-md); font-weight:600; white-space:nowrap; letter-spacing:-.02em; font-variant-numeric:tabular-nums }
 .hbar .t i.ok { background:var(--ok) }
 .pill { display:inline-flex; gap:4px } .pill button { border:1px solid var(--ui-border); background:#fff; font-size:11px; padding:3px 9px; border-radius:999px; color:var(--ui-md); cursor:pointer } .pill button.on { background:var(--primary); border-color:var(--primary); color:#fff }
 /* 차트 (SVG) */
-.chart { width:100%; height:220px; overflow:visible } .chart.tall { height:260px } .chart.short { height:150px }
+.chart { display:block; max-width:100%; overflow:visible } 
 .chart .bar { fill:var(--primary); opacity:.85 } .chart .bar:hover { opacity:1 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:var(--ok); stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:var(--ok); stroke-width:2 }
 .chart .st0{fill:var(--ok)} .chart .st1{fill:#D64545} .chart .st2{fill:#E98A2E} .chart .st3{fill:#8FA9C8} .chart .st4{fill:#B8A0D9} .chart .st5{fill:#C4C9D1} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:11px }
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
@@ -230,8 +231,15 @@ dialog h3 { font-size:12px; font-weight:600; color:var(--ui-lo); margin-bottom:6
             <div class="card"><div class="card-head"><h3>시술별 통과율</h3><span class="muted">누적</span></div><div id="chart-treat"></div></div>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr">
-            <div class="card"><div class="card-head"><h3>조건별 통과율</h3></div><div class="pill" id="axis-pick" style="flex-wrap:wrap;margin-bottom:10px"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div></div><div id="chart-axis"></div></div>
-            <div class="card"><div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div><div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>생성</th><th>통과</th><th>통과율</th><th>상태</th></tr></thead><tbody></tbody></table></div></div>
+            <div class="card">
+              <div class="card-head"><h3>조건별 통과율</h3></div>
+              <div class="pill" id="axis-pick" style="flex-wrap:wrap;margin-bottom:10px"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
+              <div id="chart-axis"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
+              <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>생성</th><th>통과</th><th>통과율</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+            </div>
           </div>
         </div>
         <div class="col">
@@ -428,7 +436,7 @@ function show(tab) {
   if (tab === 'settings') renderSettings();
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
-$('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
+$('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
 try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
 $$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); loadBatches(); });
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
@@ -459,9 +467,10 @@ async function loadHome() {
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
 }
 // ── SVG 헬퍼 ──
-const svgOpen = (W, H, cls='') => `<svg class="chart ${cls}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;
+const cw = (sel, fallback) => Math.max(200, Math.floor(document.querySelector(sel)?.clientWidth || fallback));
+const svgOpen = (W, H, cls='') => `<svg class="chart ${cls}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
 function chartCombo() {
-  const keys = OV.day_keys, d = OV.daily; const W = 760, H = 240, L = 34, R = 34, T = 16, B = 26; const n = keys.length;
+  const keys = OV.day_keys, d = OV.daily; const W = cw('#chart-combo', 760), H = 240, L = 36, R = 40, T = 16, B = 26; const n = keys.length;
   const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max), yr = r => T + (H - T - B) * (1 - r);
   const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
   const rgrid = [0, .5, 1].map(f => `<text class="axis" x="${W-R+6}" y="${yr(f)+4}">${f*100}%</text>`).join('');
@@ -474,7 +483,7 @@ function chartCombo() {
 }
 const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:fingers','손가락','st5'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
 function chartStack() {
-  const keys = OV.day_keys, d = OV.daily; const W = 360, H = 200, L = 30, R = 8, T = 10, B = 24; const n = keys.length;
+  const keys = OV.day_keys, d = OV.daily; const W = cw('#chart-stack', 360), H = 200, L = 32, R = 8, T = 10, B = 24; const n = keys.length;
   const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max);
   const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-5}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
   const used = new Set(['passed']);
@@ -494,7 +503,7 @@ function chartAxis() {
 $$('#axis-pick button').forEach(b => b.onclick = () => { $$('#axis-pick button').forEach(x => x.classList.toggle('on', x === b)); AXIS_A = b.dataset.a; chartAxis(); });
 $$('#home-range button').forEach(b => b.onclick = () => { $$('#home-range button').forEach(x => x.classList.toggle('on', x === b)); HOME_DAYS = +b.dataset.d; loadHome(); });
 function chartToday() {
-  const t = OV.today; const h = t.hourly, hp = t.hourly_pass; const W = 300, H = 120, L = 6, R = 6, T = 10, B = 18; const max = Math.max(3, ...h);
+  const t = OV.today; const h = t.hourly, hp = t.hourly_pass; const W = cw('#chart-today', 280), H = 120, L = 8, R = 8, T = 14, B = 18; const max = Math.max(3, ...h);
   const x = i => L + i * (W - L - R) / 23, y = v => T + (H - T - B) * (1 - v / max);
   const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const area = path(h) + ` L${x(23)},${y(0)} L${x(0)},${y(0)} Z`;
@@ -516,6 +525,7 @@ function renderHomeLib() {
   $('#home-lib').innerHTML = `<div class="report-row"><span class="k">선택된 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
 }
 setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
+let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); chartStack(); chartToday(); } }, 150); });
 
 // ---------- 생성 조건 ----------
 function selTreatments() { return $$('#q-treatments button.on').map(b => b.dataset.v); }
