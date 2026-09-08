@@ -140,6 +140,72 @@ else:
     print("SKIP  node 없음 — 훅 겹침 검사 건너뜀")
 
 
+# ⑰ 검수 → 드라이브 · 제외 사유 → 프롬프트 (2026-09-08 성연서님 지시)
+import json as _json, tempfile as _tf
+from pathlib import Path as _P
+from bna import lessons as _les
+from bna.planner import plan_batch as _pb
+
+# 금지문은 있을 때만 붙는다 — 빈 문장을 프롬프트에 넣지 않는다
+_v = sample_variation("selfie", seed=1)
+_a = build_prompts("nasolabial", "selfie", _v, seed=1)
+_b = build_prompts("nasolabial", "selfie", _v, seed=1,
+                   avoid={"before": ["keep real skin texture"], "after": ["same person only"]})
+ok("Avoid the mistakes" not in _a["before_prompt"], "배운 게 없으면 금지문을 안 붙인다")
+ok("keep real skin texture." in _b["before_prompt"], "before 금지문이 프롬프트에 들어간다")
+ok("same person only." in _b["after_prompt"], "after 금지문이 프롬프트에 들어간다")
+ok(_b["avoid_applied"], "어느 규칙이 붙어 나갔는지 meta 에 남는다(나중에 재려면 필요)")
+
+# 축 회피는 '덜 뽑기'지 '빼기'가 아니다 — 0 이 되면 다시 좋아졌는지 확인할 길이 없다
+from collections import Counter as _C
+_key = lambda p: p["angle"]["key"] if isinstance(p["angle"], dict) else p["angle"]
+_base = _pb("selfie", 400, seed=7)
+_top = _C(_key(p) for p in _base).most_common(1)[0][0]
+_n0 = sum(1 for p in _base if _key(p) == _top)
+_n1 = sum(1 for p in _pb("selfie", 400, seed=7, avoid_weights={"angle": {_top: 0.25}}) if _key(p) == _top)
+ok(0 < _n1 < _n0, f"제외가 몰린 조건은 덜 뽑되 0 이 되면 안 된다 — {_top} {_n0} → {_n1}")
+
+# 교훈 원장: 제외를 누르면 사유·조건·메모가 쌓이고, 그게 금지문·축회피로 나온다
+_d = _P(_tf.mkdtemp()) / "outputs"; _d.mkdir(parents=True)
+for _i in range(3):
+    _it = _d / "b1" / f"{_i:04d}"; _it.mkdir(parents=True)
+    _it.joinpath("meta.json").write_text(_json.dumps(
+        {"treatment": "nasolabial", "mode": "selfie", "variation": {"angle": {"key": "side"}}}), encoding="utf-8")
+    _les.record(_d, "b1", f"{_i:04d}", {"pick": "reject", "tags": ["손가락"], "note": "손이 6개"})
+_s = _les.summarize(_d); _act = _les.active(_d)
+ok(_s["tags"].get("손가락") == 3, f"제외 사유가 집계돼야 한다 — 실제 {_s['tags']}")
+ok(_act["from_tags"] == ["손가락"], "많이 찍힌 사유가 금지문으로 켜져야 한다")
+ok(_act["weights"].get("angle", {}).get("side") == 0.25, "제외가 몰린 조건값은 가중치가 내려가야 한다")
+ok(len(_s["notes"]) == 3 and not _act["lines"].get("custom"),
+   "자유 메모는 승격 대기로만 남고 자동으로 프롬프트에 들어가지 않는다")
+# 채택으로 바꿔도 과거 줄은 안 지운다(전후 비교의 근거라 append-only 여야 한다)
+_les.record(_d, "b1", "0000", {"pick": "pick", "tags": [], "note": ""})
+ok(len(_les.read(_d)) == 4 and _les.summarize(_d)["rejected"] == 2,
+   "원장은 append-only 이고 집계는 아이템별 마지막 판정만 센다")
+
+# 드라이브 레인: 채택만 올라가고, 제외는 지우는 게 아니라 내린다
+import subprocess as _sp
+_lanes = _sp.run(["node", "--input-type=module", "-e", """
+import {targetsFor, planLanes, LANE_PICKED, LANE_FULL} from './ops/drive-backup.mjs';
+const rv = {'b1/0000': {pick:'pick', treatment:'nasolabial', mode:'selfie'},
+            'b1/0001': {pick:'reject', treatment:'nasolabial', mode:'selfie'}};
+const picked = targetsFor('outputs/b1/0000/x_after.jpg', rv, {full:false});
+const rejected = targetsFor('outputs/b1/0001/x_after.jpg', rv, {full:false});
+const meta = targetsFor('outputs/b1/0000/meta.json', rv, {full:false});
+const man = {[LANE_PICKED+'/nasolabial_selfie/b1_0000_x_after.jpg']: {id:'gone', sig:'0:0', key:'b1/0000'}};
+const ev = planLanes(process.cwd(), man, {full:false, reviews:{'b1/0000':{pick:'reject'}}}).evict;
+console.log(JSON.stringify({picked:picked.length, rejected:rejected.length, meta:meta.length, evict:ev.length}));
+"""], cwd=str(_P(__file__).resolve().parent), capture_output=True, text=True, encoding="utf-8", errors="replace")
+if _lanes.returncode == 0:
+    _r = _json.loads(_lanes.stdout.strip().splitlines()[-1])
+    ok(_r["picked"] == 1, "채택한 사진은 드라이브 채택본으로 간다")
+    ok(_r["rejected"] == 0, "제외한 사진은 채택본에 안 올라간다")
+    ok(_r["meta"] == 0, "채택본은 사진만 — meta.json 같은 부속은 안 올린다")
+    ok(_r["evict"] == 1, "채택이 풀리면 채택본에서 내릴 목록에 잡힌다")
+else:
+    print("SKIP  node 레인 검사 —", (_lanes.stderr or "").strip().splitlines()[-1:] or "")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

@@ -17,7 +17,9 @@
   POST /api/queue/add              {jobs:[{treatment, mode, count, seed, fixed, target_pass, cost_cap, simulate}]} 또는 단일
   POST /api/queue/cancel|remove|move|pause|clear_finished
   POST /api/review                 {batch, item, pick, tags, note} → outputs/<batch>/<item>/review.json
-  GET  /api/library                선택(pick)된 항목 전체 (배치 무관), 시술·유형 요약
+  GET  /api/library                채택(pick)된 항목 전체 (배치 무관), 시술·유형 요약
+  GET  /api/lessons                제외 사유 집계 + 승격 대기 메모 + 지금 붙는 금지문 + 규칙 성적표
+  POST /api/lessons/promote        {note, en, where[]} → config/prompts/avoid.yaml 의 custom 에 규칙 추가
   GET  /api/overview?days=14       대시보드 집계 (일별 생성·통과·탈락 사유, 시술·조건별 통과율, 오늘 시간대별)
   POST /api/export                 {treatment?, mode?} → outputs/exports/<ts>/ 에 선택 항목 복사 + manifest.csv + zip
   GET  /exports/<name>.zip         내보낸 zip 다운로드
@@ -32,6 +34,7 @@ from .spec import ROOT, load, build_prompts, PERSON_AXES, SCENE_AXES, defaults_f
 from .planner import plan_batch, distribution
 from .stats import load_items, summarize
 from . import progress as prog
+from . import drivesync, lessons
 from .queue import Queue
 
 OUT = ROOT / "outputs"
@@ -152,9 +155,19 @@ def batch_detail(bid: str):
         iid = m["item_id"]; files = sorted(p.name for p in (d / iid).glob("*.jpg"))
         m["before_file"] = next((f for f in files if f.endswith("_before.jpg")), None)
         m["after_file"] = next((f for f in files if f.endswith("_after.jpg")), None)
-        m["review"] = rv.get(iid, {})
+        m["review"] = dict(rv.get(iid, {}))
+        if m["review"].get("pick") == "pick":          # 화면 배지가 짐작하지 않게 실제 드라이브 상태를 싣는다
+            m["review"]["drive"] = drivesync.state_of(d.name, iid)
         items.append(m)
     return {**batch_summary(d), "items": items}
+
+
+def lessons_payload():
+    """제외 사유 되먹임 한 화면 — 집계·지금 붙는 금지문·승격 대기 메모·규칙 성적표."""
+    s = lessons.summarize(OUT)
+    a = lessons.active(OUT)
+    return {**s, "active": a, "scorecard": lessons.scorecard(OUT),
+            "preview": {k: lessons.avoid_text(v) for k, v in (a.get("lines") or {}).items() if v}}
 
 
 def save_review(req):
@@ -163,6 +176,15 @@ def save_review(req):
         return {"error": "item not found"}, 404
     rv = {"pick": req.get("pick"), "tags": req.get("tags", []), "note": req.get("note", ""), "updated_at": time.time()}
     (d / "review.json").write_text(json.dumps(rv, ensure_ascii=False, indent=1), encoding="utf-8")
+    # 채택 → 드라이브에 올린다 / 제외·판정 지움 → 채택본에서 내린다 (2026-09-08 성연서님 지시).
+    # 훅은 백그라운드라 검수를 막지 않는다. 응답의 drive 는 '지금 이 순간' 상태이고,
+    # 방금 채택한 건은 아직 pending 이 맞다 — 화면이 "저장 대기"로 정직하게 낸다.
+    before = drivesync.state_of(req["batch"], req["item"])
+    drivesync.nudge(req["batch"], req["item"])
+    rv["drive"] = drivesync.state_of(req["batch"], req["item"])
+    if rv["pick"] != "pick" and before == "uploaded":
+        rv["drive"] = "removed"
+    lessons.record(OUT, req["batch"], req["item"], rv)      # 제외 사유를 교훈 원장에 쌓는다
     return rv, 200
 
 
@@ -438,6 +460,8 @@ class Handler(SimpleHTTPRequestHandler):
                 r = prog.read(OUT / p.split("/")[3]); return self._json(r or {"error": "no progress"}, 200 if r else 404)
             if p.startswith("/api/batches/"):
                 r = batch_detail(p.split("/")[3]); return self._json(r or {"error": "not found"}, 200 if r else 404)
+            if p == "/api/lessons":
+                return self._json(lessons_payload())
             if p == "/api/library":
                 return self._json(library_payload())
             if p.startswith("/api/overview"):
@@ -475,6 +499,10 @@ class Handler(SimpleHTTPRequestHandler):
                 r, code = start_run(req); return self._json(r, code)
             if p == "/api/export":
                 r, code = export_payload(req); return self._json(r, code)
+            if p == "/api/lessons/promote":
+                if not (req.get("en") or "").strip():
+                    return self._json({"error": "프롬프트에 넣을 영어 문장이 필요합니다"}, 400)
+                return self._json(lessons.promote(req.get("note", ""), req["en"], req.get("where")))
             if p == "/api/review":
                 r, code = save_review(req); return self._json(r, code)
             if p == "/api/demo_run":

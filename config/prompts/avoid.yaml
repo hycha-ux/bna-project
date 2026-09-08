@@ -1,0 +1,65 @@
+# 재발 방지 규칙 — 제외 사유가 다음 생성 프롬프트로 되먹여지는 자리.
+# (2026-09-08 성연서님 지시 "제외했을 때 사유를 입력하면 다시 재발하지 않는 프롬프트 구조")
+#
+# 읽는 법
+#   tags   : 화면의 제외 사유 버튼 10종 ↔ 프롬프트에 붙일 영어 금지문. 사람이 관리한다.
+#   axis   : 그 사유가 특정 조건(각도·배경 등) 탓이면 그 조건값의 추첨 확률을 낮춘다.
+#            문장보다 강하다 — 문장은 "하지 마"고 이건 "그 상황을 안 만든다"다.
+#   custom : 자유 메모에서 사람이 **승격**시킨 규칙. 자동으로는 절대 안 들어온다.
+#
+# ⚠ 금지문을 전부 다 붙이지 않는다(top_n). 안 겪은 실수까지 나열하면 프롬프트가 길어지고,
+#   이미지 모델은 부정문의 단어 자체에 끌리는 성질이 있어 오히려 그 실수를 부른다.
+#   최근 창에서 실제로 제외 사유로 찍힌 것만, 많이 찍힌 순으로 붙인다.
+#
+# ⚠ 자유 메모를 그대로 프롬프트에 붙이지 않는다. 한글 메모는 오타·모순·환자 정보가 섞이고,
+#   프롬프트 인젝션 통로가 된다. 사람이 영어 한 문장으로 다듬어 custom 으로 올려야 산다.
+#
+# ⚠ 이 파일을 고치면 prompt_version 이 바뀐다(version.py 가 config/ 전체를 해싱).
+#   그래서 "규칙 넣기 전/후" 제외율을 자동으로 갈라 잴 수 있다 — since 를 꼭 적어라.
+
+settings:
+  top_n: 3              # 한 번에 붙일 금지문 최대 개수
+  window_days: 14       # 최근 며칠의 제외를 볼지
+  min_count: 2          # 그 사유가 최소 몇 번 나와야 규칙을 켤지 (1번은 우연일 수 있다)
+  axis_min_count: 3     # 축 회피는 더 보수적으로 — 표본이 적으면 조건을 잘못 죽인다
+  axis_weight: 0.25     # 몰린 축값의 추첨 가중치(1.0 이 기본, 0 이면 완전 배제)
+
+# 제외 사유 버튼 ↔ 금지문. before/after 어디에 붙일지도 여기서 정한다.
+tags:
+  손가락:
+    en: "hands and fingers must be anatomically correct with exactly five fingers, or keep hands out of frame entirely"
+    where: [before, after]
+  피부 질감:
+    en: "keep real skin micro-texture: visible pores, faint peach fuzz, uneven tone; no airbrushed or plastic skin"
+    where: [before, after]
+  머리카락:
+    en: "render individual hair strands with a natural hairline; no melted, clumped or painted-on hair"
+    where: [before, after]
+  동일 인물 아님:
+    en: "the person must remain unmistakably the same individual as the reference: same bone structure, eye shape, nose width, lip shape and moles"
+    where: [after]
+  AI 티:
+    en: "must look like an ordinary phone snapshot, not a rendered or illustrated image; no glossy CGI sheen, no perfect symmetry"
+    where: [before, after]
+  효과 과함:
+    en: "the treatment change must stay subtle and clinically plausible; do not exaggerate the result"
+    where: [after]
+  효과 없음:
+    en: "the treatment change must be clearly visible when the two photos are compared side by side"
+    where: [after]
+  장면 부자연:
+    en: "the setting, clothing and props must be consistent and physically plausible; no floating or duplicated objects"
+    where: [before, after]
+  각도:
+    en: "head angle and camera height must match the stated framing; do not drift to a different pose"
+    where: [before, after]
+  시술 위치:
+    en: "the change must appear only at the treated area and nowhere else on the face"
+    where: [after]
+
+# 사람이 승격시킨 규칙. 화면의 「규칙으로 승격」이 여기에 줄을 더한다.
+#   - en: "..."          프롬프트에 붙을 영어 한 문장
+#     where: [after]     붙일 자리
+#     from: "원래 한글 메모"
+#     since: "2026-09-08" 도입일 — 전후 제외율 비교의 기준점이다. 빼지 마라.
+custom: []

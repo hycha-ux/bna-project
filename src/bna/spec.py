@@ -39,8 +39,12 @@ def selfie_scene(f: dict) -> str:
             f'{f["lighting"]}. {f["color"]}. {f["quality"]}.')
 
 
-def sample_variation(mode: str, seed=None) -> dict:
+def sample_variation(mode: str, seed=None, weights=None) -> dict:
+    """weights: {축: {값: 가중치}} — 제외가 몰린 조건값을 덜 뽑는다(lessons.active 의 weights).
+    0 으로 죽이지 않고 낮추기만 하는 이유: 그 조건 자체가 나쁜 게 아니라 지금 모델이 약한 것이고,
+    완전히 빼면 다시 좋아졌는지 영영 확인할 수 없다."""
     rng = random.Random(seed)
+    weights = weights or {}
     v = load("variations.yaml")
     rules = v.get("mode_rules", {}).get(mode, {})
     picked = {}
@@ -54,7 +58,12 @@ def sample_variation(mode: str, seed=None) -> dict:
         if "gender" in picked:
             banned = excl.get(picked["gender"]["key"], {}).get(axis, [])
             allowed = [k for k in allowed if k not in banned] or allowed
-        key = rng.choice(allowed)
+        w = weights.get(axis) or {}
+        if w and len(allowed) > 1:
+            ws = [max(0.01, float(w.get(k, 1.0))) for k in allowed]
+            key = rng.choices(allowed, weights=ws, k=1)[0]
+        else:
+            key = rng.choice(allowed)
         picked[axis] = {"key": key, "text": options[key]}
     return picked
 
@@ -89,7 +98,13 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w") -> dict:
     return after
 
 
-def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict:
+def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None) -> dict:
+    """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
+    None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게)."""
+    from . import lessons
+    av = avoid or {}
+    avoid_before = lessons.avoid_text(av.get("before") or [])
+    avoid_after = lessons.avoid_text(av.get("after") or [])
     t = load("treatments.yaml")[treatment]
     if mode not in t["modes"]:
         raise ValueError(f"{treatment} does not support mode {mode}")
@@ -114,7 +129,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict
     cond = t.get("before_condition", {})
     cond = cond.get(sev, "") if isinstance(cond, dict) else cond
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
-        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, **fields)
+        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, avoid=avoid_before, **fields)
     identity = (CFG / "prompts/identity_lock.md").read_text(encoding="utf-8").strip()
     eff = load("effects.yaml")
     level = rng.choice(t.get("effect_levels", ["moderate"]))
@@ -127,7 +142,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict
                  "timeline": {"key": when, "text": eff["timeline"][when]}}
     if mode == "clinical":
         after_var = variation
-        after = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=change)
+        after = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=change, avoid=avoid_after)
     else:
         after_var = drift_after(variation, mode, rng, timeline=when)
         a = {k: val["text"] for k, val in after_var.items()}
@@ -136,9 +151,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None) -> dict
         mx = load("prompts/mode_extra.yaml"); which = "same" if when == "immediate" else "different"
         after = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
             identity_lock=identity, after_scene=after_scene, after_hair=after_hair, after_change=change,
-            after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip())
+            after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
     changed = [k for k in after_var if after_var[k]["key"] != variation[k]["key"]]
-    return {"treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
+    return {"avoid_applied": {k: v for k, v in (avoid or {}).items() if v},
+            "treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
             "variation": variation, "after_variation": after_var,
             "after_changed_axes": changed, "generation": "edit" if mode == "clinical" else "identity_reference",
             "before_prompt": " ".join(before.split()), "after_prompt": " ".join(after.split())}

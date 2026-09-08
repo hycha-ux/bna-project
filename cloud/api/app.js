@@ -518,7 +518,10 @@ export default async function handler(req, res) {
       error: '아직 사무실 PC에서 데이터가 올라오지 않았습니다 (push-cloud 미실행).',
     });
 
-  if (p === '/api/config') return json(res, 200, snap.config);
+  // readonly 를 화면에 알려 준다 — 이걸 안 주면 버튼이 멀쩡해 보이고, 눌러도 405 라
+  // 아무 일도 안 일어난다(2026-09-08 "클릭했을 때 반영이 안 된다"의 뿌리).
+  if (p === '/api/config')
+    return json(res, 200, { ...snap.config, readonly: true, readonly_msg: WRITE_MSG });
   if (p === '/api/batches') return json(res, 200, snap.batches);
   if (p === '/api/queue') return json(res, 200, snap.queue);
   if (p === '/api/library') return json(res, 200, snap.library);
