@@ -187,6 +187,12 @@ mode_rules:
     context: [none]
   selfie:
     background: [home, cafe, outdoor, car, bathroom]
+    # ⚠ context 화이트리스트가 없으면 전량 허용이라 "시술 직후 After 전용" 맥락 4종
+    #   (outing_top·clinic_headband·hair_flat_after·cotton_pad)이 **Before** 에 붙는다.
+    #   2026-09-08 실측: 400 표본 중 35.8% — cotton_pad 는 시술 전 사진에 시술 흔적이다.
+    #   After 는 after_immediate 가 따로 강제하므로 여기서 빼도 직후 컷은 그대로다.
+    #   회귀: selftest.py ⑥. (배경×맥락·프레이밍×맥락 표는 별건 — 리뷰 문서 §2-4)
+    context: [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face, finger_on_cheek]
     angle: [selfie_3q, selfie_side, chin_up, tilted, selfie_high, selfie_low, front]
     lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed]   # 링라이트 제외 (스튜디오 느낌)
     color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외

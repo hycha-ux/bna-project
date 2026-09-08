@@ -11,6 +11,15 @@ def load(name):
     return yaml.safe_load((CFG / name).read_text(encoding="utf-8"))
 
 
+def defaults_for(mode: str) -> dict:
+    """모드별 기본 프로바이더. 정본은 config/providers.yaml 의 default_provider 한 곳이다.
+    2026-09-08 성연서님 확정: 셀카 = GPT(openai). 코드에 다시 리터럴로 박지 마라."""
+    d = load("providers.yaml")["default_provider"]
+    if mode not in d:
+        raise ValueError(f"providers.yaml default_provider 에 {mode} 가 없다")
+    return d[mode]
+
+
 PERSON_AXES = ["country", "age", "gender", "face_shape", "skin_tone", "skin_condition", "body_type",
                "hair_style", "hair_color", "eyes", "extras"]
 SCENE_AXES = ["background", "angle", "framing", "context", "lighting", "color", "quality"]

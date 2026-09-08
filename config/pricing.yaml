@@ -1,4 +1,8 @@
-# 프로바이더 단가 (USD, 호출당). 키 수령 후 실제 요금표로 갱신.
+# 프로바이더 단가 (USD, 호출당).
+# ⚠ openai(gpt-image-2) 단가는 **미확정 추정치**다 — 공식 요금표를 아직 못 봤고,
+#   input_fidelity=high 는 이미지 토큰이 크게 붙는다(정사각 +4,160 / 세로·가로 +6,240).
+#   따라서 `--estimate` 값은 참고치이고 "예산"으로 쓰면 안 된다.
+#   첫 실집행 회차의 응답 usage 로 실측해 이 값을 바꾸고, 바꾼 날짜를 여기 적어라.
 gemini:     {generate: 0.04, edit: 0.04, qa: 0.005}
-openai:     {generate: 0.08, edit: 0.08, qa: 0.01}
+openai:     {generate: 0.19, edit: 0.19, qa: 0.01}     # 추정, 미실측 (2026-09-08)
 higgsfield: {generate: 0.05, edit: 0.05, qa: 0.0}

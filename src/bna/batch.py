@@ -3,7 +3,7 @@ asyncio 워커 풀, 이어하기(state.json), 프롬프트 버전 기록."""
 import asyncio, io, json, time, uuid
 from pathlib import Path
 from PIL import Image
-from .spec import ROOT, load, build_prompts
+from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch
 from . import postprocess, refs, providers
 from .qa import structure, identity, dedup, vision, landmarks
@@ -14,7 +14,10 @@ MAX_ATTEMPTS = 3
 
 
 class Batch:
-    def __init__(self, treatment, mode, count, seed=None, fixed=None, gen="gemini", edit="gemini", qa="gemini", ab_prompt=None):
+    def __init__(self, treatment, mode, count, seed=None, fixed=None, gen=None, edit=None, qa=None, ab_prompt=None):
+        # 프로바이더 기본값은 모드가 정한다 (config/providers.yaml). 여기에 벤더 이름을 박지 마라.
+        d = defaults_for(mode)
+        gen, edit, qa = gen or d["gen"], edit or d["edit"], qa or d["qa"]
         self.treatment, self.mode, self.count, self.seed = treatment, mode, count, seed
         self.fixed = fixed or {}
         self.batch_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
