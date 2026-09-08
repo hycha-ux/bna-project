@@ -9,6 +9,7 @@ from . import postprocess, refs, providers
 from .qa import structure, identity, dedup, vision, landmarks
 from .stats import summarize, write_manifest
 from .version import prompt_version
+from .progress import Progress
 
 MAX_ATTEMPTS = 3
 
@@ -26,6 +27,7 @@ class Batch:
         self.registry = dedup.Registry()
         self.ab_prompt = ab_prompt   # A6: 실험용 대체 프롬프트 파일 접미사 (예: "v2")
         self.state_path = self.dir / "state.json"
+        self.progress = None   # run() 에서 생성
 
     # ---------- 단일 아이템 ----------
     async def run_item(self, idx: int, variation: dict) -> dict:
@@ -38,6 +40,7 @@ class Batch:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             meta["attempt"] = attempt; meta["fail_reasons"] = []
             loop = asyncio.get_event_loop()
+            self._p(item_id, "before", attempt=attempt)
             # ① Before
             before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
                                                   spec["aspect"], None, style_refs, None)
@@ -45,6 +48,7 @@ class Batch:
             before = Image.open(io.BytesIO(before_b))
 
             # ② After
+            self._p(item_id, "after")
             after_prompt = self.p_edit.adapt_prompt(spec["after_prompt"], "after")
             if spec["generation"] == "edit":
                 pts = landmarks.detect(before)
@@ -61,6 +65,7 @@ class Batch:
                 meta["cost"] += self.pricing[self.p_edit.name]["generate"]
 
             # ③ 후처리 (세트 동일 seed)
+            self._p(item_id, "postprocess")
             pp_seed = hash((self.batch_id, item_id, attempt)) & 0xFFFF
             q_before = variation["quality"]["key"]; q_after = spec["after_variation"]["quality"]["key"]
             before_out = postprocess.apply(before, q_before, self.mode, pp_seed)
@@ -68,6 +73,7 @@ class Batch:
             before_pp, after_pp = Image.open(io.BytesIO(before_out)), Image.open(io.BytesIO(after_out))
 
             # ④ 검수 3단
+            self._p(item_id, "qa")
             st = structure.check(before_pp, after_pp, self.mode, t["mask_region"]); meta["structure"] = st
             if not st.get("passed"):
                 meta["fail_reasons"].append("structure")
@@ -86,8 +92,13 @@ class Batch:
             meta["passed"] = not meta["fail_reasons"]
             self._save(item_id, meta, before_out, after_out)
             if meta["passed"]:
-                break
+                self._p(item_id, "passed", passed=True, fail_reasons=[]); break
+            self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]))
         return meta
+
+    def _p(self, item_id, stage, **kw):
+        if self.progress:
+            self.progress.set(item_id, stage, **kw)
 
     def _save(self, item_id, meta, before_b, after_b):
         v = meta["variation"]; d = self.dir / item_id; d.mkdir(exist_ok=True)
@@ -100,6 +111,9 @@ class Batch:
         plans = plan_batch(self.mode, self.count, self.seed, self.fixed)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
+        self.progress = Progress(self.dir, len(plans))
+        for i in done:
+            self.progress.set(i, "passed", passed=True)   # 이어하기: 이미 끝난 항목
         results = []
 
         async def guarded(i, v):
@@ -110,9 +124,13 @@ class Batch:
             done.add(m["item_id"]); self.state_path.write_text(json.dumps({"done": sorted(done)}))
             return m
 
-        results = [r for r in await asyncio.gather(*(guarded(i, v) for i, v in enumerate(plans))) if r]
+        try:
+            results = [r for r in await asyncio.gather(*(guarded(i, v) for i, v in enumerate(plans))) if r]
+        except Exception as e:
+            self.progress.finish(error=repr(e)); raise
         write_manifest(self.dir, results)
         s = summarize(results); (self.dir / "stats.json").write_text(json.dumps(s, ensure_ascii=False, indent=1))
+        self.progress.finish()
         return s
 
     def estimate(self, expected_pass_rate=0.5) -> dict:

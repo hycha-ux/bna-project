@@ -11,6 +11,8 @@
   POST /api/dryrun_save            프롬프트만 든 배치를 outputs/ 에 저장 (이미지 없음)
   GET  /api/batches                outputs/ 아래 배치 목록 + stats
   GET  /api/batches/<id>           배치 아이템 전체 (meta + review)
+  GET  /api/batches/<id>/progress  진행 상황 (progress.json 요약)
+  POST /api/demo_run               가짜 실행 시뮬레이션 (키 없이 진행 화면 검증용, 항목당 수 초)
   POST /api/review                 {batch, item, pick, tags, note} → outputs/<batch>/<item>/review.json
   GET  /files/<batch>/<item>/<f>   이미지
 """
@@ -22,6 +24,7 @@ from urllib.parse import urlparse
 from .spec import ROOT, load, build_prompts, PERSON_AXES, SCENE_AXES
 from .planner import plan_batch, distribution
 from .stats import load_items, summarize
+from . import progress as prog
 
 OUT = ROOT / "outputs"
 WEB = ROOT / "web"
@@ -115,8 +118,11 @@ def batch_summary(d: Path):
             tags[tg] = tags.get(tg, 0) + 1
     st["review_tags"] = tags
     info["kind"] = info.get("kind") or ("dry_run" if items and items[0].get("dry_run") else "run")
-    info["status"] = RUNNING.get(d.name, {}).get("status", "done")
-    info["error"] = RUNNING.get(d.name, {}).get("error")
+    pg = prog.read(d)
+    if pg:
+        info["progress"] = pg["summary"]
+    info["status"] = RUNNING.get(d.name, {}).get("status") or ("running" if pg and pg["summary"]["running"] else "done")
+    info["error"] = RUNNING.get(d.name, {}).get("error") or (pg or {}).get("error")
     info["mtime"] = d.stat().st_mtime
     return {**info, "stats": st}
 
@@ -182,6 +188,51 @@ def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
     return bid
 
 
+def demo_run(treatment="nasolabial", mode="selfie", count=12, seed=None, item_seconds=2.0, concurrency=3):
+    """실제 호출 없이 progress.json 을 시간에 따라 갱신하고, 끝난 항목은 make_demo 와 같은 자리표시 결과를 쓴다."""
+    from PIL import Image, ImageDraw
+    seed = seed if seed is not None else random.randint(0, 9999); rng = random.Random(seed)
+    bid = time.strftime("%Y%m%d-%H%M%S") + "-sim"; d = OUT / bid; d.mkdir(parents=True, exist_ok=True)
+    plans = plan_batch(mode, count, seed); checklist = list(load("qa_checklist.yaml")["items"])
+    (d / "batch.json").write_text(json.dumps({"batch_id": bid, "treatment": treatment, "mode": mode, "count": count, "kind": "sim", "seed": seed,
+                                              "created_at": time.time()}, ensure_ascii=False))
+    pgs = prog.Progress(d, count); RUNNING[bid] = {"status": "running", "started": time.time(), "error": None}
+
+    def one(i, v):
+        spec = build_prompts(treatment, mode, v, seed * 1000 + i); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
+        meta = None
+        for attempt in range(1, 4):
+            for stage in ("before", "after", "postprocess", "qa"):
+                pgs.set(iid, stage, attempt=attempt); time.sleep(item_seconds / 4 * rng.uniform(0.6, 1.4))
+            passed = rng.random() < 0.6
+            fails = [] if passed else rng.sample(["structure", "identity", "vision:hair", "vision:ai_look", "vision:fingers"], rng.randint(1, 2))
+            stem = f'{treatment}_{mode}_{v["country"]["key"]}{v["age"]["key"]}{v["gender"]["key"][0]}_{iid}'; hue = rng.randint(0, 360)
+            for kind in ("before", "after"):
+                img = Image.new("RGB", (400, 500), f"hsl({hue},{35 if kind == 'before' else 50}%,{70 if kind == 'before' else 78}%)")
+                dr = ImageDraw.Draw(img); dr.ellipse((100, 90, 300, 330), fill=f"hsl({hue},30%,88%)"); dr.text((20, 460), f"SIM {kind.upper()} #{iid}", fill="black")
+                img.save(d / iid / f"{stem}_{kind}.jpg", quality=80)
+            meta = {**spec, "item_id": iid, "batch_id": bid, "prompt_version": "sim", "attempt": attempt, "passed": passed, "fail_reasons": fails,
+                    "cost": round(0.085 * attempt, 3), "demo": True, "structure": {"passed": "structure" not in fails}, "identity": {"hard_fail": "identity" in fails},
+                    "vision": {"scores": {k: rng.randint(6, 10) for k in checklist}, "failed_items": [f.split(":")[1] for f in fails if f.startswith("vision:")]}}
+            (d / iid / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
+            if passed:
+                pgs.set(iid, "passed", passed=True, fail_reasons=[]); break
+            pgs.set(iid, "retry" if attempt < 3 else "failed", passed=False, fail_reasons=fails)
+        return meta
+
+    def worker():
+        from concurrent.futures import ThreadPoolExecutor
+        try:
+            with ThreadPoolExecutor(concurrency) as ex:
+                items = list(ex.map(lambda iv: one(*iv), enumerate(plans)))
+            (d / "stats.json").write_text(json.dumps(summarize(items), ensure_ascii=False, indent=1), encoding="utf-8")
+            pgs.finish(); RUNNING[bid]["status"] = "done"
+        except Exception as e:                      # noqa
+            pgs.finish(error=repr(e)); RUNNING[bid].update(status="error", error=repr(e))
+    threading.Thread(target=worker, daemon=True).start()
+    return bid
+
+
 # ---------- HTTP ----------
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
@@ -209,6 +260,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(config_payload())
             if p == "/api/batches":
                 return self._json(batches_payload())
+            if p.startswith("/api/batches/") and p.endswith("/progress"):
+                r = prog.read(OUT / p.split("/")[3]); return self._json(r or {"error": "no progress"}, 200 if r else 404)
             if p.startswith("/api/batches/"):
                 r = batch_detail(p.split("/")[3]); return self._json(r or {"error": "not found"}, 200 if r else 404)
             if p.startswith("/files/"):
@@ -237,6 +290,8 @@ class Handler(SimpleHTTPRequestHandler):
                 r, code = start_run(req); return self._json(r, code)
             if p == "/api/review":
                 r, code = save_review(req); return self._json(r, code)
+            if p == "/api/demo_run":
+                return self._json({"batch_id": demo_run(req.get("treatment", "nasolabial"), req.get("mode", "selfie"), int(req.get("count", 12)))})
             if p == "/api/demo":
                 return self._json({"batch_id": make_demo(req.get("treatment", "nasolabial"), req.get("mode", "selfie"), int(req.get("count", 12)))})
             return self._json({"error": "unknown"}, 404)

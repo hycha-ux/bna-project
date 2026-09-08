@@ -84,7 +84,8 @@ src/bna/
   refs.py         ✅  참조 이미지 선택 (라이브러리 채우면 동작)
   version.py      ✅  프롬프트 버전 (git + config 해시)
   stats.py        ✅  통과율 통계, manifest
-  batch.py        ✅  워커 풀·재시도·이어하기·비용 추정 (프로바이더 구현되면 동작)
+  batch.py        ✅  워커 풀·재시도·이어하기·비용 추정 (프로바이더 구현되면 동작) + 단계별 progress 기록
+  progress.py     ✅  progress.json 기록·요약 (대시보드 실시간 패널용)
   qa/landmarks.py ⏳  MediaPipe 랜드마크, 부위 폴리곤(초안), 마스크, 합성 — 폴리곤 시각 확인 필요
   qa/structure.py ⏳  정렬·비율·밝기·프레임 검사 — 임계값 캘리브레이션 필요
   qa/identity.py  ⏳  ArcFace 게이트 — 임계값 캘리브레이션 필요

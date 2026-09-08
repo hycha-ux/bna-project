@@ -67,6 +67,20 @@
   .toast.show { opacity:1 }
   .fixgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:8px }
   details summary { cursor:pointer; color:var(--mute); font-size:12px }
+  .prog { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px }
+  .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px }
+  .prog .big { font-size:18px; font-weight:700 }
+  .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--chip); margin:10px 0 6px }
+  .stack i { display:block; height:100%; transition:width .4s }
+  .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--acc)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
+  .legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--mute) }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
+  .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px }
+  .cells b { width:18px; height:18px; border-radius:3px; background:var(--chip); display:block; font-size:9px; color:#fff; text-align:center; line-height:18px; font-weight:600 }
+  .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite }
+  @keyframes pulse { 50% { opacity:.45 } }
+  .mini { display:inline-block; width:90px; height:8px; background:var(--chip); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px }
+  .mini i { display:block; height:100%; background:var(--acc) }
 </style>
 </head>
 <body>
@@ -103,6 +117,7 @@
       <button class="b" id="btn-dry">프롬프트 배치 저장 (이미지 없음)</button>
       <button class="b" id="btn-run">실제 실행 (키 필요)</button>
       <button class="b" id="btn-demo" title="PIL 자리표시 이미지 + 무작위 검수 결과. 화면 확인용">데모 배치 생성</button>
+      <button class="b" id="btn-sim" title="실제 호출 없이 항목당 수 초씩 진행 상황만 흘려보냄. 진행 화면 확인용">시뮬레이션 실행</button>
       <span class="muted" id="req-msg"></span>
     </div>
   </div>
@@ -141,6 +156,7 @@
     <label>&nbsp;<select id="gal-axis-val"><option value="">전체</option></select></label>
     <span class="muted" id="gal-count"></span>
   </div>
+  <div class="prog" id="prog" hidden></div>
   <div class="kpis" id="kpis"></div>
   <div class="grid2" id="gal-stats" style="margin-bottom:14px"></div>
   <div class="gal" id="gal"></div>
@@ -157,6 +173,9 @@ const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST',
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
 const pct = x => (x*100).toFixed(0) + '%';
+const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
+const STAGE_KO = {queued:'대기', before:'Before 생성', after:'After 생성', postprocess:'후처리', qa:'검수', retry:'재시도 대기', passed:'통과', failed:'불합격'};
+let POLL = null;
 const AXIS_KO = {country:'나라', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부상태', body_type:'체형', hair_style:'헤어', hair_color:'모발색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'맥락', lighting:'조명', color:'색감', quality:'화질', before_severity:'Before 강도', effect_level:'효과 강도', timeline:'경과'};
 const TAGS = ['손·손가락','피부 질감','머리카락','동일성','AI티','효과 과함','효과 없음','장면 어색','각도 이상','팔자 위치'];
 let CFG, BATCHES = [], CUR = null;
@@ -232,14 +251,19 @@ $('#btn-demo').onclick = async () => {
   catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
 };
 
+$('#btn-sim').onclick = async () => {
+  try { const q = req(); const r = await api('/api/demo_run', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 60)}); toast(`시뮬레이션 시작: ${r.batch_id}`); CUR = null; show('gallery'); await openBatch(r.batch_id); }
+  catch (e) { $('#req-msg').textContent = '오류: ' + e.message; }
+};
+
 // ---------- 배치 목록 ----------
 async function loadBatches() {
   BATCHES = await api('/api/batches');
   const tb = $('#batches tbody'); $('#batches-empty').hidden = BATCHES.length > 0;
-  tb.innerHTML = BATCHES.map(b => { const s = b.stats || {}; const kind = {demo:'데모', dry_run:'프롬프트만', run:'실행'}[b.kind] || b.kind;
+  tb.innerHTML = BATCHES.map(b => { const s = b.stats || {}; const kind = {demo:'데모', dry_run:'프롬프트만', run:'실행', sim:'시뮬레이션'}[b.kind] || b.kind;
     return `<tr class="click" data-id="${b.batch_id}"><td>${b.batch_id}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${s.passed ?? ''}</td><td>${b.kind==='dry_run' ? '—' : pct(s.pass_rate||0)}</td><td>${b.kind==='dry_run' ? '—' : (s.attempts_per_pass ?? '')}</td><td>${b.kind==='dry_run' ? '—' : (s.cost_per_pass ?? '')}</td>
-      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 반려 ${s.rejected||0})</span></td><td>${b.status==='running'?'<span class="chip warn">진행 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">오류</span>`:'<span class="chip ok">완료</span>'}</td></tr>`; }).join('');
+      <td>${s.reviewed||0} <span class="muted">(선택 ${s.picked||0} · 반려 ${s.rejected||0})</span></td><td>${b.status==='running'&&b.progress?`<span class="mini"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.eta_s!=null?' · 약 '+fmtS(b.progress.eta_s)+' 남음':''}`:b.status==='running'?'<span class="chip warn">진행 중</span>':b.status==='error'?`<span class="chip bad" title="${esc(b.error)}">오류</span>`:'<span class="chip ok">완료</span>'}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('gallery'); openBatch(tr.dataset.id); });
   const sel = $('#gal-batch'); const cur = sel.value;
   sel.innerHTML = BATCHES.map(b => `<option value="${b.batch_id}">${b.batch_id} · ${CFG.treatments[b.treatment]?.name_ko || b.treatment||''} · ${b.mode||''}</option>`).join('');
@@ -247,6 +271,7 @@ async function loadBatches() {
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches;
+setInterval(() => { if (!$('#tab-batches').hidden && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 갤러리 ----------
 async function openBatch(id) {
@@ -254,7 +279,37 @@ async function openBatch(id) {
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">없음</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">전체</option>';
-  renderStats(); renderGallery();
+  renderStats(); renderGallery(); startPoll();
+}
+async function startPoll() {
+  clearInterval(POLL); POLL = null; $('#prog').hidden = true;
+  if (!CUR || !CUR.progress) return;
+  const tick = async () => {
+    let pg; try { pg = await api(`/api/batches/${CUR.batch_id}/progress`); } catch { return; }
+    renderProgress(pg);
+    const seen = CUR.items.length, doneNow = pg.summary.done;
+    if (doneNow !== seen || !pg.summary.running) {           // 새로 끝난 항목이 있으면 갤러리 갱신
+      const fresh = await api('/api/batches/' + CUR.batch_id); const keep = $('#gal-batch').value;
+      if (keep !== fresh.batch_id) return;
+      const rv = Object.fromEntries(CUR.items.map(i => [i.item_id, i.review])); fresh.items.forEach(i => { if (rv[i.item_id]) i.review = rv[i.item_id]; });
+      CUR = fresh; renderStats(); renderGallery();
+    }
+    if (!pg.summary.running) { clearInterval(POLL); POLL = null; loadBatches(); }
+  };
+  await tick(); if (CUR.progress && CUR.progress.running) POLL = setInterval(tick, 2000);
+}
+function renderProgress(pg) {
+  const s = pg.summary, c = s.counts, el = $('#prog'); el.hidden = false;
+  const order = ['passed','failed','before','after','postprocess','qa','retry','queued'];
+  const seg = order.map(k => `<i class="st-${k}" style="width:${(c[k]/s.planned*100).toFixed(1)}%" title="${STAGE_KO[k]} ${c[k]}"></i>`).join('');
+  const ids = Object.keys(pg.items).sort();
+  const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="#${id} ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.join(','):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
+  const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>`;
+  el.innerHTML = `<div class="top"><div><span class="big">${s.done} / ${s.planned}</span> <span class="muted">항목 완료</span> ${state}</div>
+      <div class="muted">동시 처리 ${s.active} · 재시도 ${s.retries}회 · 지금까지 통과율 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 경과 ${fmtS(s.elapsed_s)}${s.running?` · 남은 시간 약 ${fmtS(s.eta_s)}`:''}</div></div>
+    <div class="stack">${seg}</div>
+    <div class="legend">${order.filter(k=>k!=='queued').map(k=>`<span><i class="st-${k}" style="background:${k==='queued'?'var(--chip)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}<span><i style="background:var(--chip)"></i>대기 ${c.queued}</span></div>
+    <div class="cells">${cells}</div>`;
 }
 $('#gal-batch').onchange = e => openBatch(e.target.value);
 $('#gal-filter').onchange = renderGallery;
