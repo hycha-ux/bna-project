@@ -9,6 +9,6 @@
   },
   "scripts": {
     "build": "node vercel-build.mjs",
-    "test": "node auth-tests.mjs"
+    "test": "node auth-tests.mjs && node review-tests.mjs && node genreq-tests.mjs"
   }
 }

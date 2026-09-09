@@ -19,6 +19,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { get } from '@vercel/blob';
 import * as REV from '../lib/reviews.mjs';
+import * as GEN from '../lib/genreq.mjs';
 import {
   COOKIE,
   ROLE_LABEL,
@@ -514,6 +515,33 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── 생성 요청 (2026-09-09): 이 화면은 요청만 적고, 생성 PC(티모)가 가져가 돌린다 ──────
+  if (p === '/api/gen_requests' && req.method === 'POST') {
+    if (!TOKEN) return json(res, 503, { error: '저장소가 아직 연결되지 않았습니다(BLOB_READ_WRITE_TOKEN).' });
+    let body = null;
+    try { body = await readBody(req); } catch { body = null; }
+    const jobs = Array.isArray(body?.jobs) ? body.jobs : body ? [body] : [];
+    if (!jobs.length) return json(res, 400, { error: '요청 내용이 없습니다' });
+    const snapCfg = (await snapshot()).config || {};
+    const made = [], errors = [];
+    for (const j of jobs) {
+      try {
+        const r = await GEN.create(TOKEN, j, user, snapCfg.treatments);
+        if (r.error) errors.push(r.error); else made.push(r.ok);
+      } catch (e) { errors.push('저장 실패 — ' + (e?.message || e)); }
+    }
+    if (!made.length) return json(res, 400, { error: errors[0] || '요청을 저장하지 못했습니다' });
+    return json(res, 200, { added: made, errors });
+  }
+  if (p === '/api/gen_requests/cancel' && req.method === 'POST') {
+    if (!TOKEN) return json(res, 503, { error: '저장소가 아직 연결되지 않았습니다(BLOB_READ_WRITE_TOKEN).' });
+    let body = null;
+    try { body = await readBody(req); } catch { body = null; }
+    if (!body?.id) return json(res, 400, { error: '어느 요청인지 알 수 없습니다(id)' });
+    try { const r = await GEN.cancel(TOKEN, String(body.id)); return json(res, r.error ? 409 : 200, r.error ? r : r.ok); }
+    catch (e) { return json(res, 500, { error: '취소하지 못했습니다 — ' + (e?.message || e) }); }
+  }
+
   // ── 남은 쓰기 계열 — 돈 쓰는 버튼을 이 화면에 두지 않는다 ─────────────────
   if (req.method !== 'GET') return json(res, 405, { error: WRITE_MSG });
 
@@ -551,8 +579,13 @@ export default async function handler(req, res) {
   // 아무 일도 안 일어난다(2026-09-08 "클릭했을 때 반영이 안 된다"의 뿌리).
   // 검수는 열려 있고 생성·내보내기만 잠긴다 → 화면이 그 둘만 잠그도록 알려 준다.
   if (p === '/api/config')
-    return json(res, 200, { ...snap.config, readonly: false, cloud: true, no_create: true, cloud_msg: WRITE_MSG });
+    return json(res, 200, { ...snap.config, readonly: false, cloud: true, no_create: true, gen_request: !!TOKEN, cloud_msg: WRITE_MSG });
   if (p === '/api/queue') return json(res, 200, snap.queue);
+  if (p === '/api/gen_requests') {
+    if (!TOKEN) return json(res, 200, { requests: [], status_ko: GEN.STATUS_KO });
+    try { return json(res, 200, { requests: await GEN.listAll(TOKEN), status_ko: GEN.STATUS_KO }); }
+    catch (e) { return json(res, 500, { error: '요청 목록을 읽지 못했습니다 — ' + (e?.message || e) }); }
+  }
 
   // 아래부터는 검수 오버레이를 겹친다 — 방금 누른 판정이 10분 배치를 기다리지 않게.
   const ov = TOKEN ? await REV.overlay(TOKEN) : {};

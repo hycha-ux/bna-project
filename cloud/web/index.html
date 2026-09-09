@@ -839,8 +839,15 @@ $('#btn-estimate').onclick = async () => {
   catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 $('#btn-run').onclick = async () => {
-  if (NO_CREATE()) { msg('#req-msg', CFG.cloud_msg || '이 화면에서는 사진을 만들 수 없습니다.', 'err'); return; }
   const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
+  if (NO_CREATE() && CFG.gen_request) {                 // 인터넷 화면: 요청만 적는다 — 생성 PC 가 가져가 돌린다
+    const real = jobs.filter(j => !j.simulate).length;
+    if (real && !confirm(`실제 생성 요청 ${real}개를 보냅니다. 생성 컴퓨터가 받으면 API 비용이 발생합니다.`)) return;
+    try { const r = await api('/api/gen_requests', {jobs}); toast(`요청 ${r.added.length}개 보냄`); msg('#req-msg', r.errors?.length ? '일부 실패: ' + r.errors.join(' / ') : '요청을 저장했습니다. 생성 컴퓨터가 받으면 아래 대기열에 상태가 바뀝니다.', r.errors?.length ? 'err' : 'on'); loadQueue(); }
+    catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
+    return;
+  }
+  if (NO_CREATE()) { msg('#req-msg', CFG.cloud_msg || '이 화면에서는 사진을 만들 수 없습니다.', 'err'); return; }
   if (jobs.some(j => !j.simulate) && !confirm(`실제 생성 작업 ${jobs.filter(j=>!j.simulate).length}개를 시작합니다. API 비용이 발생합니다.`)) return;
   try { const r = await api('/api/queue/add', {jobs}); toast(`작업 ${r.added.length}개 시작`); msg('#req-msg', ''); loadQueue(); }
   catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
@@ -861,7 +868,25 @@ const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 ${s.split('
 $('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
 $('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
 let CREATE_PROG = null;
+async function loadGenRequests() {
+  const r = await api('/api/gen_requests'); const tb = $('#q-table tbody'); const KO = r.status_ko || {};
+  const reqs = r.requests || [];
+  $('#q-sum').textContent = `요청 ${reqs.filter(x => x.status === 'requested').length} · 생성 중 ${reqs.filter(x => ['accepted', 'running'].includes(x.status)).length}`;
+  $('#q-pause').hidden = true; $('#q-clear').hidden = true;
+  $('#q-empty').hidden = reqs.length > 0; $('#q-empty').textContent = '보낸 요청이 없습니다. 왼쪽에서 조건을 고르고 "생성 요청 보내기"를 누르세요.';
+  const cls = {requested:'', accepted:'warn', running:'warn', done:'ok', error:'bad', cancelled:''};
+  tb.innerHTML = reqs.map((j, i) => {
+    const sub = j.status === 'running' && j.progress ? `${j.progress.done ?? 0}/${j.progress.planned ?? j.count}` : j.status === 'done' && j.result ? `통과 ${j.result.passed ?? '?'} / ${j.result.total ?? '?'}` : j.status === 'error' ? esc((j.error || '').slice(0, 80)) : j.status === 'requested' ? `${esc(j.requested_by || '')} · ${fmtDay(Date.parse(j.requested_at) / 1000)}` : '';
+    const ctl = j.status === 'requested' ? `<button class="b sm danger" data-gq="cancel" data-id="${j.id}">취소</button>` : j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button>` : '';
+    return `<tr><td class="muted">${i + 1}</td><td><b>${tname(j.treatment)}</b> <span class="muted">${MODE_KO[j.mode] || j.mode}</span> ${j.simulate ? '<span class="chip">시뮬레이션</span>' : '<span class="chip acc">실제</span>'}</td>
+      <td class="num">${j.count} · ${j.target_pass ?? '—'}</td><td class="num">—</td>
+      <td><span class="chip ${cls[j.status] || ''}">${KO[j.status] || j.status}</span>${sub ? `<div class="muted" style="font-size:var(--fs-xs);margin-top:3px">${sub}</div>` : ''}</td>
+      <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; }).join('');
+  tb.querySelectorAll('[data-gq=cancel]').forEach(b => b.onclick = async () => { try { await api('/api/gen_requests/cancel', {id: b.dataset.id}); loadGenRequests(); } catch (e) { msg('#req-msg', e.message, 'err'); } });
+  tb.querySelectorAll('[data-q=open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.id); });
+}
 async function loadQueue() {
+  if (CFG && CFG.gen_request) return loadGenRequests();
   const q = await api('/api/queue'); const tb = $('#q-table tbody');
   $('#q-pause').textContent = q.paused ? '재개' : '일시정지';
   $('#q-sum').textContent = `대기 ${q.queued_count} · ${q.running ? '실행 중 1' : '실행 중 0'} · 남은 예상 비용 $${q.est_total}${q.paused ? ' · 일시정지' : ''}`;
@@ -1392,7 +1417,7 @@ function renderSettings() {
   //    되살리지 마라. "여기선 생성이 안 된다"는 사실은 **버튼 자체**가 말한다(아래) —
   //    화면 위에 문단으로 또 적지 않는다.
   if (CFG.no_create) {
-    const r = $('#btn-run'); if (r) { r.disabled = true; r.textContent = '생성은 생성 컴퓨터에서'; r.title = CFG.cloud_msg || ''; }
+    const r = $('#btn-run'); if (r) { if (CFG.gen_request) { r.textContent = '생성 요청 보내기'; r.title = '요청은 여기 저장되고, 생성 컴퓨터가 받아서 돌립니다'; } else { r.disabled = true; r.textContent = '생성은 생성 컴퓨터에서'; r.title = CFG.cloud_msg || ''; } }
     const x = $('#btn-export'); if (x) { x.disabled = true; x.title = CFG.cloud_msg || ''; }
   }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
