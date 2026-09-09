@@ -1,8 +1,13 @@
 # 자동 검수 항목. 비전 모델에 각 항목을 0~10 으로 채점시키고 threshold 미달 시 재생성.
 threshold: 7
 hard_fail: [identity]   # 이 항목이 임계 미달이면 다른 점수와 무관하게 불합격
+# '이 사진엔 해당 없음'을 0점으로 받으면 안 되는 항목. 심사가 "n/a" 로 답할 수 있고, n/a 는 실패가 아니다.
+# 2026-09-09 실사고: 셀카 프롬프트는 "폰이 보이지 않게" 라고 지시하는데 fingers 는 "손가락 다섯 개·자연스러운
+# 그립"을 요구했다. 심사가 "Hands or phone not visible in either image" 라고 적고 0점을 줬고, 그 결과
+# **모든 셀카가 100% 탈락**했다(3장 3회씩 재시도, $3.49 소각, 통과 0). 나머지 점수는 9·9·10·8 로 멀쩡했다.
+na_allowed: [fingers]
 items:
-  fingers: "Hands/fingers anatomically correct: five fingers, natural joints, plausible phone grip"
+  fingers: "Hands/fingers anatomically correct: five fingers, natural joints, plausible phone grip. If no hands or phone are visible in either image, this item does not apply — reply with \"n/a\" instead of a number (this is normal for selfies, where the prompt asks to keep the phone out of shot)."
   skin_texture: "Skin has realistic pores/peach fuzz/minor imperfections, not plastic or repetitive"
   hair: "Hair strands flow naturally, no melted or merged edges"
   identity: "Before and After are unmistakably the same individual: eyes, eyebrows, nose, lips, face shape, moles/freckles all match (hard fail if not)"

@@ -121,8 +121,11 @@ class OpenAIProvider(Provider):
         prompt = (
             f"You are grading a generated before/after photo pair for a clinic ({mode} mode).\n"
             f"Image 1 = BEFORE, image 2 = AFTER.\n"
-            f"Score each item 0-10 (10 = perfect). Be strict; when in doubt score low.\n{rules}\n\n"
-            'Reply with JSON only: {"item_key": {"score": 0-10, "note": "short reason"}} for exactly these keys: '
+            f"Score each item 0-10 (10 = perfect). Be strict; when in doubt score low.\n"
+            'If an item explicitly says it may not apply and the thing it grades is absent from both images, '
+            'reply "n/a" as the score for that item instead of a number. Never score an absent subject 0.\n'
+            f"{rules}\n\n"
+            'Reply with JSON only: {"item_key": {"score": 0-10 or "n/a", "note": "short reason"}} for exactly these keys: '
             + ", ".join(keys)
         )
         content = [{"type": "text", "text": prompt}]
@@ -138,8 +141,14 @@ class OpenAIProvider(Provider):
         out = {}
         for k in keys:
             v = raw.get(k)
-            if isinstance(v, dict) and isinstance(v.get("score"), (int, float)):
-                out[k] = {"score": float(v["score"]), "note": str(v.get("note", ""))[:200]}
+            s = v.get("score") if isinstance(v, dict) else None
+            if isinstance(s, bool):                       # True/False 는 점수가 아니다
+                s = None
+            if isinstance(s, (int, float)):
+                out[k] = {"score": float(s), "note": str(v.get("note", ""))[:200]}
+            elif isinstance(s, str) and s.strip().lower() in ("n/a", "na", "not applicable", "none"):
+                # '해당 없음' 은 0점이 아니다 — 없는 걸 못 그렸다고 탈락시키면 그 항목은 영영 통과 못 한다
+                out[k] = {"score": None, "note": str(v.get("note", ""))[:200] or "해당 없음(이 사진엔 없다)"}
             else:
                 out[k] = {"score": 0.0, "note": "채점 누락 — 모델이 이 항목을 안 냈다(미측정)"}
         return out

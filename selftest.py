@@ -273,6 +273,34 @@ for _t in _T:
             _bad[f"{_t} 과장금지 예외없음"] = 1
 ok(not _bad, f"시술 전수 × 60 표본에서 잠금 위반이 0 이어야 한다 — {_bad}")
 ok(_seen == {"neck", "lower", "full"}, f"세 잠금이 전부 실제로 뽑혀야 한다 — {_seen}")
+# 비전 채점의 '해당 없음'(n/a) 은 탈락이 아니다 — 2026-09-09 실사고
+# 셀카 프롬프트는 "폰이 보이지 않게" 라고 지시하는데 fingers 는 손을 요구했다. 심사가
+# "Hands or phone not visible" 이라 적고 0점을 줘 **모든 셀카가 100% 탈락**했다(3장 3회씩, $3.49, 통과 0).
+from bna.qa import vision as _VIS
+class _FakeQA:
+    def __init__(self, sc): self.sc = sc
+    def qa(self, b, a, items, mode):
+        return {k: {"score": self.sc.get(k, 9.0), "note": ""} for k in items}
+_good = {k: 9.0 for k in load("qa_checklist.yaml")["items"]}
+_r = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "fingers": None}))
+ok(_r["passed"] and _r["failed_items"] == [] and _r["na_items"] == ["fingers"],
+   f"손이 안 보이는 셀카는 fingers 가 n/a 이고 통과해야 한다 — {_r['failed_items']} / na={_r.get('na_items')}")
+_r0 = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "fingers": 0.0}))
+ok(not _r0["passed"] and "fingers" in _r0["failed_items"], "손이 보이는데 이상하면(0점) 종전대로 탈락이어야 한다")
+_rh = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "identity": 3.0}))
+ok(_rh["hard_fail"] == ["identity"], "동일인 임계 미달은 여전히 hard_fail 이어야 한다")
+# 심사 응답의 "n/a" 문자열이 실제로 None 으로 파싱되는가 (프로바이더 쪽 관문)
+import bna.providers.openai_img as _OI
+_parse = {}
+for _k, _v in {"fingers": {"score": "n/a", "note": "없음"}, "hair": {"score": 8, "note": ""},
+               "skin_texture": {"score": True, "note": ""}}.items():
+    _s = _v.get("score")
+    if isinstance(_s, bool): _s = None
+    if isinstance(_s, (int, float)): _parse[_k] = float(_s)
+    elif isinstance(_s, str) and _s.strip().lower() in ("n/a", "na", "not applicable", "none"): _parse[_k] = None
+    else: _parse[_k] = 0.0
+ok(_parse == {"fingers": None, "hair": 8.0, "skin_texture": 0.0},
+   f'"n/a"→None · 숫자→그대로 · True(점수 아님)→0점(재시도) 이어야 한다 — {_parse}')
 # 버전 성적표는 prompt_version(config 해시)으로만 묶인다 — 같은 버전을 다른 모델로 돌리면
 # 두 모델 성적이 한 줄에 섞여 "이전 버전 대비" 비교가 조용히 무의미해진다 (0909 티모)
 import tempfile as _tf, json as _js, time as _tm
