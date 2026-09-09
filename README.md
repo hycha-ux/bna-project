@@ -343,3 +343,27 @@ cd cloud && npx vercel --prod --yes     # 화면 코드를 고쳤을 때만 필�
 - 예약작업 정의는 **`ops/task-defs/TeemoBnaCloudPush.xml`** 에 덤프해 둔다(트리거는 코드에 없어서
   코드만 복구하면 자동 갱신이 안 살아난다). 주기·시각을 바꾸면 같은 커밋에서 다시 덤프하라:
   `powershell -NoProfile -Command "Export-ScheduledTask -TaskName 'TeemoBnaCloudPush' | Set-Content ops/task-defs/TeemoBnaCloudPush.xml -Encoding UTF8"`
+
+## 씨앗 은행 열람 (2026-09-09 성연서님 "베이스가 될 이미지를 확인할 경로가 있을까?")
+
+씨앗(실제 환자 사진을 정제한 것)과 그걸로 만든 파생 얼굴을 대시보드에서 본다 — 탭 **씨앗 은행**.
+
+```bash
+node cloud/push-seedbank.mjs --dry     # 무엇을 올릴지만
+node cloud/push-seedbank.mjs           # 올린다
+node cloud/push-seedbank.mjs --remove  # 전부 내린다(되돌리기)
+```
+
+- **관리자 직급만** 열린다. 다른 탭의 사진은 *생성물*이지만 씨앗은 실존 환자라 한 겹 더 잠갔다.
+  판정은 `cloud/api/app.js` 의 `/api/seedbank`·`/seedfiles/` 두 줄이 정본이고,
+  **탭을 안 보이게 하는 건 방어가 아니다**(주입은 `cloud/lib/seedbank-ui.mjs`).
+- ⚠ **Blob prefix 가 `seedbank/` 다 — `files/` 로 옮기지 마라.** 그쪽은 `push-cloud.mjs` 가
+  회차마다 "화면이 안 부르는 사진"으로 보고 지운다.
+- ⚠ **원본(`teemo-raw/kos`)은 올리지 않는다.** 씨앗이 그 원본의 정제본이라 답이 같은데
+  노출만 두 배가 되고, EXIF·GPS 제거는 씨앗 쪽에만 돼 있다.
+- 올리는 건 **축소본**(긴 변 1024, `ops/seedbank-view.py`)이다 — 원본 22.7MB → 3.7MB.
+  격자에서 판정하기엔 충분하고 큰 얼굴을 클라우드에 두지 않는다.
+- 숫자는 새로 계산하지 않는다. `teemo/out/seed-prep.json`·`seed-measure.json` 을 그대로 접어
+  올린다(정본 하나 규칙).
+- 스모크 = `node cloud/seedbank-smoke.mjs` — 라이브 Blob 을 읽고 세션만 위조해 관문을 본다
+  (무로그인 401 · 관리자 200 · `..` 차단 · 관리자에게만 탭). 읽기 전용.

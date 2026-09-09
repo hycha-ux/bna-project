@@ -85,11 +85,14 @@ try {
   ok(rows > 0, '새로고침하면 작업 목록에 줄이 보인다', `줄 ${rows}개`);
   ok(listShown, '새로고침 직후 목록이 접혀 있지 않다');
 
-  // ② 사람이 줄을 누르면 그때 접힌다 (동선 목적은 유지)
+  // ② 줄을 눌러도 목록은 그대로 있고 상세로 이동한다
+  //    (2026-09-08 성연서님 "UX 가 더 안 좋아졌다" → 커밋 55095cc 로 접기를 통째로 없앱다.
+  //     이 두 줄은 그때 같이 고치지 않아 09-09 까지 빨간불로 남아 있었다 —
+  //     상시 빨간불은 진짜 실패를 가린다.)
   await ev("document.querySelector('#batches tbody tr')?.click()");
   await sleep(1600);
-  ok(await ev("document.body.classList.contains('list-folded')"), '작업을 직접 고르면 목록이 접힌다');
-  ok(await ev("!!document.querySelector('#list-toggle')?.offsetHeight"), '접힌 뒤에도 다시 펼칠 버튼이 남는다');
+  ok(!(await ev("document.body.classList.contains('list-folded')")), '줄을 눌러도 목록이 접히지 않는다');
+  ok(await ev("!!document.querySelector('#batches-wrap')?.offsetHeight"), '줄을 눌러도 목록이 그대로 보인다');
   await ev("document.querySelector('#list-toggle')?.click()");
   await sleep(600);
   ok(await ev("!document.body.classList.contains('list-folded')"), '펼치기 버튼이 실제로 목록을 되살린다');

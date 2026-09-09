@@ -20,6 +20,7 @@ import path from 'node:path';
 import { get } from '@vercel/blob';
 import * as REV from '../lib/reviews.mjs';
 import * as GEN from '../lib/genreq.mjs';
+import { seedbankUi } from '../lib/seedbank-ui.mjs';
 import {
   COOKIE,
   ROLE_LABEL,
@@ -362,7 +363,9 @@ if(prof&&menu){
 }
 })();</script>`;
 
-  return INDEX_HTML.replace('</body>', `${banner}${profileJs}</body>`);
+  // ③ 씨앗 은행(실제 환자 사진)은 관리자에게만 얹는다 — 서버 판정과 같은 조건이다.
+  const seedbank = user.role === 'admin' ? seedbankUi() : '';
+  return INDEX_HTML.replace('</body>', `${banner}${profileJs}${seedbank}</body>`);
 }
 
 // ── 라우팅 ──────────────────────────────────────────────────────────────────
@@ -449,7 +452,7 @@ export default async function handler(req, res) {
   if (p === '/login' && !user) return html(res, 401, LOGIN_PAGE);
 
   if (!user) {
-    if (p.startsWith('/api/') || p.startsWith('/files/'))
+    if (p.startsWith('/api/') || p.startsWith('/files/') || p.startsWith('/seedfiles/'))
       return json(res, 401, { error: '로그인이 필요합니다. 새로고침해 주세요.' });
     return html(res, 401, LOGIN_PAGE);
   }
@@ -561,6 +564,33 @@ export default async function handler(req, res) {
       'content-type',
       MIME[path.extname(p).toLowerCase()] || got.contentType || 'application/octet-stream',
     );
+    res.setHeader('cache-control', 'private, max-age=300');
+    return res.end(got.buf);
+  }
+
+  // ── 씨앗 은행(실제 환자 얼굴) — 관리자만 ──────────────────────────────────
+  // 다른 탭의 사진은 *생성물*이라 로그인만으로 열지만, 여기 씨앗은 실존 환자다.
+  // 그래서 한 겹 더 잠근다. 목록(/api/seedbank)과 사진(/seedfiles/)이 같은 판정을
+  // 써야 한다 — 목록만 막으면 사진 주소를 아는 사람이 그대로 연다.
+  if (p === '/api/seedbank' || p.startsWith('/seedfiles/')) {
+    if (user.role !== 'admin')
+      return json(res, 403, { error: '씨앗(실제 환자 사진)은 관리자만 볼 수 있습니다.' });
+    if (p === '/api/seedbank') {
+      const got = await blobBytes('seedbank/index.json');
+      if (!got)
+        return json(res, 503, {
+          error: '아직 씨앗 은행이 올라오지 않았습니다 (push-seedbank 미실행).',
+        });
+      return json(res, 200, JSON.parse(got.buf.toString('utf8')));
+    }
+    const name = path.basename(p);   // 폴더를 거슬러 올라가지 못하게 이름만 취한다
+    const got = await blobBytes('seedbank/img/' + name);
+    if (!got) {
+      res.statusCode = 404;
+      return res.end('not found');
+    }
+    res.statusCode = 200;
+    res.setHeader('content-type', MIME[path.extname(name).toLowerCase()] || 'image/jpeg');
     res.setHeader('cache-control', 'private, max-age=300');
     return res.end(got.buf);
   }
