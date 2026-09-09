@@ -301,6 +301,10 @@ table.fixed3 .ell { overflow:hidden; text-overflow:ellipsis; white-space:nowrap 
 .card-head .hsel { width:auto; min-width:110px; height:32px; font-size:var(--fs-xs); padding:0 28px 0 10px }
 table.jobs th.num, table.jobs td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap } table.jobs td .okc { color:var(--ok) }
 table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-child { white-space:nowrap }
+#q-table { table-layout:fixed; width:100% } #q-table th:nth-child(1) { width:28px } #q-table th:nth-child(3) { width:80px } #q-table th:nth-child(4) { width:72px } #q-table th:nth-child(6) { width:150px }
+#q-table td:first-child { width:auto } #q-table td:nth-child(5) .muted { white-space:normal; word-break:keep-all }
+.dist-row { display:grid; grid-template-columns:96px 1fr; gap:8px; align-items:start; padding:6px 0; border-bottom:1px solid var(--ui-border); font-size:var(--fs-sm) } .dist-row:last-child { border-bottom:0 }
+.dist-row .dl { color:var(--ui-md); font-weight:var(--fw-m); padding-top:3px } .dist-row .dv { display:flex; flex-wrap:wrap; gap:4px } .dist-row .chip b { font-weight:var(--fw-b); margin-left:2px }
 .statline { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; font-size:var(--fs-md); color:var(--ui-md); padding:4px 0 }
 .statline b { color:var(--ui-hi); font-weight:var(--fw-b) } .statline b.ok { color:var(--ok) } .statline b.bad { color:var(--bad) } .statline .sep { width:1px; height:18px; background:var(--ui-border) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
@@ -441,11 +445,11 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
           <div class="card prog" id="prog-create" hidden></div>
           <div class="card" style="margin-top:0">
             <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
-            <div class="tbl-wrap"><table id="q-table"><thead><tr><th>순서</th><th>시술</th><th>유형</th><th>생성 장수</th><th>목표 통과</th><th>비용 상한</th><th>예상 비용</th><th>방식</th><th>상태</th><th>진행</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시술</th><th class="num">장수 · 목표</th><th class="num">예상 비용</th><th>상태</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
           <div id="plan-out" hidden style="margin-top:var(--gap)">
-            <div class="card"><div class="card-head"><h3>미리보기</h3><span class="muted" id="plan-n"></span></div><div class="grid g-stats" id="dist"></div></div>
+            <div class="card"><div class="card-head"><h3>미리보기</h3><span class="muted" id="plan-n"></span><div class="tb-space"></div><span class="muted">조건별로 몇 장씩 뽑히는지</span></div><div id="dist"></div></div>
             <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>개별 항목</h3><span class="muted">처음 20장</span></div><div id="prompts"></div></div>
           </div>
         </div>
@@ -789,7 +793,9 @@ $('#btn-plan').onclick = async () => {
   try {
     msg('#req-msg', '준비 중…'); const r = await api('/api/plan', q); const n = jobsFromForm().length;
     $('#plan-out').hidden = false; $('#plan-n').textContent = `${CFG.treatments[q.treatment].name_ko} · ${MODE_KO[q.mode]} · ${r.count}장${n > 1 ? ` (작업 ${n}개 중 첫 번째)` : ''}`;
-    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div><h4>${AXIS_KO[a]||a}</h4>${bars(d, r.count, '', a)}</div>`).join('');
+    // 축 19개를 막대로 그리면 1,700px 이 된다 — 축당 한 줄(칩 = 값 · 장수)로 (2026-09-09 정렬 점검)
+    $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div class="dist-row"><span class="dl">${AXIS_KO[a]||a}</span><span class="dv">${
+      Object.entries(d).sort((x, y) => y[1] - x[1]).map(([k, n]) => `<span class="chip" title="${esc(k)}">${esc(val(a, k))} <b>${n}</b></span>`).join('')}</span></div>`).join('');
     PLAN_ITEMS = r.items;
     const draw = () => { $('#prompts').innerHTML = promptTools() + PLAN_ITEMS.slice(0, 20).map((s, i) => promptCard(s, i)).join(''); bindPkToggle($('#prompts'), draw); };
     draw();
@@ -858,12 +864,16 @@ async function loadQueue() {
   const stKo = {queued:'<span class="chip">대기</span>', running:'<span class="chip warn">실행 중</span>', done:'<span class="chip ok">완료</span>', error:'<span class="chip bad">오류</span>', cancelled:'<span class="chip">취소</span>'};
   tb.innerHTML = q.jobs.map((j, i) => { const p = j.progress, r = j.result || {};
     const progress = p ? `<span class="mini"><i style="width:${(p.done/p.planned*100).toFixed(0)}%"></i></span>${p.done}/${p.planned}${p.running && p.eta_s!=null ? ' · ' + fmtS(p.eta_s) : ''}` : '';
-    const result = j.status==='done' ? `통과 ${r.passed ?? '?'} / 생성 ${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ' · <span class="chip acc">'+STOP_KO(r.stopped)+'</span>' : ''}` : j.status==='error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error||'').slice(0,60))}</span>` : '';
-    const ctl = j.status==='queued' ? `<button class="b" data-q="up" data-id="${j.job_id}">↑</button> <button class="b" data-q="down" data-id="${j.job_id}">↓</button> <button class="b danger" data-q="cancel" data-id="${j.job_id}">취소</button>`
-              : j.status==='running' ? '' : `<button class="b" data-q="remove" data-id="${j.job_id}">삭제</button>`;
-    return `<tr><td>${i+1}</td><td>${CFG.treatments[j.treatment]?.name_ko || j.treatment}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.count}</td><td>${j.target_pass ?? '—'}</td><td>${j.cost_cap != null ? '$'+j.cost_cap : '—'}</td><td>$${j.est_cost}</td>
-      <td>${j.simulate ? '<span class="chip">시뮬레이션</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td><td>${stKo[j.status]}</td><td>${progress}</td><td>${result}</td>
-      <td style="white-space:nowrap">${j.batch_id ? `<button class="b" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
+    const result = j.status==='done' ? `통과 ${r.passed ?? '?'} / ${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ' · ' + STOP_KO(r.stopped) : ''}` : j.status==='error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error||'').slice(0,60))}</span>` : '';
+    const ctl = j.status==='queued' ? `<button class="b sm" data-q="up" data-id="${j.job_id}">↑</button> <button class="b sm" data-q="down" data-id="${j.job_id}">↓</button> <button class="b sm danger" data-q="cancel" data-id="${j.job_id}">취소</button>`
+              : j.status==='running' ? '' : `<button class="b sm" data-q="remove" data-id="${j.job_id}">삭제</button>`;
+    // 12열 → 6열 (2026-09-09 정렬 점검: 결과·삭제 열이 화면 밖으로 밀려 가로 스크롤이 생겼다). 진행·결과는 상태 칸 아래 한 줄.
+    const sub = j.status === 'running' ? progress : j.status === 'done' ? result : j.status === 'error' ? result : '';
+    return `<tr><td class="muted">${i+1}</td>
+      <td><b>${tname(j.treatment)}</b> <span class="muted">${MODE_KO[j.mode]||j.mode}</span> ${j.simulate ? '<span class="chip">시뮬레이션</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td>
+      <td class="num">${j.count} · ${j.target_pass ?? '—'}${j.cost_cap != null ? `<div class="muted" style="font-size:11px">상한 $${j.cost_cap}</div>` : ''}</td><td class="num">$${j.est_cost}</td>
+      <td>${stKo[j.status]}${sub ? `<div class="muted" style="font-size:var(--fs-xs);margin-top:3px">${sub}</div>` : ''}</td>
+      <td style="white-space:nowrap;text-align:right">${j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
     const a = b.dataset.q, id = b.dataset.id;
     if (a === 'open') { show('jobs'); openBatch(id); return; }
