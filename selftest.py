@@ -240,19 +240,54 @@ for _t in _T:
         if " ".join(str(_T[_t]["must_not_change"]).split())[:40] not in _sp["after_prompt"]: _viol[f"{_t} must_not_change"] = _viol.get(f"{_t} must_not_change", 0) + 1
 ok(not _viol, f"시술 9종 × 120 표본에서 제약 위반이 0 이어야 한다 — {_viol}")
 # 프레이밍별 동일인 잠금 — 눈이 프레임 밖이면 "same eyes" 를 요구하지 않는다 (티모 0908 실측: 눈을 끌고 들어온다)
-_seen = set()
-for _t in ("nasolabial", "filler_neck"):
+# 2026-09-09 티모 실측으로 세 구멍을 메웠다. 검사 모수를 2종 → 9종 전수로 넓힌다:
+#   ① identity_exempt 가 문구라 잠금 파일 3벌 중 한 벌에서만 먹었다 (리프팅 82/120·인중 79/120 미적용)
+#   ② 좁은 Before + 넓은 After 에 크롭 지시가 붙어 같은 프롬프트의 장면문과 충돌 (360건 중 36건)
+#   ③ 목 잠금의 "목을 더 어려 보이게 하지 마라" 가 목주름 시술 자체를 부정 (neck_only 58/58)
+_WIDE = {"full_face", "forehead_cut"}
+_seen, _bad = set(), {}
+for _t in _T:
+    if "selfie" not in _T[_t]["modes"]:
+        continue
     for _s in range(60):
         _p = sample_variation("selfie", _s, treatment=_t); _sp = build_prompts(_t, "selfie", _p, _s)
-        _frs = {_p["framing"]["key"], _sp["after_variation"]["framing"]["key"]}
-        _ap = _sp["after_prompt"]
+        _bf, _af = _p["framing"]["key"], _sp["after_variation"]["framing"]["key"]
+        _frs = {_bf, _af}; _ap = _sp["after_prompt"]; _head = _ap.split("Anyone comparing")[0]
         if "neck_only" in _frs:
-            ok("same eyes" not in _ap and "same neck length" in _ap, "목만 찍은 컷은 목·턱선 잠금이어야 한다"); _seen.add("neck")
+            if "same eyes" in _ap or "same neck length" not in _ap: _bad[f"{_t} neck잠금"] = 1
+            _seen.add("neck")
         elif _frs & {"lower_face", "one_cheek", "nose_to_neck"}:
-            ok("same eyes" not in _ap and "eyes are outside the frame" in _ap, "눈이 프레임 밖인 컷은 아래쪽 잠금이어야 한다"); _seen.add("lower")
+            if "same eyes" in _ap or "Identity is carried by the lower face" not in _ap: _bad[f"{_t} lower잠금"] = 1
+            _seen.add("lower")
         else:
-            ok("same eyes" in _ap, "얼굴 전체 컷은 전체 잠금"); _seen.add("full")
+            if "same eyes" not in _ap: _bad[f"{_t} full잠금"] = 1
+            _seen.add("full")
+        # ② 생성할 사진(After)이 넓으면 크롭 지시가 붙으면 안 된다 — 장면문이 "얼굴 전체"라고 말한다
+        if (_af in _WIDE) == ("keep the crop as specified" in _ap): _bad[f"{_t} 크롭지시 {_bf}->{_af}"] = 1
+        # ① 시술 부위 낱말이 잠금 항목에 남아 있으면 안 된다 (After 지시와 정면 충돌)
+        for _kw in (_T[_t].get("identity_exempt") or []):
+            if str(_kw).lower() in _head.split("Identity")[-1].split(".")[0].lower():
+                _bad[f"{_t} exempt무효:{_kw}"] = 1
+        # ③ 과장 금지문은 "아래에 적은 변화는 예외" 를 달고 있어야 한다
+        if "do not make the" in _ap and "Apart from the specific change described below" not in _ap:
+            _bad[f"{_t} 과장금지 예외없음"] = 1
+ok(not _bad, f"시술 전수 × 60 표본에서 잠금 위반이 0 이어야 한다 — {_bad}")
 ok(_seen == {"neck", "lower", "full"}, f"세 잠금이 전부 실제로 뽑혀야 한다 — {_seen}")
+# identity_exempt 가 조용히 무효가 되면(파일 표현이 갈리면) 소리 내고 죽어야 한다
+try:
+    _sv = sample_variation("selfie", 3, treatment="filler_nose")
+    import bna.spec as _S
+    _orig = _S.load("treatments.yaml")["filler_nose"]["identity_exempt"]
+    _S.load("treatments.yaml")["filler_nose"]["identity_exempt"] = ["존재하지않는낱말"]
+    try:
+        build_prompts("filler_nose", "selfie", _sv, 3); _raised = False
+    except ValueError:
+        _raised = True
+    finally:
+        _S.load("treatments.yaml")["filler_nose"]["identity_exempt"] = _orig
+    ok(_raised, "identity_exempt 가 아무 항목도 못 지우면 예외를 던져야 한다 (조용한 무효화 금지)")
+except Exception as _e:                                  # noqa: BLE001
+    ok(False, f"exempt 무효 감시 검사 자체가 깨졌다 — {_e!r}")
 for _t in ("filler_nose", "nose_lifting"):
     _sp = build_prompts(_t, "selfie", sample_variation("selfie", 3, treatment=_t), 3)
     ok("same nose shape" not in _sp["after_prompt"] and "the alar base stay" in _sp["after_prompt"], f"{_t}: 동일인 잠금이 코를 예외로 둬야 한다 (0909 dry-run 모순)")

@@ -106,6 +106,20 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     return allowed
 
 
+def _drop_identity_items(text: str, keywords: list) -> tuple:
+    """잠금 문장의 열거 부분(": " 뒤 ~ 첫 ". " 앞)에서 낱말이 든 항목만 뺀다.
+    열거 밖 문장(크롭 지시·과장 금지·동일인 확인)은 건드리지 않는다."""
+    i = text.find(": ")
+    if i < 0:
+        return text, 0
+    j = text.find(". ", i)
+    j = len(text) if j < 0 else j
+    items = text[i + 2:j].split(", ")
+    kept = [it for it in items if not any(k in it.lower() for k in keywords)]
+    if not kept or len(kept) == len(items):
+        return text, len(items) - len(kept)
+    return text[:i + 2] + ", ".join(kept) + text[j:], len(items) - len(kept)
+
 def person_description(variation: dict) -> str:
     f = {k: variation[k]["text"] for k in PERSON_AXES}
     parts = [f"{f['country']} {f['gender']} {f['age']}", f["face_shape"], f["skin_tone"], f["skin_condition"],
@@ -259,17 +273,38 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     cond = cond.get(sev, "") if isinstance(cond, dict) else cond
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
         person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, avoid=avoid_before, **fields)
-    def identity_for(framings):
-        """프레이밍(들) 중 가장 좁은 쪽의 잠금 문장 + 시술 부위 예외."""
+    def identity_for(ref_framing, target_framing=None):
+        """동일인 잠금 문장.
+        - 항목 목록은 Before·After 중 **좁은 쪽** 파일에서 온다 (레퍼런스에 없는 걸 요구하면 모델이 지어낸다).
+        - `CROP:` 줄(크롭 지시)은 **생성할 사진**이 좁을 때만 남긴다 — 좁은 Before + 넓은 After 에
+          "눈을 프레임 안으로 들이지 마라"가 붙으면 같은 프롬프트의 장면문("얼굴 전체")과 정면 충돌한다
+          (2026-09-09 티모 실측 360건 중 36건, 10%).
+        - `identity_exempt` 는 **낱말**이다(문구 아님). 잠금 파일 3벌이 서로 다른 표현을 쓰므로
+          문구를 그대로 지우면 한 파일에서만 먹고 나머지에선 조용히 아무 일도 안 한다
+          (0909 실측: 리프팅 82/120·인중 79/120 에서 시술 부위가 잠긴 채 남았다)."""
         vv = load("variations.yaml"); order = vv.get("identity_lock_order") or []; table = vv.get("identity_lock_by_framing") or {}
-        fr = max(framings, key=lambda f: order.index(f) if f in order else -1) if framings else "full_face"
-        text = (CFG / "prompts" / table.get(fr, "identity_lock.md")).read_text(encoding="utf-8").strip()
-        for ph in t.get("identity_exempt") or []:        # 시술 부위는 잠금에서 뺀다 (코 필러에 "same nose shape" 은 모순)
-            text = text.replace(ph + ", ", "").replace(", " + ph, "").replace(ph, "")
+        target_framing = target_framing or ref_framing
+        def narrowness(f):
+            if f not in order:                       # 표에 없는 프레이밍은 '가장 좁음'으로 본다 —
+                return len(order)                    # 넓은 쪽으로 폴백하면 얼굴을 프레임 안으로 끌고 온다
+            return order.index(f)
+        def _read(f):
+            return (CFG / "prompts" / table.get(f, "identity_lock.md")).read_text(encoding="utf-8").strip()
+        fr = max([ref_framing, target_framing], key=narrowness)
+        lines = [ln for ln in _read(fr).splitlines() if not ln.startswith("CROP:")]
+        crop = next((ln for ln in _read(target_framing).splitlines() if ln.startswith("CROP:")), None)
+        if crop:                                 # 크롭 지시는 **생성할 사진**의 프레이밍 것으로 (항목 목록과 출처가 다르다)
+            lines.insert(1, crop)
+        text = " ".join(" ".join(lines).replace("CROP:", "").split())
+        ex = [str(k).lower() for k in (t.get("identity_exempt") or [])]
+        if ex:                                       # 시술 부위 항목을 잠금 목록에서 뺀다
+            text, dropped = _drop_identity_items(text, ex)
+            if not dropped:                          # 조용한 무효화가 이 규칙의 실패 모드였다 — 소리 내고 죽는다
+                raise ValueError(f"identity_exempt {ex} 가 {table.get(fr)} 에서 아무 항목도 못 지웠다")
         if t.get("identity_note"):
             text += " " + " ".join(str(t["identity_note"]).split())
         return text
-    identity = identity_for([variation["framing"]["key"]])
+    identity = identity_for(variation["framing"]["key"])
     eff = load("effects.yaml")
     # Before 강도 ↔ After 효과 짝 (mild+눈에 띄게 = 과장, marked+은은 = 효과 없음). 나이 하향 **뒤**의 sev 로 뽑는다
     levels = (t.get("effect_by_severity") or {}).get(sev) or t.get("effect_levels", ["moderate"])
@@ -289,7 +324,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     else:
         after_var = drift_after(variation, mode, rng, timeline=when, treatment=treatment)
         a = {k: val["text"] for k, val in after_var.items()}
-        identity = identity_for([variation["framing"]["key"], after_var["framing"]["key"]])
+        identity = identity_for(variation["framing"]["key"], after_var["framing"]["key"])
         a_scene = dict(a); a_scene.pop("expression", None)          # 표정은 아래 expression_line 이 맡는다
         after_scene = selfie_scene(a_scene)
         after_hair = f'{a["hair_color"]}, {a["hair_style"]}' + (f', {a["extras"]}' if a["extras"] else "")

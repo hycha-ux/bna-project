@@ -10,7 +10,7 @@
 #   expression_policy : lock = Before/After 표정 동일 강제, free = 달라도 됨 (피부 시술)
 #   age_weights       : 시술별 나이 가중치. 0 이면 그 나이는 안 뽑는다 (18세 리프팅 = AI 티)
 #   effect_by_severity: Before 강도 ↔ After 효과 허용 짝. mild+moderate 는 과장, marked+subtle 은 효과 없음으로 보인다
-#   identity_exempt   : 동일인 잠금 문장에서 뺄 구절. "same nose shape" 을 그대로 두면 코 시술 After 와 충돌한다 (0909 dry-run)
+#   identity_exempt   : 동일인 잠금에서 뺄 **낱말**(문구 아님 — 잠금 파일 3벌이 표현이 달라 문구로 지우면 한 벌에서만 먹는다, 0909 티모 실측)
 #   identity_note     : 그 자리에 대신 넣는 문장 — 시술 부위는 아래 지시대로만 바뀌고 나머지는 그대로
 #   axis_ban          : 축별 금지값. 뿔테 안경은 콧대를 가린다 (extras), 목걸이는 목주름을 가린다 (context)
 #   mask_region       : qa/landmarks.py 폴리곤 키 (임상 마스크 합성). neck 은 턱선에서 아래로 내린 파생 영역
@@ -89,7 +89,7 @@ lifting:
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock
   axis_ban: {extras: [mask_chin]}            # 턱에 걸친 마스크가 턱선을 가린다
-  identity_exempt: ["same face shape and jawline"]
+  identity_exempt: [jawline]                     # 낱말이다 — 잠금 3벌이 "face shape and jawline"·"chin and jawline shape" 로 표현이 갈린다
   identity_note: >
     The bone structure and face shape stay exactly as in the reference; only the softness and
     sagging along the jawline and mid-face change, as described below.
@@ -126,7 +126,7 @@ nose_lifting:
     Do not narrow the nostrils or the alar width. Do not change eyes, lips, or face shape.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
-  identity_exempt: ["same nose shape and width"]
+  identity_exempt: [nose]
   identity_note: >
     The nose is the treated area and changes only as described below; its width, the nostrils
     and the alar base stay exactly as in the reference.
@@ -164,7 +164,7 @@ philtrum:
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock                    # 웃으면 인중이 짧아 보인다
   axis_ban: {extras: [mask_chin, beard_light, beard_full]}   # 수염·마스크가 인중을 가린다
-  identity_exempt: ["same lips and mouth width"]
+  identity_exempt: [philtrum, "lips and mouth width"]   # 아래쪽 잠금엔 "same philtrum" 항목이 따로 있다
   identity_note: >
     The mouth width and lip shape stay exactly as in the reference; only the upper lip line and
     the philtrum length change, as described below.
@@ -306,7 +306,7 @@ filler_nose:
     face shape. Do not brighten or smooth the skin.
   effect_by_severity: {mild: [subtle], marked: [moderate]}
   expression_policy: free
-  identity_exempt: ["same nose shape and width"]
+  identity_exempt: [nose]
   identity_note: >
     The nose is the treated area and changes only as described below; its width, the nostrils
     and the alar base stay exactly as in the reference.
