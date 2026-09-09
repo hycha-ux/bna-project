@@ -212,6 +212,55 @@ def names_set(out_dir: Path, version: str, note: str) -> dict:
     return d
 
 
+# 설정 파일 → 사람 말. 버전 제목은 "무엇이 바뀐 버전인가"로 읽혀야 한다 (2026-09-10 성연서님 "해시 말고 '시술 카테고리' '제외사항' 같은 식으로").
+CONFIG_KO = {
+    "treatments.yaml": "시술 정의", "variations.yaml": "변주 조건", "prompts/avoid.yaml": "제외 규칙",
+    "prompts/after_selfie.md": "셀카 후 프롬프트", "prompts/after_clinical.md": "임상 후 프롬프트", "prompts/before.md": "전 프롬프트",
+    "prompts/identity_lock.md": "동일인 잠금", "prompts/identity_lock_lower.md": "동일인 잠금(하안)", "prompts/identity_lock_neck.md": "동일인 잠금(목)",
+    "prompts/mode_extra.yaml": "모드별 추가문", "clinical_rig.yaml": "임상 촬영 조건", "effects.yaml": "효과 정의",
+    "postprocess.yaml": "후처리", "pricing.yaml": "단가", "providers.yaml": "모델 라우팅", "qa_checklist.yaml": "AI 검수 항목",
+    "samples_index.yaml": "참고 사진 목록",
+}
+
+
+def _git_changed(prev_sha: str, sha: str) -> list:
+    """두 커밋 사이에 바뀐 config/ 파일을 사람 말로. 깃이 없거나 커밋을 모르면 빈 목록(제목은 시술만으로 만든다)."""
+    import subprocess
+    from .spec import ROOT
+    try:
+        out = subprocess.check_output(["git", "diff", "--name-only", prev_sha, sha, "--", "config/"],
+                                      cwd=ROOT, text=True, stderr=subprocess.DEVNULL, timeout=5)
+    except Exception:                                   # noqa: BLE001
+        return []
+    names = []
+    for line in out.splitlines():
+        rel = line.strip().replace("config/", "", 1)
+        ko = CONFIG_KO.get(rel) or ("브랜드" if rel.startswith("brand/") else rel)
+        if ko not in names:
+            names.append(ko)
+    return names
+
+
+def titles(rows: list, treatments_ko: dict) -> dict:
+    """해시 → 자동 제목 '팔자주름 · 제외 규칙 변경'. 첫 버전은 '첫 설정', 커밋이 같은데 해시만 다르면 '설정 수정(커밋 전)'."""
+    real = sorted([r for r in rows if r.get("real")], key=lambda r: r["first"])
+    out, prev = {}, None
+    for r in real:
+        tr = sorted((r.get("treatments") or {}).items(), key=lambda kv: -kv[1])
+        tr_ko = [treatments_ko.get(k, k) for k, _ in tr[:2]] + (["외 %d" % (len(tr) - 2)] if len(tr) > 2 else [])
+        sha = r["version"].split("-")[0]
+        if prev is None:
+            what = "첫 설정"
+        elif sha == prev.split("-")[0]:
+            what = "설정 수정(커밋 전)"
+        else:
+            ch = _git_changed(prev.split("-")[0], sha)
+            what = (" · ".join(ch[:3]) + " 변경") if ch else "코드만 변경"
+        out[r["version"]] = " · ".join([x for x in [" ".join(tr_ko) if tr_ko else "", what] if x])
+        prev = r["version"]
+    return out
+
+
 def aliases(rows: list, current=None) -> dict:
     """해시 → 'v1'·'v2'… 처음 쓴 순서. 해시는 기계용이고 사람은 순번으로 읽는다 (2026-09-10 성연서님 "복잡하고 어렵다").
     현재 버전으로 아직 사진을 안 만들었으면 다음 번호를 미리 준다. 시뮬·샘플은 번호를 안 받는다."""
@@ -277,8 +326,15 @@ def by_version(out_dir: Path) -> list:
         a["provider_mixed"] = len(a["providers"]) > 1     # True 면 이 줄의 통과율을 버전 비교에 쓰면 안 된다
         rows.append(a)
     al, nm = aliases(rows), names_read(out_dir)
+    try:
+        from .spec import load
+        tko = {k: v.get("name_ko", k) for k, v in load("treatments.yaml").items()}
+    except Exception:                                   # noqa: BLE001
+        tko = {}
+    ti = titles(rows, tko)
     for r in rows:
         r["alias"] = al.get(r["version"])
+        r["title"] = ti.get(r["version"], "")
         r["note"] = (nm.get(r["version"]) or {}).get("note", "")
     rows.sort(key=lambda r: (r["real"], r["last"]), reverse=True)
     return rows
