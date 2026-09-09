@@ -293,6 +293,7 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .todo .todo-row .k { flex:1; min-width:0 } .todo .todo-row .k b { display:block; font-size:var(--fs-md) } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo) }
 .todo .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums } .todo .big.warn { color:var(--warn) } .todo .big.ok { color:var(--ok) }
 .todo .tags-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px } .col { display:flex; flex-direction:column; gap:var(--gap) }
+.axis-wide { display:grid; grid-template-columns:1fr 1fr; gap:0 32px } .axis-wide .empty { grid-column:1 / -1 } @media (max-width:1100px) { .axis-wide { grid-template-columns:1fr } }
 .statline { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; font-size:var(--fs-md); color:var(--ui-md); padding:4px 0 }
 .statline b { color:var(--ui-hi); font-weight:var(--fw-b) } .statline b.ok { color:var(--ok) } .statline b.bad { color:var(--bad) } .statline .sep { width:1px; height:18px; background:var(--ui-border) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
@@ -383,11 +384,6 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
             <div class="card-head"><h3>추이</h3><div class="tb-space"></div><span class="muted">일별 생성 · 채택</span></div>
             <div id="chart-combo"></div>
           </div>
-          <div class="card">
-            <div class="card-head"><h3>조건별 통과율</h3><div class="tb-space"></div><span class="muted">AI 검수 기준 · 누적</span></div>
-            <div class="toolbar pill" id="axis-pick" style="flex-wrap:wrap;border:0;padding-bottom:0"><button data-a="__treat" class="on">시술</button><button data-a="__fails">탈락 사유</button><button data-a="angle">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
-            <div id="chart-axis"></div>
-          </div>
         </div>
         <div class="col">
           <div class="card todo">
@@ -399,6 +395,11 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
             <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>통과 / 생성</th><th>상태</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
+      </div>
+      <div class="card" style="margin-top:var(--gap)">
+        <div class="card-head"><h3>조건별 통과율</h3><div class="tb-space"></div><span class="muted">AI 검수 기준 · 누적</span></div>
+        <div class="toolbar pill" id="axis-pick" style="flex-wrap:wrap;border:0;padding-bottom:0"><button data-a="__treat" class="on">시술</button><button data-a="__fails">탈락 사유</button><button data-a="angle">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
+        <div id="chart-axis" class="axis-wide"></div>
       </div>
     </section>
 
@@ -667,7 +668,7 @@ async function loadHome() {
   const [ov, batches] = await Promise.all([api(`/api/overview?days=${HOME_DAYS}&sim=${HOME_SIM ? 1 : 0}`), api('/api/batches')]);
   OV = ov; BATCHES = batches; const w = ov.window, p = ov.prev;
   $('#home-sim').checked = HOME_SIM;
-  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}${HOME_SIM ? ' · 시뮬레이션·샘플 포함' : ''}`;
+  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}`;
   const pickRate = w.reviewed ? w.picked / w.reviewed : null;
   $('#home-kpis').innerHTML = [
     ['hero', '채택한 사진', ov.picked_total, '장', '누적 · 사람이 골라 드라이브에 올린 것'],
@@ -692,7 +693,7 @@ function renderBoard() {
     return `<div class="brow ${r.picked >= r.target ? 'done' : ''}" data-t="${r.treatment}" title="라이브러리에서 보기">
       <div class="h"><b>${esc(r.name_ko)}</b>${r.legacy ? '<span class="chip">옛 이름</span>' : ''}<span class="n"><b>${r.picked}</b> / ${r.target}</span></div>
       <div class="m"><i style="width:${(ratio*100).toFixed(0)}%"></i></div>
-      <div class="s">${r.pending ? `<span class="pend">검수 대기 ${r.pending}</span> · ` : ''}검수 ${r.reviewed}${r.picked >= r.target ? ' · 목표 달성' : r.target - r.picked <= 5 ? ` · ${r.target - r.picked}장 남음` : ''}</div></div>`; }).join('');
+      <div class="s">${[r.pending ? `<span class="pend">검수 대기 ${r.pending}</span>` : '', r.reviewed ? `검수 ${r.reviewed}` : '', r.picked >= r.target ? '목표 달성' : (r.picked && r.target - r.picked <= 5) ? `${r.target - r.picked}장 남음` : ''].filter(Boolean).join(' · ') || '&nbsp;'}</div></div>`; }).join('');
   $('#home-board').querySelectorAll('.brow').forEach(b => b.onclick = () => { show('library'); const sel = $('#lib-treatment'); if (sel) { sel.value = CFG.treatments[b.dataset.t] ? b.dataset.t : ''; renderLibrary(); } });
 }
 function renderTodo() {
@@ -712,7 +713,8 @@ function renderTodo() {
 const cw = (sel, fallback) => Math.max(200, Math.floor(document.querySelector(sel)?.clientWidth || fallback));
 const svgOpen = (W, H, cls='') => `<svg class="chart ${cls}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
 function chartCombo() {
-  const keys = OV.day_keys, d = OV.daily; const W = cw('#chart-combo', 760), H = 240, L = 36, R = 40, T = 16, B = 26; const n = keys.length;
+  const keys = OV.day_keys, d = OV.daily;
+  if (!keys.some(k => d[k].total)) { $('#chart-combo').innerHTML = '<div class="empty">이 기간에 생성한 사진이 없습니다</div>'; return; } const W = cw('#chart-combo', 760), H = 240, L = 36, R = 40, T = 16, B = 26; const n = keys.length;
   const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max), yr = r => T + (H - T - B) * (1 - r);
   const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
   const rgrid = [0, .5, 1].map(f => `<text class="axis" x="${W-R+6}" y="${yr(f)+4}">${f*100}%</text>`).join('');
