@@ -163,6 +163,11 @@ tbody tr:last-child td { border-bottom:none }
 .cmp-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--ui-border); flex-wrap:wrap }
 .cmp-bar .sp { flex:1 } .cmp-bar .hint { font-size:11px; color:var(--ui-lo) } .cmp-bar .hint kbd { font:inherit; border:1px solid var(--ui-border); border-radius:3px; padding:0 4px; margin:0 1px }
 .cmp { position:relative; background:var(--ui-surface,#F4F5F7); overflow:hidden; user-select:none; touch-action:none }
+/* 단축키는 글자가 아니라 '키' 로 보이게 (2026-09-09 성연서님 'M·Esc 가 무슨 뜻인지 모르겠다') */
+.cmp-bar .b kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
+/* 목록으로 = 사진 카드 위 오른쪽 상단에 얹는다 (툴바 안에 있으면 무슨 버튼인지 안 보인다) */
+.cmp .cmp-back { position:absolute; top:8px; right:8px; z-index:5; background:rgba(255,255,255,.92); box-shadow:0 1px 4px rgba(0,0,0,.25) }
+.cmp .cmp-back kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
 .cmp figure { position:relative; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--ui-surface,#F4F5F7); color:var(--ui-lo); font-size:12px }
 .cmp[data-mode=side] { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
 .cmp[data-mode=wipe], .cmp[data-mode=flip] { display:block }
@@ -1153,14 +1158,13 @@ function renderReview() {
     <div class="rev-main">
       <div class="cmp-bar">
         <div class="pill" id="cmp-mode">${Object.entries(CMP_KO).map(([k, l]) => `<button data-m="${k}" class="${k === CMP_MODE ? 'on' : ''}">${l}</button>`).join('')}</div>
-        ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="${esc(region)} 부위 — 여기만 바뀌어야 합니다">부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 부위 마스크가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">부위 표시 없음</span>`}
+        ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="시술한 자리(${esc(region)})를 파란색으로 칠해 보여줍니다 — 이 자리 밖이 바뀌었으면 탈락 · 단축키 M">시술 부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 시술 부위 정보가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">시술 부위 정보 없음</span>`}
         <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
         ${whens.length > 1 ? `<span class="hint" style="margin-left:6px">시점</span><div class="pill" id="cmp-when">${whens.map(w => `<button data-w="${w}" class="${w === REV_WHEN ? 'on' : ''}" title="${(it.after_results||{})[w]?.fail_reasons?.length ? '이 시점 탈락: ' + it.after_results[w].fail_reasons.map(failKo).join(', ') : ''}">${val('timeline', w)}${(it.after_results||{})[w]?.fail_reasons?.length ? ' ✕' : ''}</button>`).join('')}</div>` : ''}
         <div class="sp"></div>
-        <button class="b sm" id="cmp-back" title="브라우저 뒤로 가기·Esc 도 같습니다">← 격자로 <kbd>Esc</kbd></button>
         <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
       </div>
-      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%">${view}</div>
+      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%">${view}<button class="b sm cmp-back" id="cmp-back" title="사진 목록으로 돌아갑니다 · 단축키 Esc 또는 브라우저 뒤로 가기">← 목록으로 <kbd>Esc</kbd></button></div>
       <div class="thumbs"><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
     </div>
     <div class="rev-side">
@@ -1207,7 +1211,7 @@ function bindCompare(el) {
   // 드래그 = 이동(확대 중) / 슬라이더 손잡이 = 경계 이동
   let drag = null;
   cmp.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || e.target.closest('.cmp-back')) return;
     if (e.target.closest('.handle') || (CMP_MODE === 'wipe' && ZOOM.s === 1)) { drag = {wipe:true}; cmp.setPointerCapture(e.pointerId); moveWipe(e); return; }
     if (ZOOM.s > 1) { drag = {x:e.clientX - ZOOM.x, y:e.clientY - ZOOM.y}; cmp.classList.add('dragging'); cmp.setPointerCapture(e.pointerId); }
   });
