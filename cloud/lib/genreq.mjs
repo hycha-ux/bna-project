@@ -32,7 +32,9 @@ export function validate(body, treatments) {
   if (seed != null && !Number.isInteger(seed)) return { error: '시드는 정수여야 합니다' };
   const fixed = {};
   for (const [k, v] of Object.entries(b.fixed || {})) if (v) fixed[String(k)] = String(v);
-  return { ok: { treatment: b.treatment, mode: b.mode, count, target_pass: target, cost_cap: cap, seed, fixed, simulate: !!b.simulate } };
+  const TP = ['immediate', '1w', '2w', '4w'];
+  const series = Array.isArray(b.series) ? TP.filter((w) => b.series.includes(w)) : null;   // 경과 시리즈 시점(시간순). 없으면 전·후 2장
+  return { ok: { treatment: b.treatment, mode: b.mode, count, target_pass: target, cost_cap: cap, seed, fixed, simulate: !!b.simulate, series: series && series.length ? series : null } };
 }
 
 export function newId(now = new Date()) {

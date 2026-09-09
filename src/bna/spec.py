@@ -238,7 +238,18 @@ def segments(text: str, spans: list) -> list:
     return out
 
 
-def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None) -> dict:
+TIMELINE_ORDER = ["immediate", "1w", "2w", "4w"]
+
+
+def series_points(treatment: str, series) -> list:
+    """요청한 경과 시점을 시술이 허용하는 것만, 시간순으로. 빈 목록이면 시리즈가 아니다."""
+    if not series:
+        return []
+    allowed = load("treatments.yaml")[treatment].get("timeline", ["2w"])
+    return [w for w in TIMELINE_ORDER if w in series and w in allowed]
+
+
+def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
     None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게)."""
     from . import lessons
@@ -309,46 +320,69 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     # Before 강도 ↔ After 효과 짝 (mild+눈에 띄게 = 과장, marked+은은 = 효과 없음). 나이 하향 **뒤**의 sev 로 뽑는다
     levels = (t.get("effect_by_severity") or {}).get(sev) or t.get("effect_levels", ["moderate"])
     level = rng.choice(list(levels))
-    when = rng.choice(t.get("timeline", ["2w"]))
-    change = f'{t["after_change"].strip()} {eff["effect_levels"][level]}.'
-    if t.get("must_not_change"):
-        change += " " + " ".join(str(t["must_not_change"]).split())
-    if mode == "selfie":
-        change += f' {eff["timeline"][when].capitalize()}.'
+    pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
+    when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))
+
+    def change_for(w, final_level):
+        """시점 하나의 시술 지시문. 시리즈면 최종 강도를 시점에 맞춰 낮춘다(직후 = 거의 안 보임 + 붓기)."""
+        lv = final_level
+        if pts:
+            sl = (eff.get("series_levels") or {}).get(w, "final")
+            lv = final_level if sl == "final" else sl
+        c = f'{t["after_change"].strip()} {eff["effect_levels"][lv]}.'
+        if t.get("must_not_change"):
+            c += " " + " ".join(str(t["must_not_change"]).split())
+        if mode == "selfie":
+            c += f' {eff["timeline"][w].capitalize()}.'
+        return c, lv
+
+    change, _lv = change_for(when, level)
     variation = {**variation, "before_severity": {"key": sev, "text": str(cond).strip()},
                  "effect_level": {"key": level, "text": eff["effect_levels"][level]},
                  "timeline": {"key": when, "text": eff["timeline"][when]}}
-    if mode == "clinical":
-        after_var = variation
-        after = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=change, avoid=avoid_after)
-    else:
-        after_var = drift_after(variation, mode, rng, timeline=when, treatment=treatment)
-        a = {k: val["text"] for k, val in after_var.items()}
-        identity = identity_for(variation["framing"]["key"], after_var["framing"]["key"])
-        a_scene = dict(a); a_scene.pop("expression", None)          # 표정은 아래 expression_line 이 맡는다
-        after_scene = selfie_scene(a_scene)
-        after_hair = f'{a["hair_color"]}, {a["hair_style"]}' + (f', {a["extras"]}' if a["extras"] else "")
-        if tr.get("expression_policy") == "lock":
-            expression_line = f'Identical expression to the reference: {variation["expression"]["text"]}. The expression must not change at all between the two photos.'
+    mx = load("prompts/mode_extra.yaml")
+
+    def build_after(w, chg, lv):
+        """시점 하나의 After. 시리즈든 아니든 같은 길 — 동일인 기준은 항상 Before 사진이다(After 를 다음 After 의 기준으로 쓰면 얼굴이 흘러간다)."""
+        if mode == "clinical":
+            a_var = variation
+            txt = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=chg, avoid=avoid_after)
+            spans = [("identity", identity), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
+                     ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after)]
         else:
-            expression_line = f'Expression: {a["expression"]}; it may differ slightly from the reference.'
-        mx = load("prompts/mode_extra.yaml"); which = "same" if when == "immediate" else "different"
-        after = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
-            identity_lock=identity, after_scene=after_scene, after_hair=after_hair, after_change=change,
-            expression_line=expression_line, mode_extra=str(mx.get("selfie_after", "")).strip(),
-            after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
-    changed = [k for k in after_var if after_var[k]["key"] != variation[k]["key"]]
+            a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment)
+            a = {k: val["text"] for k, val in a_var.items()}
+            ident = identity_for(variation["framing"]["key"], a_var["framing"]["key"])
+            a_scene = dict(a); a_scene.pop("expression", None)          # 표정은 아래 expression_line 이 맡는다
+            after_scene = selfie_scene(a_scene)
+            after_hair = f'{a["hair_color"]}, {a["hair_style"]}' + (f', {a["extras"]}' if a["extras"] else "")
+            if tr.get("expression_policy") == "lock":
+                expression_line = f'Identical expression to the reference: {variation["expression"]["text"]}. The expression must not change at all between the two photos.'
+            else:
+                expression_line = f'Expression: {a["expression"]}; it may differ slightly from the reference.'
+            which = "same" if w == "immediate" else "different"
+            txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
+                identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
+                expression_line=expression_line, mode_extra=str(mx.get("selfie_after", "")).strip(),
+                after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
+            spans = [("identity", ident), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
+                     ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after),
+                     ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
+                     ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
+        return {"when": w, "effect_level": lv, "after_prompt": " ".join(txt.split()), "after_variation": a_var,
+                "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}
+
+    afters = []
+    for w in (pts or [when]):
+        chg, lv = change_for(w, level)
+        afters.append(build_after(w, chg, lv))
+    last = afters[-1]
     before_parts = segments(before, [("person", person_description(variation)), ("before_condition", cond), ("scene", scene),
                                      ("mode_extra", mode_extra), ("avoid", avoid_before)])
-    after_spans = [("identity", identity), ("change", t["after_change"]), ("effect", eff["effect_levels"][level]),
-                   ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after)]
-    if mode == "selfie":
-        after_spans += [("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
-                        ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][when].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
-    after_parts = segments(after, after_spans)
     return {"avoid_applied": {k: v for k, v in (avoid or {}).items() if v},
-            "before_parts": before_parts, "after_parts": after_parts,
+            "before_parts": before_parts, "after_parts": last["after_parts"],
             "treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
-            "variation": variation, "after_variation": after_var,
-            "after_changed_axes": changed, "generation": "edit" if mode == "clinical" else "identity_reference",
-            "before_prompt": " ".join(before.split()), "after_prompt": " ".join(after.split())}
+            "variation": variation, "after_variation": last["after_variation"],
+            "after_changed_axes": last["after_changed_axes"], "generation": "edit" if mode == "clinical" else "identity_reference",
+            "series": pts or None, "afters": afters,          # 시리즈면 시점별 After 목록(배치·화면이 이걸 돈다). after_* 는 마지막 시점
+            "before_prompt": " ".join(before.split()), "after_prompt": last["after_prompt"]}

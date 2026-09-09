@@ -46,7 +46,7 @@ RUNNING = {}   # batch_id → {"status", "started", "error"}
 def config_payload():
     t = load("treatments.yaml"); v = load("variations.yaml")
     axes = {a: list(v[a]) for a in PERSON_AXES + SCENE_AXES}
-    return {"treatments": {k: {"name_ko": x.get("name_ko", k), "modes": list(x.get("modes", {}))} for k, x in t.items()},
+    return {"treatments": {k: {"name_ko": x.get("name_ko", k), "modes": list(x.get("modes", {})), "timeline": list(x.get("timeline") or ["2w"])} for k, x in t.items()},
             "modes": ["selfie", "clinical"], "axes": axes, "mode_rules": v.get("mode_rules", {}),
             "pricing": load("pricing.yaml"), "checklist": list(load("qa_checklist.yaml")["items"]), "out_dir": str(OUT),
             "default_provider": load("providers.yaml")["default_provider"]}
@@ -60,16 +60,18 @@ def _plans(req):
 
 def plan_payload(req):
     plans, seed, fixed = _plans(req)
-    specs = [build_prompts(req["treatment"], req["mode"], v, None if seed is None else seed * 1000 + i) for i, v in enumerate(plans)]
-    return {"count": len(plans), "distribution": distribution(plans), "items": specs}
+    specs = [build_prompts(req["treatment"], req["mode"], v, None if seed is None else seed * 1000 + i, series=req.get("series")) for i, v in enumerate(plans)]
+    return {"count": len(plans), "distribution": distribution(plans), "items": specs, "series": specs[0].get("series") if specs else None}
 
 
 def estimate_payload(req, expected_pass_rate=0.5):
     p = load("pricing.yaml"); d = defaults_for(req["mode"])
     gen, edit, qa = req.get("gen") or d["gen"], req.get("edit") or d["edit"], req.get("qa") or d["qa"]
-    per_try = p[gen]["generate"] + p[edit]["edit" if req["mode"] == "clinical" else "generate"] + p[qa]["qa"]
+    from .spec import series_points
+    n_after = max(1, len(series_points(req["treatment"], req.get("series")))) if req.get("treatment") else 1
+    per_try = p[gen]["generate"] + n_after * (p[edit]["edit" if req["mode"] == "clinical" else "generate"] + p[qa]["qa"])
     n = int(req.get("count", 1)); tries = n * min(3, 1 / max(expected_pass_rate, 0.05))
-    return {"items": n, "expected_calls": round(tries), "expected_cost_usd": round(per_try * tries, 2), "per_try_usd": round(per_try, 4)}
+    return {"items": n, "expected_calls": round(tries * (1 + 2 * n_after)), "expected_cost_usd": round(per_try * tries, 2), "per_try_usd": round(per_try, 4), "afters": n_after}
 
 
 def dryrun_save(req):
@@ -93,7 +95,7 @@ def start_run(req):
     try:
         from .batch import Batch
         b = Batch(req["treatment"], req["mode"], int(req.get("count", 1)), req.get("seed") or None, req.get("fixed") or {},
-                  req.get("gen") or None, req.get("edit") or None, req.get("qa") or None)
+                  req.get("gen") or None, req.get("edit") or None, req.get("qa") or None, series=req.get("series"))
     except providers.NotConfigured as e:
         return {"error": f"프로바이더 키 없음: {e}"}, 400
     (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count,
@@ -196,12 +198,44 @@ def _fake_gates(rng, fails):
     return idn, st
 
 
+def _demo_images(d, stem, hue, iid, series=None):
+    """자리표시 사진. 시리즈면 시점마다 _after_<when>.jpg (색이 시점 순으로 조금씩 밝아진다)."""
+    from PIL import Image, ImageDraw
+    kinds = [("before", "before.jpg", 35, 70)] + ([(f"after {w}", f"after_{w}.jpg", 50, 74 + 4 * k) for k, w in enumerate(series)] if series else [("after", "after.jpg", 50, 78)])
+    for label, suffix, sat, lum in kinds:
+        img = Image.new("RGB", (400, 500), f"hsl({hue},{sat}%,{lum}%)")
+        dr = ImageDraw.Draw(img); dr.ellipse((100, 90, 300, 330), fill=f"hsl({hue},30%,88%)")
+        dr.text((20, 460), f"DEMO {label.upper()} #{iid}", fill="black"); dr.text((20, 20), "placeholder — no real generation", fill="black")
+        img.save(d / f"{stem}_{suffix}", quality=80)
+
+
 def _demo_mask(d, size=(400, 500)):
     """샘플 배치용 부위 오버레이 자리표시(뺨~입가 타원 두 개). 실제 배치는 랜드마크로 만든다."""
     from PIL import Image, ImageDraw, ImageFilter
     m = Image.new("L", size, 0); dr = ImageDraw.Draw(m)
     dr.polygon([(150, 250), (180, 300), (170, 330), (135, 290)], fill=255); dr.polygon([(250, 250), (220, 300), (230, 330), (265, 290)], fill=255)
     m.filter(ImageFilter.GaussianBlur(8)).save(d / "mask.png")
+
+
+AFTER_ORDER = ["immediate", "1w", "2w", "4w"]
+
+
+def after_files_of(files: list) -> dict:
+    """*_after.jpg 또는 *_after_<when>.jpg → {when: 파일}. 시리즈가 아니면 {"final": 파일}."""
+    out = {}
+    for f in files:
+        if f.endswith("_after.jpg"):
+            out["final"] = f
+        else:
+            for w in AFTER_ORDER:
+                if f.endswith(f"_after_{w}.jpg"):
+                    out[w] = f
+    return {k: out[k] for k in AFTER_ORDER + ["final"] if k in out}
+
+
+def last_after(files: list):
+    af = after_files_of(files)
+    return list(af.values())[-1] if af else None
 
 
 def batch_detail(bid: str):
@@ -212,7 +246,8 @@ def batch_detail(bid: str):
     for m in sorted(load_items(d), key=lambda x: x.get("item_id", "")):
         iid = m["item_id"]; files = sorted(p.name for p in (d / iid).glob("*.jpg"))
         m["before_file"] = next((f for f in files if f.endswith("_before.jpg")), None)
-        m["after_file"] = next((f for f in files if f.endswith("_after.jpg")), None)
+        m["after_file"] = last_after(files)                     # 대표 = 마지막 시점
+        m["after_files"] = after_files_of(files)                # 시리즈면 {immediate: …, 2w: …}
         m["mask_file"] = "mask.png" if (d / iid / "mask.png").exists() else None   # 검수 화면 부위 오버레이
         m["review"] = dict(rv.get(iid, {}))
         if m["review"].get("pick") == "pick":          # 화면 배지가 짐작하지 않게 실제 드라이브 상태를 싣는다
@@ -380,7 +415,7 @@ def library_payload():
             items.append({"batch_id": d.parent.name, "item_id": d.name, "treatment": meta.get("treatment"), "mode": meta.get("mode"),
                           "variation": meta.get("variation", {}), "review": rv, "passed": meta.get("passed"), "demo": meta.get("demo", False),
                           "before_file": next((f for f in files if f.endswith("_before.jpg")), None),
-                          "after_file": next((f for f in files if f.endswith("_after.jpg")), None), "picked_at": rv.get("updated_at")})
+                          "after_file": last_after(files), "after_files": after_files_of(files), "picked_at": rv.get("updated_at")})
     items.sort(key=lambda x: x.get("picked_at") or 0, reverse=True)
     summary = {}
     for it in items:
@@ -398,7 +433,7 @@ def export_payload(req):
     rows = []
     for i in sel:
         sub = root / f'{i["treatment"]}_{i["mode"]}'; sub.mkdir(exist_ok=True); src = OUT / i["batch_id"] / i["item_id"]
-        for f in (i["before_file"], i["after_file"]):
+        for f in [i["before_file"], *list((i.get("after_files") or {}).values())]:   # 시리즈는 시점 전부
             if f:
                 shutil.copy2(src / f, sub / f)
         v = i["variation"]
@@ -412,7 +447,7 @@ def export_payload(req):
 
 
 # ---------- 데모 배치 (키 없이 화면 확인용) ----------
-def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
+def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7, series=None):
     """실제 생성 없이 PIL 로 그린 자리표시 이미지 + 무작위 검수 결과. 이름에 demo 가 붙는다."""
     from PIL import Image, ImageDraw
     rng = random.Random(seed)
@@ -420,19 +455,15 @@ def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
     plans = plan_batch(mode, count, seed, treatment=treatment)
     checklist = list(load("qa_checklist.yaml")["items"]); items = []
     for i, v in enumerate(plans):
-        spec = build_prompts(treatment, mode, v, seed * 1000 + i); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
+        spec = build_prompts(treatment, mode, v, seed * 1000 + i, series=series); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
         passed = rng.random() < 0.6; attempt = 1 if passed and rng.random() < 0.7 else rng.randint(1, 3)
         fails = [] if passed else rng.sample(["structure", "identity", "vision:hair", "vision:ai_look", "vision:fingers", "duplicate"], rng.randint(1, 2))
         scores = {k: (rng.randint(7, 10) if passed else rng.randint(4, 9)) for k in checklist}
         stem = f'{treatment}_{mode}_{v["country"]["key"]}{v["age"]["key"]}{v["gender"]["key"][0]}_{iid}'
         hue = rng.randint(0, 360)
-        for kind in ("before", "after"):
-            img = Image.new("RGB", (400, 500), f"hsl({hue},{35 if kind == 'before' else 50}%,{70 if kind == 'before' else 78}%)")
-            dr = ImageDraw.Draw(img); dr.ellipse((100, 90, 300, 330), fill=f"hsl({hue},30%,88%)")
-            dr.text((20, 460), f"DEMO {kind.upper()} #{iid}", fill="black"); dr.text((20, 20), "placeholder — no real generation", fill="black")
-            img.save(d / iid / f"{stem}_{kind}.jpg", quality=80)
+        _demo_images(d / iid, stem, hue, iid, spec.get("series"))
         idn, st = _fake_gates(rng, fails); _demo_mask(d / iid)
-        meta = {**spec, "item_id": iid, "batch_id": bid, "prompt_version": "demo", "attempt": attempt, "passed": passed,
+        meta = {**spec, "item_id": iid, "batch_id": bid, "prompt_version": "demo", "attempt": attempt, "passed": passed, "series": spec.get("series"),
                 "fail_reasons": fails, "cost": round(0.085 * attempt, 3), "demo": True, "mask_file": "mask.png",
                 "structure": st, "identity": idn,
                 "vision": {"scores": scores, "failed_items": [f.split(":")[1] for f in fails if f.startswith("vision:")]}}
@@ -444,7 +475,7 @@ def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
 
 
 def sim_batch(treatment="nasolabial", mode="selfie", count=12, seed=None, item_seconds=2.0, concurrency=3, target_pass=None, cost_cap=None,
-              fixed=None, on_batch=None):
+              fixed=None, on_batch=None, series=None):
     """실제 호출 없이 progress.json 을 시간에 따라 갱신하고, 끝난 항목은 make_demo 와 같은 자리표시 결과를 쓴다. 블로킹."""
     from PIL import Image, ImageDraw
     from concurrent.futures import ThreadPoolExecutor
@@ -471,7 +502,7 @@ def sim_batch(treatment="nasolabial", mode="selfie", count=12, seed=None, item_s
     def one(i, v):
         if should_stop():
             return None
-        spec = build_prompts(treatment, mode, v, seed * 1000 + i); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
+        spec = build_prompts(treatment, mode, v, seed * 1000 + i, series=series); iid = f"{i:04d}"; (d / iid).mkdir(exist_ok=True)
         meta = None
         for attempt in range(1, 4):
             for stage in ("before", "after", "postprocess", "qa"):
@@ -479,13 +510,10 @@ def sim_batch(treatment="nasolabial", mode="selfie", count=12, seed=None, item_s
             passed = rng.random() < 0.6
             fails = [] if passed else rng.sample(["structure", "identity", "vision:hair", "vision:ai_look", "vision:fingers"], rng.randint(1, 2))
             stem = f'{treatment}_{mode}_{v["country"]["key"]}{v["age"]["key"]}{v["gender"]["key"][0]}_{iid}'; hue = rng.randint(0, 360)
-            for kind in ("before", "after"):
-                img = Image.new("RGB", (400, 500), f"hsl({hue},{35 if kind == 'before' else 50}%,{70 if kind == 'before' else 78}%)")
-                dr = ImageDraw.Draw(img); dr.ellipse((100, 90, 300, 330), fill=f"hsl({hue},30%,88%)"); dr.text((20, 460), f"SIM {kind.upper()} #{iid}", fill="black")
-                img.save(d / iid / f"{stem}_{kind}.jpg", quality=80)
+            _demo_images(d / iid, stem, hue, iid, spec.get("series"))
             _demo_mask(d / iid); idn, st = _fake_gates(rng, fails)
             meta = {**spec, "item_id": iid, "batch_id": bid, "prompt_version": "sim", "attempt": attempt, "passed": passed, "fail_reasons": fails,
-                    "cost": round(0.085 * attempt, 3), "demo": True, "mask_file": "mask.png", "structure": st, "identity": idn,
+                    "cost": round(0.085 * attempt, 3), "demo": True, "mask_file": "mask.png", "structure": st, "identity": idn, "series": spec.get("series"),
                     "vision": {"scores": {k: rng.randint(6, 10) for k in checklist}, "failed_items": [f.split(":")[1] for f in fails if f.startswith("vision:")]}}
             (d / iid / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
             if passed:
@@ -515,13 +543,13 @@ def demo_run(**kw):
 # ---------- 큐 ----------
 def run_job(job, on_batch):
     common = dict(treatment=job["treatment"], mode=job["mode"], count=job["count"], seed=job["seed"], fixed=job["fixed"],
-                  target_pass=job["target_pass"], cost_cap=job["cost_cap"])
+                  target_pass=job["target_pass"], cost_cap=job["cost_cap"], series=job.get("series"))
     if job["simulate"]:
         return sim_batch(on_batch=on_batch, **common)
     from .batch import Batch
     b = Batch(gen=job.get("gen") or None, edit=job.get("edit") or None, qa=job.get("qa") or None, **common)
     (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count, "kind": "run",
-                                                  "target_pass": b.target_pass, "cost_cap": b.cost_cap, "job_id": job["job_id"], "created_at": time.time()}, ensure_ascii=False))
+                                                  "target_pass": b.target_pass, "cost_cap": b.cost_cap, "series": b.series, "job_id": job["job_id"], "created_at": time.time()}, ensure_ascii=False))
     RUNNING[b.batch_id] = {"status": "running", "started": time.time(), "error": None}; on_batch(b.batch_id)
     try:
         st = asyncio.run(b.run()); RUNNING[b.batch_id]["status"] = "done"; return b.batch_id, st
@@ -658,7 +686,7 @@ class Handler(SimpleHTTPRequestHandler):
             if p == "/api/queue/clear_finished":
                 queue().clear_finished(); return self._json({"ok": True})
             if p == "/api/demo":
-                return self._json({"batch_id": make_demo(req.get("treatment", "nasolabial"), req.get("mode", "selfie"), int(req.get("count", 12)))})
+                return self._json({"batch_id": make_demo(req.get("treatment", "nasolabial"), req.get("mode", "selfie"), int(req.get("count", 12)), series=req.get("series"))})
             return self._json({"error": "unknown"}, 404)
         except Exception as e:                     # noqa
             return self._json({"error": repr(e)}, 500)

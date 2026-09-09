@@ -13,6 +13,8 @@ ok(validate({ treatment: 'nasolabial', mode: 'selfie', count: 8, target_pass: 9 
 ok(validate({ treatment: 'nasolabial', mode: 'selfie', count: 8, fixed: { gender: 'female', age: '' } }, T).ok.fixed.gender === 'female'
    && !('age' in validate({ treatment: 'nasolabial', mode: 'selfie', count: 8, fixed: { gender: 'female', age: '' } }, T).ok.fixed), '빈 고정값은 버린다');
 
+ok(validate({ treatment: 'nasolabial', mode: 'selfie', count: 8, series: ['2w', 'immediate', 'x'] }, T).ok.series.join(',') === 'immediate,2w', '시리즈 시점은 시간순·아는 값만');
+ok(validate({ treatment: 'nasolabial', mode: 'selfie', count: 8 }, T).ok.series === null, '시리즈 없으면 null(전·후 2장)');
 ok(canTransition('requested', 'accepted') && canTransition('requested', 'cancelled'), '요청됨 → 받음/취소');
 ok(!canTransition('accepted', 'cancelled') && !canTransition('running', 'cancelled'), '받은 뒤엔 화면에서 취소 못 한다');
 ok(canTransition('running', 'done') && canTransition('running', 'error') && !canTransition('done', 'running'), '완료 뒤로는 못 돌아간다');

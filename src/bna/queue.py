@@ -38,7 +38,8 @@ class Queue:
                "gen": spec.get("gen") or None, "edit": spec.get("edit") or None, "qa": spec.get("qa") or None,   # None = 모드 기본값(providers.yaml)
                "target_pass": int(spec["target_pass"]) if spec.get("target_pass") else None,
                "cost_cap": float(spec["cost_cap"]) if spec.get("cost_cap") else None,
-               "simulate": bool(spec.get("simulate", False)), "label": spec.get("label", "")}
+               "simulate": bool(spec.get("simulate", False)), "label": spec.get("label", ""),
+               "series": [str(w) for w in (spec.get("series") or []) if w] or None}   # 경과 시리즈 시점 (없으면 전·후 2장)
         with self.lock:
             self.data["jobs"].append(job); self._flush()
         self.wake.set(); return job

@@ -1,5 +1,13 @@
 # 효과 강도·경과 시점 문구
+# 경과 시리즈(2026-09-09 성연서님: 기본 직후·2주, 세트 단위 채택): 최종 강도는 강도 짝 표로 정하고, 시점마다 이렇게 낮춘다.
+#   early = 변화가 거의 안 보이고 붓기·발적만 / subtle = 은은 / final = 정해진 최종 강도
+series_levels:
+  immediate: early
+  1w: subtle
+  2w: final
+  4w: final
 effect_levels:
+  early: "The treatment change is barely visible yet: the treated area looks almost the same as in the reference, slightly puffy or pink from the procedure; do not show the final result"
   subtle: "The change is mild: the treated area is better than in the reference but the concern is still present, noticeable mainly when the two photos are compared side by side"
   moderate: "The change is clear when the two photos are compared, but still within what a single treatment realistically does; nothing looks perfect or erased"
 timeline:

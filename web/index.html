@@ -147,7 +147,7 @@ tbody tr:last-child td { border-bottom:none }
 .item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
 .act { display:grid; grid-template-columns:1fr 1fr; gap:8px } .act .b { height:40px; font-size:var(--fs-md) }
 .dd { position:relative; margin-bottom:8px }
-.item .pair { cursor:zoom-in } .item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
+.item .pair { cursor:zoom-in; position:relative } .series-badge { position:absolute; right:8px; bottom:8px; background:rgba(25,31,40,.75); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; z-index:2 } .item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
 .dd-btn { display:flex; align-items:center; gap:8px; height:36px; padding:0 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:#fff; font-size:var(--fs-sm); cursor:pointer; user-select:none }
 .dd[open] .dd-btn { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha) }
 .dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
@@ -439,6 +439,15 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
             <div class="form-sep"></div>
             <div class="field"><span>시술 <em class="muted" id="q-treat-hint"></em></span><div class="tags" id="q-treatments" style="margin:0"></div></div>
             <div class="form-sep"></div>
+            <!-- 사진 구성 (2026-09-09 성연서님): 전·후 2장 / 경과 시리즈(직후·2주 기본). 시리즈는 세트 단위로 채택한다 -->
+            <div class="field"><span>사진 구성</span>
+              <div class="modes" id="q-comp">
+                <button data-v="pair" class="on"><b>전 · 후 2장</b><small>시술 전 1장 + 시술 후 1장</small></button>
+                <button data-v="series"><b>경과 시리즈</b><small>시술 전 1장 + 시점마다 후 1장 · 세트로 채택</small></button>
+              </div>
+              <div class="tags" id="q-series" style="margin:6px 0 0" hidden></div>
+            </div>
+            <div class="form-sep"></div>
             <div class="row"><label class="field" style="flex:1"><span>생성 장수</span><input type="number" id="count" value="10" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
             <div class="row"><label class="field" style="flex:1"><span>비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label><label class="field" style="flex:1"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성</option><option value="1">시뮬레이션</option></select></label></div>
             <div class="form-sep"></div>
@@ -620,7 +629,7 @@ const VAL_KO = {
   context:{none:'없음', pajamas:'잠옷', home_tee:'홈티', towel_headband:'수건 헤어밴드', cap:'모자', necklace:'목걸이', hair_in_face:'잔머리', finger_on_cheek:'볼 가리킴', outing_top:'외출복', clinic_headband:'병원 헤어밴드', hair_flat_after:'눌린 머리', cotton_pad:'솜·연고'},
   lighting:{ring:'링라이트', window:'창가 자연광', fluorescent:'형광등', night:'밤 실내', backlit:'역광', ceiling_harsh:'천장등 번들거림', mixed:'혼합광'}, color:{neutral:'기본 색감', warm:'따뜻한', cool:'차가운', iphone:'아이폰 느낌', galaxy:'갤럭시 느낌', filter:'약한 필터'},
   quality:{flagship:'최신폰 화질', mid:'보통 폰', old:'구형 폰', front_cam:'전면 카메라', app_upload:'앱 업로드 화질'},
-  before_severity:{mild:'약함', moderate:'보통', marked:'뚜렷함'}, effect_level:{subtle:'은은하게', moderate:'눈에 띄게'}, timeline:{immediate:'시술 직후', '1w':'1주 뒤', '2w':'2주 뒤', '4w':'4주 뒤'},
+  before_severity:{mild:'약함', moderate:'보통', marked:'뚜렷함'}, effect_level:{early:'거의 없음 (직후)', subtle:'은은하게', moderate:'눈에 띄게'}, timeline:{immediate:'시술 직후', '1w':'1주 뒤', '2w':'2주 뒤', '4w':'4주 뒤'},
 };
 const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
 const failKo = r => FAIL_KO[r] || r;
@@ -778,7 +787,8 @@ function renderTreatmentChips() {
   const known = new Set(GROUPS.flatMap(([, ks]) => ks));
   const grp = (label, ks) => ks.length ? `<div class="tgrp"><span class="tl">${label}</span>${ks.map(k => [k, CFG.treatments[k]]).filter(([, t]) => t).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('')}</div>` : '';
   $('#q-treatments').innerHTML = GROUPS.map(([l, ks]) => grp(l, ks)).join('') + grp('기타', Object.keys(CFG.treatments).filter(k => !known.has(k)));
-  $$('#q-treatments button').forEach(b => b.onclick = () => { if (b.disabled) return; b.classList.toggle('on'); renderFixed(); renderProvDefault(); });
+  $$('#q-treatments button').forEach(b => b.onclick = () => { if (b.disabled) return; b.classList.toggle('on'); renderFixed(); renderProvDefault(); renderSeriesChips(); });
+  renderSeriesChips();
   $$('#q-modes button').forEach(b => b.onclick = () => { b.classList.toggle('on'); syncTreatmentsToModes(); renderFixed(); renderProvDefault(); });
   syncTreatmentsToModes();
 }
@@ -797,14 +807,30 @@ function renderFixed() {
 }
 function renderProvDefault() { const el = $('#prov-default'); if (!el || !CFG.default_provider) return; el.innerHTML = selModes().map(m => { const d = CFG.default_provider[m]; return d ? `${MODE_KO[m]} 기본: 생성 ${d.gen} · 시술 후 ${d.edit} · 검수 ${d.qa}` : ''; }).filter(Boolean).join('<br>') || '사진 종류를 선택하세요'; }
 function fixedVals() { const fixed = {}; $$('#fixed select').forEach(s => { if (s.value) fixed[s.dataset.axis] = s.value; }); return fixed; }
+const TP_ORDER = ['immediate', '1w', '2w', '4w'], SERIES_DEFAULT = ['immediate', '2w'];   // 기본 직후·2주 (2026-09-09 성연서님)
+let COMP = 'pair', SERIES_ON = new Set(SERIES_DEFAULT);
+function renderSeriesChips() {
+  const box = $('#q-series'); if (!box) return;
+  box.hidden = COMP !== 'series';
+  const ts = selTreatments(); const allowed = new Set(ts.flatMap(t => CFG.treatments[t]?.timeline || []));
+  box.innerHTML = TP_ORDER.map(w => { const ok = !ts.length || allowed.has(w); return `<button data-w="${w}" class="${SERIES_ON.has(w) && ok ? 'on' : ''}" ${ok ? '' : 'disabled'} title="${ok ? '' : '고른 시술이 이 시점을 지원하지 않습니다'}">${val('timeline', w)}</button>`; }).join('')
+    + `<span class="muted" style="font-size:11px;align-self:center;margin-left:4px">시점마다 시술 후 1장 · 비용은 시점 수만큼</span>`;
+  box.querySelectorAll('button[data-w]').forEach(b => b.onclick = () => { if (b.disabled) return; if (SERIES_ON.has(b.dataset.w)) SERIES_ON.delete(b.dataset.w); else SERIES_ON.add(b.dataset.w); renderSeriesChips(); });
+}
+function seriesFor(t) {
+  if (COMP !== 'series') return null;
+  const allowed = CFG.treatments[t]?.timeline || []; const pts = TP_ORDER.filter(w => SERIES_ON.has(w) && allowed.includes(w));
+  return pts.length ? pts : null;
+}
+$$('#q-comp button').forEach(b => b.onclick = () => { COMP = b.dataset.v; $$('#q-comp button').forEach(x => x.classList.toggle('on', x === b)); renderSeriesChips(); });
 function jobsFromForm() {
   const ts = selTreatments(), ms = selModes(), jobs = [];
   ts.forEach(t => ms.filter(m => CFG.treatments[t].modes.includes(m)).forEach(m => jobs.push({treatment: t, mode: m, count: +$('#count').value,
     target_pass: $('#q-target').value || null, cost_cap: $('#q-cap').value || null, seed: $('#seed').value || null, fixed: fixedVals(),
-    simulate: $('#q-sim').value === '1', gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value})));
+    simulate: $('#q-sim').value === '1', gen: $('#gen').value, edit: $('#edit').value, qa: $('#qa').value, series: seriesFor(t)})));
   return jobs;
 }
-function firstReq() { const j = jobsFromForm()[0]; return j && {treatment: j.treatment, mode: j.mode, count: j.count, seed: j.seed, fixed: j.fixed, gen: j.gen, edit: j.edit, qa: j.qa}; }
+function firstReq() { const j = jobsFromForm()[0]; return j && {treatment: j.treatment, mode: j.mode, count: j.count, seed: j.seed, fixed: j.fixed, gen: j.gen, edit: j.edit, qa: j.qa, series: j.series}; }
 
 function bars(obj, total, cls, axis, labelFn) {
   const entries = Object.entries(obj).sort((a,b) => (b[1].n ?? b[1]) - (a[1].n ?? a[1]));
@@ -849,7 +875,9 @@ function promptCard(s, i) {
   return `<div style="padding:12px 0;border-bottom:1px solid var(--ui-border)"><div class="head" style="display:flex;justify-content:space-between"><b>${i+1}</b><span class="muted">시술 후 변경: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
     <div>${badges}</div>
     <details style="margin-top:8px"><summary>시술 전 프롬프트</summary>${promptLegend(s.before_parts)}${promptHtml(s.before_parts, s.before_prompt)}</details>
-    <details><summary>시술 후 프롬프트</summary>${promptLegend(s.after_parts)}${promptHtml(s.after_parts, s.after_prompt)}</details></div>`;
+    ${(s.afters || []).length > 1
+      ? s.afters.map(a => `<details><summary>시술 후 프롬프트 · ${val('timeline', a.when)} <span class="muted">(${val('effect_level', a.effect_level) || a.effect_level})</span></summary>${promptLegend(a.after_parts)}${promptHtml(a.after_parts, a.after_prompt)}</details>`).join('')
+      : `<details><summary>시술 후 프롬프트</summary>${promptLegend(s.after_parts)}${promptHtml(s.after_parts, s.after_prompt)}</details>`}</div>`;
 }
 $('#btn-estimate').onclick = async () => {
   const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
@@ -921,7 +949,7 @@ async function loadQueue() {
     const prog = j.status === 'running' && p ? `<span class="muted"> ${p.done}/${p.planned}</span>` : '';
     const res = j.status === 'done' ? `${r.passed ?? '?'}/${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ` <span class="chip acc" title="${esc(STOP_KO(r.stopped))}">${r.stopped.startsWith('target_pass') ? '목표 도달' : '상한 도달'}</span>` : ''}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error || '').slice(0, 24))}</span>` : '';
     return `<tr><td class="muted">${i+1}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td>
-      <td class="num">${j.count}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">$${j.est_cost}</td>
+      <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">$${j.est_cost}</td>
       <td style="white-space:nowrap">${stKo[j.status]}${prog}</td><td style="white-space:nowrap">${res}</td>
       <td style="white-space:nowrap;text-align:right">${j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
@@ -1072,7 +1100,7 @@ function bindActs(root) {
 // ── 검수 모드: 한 장씩 크게, 판단 근거를 옆에. ←→ 이동, 1 선택, 2 제외 ──
 let VIEW = 'grid', REV_IDX = 0, GAL_ITEMS = [];
 // 검수 비교 뷰 상태 — 사진을 넘겨도 보기 방식·오버레이는 유지, 확대만 초기화한다
-let CMP_MODE = 'side', MASK_ON = false, ZOOM = {s:1, x:0, y:0}, FLIP_AFTER = false;
+let CMP_MODE = 'side', MASK_ON = false, ZOOM = {s:1, x:0, y:0}, FLIP_AFTER = false, REV_WHEN = null;   // REV_WHEN = 시리즈에서 보는 시점
 try { CMP_MODE = localStorage.getItem('bna.cmp') || 'side'; MASK_ON = localStorage.getItem('bna.mask') === '1'; } catch {}
 const CMP_KO = {side:'나란히', wipe:'슬라이더', flip:'깜빡이'};
 function gateChips(it) {
@@ -1091,10 +1119,14 @@ function gateChips(it) {
   return `<div class="gates">${id}${stc}</div>`;
 }
 function renderReview() {
-  const el = $('#rev'), it = GAL_ITEMS[REV_IDX];
+  const el = $('#rev'); let it = GAL_ITEMS[REV_IDX];   // let: 시리즈면 보는 시점의 After 로 바꿔 끼운다
   if (!it) { el.innerHTML = '<div class="empty">표시할 항목이 없습니다</div>'; return; }
   const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
   const src = f => `/files/${b}/${it.item_id}/${f}`;
+  const afs = it.after_files || {}; const whens = Object.keys(afs).filter(k => k !== 'final');
+  if (!whens.includes(REV_WHEN)) REV_WHEN = whens.at(-1) || null;
+  const afterFile = REV_WHEN ? afs[REV_WHEN] : it.after_file; const afterCap = REV_WHEN ? `시술 후 · ${val('timeline', REV_WHEN)}` : '시술 후';
+  it = {...it, after_file: afterFile};
   const maskUrl = it.mask_file ? src(it.mask_file) : null;
   const ov = maskUrl ? `<div class="ov" style="--mask:url('${maskUrl}')"></div>` : '';
   const stage = (file, cap, extra = '') => file
@@ -1102,11 +1134,11 @@ function renderReview() {
     : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   let view;
   if (CMP_MODE === 'side' || !it.before_file || !it.after_file) {
-    view = stage(it.before_file, '시술 전') + stage(it.after_file, '시술 후');
+    view = stage(it.before_file, '시술 전') + stage(it.after_file, afterCap);
   } else {
     const afterW = `<div class="after-w"><img src="${src(it.after_file)}" draggable="false"></div>`;
     view = `<figure><div class="stage">${`<img src="${src(it.before_file)}" draggable="false">`}${afterW}${ov}${CMP_MODE === 'wipe' ? '<div class="handle"></div>' : ''}</div>
-      <figcaption class="cap-b">${CMP_MODE === 'flip' ? (FLIP_AFTER ? '시술 후' : '시술 전') : '시술 전 ◂ ▸ 시술 후'}</figcaption></figure>`;
+      <figcaption class="cap-b">${CMP_MODE === 'flip' ? (FLIP_AFTER ? afterCap : '시술 전') : `시술 전 ◂ ▸ ${afterCap}`}</figcaption></figure>`;
   }
   const fails = (it.fail_reasons||[]).map(r => esc(failKo(r))).join(' · ');
   const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>' : it.passed ? '<span class="verdict ok">AI 검수 통과</span>' : '<span class="verdict bad">AI 검수 탈락</span>';
@@ -1123,6 +1155,7 @@ function renderReview() {
         <div class="pill" id="cmp-mode">${Object.entries(CMP_KO).map(([k, l]) => `<button data-m="${k}" class="${k === CMP_MODE ? 'on' : ''}">${l}</button>`).join('')}</div>
         ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="${esc(region)} 부위 — 여기만 바뀌어야 합니다">부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 부위 마스크가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">부위 표시 없음</span>`}
         <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
+        ${whens.length > 1 ? `<span class="hint" style="margin-left:6px">시점</span><div class="pill" id="cmp-when">${whens.map(w => `<button data-w="${w}" class="${w === REV_WHEN ? 'on' : ''}" title="${(it.after_results||{})[w]?.fail_reasons?.length ? '이 시점 탈락: ' + it.after_results[w].fail_reasons.map(failKo).join(', ') : ''}">${val('timeline', w)}${(it.after_results||{})[w]?.fail_reasons?.length ? ' ✕' : ''}</button>`).join('')}</div>` : ''}
         <div class="sp"></div>
         <button class="b sm" id="cmp-back" title="브라우저 뒤로 가기·Esc 도 같습니다">← 격자로 <kbd>Esc</kbd></button>
         <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
@@ -1135,7 +1168,8 @@ function renderReview() {
         <div style="display:flex;align-items:center;gap:8px"><b style="font-size:var(--fs-lg)">${+it.item_id+1}번 사진</b>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
         ${fails ? `<div class="muted">${fails}</div>` : ''}
       </div>
-      <div><div class="rev-h">자동 게이트</div>${gateChips(it)}</div>
+      ${whens.length > 1 ? `<div class="muted" style="font-size:var(--fs-xs)">경과 시리즈 ${whens.map(w => val('timeline', w)).join(' → ')} · 채택·제외는 <b>세트 단위</b>입니다(한 시점이라도 이상하면 제외)</div>` : ''}
+      <div><div class="rev-h">자동 게이트${REV_WHEN ? ` <span class="muted">· ${val('timeline', REV_WHEN)}</span>` : ''}</div>${gateChips(REV_WHEN && it.after_results?.[REV_WHEN] ? {...it, ...it.after_results[REV_WHEN]} : it)}</div>
       <div><div class="rev-h">AI 점수</div><div class="scores">${scores}</div></div>
       <div><div class="rev-h">생성 조건</div><div class="muted cond-line">${cond(['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'])}</div></div>
       <div class="rev-act">
@@ -1154,6 +1188,7 @@ function renderReview() {
 function bindCompare(el) {
   const cmp = el.querySelector('.cmp'); if (!cmp) return;
   el.querySelectorAll('#cmp-mode button').forEach(bt => bt.onclick = () => { CMP_MODE = bt.dataset.m; try { localStorage.setItem('bna.cmp', CMP_MODE); } catch {} renderReview(); });
+  el.querySelectorAll('#cmp-when button').forEach(bt => bt.onclick = () => { REV_WHEN = bt.dataset.w; renderReview(); });
   const mk = el.querySelector('#cmp-mask'); if (mk) mk.onclick = () => { MASK_ON = !MASK_ON; try { localStorage.setItem('bna.mask', MASK_ON ? '1' : '0'); } catch {} cmp.classList.toggle('mask-on', MASK_ON); mk.classList.toggle('primary', MASK_ON); };
   const stages = [...cmp.querySelectorAll('.stage')];
   const apply = () => { stages.forEach(st => st.style.transform = `translate(${ZOOM.x}px,${ZOOM.y}px) scale(${ZOOM.s})`); cmp.classList.toggle('zoomed', ZOOM.s > 1); const r = el.querySelector('#cmp-reset'); if (r) r.disabled = ZOOM.s === 1; };
@@ -1242,8 +1277,9 @@ function itemCard(it) {
   const conds = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => esc(val(k, v[k].key)));
   const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
   const open = rv.pick === 'reject';
+  const afs = it.after_files || {}; const seriesN = Object.keys(afs).filter(k => k !== 'final').length;
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
-    <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
+    <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, seriesN > 1 ? `시술 후 · ${val('timeline', Object.keys(afs).at(-1))}` : '시술 후')}${seriesN > 1 ? `<span class="series-badge" title="경과 시리즈 ${Object.keys(afs).map(w => val('timeline', w)).join(' → ')}">${seriesN}시점</span>` : ''}</div>
     <div class="body">
       <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
       <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
