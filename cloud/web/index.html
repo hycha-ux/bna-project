@@ -460,8 +460,8 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-jobs">
       <div class="card">
         <div class="card-head"><h3>작업 목록</h3><select id="jobs-kind" class="hsel"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
-        <!-- 열 11 → 6 (2026-09-09 성연서님 정렬 점검): 장당 시도·비용은 운영 지표라 뺐고, 유형·방식은 시술 옆에 -->
-        <div class="tbl-wrap" id="batches-wrap"><table id="batches" class="jobs"><thead><tr><th>시간</th><th>시술</th><th class="num">생성</th><th class="num">AI 통과</th><th class="num">검수 · 채택</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
+        <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
       </div>
       <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
@@ -902,10 +902,9 @@ async function loadBatches() {
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
     const dry = b.kind === 'dry_run';
-    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</td>
-      <td><b>${tname(b.treatment)}</b> <span class="muted">${MODE_KO[b.mode]||b.mode||''}</span> <span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
-      <td class="num">${s.total ?? b.count ?? ''}</td><td class="num">${dry ? '—' : `<b>${s.passed ?? 0}</b> <span class="muted">${pct(s.pass_rate||0)}</span>`}</td>
-      <td class="num">${dry ? '—' : `${s.reviewed||0} · <b class="${s.picked ? 'okc' : ''}">${s.picked||0}</b>${s.pending ? ` <span class="chip warn">대기 ${s.pending}</span>` : ''}`}</td><td>${st}</td></tr>`; }).join('');
+    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
+      <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td>
+      <td>${dry ? '—' : `${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span>`}</td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
