@@ -51,6 +51,22 @@ export function canTransition(from, to) {
   return (next[from] || []).includes(to);
 }
 
+/**
+ * 요청 한 건을 같은 경로에 덮어쓴다. 쓰기는 이 함수 하나로만 — put 옵션이 갈리면 파일이 둘 생긴다.
+ * ⚠ `allowOverwrite` 를 빼면 **두 번째 쓰기가 통째로 실패한다**(Blob v2, 2026-09-09 실측):
+ *   상태 전이가 곧 같은 이름 덮어쓰기라, 이게 없으면 취소도 진행 보고도 한 번도 성공하지 못한다.
+ * ⚠ `cacheControlMaxAge: 0` 도 같은 이유로 필수다. 기본값은 캐시를 길게 잡아, 다 끝난 요청을
+ *   한참 뒤에 읽어도 **옛 상태가 온다**(09-09 실측: 완료 50초 뒤 목록이 아직 '생성 중'이라
+ *   폴러가 같은 요청을 또 닫았다). 이 파일은 사진이 아니라 상태라 캐시하면 안 된다.
+ */
+export async function save(token, req) {
+  await put(blobName(req.id), JSON.stringify(req), {
+    access: 'private', token, addRandomSuffix: false, allowOverwrite: true,
+    contentType: 'application/json', cacheControlMaxAge: 0,
+  });
+  return req;
+}
+
 export async function create(token, body, user, treatments) {
   const v = validate(body, treatments);
   if (v.error) return { error: v.error };
@@ -58,13 +74,18 @@ export async function create(token, body, user, treatments) {
     id: newId(), status: 'requested', ...v.ok,
     requested_by: user?.email || user?.name || 'unknown', requested_at: new Date().toISOString(),
   };
-  await put(blobName(req.id), JSON.stringify(req), { access: 'private', token, addRandomSuffix: false, contentType: 'application/json' });
+  await save(token, req);
   return { ok: req };
 }
 
+/**
+ * ⚠ 읽기는 **캐시를 끈다**(`useCache: false`). 이 파일은 사진이 아니라 *상태*라, 캐시된 옛 값을
+ * 받으면 이미 끝난 요청을 다시 돌리거나 화면이 '생성 중'에 얼어붙는다(09-09 실측: 완료 뒤 50초가
+ * 지나도 목록이 옛 상태였다). 느려지는 건 작은 JSON 몇 개 읽기뿐이니 그 값이 훨씬 싸다.
+ */
 export async function load(token, id) {
   try {
-    const r = await get(blobName(id), { access: 'private', token });
+    const r = await get(blobName(id), { access: 'private', token, useCache: false });
     if (!r) return null;
     return JSON.parse(await new Response(r.stream).text());
   } catch { return null; }
@@ -75,8 +96,32 @@ export async function cancel(token, id) {
   if (!req) return { error: '요청을 찾을 수 없습니다' };
   if (!canTransition(req.status, 'cancelled')) return { error: `${STATUS_KO[req.status] || req.status} 상태라 취소할 수 없습니다 — 생성 PC 가 이미 받았습니다` };
   const next = { ...req, status: 'cancelled', cancelled_at: new Date().toISOString() };
-  await put(blobName(id), JSON.stringify(next), { access: 'private', token, addRandomSuffix: false, contentType: 'application/json' });
+  await save(token, next);
   return { ok: next };
+}
+
+/**
+ * 생성 PC 전용 — 상태 한 칸 전진(accepted→running→done|error).
+ *
+ * **쓰기 직전에 다시 읽는다**: 폴러가 목록을 만든 사이 화면에서 취소가 눌렸을 수 있다.
+ * 전이 규칙에 어긋나면 쓰지 않고 사유를 돌려준다(취소된 요청을 돌리지 않는 장치가 이것 하나다).
+ *
+ * ⚠ 방금 내가 쓴 값을 곧바로 다시 읽으면 **옛 값이 온다**(Blob 읽기 캐시, 2026-09-09 실측
+ *   1초 이내). 그래서 한 회차 안에서 두 칸을 연달아 옮길 때는 앞 칸의 결과를 `known` 으로
+ *   넘겨라 — 다시 읽지 않는다. 남이 바꿨을 수 있는 첫 칸에서만 읽는 게 맞다.
+ */
+export async function advance(token, id, to, patch = {}, known = null) {
+  const req = known || await load(token, id);
+  if (!req) return { error: '요청을 찾을 수 없습니다' };
+  if (!canTransition(req.status, to)) return { error: `${STATUS_KO[req.status] || req.status} → ${STATUS_KO[to] || to} 전이는 허용되지 않습니다` };
+  return { ok: await save(token, { ...req, ...patch, status: to }) };
+}
+
+/** 상태는 그대로 두고 곁 정보만 갱신(로컬 작업 번호·진행률). 전이가 아니므로 규칙 검사가 없다. */
+export async function annotate(token, id, fields) {
+  const req = await load(token, id);
+  if (!req) return { error: '요청을 찾을 수 없습니다' };
+  return { ok: await save(token, { ...req, ...fields, status: req.status }) };
 }
 
 /** 최근 것부터. 오래된 done/cancelled 는 keep 개까지만(화면이 무한히 길어지지 않게). */
@@ -87,7 +132,7 @@ export async function listAll(token, { keep = 50 } = {}) {
     const page = await list({ token, prefix: PREFIX, cursor, limit: 1000 });
     for (const b of page.blobs) {
       try {
-        const r = await get(b.pathname, { access: 'private', token });
+        const r = await get(b.pathname, { access: 'private', token, useCache: false });
         if (r) out.push(JSON.parse(await new Response(r.stream).text()));
       } catch { /* 깨진 한 건이 목록을 죽이지 않는다 */ }
     }
