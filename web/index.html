@@ -185,14 +185,7 @@ tbody tr:last-child td { border-bottom:none }
 .gate.ok { border-color:var(--ok); color:var(--ok) } .gate.bad { border-color:var(--bad); color:var(--bad) } .gate.warn { border-color:#C98A00; color:#9A6700 } .gate.na { border-style:dashed }
 .gate b { font-weight:var(--fw-m) }
 #batches-wrap { max-height:340px }
-/* 작업을 고른 뒤엔 목록을 접는다(2026-09-08 성연서님 "스크롤을 해야 사진들이 등장"). */
-#batches-wrap { transition:max-height .25s ease, opacity .2s ease, margin .25s ease; overflow:hidden }
-body.list-folded #batches-wrap { max-height:0 !important; opacity:0; margin:0; pointer-events:none }
-body.list-folded #batches-empty { display:none }
-body.list-folded #tab-jobs > .card:first-child { padding-bottom:10px }
-.list-strip { display:flex; align-items:center; gap:8px; padding:8px 12px; margin:-4px 0 10px; background:var(--pri-alpha); border:1px solid var(--pri-border); border-radius:var(--r-md); font-size:var(--fs-sm) }
-.list-strip b { color:var(--primary) } .list-strip .b.sm[disabled] { opacity:.4 }
-body.reviewing #list-strip { margin:0 } body.reviewing #tab-jobs > .card:first-child > .toolbar { display:none }   /* 검수 모드: 필터 줄은 접고 '선택한 작업' 한 줄만 (이전/다음이 검수 흐름에 더 쓸모 있다) */
+/* 작업을 고르면 목록은 그대로 두고 상세로 스크롤한다 (2026-09-09: 접기는 '리스트가 사라지는' 느낌이라 뺐다). */
 .stats-fold > summary { cursor:pointer; list-style:none; font-size:var(--fs-sm); color:var(--ui-md);
   padding:8px 12px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff; width:fit-content }
 .stats-fold > summary::-webkit-details-marker { display:none }
@@ -452,14 +445,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="list-toggle">접기</button><button class="btn sm" id="btn-refresh">새로고침</button></div>
-        <!-- 목록을 접었을 때 남는 한 줄: 무엇을 골랐는지 + 이전/다음 작업 + 목록 펼치기 (2026-09-09 성연서님 "행을 누르면 리스트가 사라져 매끄럽지 않다") -->
-        <div class="list-strip" id="list-strip" hidden>
-          <span class="muted">선택한 작업</span><b id="strip-title"></b><span class="muted" id="strip-pos"></span>
-          <span class="tb-space"></span>
-          <button class="b sm" id="strip-prev" title="목록에서 위 작업">◀ 이전</button><button class="b sm" id="strip-next" title="목록에서 아래 작업">다음 ▶</button>
-          <button class="b sm" id="strip-open">목록 펼치기</button>
-        </div>
+        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
         <div class="toolbar">
           <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
           <span class="sep"></span>
@@ -470,7 +456,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
       </div>
-      <div id="detail" style="margin-top:var(--gap)">
+      <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
         <div class="card empty" id="detail-empty">작업을 선택하세요</div>
         <div id="detail-body" hidden>
           <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
@@ -894,7 +880,6 @@ setInterval(async () => { if (!$('#tab-create').classList.contains('active')) { 
 async function loadBatches() {
   BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const q = SEARCH.toLowerCase();
   const list = BATCHES.filter(b => (!kind || b.kind === kind) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
-  LIST_IDS = list.map(b => b.batch_id); renderStrip();
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
@@ -906,41 +891,15 @@ async function loadBatches() {
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches; $('#jobs-kind').onchange = loadBatches;
-$('#list-toggle').onclick = () => setListOpen(!LIST_OPEN);
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
 // 작업을 고르면 목록을 접는다 — 고르고 나면 목록은 자리만 차지하고,
 // 그만큼 사진이 화면 밖으로 밀린다. 헤더를 누르면 다시 펼친다.
-let LIST_OPEN = true;
-let LIST_IDS = [];
-function setListOpen(open) {
-  LIST_OPEN = open;
-  document.body.classList.toggle('list-folded', !open);
-  const t = $('#list-toggle'); if (t) t.textContent = open ? '접기' : '목록 펼치기';
-  renderStrip();
-}
-function renderStrip() {
-  const st = $('#list-strip'); if (!st) return;
-  st.hidden = LIST_OPEN || !CUR;
-  if (st.hidden) return;
-  const b = CUR, i = LIST_IDS.indexOf(b.batch_id);
-  $('#strip-title').textContent = `${tname(b.treatment) || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||''} · ${KIND_KO[b.kind]||b.kind} · ${fmtBid(b.batch_id)}`;
-  $('#strip-pos').textContent = i >= 0 ? `${i + 1} / ${LIST_IDS.length}` : '';
-  $('#strip-prev').disabled = i <= 0; $('#strip-next').disabled = i < 0 || i >= LIST_IDS.length - 1;
-}
-$('#strip-open').onclick = () => setListOpen(true);
-$('#strip-prev').onclick = () => { const i = LIST_IDS.indexOf(CUR?.batch_id); if (i > 0) openBatch(LIST_IDS[i - 1], true); };
-$('#strip-next').onclick = () => { const i = LIST_IDS.indexOf(CUR?.batch_id); if (i >= 0 && i < LIST_IDS.length - 1) openBatch(LIST_IDS[i + 1], true); };
-/**
- * byUser = 사람이 목록에서 줄을 눌러 고른 경우.
- * ⚠ 목록 접기는 **byUser 일 때만** 한다. 새로고침하면 첫 작업이 자동으로 열리는데,
- *   거기서도 접으면 고른 적 없는 목록이 사라져 "리스트가 사라지는 버그"가 된다
- *   (2026-09-08 성연서님 신고 — 내가 같은 날 넣은 결함).
- */
 async function openBatch(id, byUser = false) {
   CUR = await api('/api/batches/' + id);
-  if (byUser) setListOpen(false); else renderStrip();
+  // 사람이 목록에서 골랐을 때만 상세로 스크롤 — 목록은 위에 그대로 남는다(사라지지 않는다)
+  if (byUser) setTimeout(() => $('#detail')?.scrollIntoView({behavior: 'smooth', block: 'start'}), 30);
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
