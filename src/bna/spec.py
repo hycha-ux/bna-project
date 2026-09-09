@@ -221,11 +221,17 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     cond = cond.get(sev, "") if isinstance(cond, dict) else cond
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
         person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, avoid=avoid_before, **fields)
-    identity = (CFG / "prompts/identity_lock.md").read_text(encoding="utf-8").strip()
-    for ph in t.get("identity_exempt") or []:            # 시술 부위는 잠금에서 뺀다 (코 필러에 "same nose shape" 은 모순)
-        identity = identity.replace(ph + ", ", "").replace(", " + ph, "").replace(ph, "")
-    if t.get("identity_note"):
-        identity += " " + " ".join(str(t["identity_note"]).split())
+    def identity_for(framings):
+        """프레이밍(들) 중 가장 좁은 쪽의 잠금 문장 + 시술 부위 예외."""
+        vv = load("variations.yaml"); order = vv.get("identity_lock_order") or []; table = vv.get("identity_lock_by_framing") or {}
+        fr = max(framings, key=lambda f: order.index(f) if f in order else -1) if framings else "full_face"
+        text = (CFG / "prompts" / table.get(fr, "identity_lock.md")).read_text(encoding="utf-8").strip()
+        for ph in t.get("identity_exempt") or []:        # 시술 부위는 잠금에서 뺀다 (코 필러에 "same nose shape" 은 모순)
+            text = text.replace(ph + ", ", "").replace(", " + ph, "").replace(ph, "")
+        if t.get("identity_note"):
+            text += " " + " ".join(str(t["identity_note"]).split())
+        return text
+    identity = identity_for([variation["framing"]["key"]])
     eff = load("effects.yaml")
     # Before 강도 ↔ After 효과 짝 (mild+눈에 띄게 = 과장, marked+은은 = 효과 없음). 나이 하향 **뒤**의 sev 로 뽑는다
     levels = (t.get("effect_by_severity") or {}).get(sev) or t.get("effect_levels", ["moderate"])
@@ -245,6 +251,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     else:
         after_var = drift_after(variation, mode, rng, timeline=when, treatment=treatment)
         a = {k: val["text"] for k, val in after_var.items()}
+        identity = identity_for([variation["framing"]["key"], after_var["framing"]["key"]])
         a_scene = dict(a); a_scene.pop("expression", None)          # 표정은 아래 expression_line 이 맡는다
         after_scene = selfie_scene(a_scene)
         after_hair = f'{a["hair_color"]}, {a["hair_style"]}' + (f', {a["extras"]}' if a["extras"] else "")

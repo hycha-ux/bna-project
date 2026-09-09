@@ -154,6 +154,17 @@ framing:
   nose_to_neck: "framed from the nose down to the neck and collar, mouth and jaw centered"
   neck_only: "framed from the chin down to the collarbones, the front of the neck fills the frame, face mostly out of frame"   # 목주름 필러 전용 (framing_allow 로만 진입)
 
+# 프레이밍별 동일인 잠금 문장 (config/prompts/identity_lock*.md). 눈이 프레임 밖인 컷에 "same eyes" 를 요구하면
+# 모델이 눈을 프레임 안으로 끌고 들어온다 (티모 0908 실측, Gemini B After). Before·After 중 더 좁은 쪽을 따른다.
+identity_lock_by_framing:
+  full_face: identity_lock.md
+  forehead_cut: identity_lock.md
+  lower_face: identity_lock_lower.md
+  one_cheek: identity_lock_lower.md
+  nose_to_neck: identity_lock_lower.md
+  neck_only: identity_lock_neck.md
+identity_lock_order: [full_face, forehead_cut, lower_face, one_cheek, nose_to_neck, neck_only]   # 뒤로 갈수록 좁다
+
 # 생활 맥락: 옷·소품·머리 (셀카 전용 축. 임상은 none 고정)
 context:
   none: ""

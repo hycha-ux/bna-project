@@ -239,6 +239,20 @@ for _t in _T:
         if "the phone is not visible" not in _sp["after_prompt"]: _viol[f"{_t} after mode_extra"] = _viol.get(f"{_t} after mode_extra", 0) + 1
         if " ".join(str(_T[_t]["must_not_change"]).split())[:40] not in _sp["after_prompt"]: _viol[f"{_t} must_not_change"] = _viol.get(f"{_t} must_not_change", 0) + 1
 ok(not _viol, f"시술 9종 × 120 표본에서 제약 위반이 0 이어야 한다 — {_viol}")
+# 프레이밍별 동일인 잠금 — 눈이 프레임 밖이면 "same eyes" 를 요구하지 않는다 (티모 0908 실측: 눈을 끌고 들어온다)
+_seen = set()
+for _t in ("nasolabial", "filler_neck"):
+    for _s in range(60):
+        _p = sample_variation("selfie", _s, treatment=_t); _sp = build_prompts(_t, "selfie", _p, _s)
+        _frs = {_p["framing"]["key"], _sp["after_variation"]["framing"]["key"]}
+        _ap = _sp["after_prompt"]
+        if "neck_only" in _frs:
+            ok("same eyes" not in _ap and "same neck length" in _ap, "목만 찍은 컷은 목·턱선 잠금이어야 한다"); _seen.add("neck")
+        elif _frs & {"lower_face", "one_cheek", "nose_to_neck"}:
+            ok("same eyes" not in _ap and "eyes are outside the frame" in _ap, "눈이 프레임 밖인 컷은 아래쪽 잠금이어야 한다"); _seen.add("lower")
+        else:
+            ok("same eyes" in _ap, "얼굴 전체 컷은 전체 잠금"); _seen.add("full")
+ok(_seen == {"neck", "lower", "full"}, f"세 잠금이 전부 실제로 뽑혀야 한다 — {_seen}")
 for _t in ("filler_nose", "nose_lifting"):
     _sp = build_prompts(_t, "selfie", sample_variation("selfie", 3, treatment=_t), 3)
     ok("same nose shape" not in _sp["after_prompt"] and "the alar base stay" in _sp["after_prompt"], f"{_t}: 동일인 잠금이 코를 예외로 둬야 한다 (0909 dry-run 모순)")

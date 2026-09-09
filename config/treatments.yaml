@@ -266,8 +266,8 @@ filler_neck:
       between them and a faint shadow inside each crease. Do not make the neck look younger or
       smoother than described.
   after_change: >
-    the horizontal neck lines are visibly softened and shallower, skin between them smoother
-    and more even, the neck still looks like real skin with natural texture.
+    the horizontal neck lines are softer and shallower than in the reference, the skin between
+    them sits smoother and more even, the neck still looks like real skin with natural texture.
   must_not_change: >
     Do not change the jawline, chin, face, or the length and width of the neck. Do not whiten
     or blur the neck skin; keep pores and natural texture. Do not remove moles on the neck.
