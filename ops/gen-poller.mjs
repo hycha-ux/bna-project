@@ -5,6 +5,7 @@
  *
  *   node ops/gen-poller.mjs           # 한 회차 (예약작업이 1분마다 이걸 부른다)
  *   node ops/gen-poller.mjs --dry     # 무엇을 할지만 출력 — Blob 쓰기 0, 생성 0, 서버 안 띄움
+ *   node ops/gen-poller.mjs --restart-api  # 로컬 API 만 껐다 켠다(큐가 비었을 때만, 요청은 안 본다)
  *
  * 왜 이 모양인가: 밖에서 이 PC 로 들어올 길이 없다(공인 주소·포트 개방 없음). 그래서 화면은
  * 요청을 Blob `gen-requests/<id>.json` 에 **적어만 두고**, 이 PC 가 주기적으로 열어 가져간다.
@@ -40,9 +41,13 @@ const API_STATE = path.join(OUT, '.gen-poller-api.json');   // 우리가 띄운 
 const LOCK_STALE_MS = 10 * 60 * 1000;
 const PORT = Number(process.env.BNA_LOCAL_API_PORT) || 8765;
 const DRY = process.argv.includes('--dry');
+const RESTART = process.argv.includes('--restart-api');
 const MAX_ACCEPT = 10;            // 한 회차에 가져가는 요청 수 상한(폭주 시 완충 — 큐는 어차피 한 번에 하나씩 돈다)
 
 export const labelOf = (id) => `genreq:${id}`;
+
+/** 재시작이 죽여선 안 되는 작업들. 순수 함수라 회귀가 이걸 본다(돈이 걸린 판단이라 눈으로만 보지 않는다). */
+export const restartBlockers = (jobs) => (jobs || []).filter((j) => j.status === 'queued' || j.status === 'running');
 
 // ── 순수 판단 ────────────────────────────────────────────────────────────────
 // 요청 목록 + 로컬 큐 작업 목록 → 이번 회차에 할 일. 여기엔 부작용이 없다(회귀가 이 함수를 본다).
@@ -194,6 +199,11 @@ async function ensureApi({ idle }) {
     for (let i = 0; i < 20 && await alive(); i++) await sleep(500);
     log('코드가 바뀌어 로컬 API 를 다시 띄운다(큐가 비어 있을 때만)');
   }
+  return spawnApi();
+}
+
+/** 서버를 새로 띄우고 pid·소스 시각을 적는다. **죽이는 판단은 부르는 쪽 몫이다**(돈이 걸린 판단이라 여기 두지 않는다). */
+async function spawnApi() {
   const p = spawn(python(), ['-m', 'bna.api', '--port', String(PORT), '--no-open'], {
     cwd: ROOT, env: { ...process.env, PYTHONPATH: 'src' },
     detached: true, stdio: 'ignore', windowsHide: true,
@@ -237,6 +247,27 @@ export function jobSpec(req) {
     series: req.series ?? null,
     simulate: !!req.simulate, label: labelOf(req.id),
   };
+}
+
+/**
+ * 손으로 부르는 재시작 — `node ops/gen-poller.mjs --restart-api`.
+ * 자동 갈아 끼우기(`ensureApi`)는 **코드가 바뀌었을 때만** 걸리므로, 서버가 이상하게 굴 때
+ * 사람이 부를 문이 따로 필요했다(종전엔 pid 를 손으로 찾아 죽였다 — 그 자리가 사고 자리다).
+ * ⚠ 죽이는 건 돈이 걸린 일이다: 큐에 도는 작업이 있으면 **아무것도 하지 않고** 멈춘다(exit 2).
+ * ⚠ 죽일 번호는 상태 파일이 아니라 **그 포트를 실제로 물고 있는** 번호다(껍데기 pid 함정, `ensureApi` 머리말).
+ */
+async function restartApi() {
+  const busy = restartBlockers(queueJobs());
+  if (busy.length) { log(`재시작 안 한다 — 큐에 도는 작업 ${busy.length}건(죽이면 그 생성이 그 자리에서 날아간다)`); process.exitCode = 2; return; }
+  const owner = listeningPid();
+  if (DRY) { log(`--dry — 재시작했을 것: 포트 ${PORT} ${owner ? `pid ${owner} 종료 후 ` : '(떠 있는 서버 없음) '}새로 띄움`); return; }
+  if (owner) {
+    try { process.kill(owner); } catch (e) { log('종료 실패 —', e.message); }
+    for (let i = 0; i < 20 && await alive(); i++) await sleep(500);
+    if (await alive()) { log(`포트 ${PORT} 가 아직 응답한다 — 재시작 중단(무엇이 물고 있는지 확인해라)`); process.exitCode = 1; return; }
+  }
+  await spawnApi();
+  log(`로컬 API 재시작 완료 — 포트 ${PORT}, pid ${readJson(API_STATE)?.pid ?? '?'}${owner ? ` (옛 pid ${owner})` : ' (꺼져 있던 걸 새로 띄웠다)'}`);
 }
 
 // ── 한 회차 ─────────────────────────────────────────────────────────────────
@@ -308,7 +339,7 @@ async function main() {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (!DRY && !takeLock()) { console.log('앞 회차가 아직 돈다(락) — 이번 회차는 건너뛴다'); process.exit(0); }
-  main()
+  (RESTART ? restartApi() : main())
     .catch((e) => { log('회차 실패 —', e.message); process.exitCode = 1; })
     .finally(() => { if (!DRY) freeLock(); });
 }

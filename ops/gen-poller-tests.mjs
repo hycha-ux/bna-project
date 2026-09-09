@@ -1,7 +1,7 @@
 // 생성 요청 폴러 순수 함수 회귀 — 네트워크 0·생성 0. `node ops/gen-poller-tests.mjs`
 // 여기서 보는 것은 "이번 회차에 무엇을 할지"(plan) 하나다. 돈이 나가는 판단이라 이중 등록·
 // 취소 무시·유령 완료 같은 실패 모양을 시료로 박아 둔다.
-import { plan, labelOf, jobSpec, resultOf, shortErr } from './gen-poller.mjs';
+import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers } from './gen-poller.mjs';
 
 const fails = [];
 const ok = (c, label) => { console.log((c ? 'PASS  ' : 'FAIL  ') + label); if (!c) fails.push(label); };
@@ -53,6 +53,13 @@ ok(resultOf({ total: 8, passed: 3 }, { summary: { cost: 1.25 }, items: {} }).cos
 ok(resultOf(null, null).total === null && resultOf(null, null).cost === null, '못 읽은 값은 0 이 아니라 null 이다');
 const long = shortErr('a'.repeat(500));
 ok(long.length <= 200 && long.endsWith('…') && shortErr(null) === '알 수 없는 오류', '긴 예외는 잘라 적는다');
+
+// ⑤ 재시작(--restart-api) — 죽이면 그 자리에서 돈이 날아가는 자리라 막는 조건을 못 박는다.
+ok(restartBlockers([JOB({ status: 'running' })]).length === 1 && restartBlockers([JOB({ status: 'queued' })]).length === 1,
+   '큐에 돌거나 기다리는 작업이 있으면 재시작을 막는다');
+ok(restartBlockers([JOB({ status: 'done' }), JOB({ status: 'error' }), JOB({ status: 'cancelled' })]).length === 0,
+   '끝난 작업은 재시작을 막지 않는다');
+ok(restartBlockers(null).length === 0 && restartBlockers([]).length === 0, '큐를 못 읽어도 터지지 않는다');
 
 console.log(fails.length ? `실패 ${fails.length}건` : '전부 통과');
 process.exit(fails.length ? 1 : 0);
