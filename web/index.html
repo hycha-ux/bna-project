@@ -245,6 +245,12 @@ body.reviewing .rev-side .score b { width:16px }
 .why { font-size:var(--fs-xs); color:var(--ui-md); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0 }
 .conds { font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:var(--sp-2) }
 .reason { margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:1px dashed var(--ui-border) } .reason > .muted { margin-bottom:4px }   /* ⚠ 직접 자식만 — 그냥 `.reason .muted` 로 두면 아래 저장됨 줄의 안내 문구까지 4px 밀려 버튼과 어긋난다(2026-09-08) */
+.modes { display:grid; grid-template-columns:1fr 1fr; gap:8px }
+.modes button { text-align:left; padding:10px 12px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff; cursor:pointer; display:flex; flex-direction:column; gap:2px }
+.modes button b { font-size:var(--fs-md); color:var(--ui-hi) } .modes button small { font-size:11px; color:var(--ui-lo); line-height:1.35 }
+.modes button.on { border-color:var(--primary); background:var(--pri-alpha); box-shadow:inset 0 0 0 1px var(--primary) } .modes button.on b { color:var(--primary) }
+.tags button[disabled] { opacity:.35; cursor:not-allowed }
+.field > span em { font-style:normal; font-weight:400; font-size:11px; margin-left:4px }
 .tags { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px } .tags button { font-size:11px }
 button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .item input[type=text] { height:32px; font-size:12px }
@@ -424,8 +430,14 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div class="card">
           <div class="card-head"><h3>생성 조건</h3></div>
           <div class="form">
-            <div class="field"><span>시술</span><div class="tags" id="q-treatments" style="margin:0"></div></div>
-            <div class="tags" id="q-modes" style="margin:0"><button data-v="selfie" class="on">셀카형</button><button data-v="clinical">임상형</button></div>
+            <!-- 맨 위 = 사진 종류 (2026-09-09 성연서님: 가장 상위 선택이라 시술과 구분돼야 한다). 시술 칩은 고른 종류를 지원하는 것만 켜진다 -->
+            <div class="field"><span>사진 종류</span>
+              <div class="modes" id="q-modes">
+                <button data-v="selfie" class="on"><b>셀카형</b><small>환자가 폰으로 찍은 후기 사진 느낌</small></button>
+                <button data-v="clinical"><b>임상형</b><small>병원 규격 촬영, 같은 조건에서 전·후 비교</small></button>
+              </div></div>
+            <div class="form-sep"></div>
+            <div class="field"><span>시술 <em class="muted" id="q-treat-hint"></em></span><div class="tags" id="q-treatments" style="margin:0"></div></div>
             <div class="form-sep"></div>
             <div class="row"><label class="field" style="flex:1"><span>생성 장수</span><input type="number" id="count" value="10" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
             <div class="row"><label class="field" style="flex:1"><span>비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label><label class="field" style="flex:1"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성</option><option value="1">시뮬레이션</option></select></label></div>
@@ -766,7 +778,15 @@ function renderTreatmentChips() {
   const known = new Set(GROUPS.flatMap(([, ks]) => ks));
   const grp = (label, ks) => ks.length ? `<div class="tgrp"><span class="tl">${label}</span>${ks.map(k => [k, CFG.treatments[k]]).filter(([, t]) => t).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('')}</div>` : '';
   $('#q-treatments').innerHTML = GROUPS.map(([l, ks]) => grp(l, ks)).join('') + grp('기타', Object.keys(CFG.treatments).filter(k => !known.has(k)));
-  $$('#q-treatments button, #q-modes button').forEach(b => b.onclick = () => { b.classList.toggle('on'); renderFixed(); renderProvDefault(); });
+  $$('#q-treatments button').forEach(b => b.onclick = () => { if (b.disabled) return; b.classList.toggle('on'); renderFixed(); renderProvDefault(); });
+  $$('#q-modes button').forEach(b => b.onclick = () => { b.classList.toggle('on'); syncTreatmentsToModes(); renderFixed(); renderProvDefault(); });
+  syncTreatmentsToModes();
+}
+/** 고른 사진 종류를 지원하지 않는 시술은 끈다(선택도 풀어서 조용히 빠지지 않게). 종류를 하나도 안 고르면 전부 켜 둔다. */
+function syncTreatmentsToModes() {
+  const modes = selModes(); let off = 0;
+  $$('#q-treatments button').forEach(b => { const ok = !modes.length || modes.some(m => (b.dataset.modes || '').split(',').includes(m)); b.disabled = !ok; b.title = ok ? '' : `${MODE_KO[modes[0]] || ''}을 지원하지 않는 시술`; if (!ok) { b.classList.remove('on'); off++; } });
+  const h = $('#q-treat-hint'); if (h) h.textContent = off ? `· ${off}종은 고른 사진 종류를 지원하지 않아 꺼져 있습니다` : '';
 }
 function renderFixed() {
   const modes = selModes(); const rules = modes.length === 1 ? (CFG.mode_rules[modes[0]] || {}) : {};
