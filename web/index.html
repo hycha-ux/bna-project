@@ -200,7 +200,7 @@ body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360p
 /* 검수 모드: 화면 높이에서 머리글·필터·막대·썸네일을 뺀 만큼 사진에 준다 — 세로 사진이 최대한 크게, 스크롤은 0. 상수는 1440×900 실측(overflow 0)으로 맞췄다 */
 body.reviewing .rev-main .cmp figure { height:max(320px, calc(100vh - 404px)) }
 /* 검수 모드에선 배치 제목 카드를 접고(제목은 사진 카드 머리글로) 그만큼 사진에 준다 */
-body.reviewing #detail-body > .card:first-child { display:none } body.reviewing #gal-batch { display:inline }
+body.reviewing #detail-body > .card:first-child { display:none }
 body.reviewing .cmp-bar { padding:5px 10px }
 body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
 /* ⚠ overflow:auto 로 되돌리지 마라 — 그게 '불필요한 스크롤'의 정체였다(09-08).
@@ -1110,6 +1110,7 @@ $('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => {
   renderGallery();
   // 검수 모드에선 위쪽 지표·통계를 접고(CSS) 사진 카드로 스크롤한다 — 매번 스크롤해서 내려오지 않게.
   document.body.classList.toggle('reviewing', VIEW === 'review');
+  const gb = $('#gal-batch'); if (gb) gb.hidden = VIEW !== 'review';   // 검수 모드에선 목록·제목 카드가 접히므로 배치 제목을 여기 보인다 ([hidden] 이 CSS 를 이긴다)
   if (VIEW === 'review') setTimeout(() => $('#rev')?.scrollIntoView({behavior:'smooth', block:'center'}), 60);
 });
 document.addEventListener('keydown', e => {
