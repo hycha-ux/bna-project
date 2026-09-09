@@ -64,9 +64,10 @@ class Batch:
             # ② After
             self._p(item_id, "after")
             after_prompt = self.p_edit.adapt_prompt(spec["after_prompt"], "after")
+            # 시술 부위 마스크는 두 모드 다 뽑아 둔다 — 임상은 편집·합성에 쓰고, 셀카는 검수 화면 오버레이("어디가 바뀌어야 하나")에 쓴다
+            pts = landmarks.detect(before)
+            mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
             if spec["generation"] == "edit":
-                pts = landmarks.detect(before)
-                mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
                 mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
                 after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b)
                 after = Image.open(io.BytesIO(after_b))
@@ -106,7 +107,8 @@ class Batch:
                     meta["fail_reasons"].append("duplicate")
 
             meta["passed"] = not meta["fail_reasons"]
-            self._save(item_id, meta, before_out, after_out)
+            meta["mask_file"] = "mask.png" if mask_img is not None else None
+            self._save(item_id, meta, before_out, after_out, mask_img)
             if meta["passed"]:
                 self._p(item_id, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
             self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
@@ -126,10 +128,12 @@ class Batch:
         if self.progress:
             self.progress.set(item_id, stage, **kw)
 
-    def _save(self, item_id, meta, before_b, after_b):
+    def _save(self, item_id, meta, before_b, after_b, mask_img=None):
         v = meta["variation"]; d = self.dir / item_id; d.mkdir(exist_ok=True)
         stem = f'{self.treatment}_{self.mode}_{v["country"]["key"]}{v["age"]["key"]}{v["gender"]["key"][0]}_{item_id}'
         (d / f"{stem}_before.jpg").write_bytes(before_b); (d / f"{stem}_after.jpg").write_bytes(after_b)
+        if mask_img is not None:
+            mask_img.save(d / "mask.png")
         (d / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
 
     # ---------- 배치 ----------

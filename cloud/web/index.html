@@ -155,6 +155,29 @@ tbody tr:last-child td { border-bottom:none }
    ⚠ 사진은 cover(잘라 채우기)가 아니라 contain(전체 보이기)이다 — 잘린 손·머리끝을
       못 보면 검수 자체가 안 된다. */
 .rev { display:grid; grid-template-columns:minmax(0,1fr) 340px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+/* ── 검수 비교 뷰 (2026-09-09): 나란히 · 슬라이더 · 깜빡이 + 확대 동기화 + 부위 오버레이 ── */
+.cmp-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--ui-border); flex-wrap:wrap }
+.cmp-bar .sp { flex:1 } .cmp-bar .hint { font-size:11px; color:var(--ui-lo) } .cmp-bar .hint kbd { font:inherit; border:1px solid var(--ui-border); border-radius:3px; padding:0 4px; margin:0 1px }
+.cmp { position:relative; background:var(--ui-surface,#F4F5F7); overflow:hidden; user-select:none; touch-action:none }
+.cmp figure { position:relative; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--ui-surface,#F4F5F7); color:var(--ui-lo); font-size:12px }
+.cmp[data-mode=side] { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
+.cmp[data-mode=wipe], .cmp[data-mode=flip] { display:block }
+.cmp .stage { position:relative; transform-origin:0 0; will-change:transform; line-height:0 }
+.cmp .stage > img { display:block; max-width:100%; max-height:100%; width:auto; height:auto }
+.cmp .stage .ov { position:absolute; inset:0; pointer-events:none; background:rgba(var(--accent-rgb,52,82,178),.42); mix-blend-mode:multiply;
+  -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; outline:0 }
+.cmp .stage .ov::after { content:''; position:absolute; inset:0; -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; background:rgba(52,82,178,.9); opacity:.35 }
+.cmp:not(.mask-on) .ov { display:none }
+.cmp figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; z-index:3; pointer-events:none }
+.cmp .stage .after-w { position:absolute; inset:0; overflow:hidden; clip-path:inset(0 0 0 var(--wipe,50%)) }
+.cmp .stage .after-w img { display:block; width:100%; height:100% }
+.cmp .handle { position:absolute; top:0; bottom:0; left:var(--wipe,50%); width:0; border-left:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.35); z-index:4; cursor:ew-resize }
+.cmp .handle::after { content:'◂ ▸'; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; color:#222; font-size:11px; font-weight:700; padding:3px 6px; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.3); white-space:nowrap }
+.cmp[data-mode=flip] .stage .after-w { clip-path:none; opacity:0 } .cmp[data-mode=flip].show-after .stage .after-w { opacity:1 }
+.cmp.zoomed { cursor:grab } .cmp.zoomed.dragging { cursor:grabbing }
+.gates { display:flex; gap:6px; flex-wrap:wrap } .gate { display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-xs); padding:3px 8px; border-radius:999px; border:1px solid var(--ui-border); background:#fff; color:var(--ui-md) }
+.gate.ok { border-color:var(--ok); color:var(--ok) } .gate.bad { border-color:var(--bad); color:var(--bad) } .gate.warn { border-color:#C98A00; color:#9A6700 } .gate.na { border-style:dashed }
+.gate b { font-weight:var(--fw-m) }
 #batches-wrap { max-height:340px }
 /* 작업을 고른 뒤엔 목록을 접는다(2026-09-08 성연서님 "스크롤을 해야 사진들이 등장"). */
 body.list-folded #batches-wrap, body.list-folded #batches-empty { display:none }
@@ -170,6 +193,8 @@ body.list-folded #tab-jobs > .card:first-child { padding-bottom:10px }
 body.reviewing #kpis, body.reviewing #gal-stats, body.reviewing #prog { display:none }
 body.reviewing #batches-wrap, body.reviewing #batches-empty { display:none }
 body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360px) }
+body.reviewing .rev-main .cmp figure { height:min(36vh, 340px) }   /* ⚠ 높이는 고정이어야 확대·슬라이더가 흔들리지 않는다. 비교 막대(≈38px)만큼 낮췄다 — 검수 모드 스크롤 0 규칙 */
+body.reviewing .cmp-bar { padding:5px 10px }
 body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
 /* ⚠ overflow:auto 로 되돌리지 마라 — 그게 '불필요한 스크롤'의 정체였다(09-08).
    칸을 잘라 스크롤을 만드는 대신 **내용을 줄여** 통째로 보이게 한다. */
@@ -899,11 +924,43 @@ function bindActs(root) {
 }
 // ── 검수 모드: 한 장씩 크게, 판단 근거를 옆에. ←→ 이동, 1 선택, 2 제외 ──
 let VIEW = 'grid', REV_IDX = 0, GAL_ITEMS = [];
+// 검수 비교 뷰 상태 — 사진을 넘겨도 보기 방식·오버레이는 유지, 확대만 초기화한다
+let CMP_MODE = 'side', MASK_ON = false, ZOOM = {s:1, x:0, y:0}, FLIP_AFTER = false;
+try { CMP_MODE = localStorage.getItem('bna.cmp') || 'side'; MASK_ON = localStorage.getItem('bna.mask') === '1'; } catch {}
+const CMP_KO = {side:'나란히', wipe:'슬라이더', flip:'깜빡이'};
+function gateChips(it) {
+  const idn = it.identity || {}, st = it.structure || {};
+  const g = idn.gate || (idn.hard_fail ? 'fail' : idn.measured === false ? 'n/a' : null);
+  const sim = idn.similarity != null ? idn.similarity.toFixed(2) : null;
+  const id = g === 'ok' ? `<span class="gate ok" title="얼굴 임베딩 유사도 ${sim} · 문턱 0.60">동일인 <b>통과${sim ? ' ' + sim : ''}</b></span>`
+    : g === 'review' ? `<span class="gate warn" title="0.45~0.60 구간 — 자동으로 못 가르니 사람이 봐야 합니다">동일인 <b>사람 확인 ${sim || ''}</b></span>`
+    : g === 'fail' ? `<span class="gate bad" title="유사도 ${sim} — 다른 사람으로 판정">동일인 <b>탈락${sim ? ' ' + sim : ''}</b></span>`
+    : g === 'n/a' ? `<span class="gate na" title="얼굴을 못 찾았습니다(부분 크롭·측면). AI 점수의 '동일 인물' 항목만 남습니다">동일인 <b>못 잼</b></span>`
+    : `<span class="gate na">동일인 <b>—</b></span>`;
+  const sp = st.passed;
+  const stc = sp === true ? `<span class="gate ok" title="정렬·크기·밝기·부위 프레임 안">구조 <b>통과</b></span>`
+    : sp === false ? `<span class="gate bad" title="${esc(st.region_in_frame === false ? '시술 부위가 프레임 밖' : '정렬·크기·밝기 차이 초과')}">구조 <b>탈락</b></span>`
+    : sp === null ? `<span class="gate na" title="얼굴을 못 찾아 못 쟀습니다">구조 <b>못 잼</b></span>` : `<span class="gate na">구조 <b>—</b></span>`;
+  return `<div class="gates">${id}${stc}</div>`;
+}
 function renderReview() {
   const el = $('#rev'), it = GAL_ITEMS[REV_IDX];
   if (!it) { el.innerHTML = '<div class="empty">표시할 항목이 없습니다</div>'; return; }
   const v = it.variation || {}, rv = it.review || {}, b = CUR.batch_id;
-  const img = (file, cap) => file ? `<figure><img src="/files/${b}/${it.item_id}/${file}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  const src = f => `/files/${b}/${it.item_id}/${f}`;
+  const maskUrl = it.mask_file ? src(it.mask_file) : null;
+  const ov = maskUrl ? `<div class="ov" style="--mask:url('${maskUrl}')"></div>` : '';
+  const stage = (file, cap, extra = '') => file
+    ? `<figure><div class="stage"><img src="${src(file)}" draggable="false">${extra}${ov}</div><figcaption>${cap}</figcaption></figure>`
+    : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
+  let view;
+  if (CMP_MODE === 'side' || !it.before_file || !it.after_file) {
+    view = stage(it.before_file, '시술 전') + stage(it.after_file, '시술 후');
+  } else {
+    const afterW = `<div class="after-w"><img src="${src(it.after_file)}" draggable="false"></div>`;
+    view = `<figure><div class="stage">${`<img src="${src(it.before_file)}" draggable="false">`}${afterW}${ov}${CMP_MODE === 'wipe' ? '<div class="handle"></div>' : ''}</div>
+      <figcaption class="cap-b">${CMP_MODE === 'flip' ? (FLIP_AFTER ? '시술 후' : '시술 전') : '시술 전 ◂ ▸ 시술 후'}</figcaption></figure>`;
+  }
   const fails = (it.fail_reasons||[]).map(r => esc(failKo(r))).join(' · ');
   const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>' : it.passed ? '<span class="verdict ok">AI 검수 통과</span>' : '<span class="verdict bad">AI 검수 탈락</span>';
   const scores = it.vision?.scores ? Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v);
@@ -912,9 +969,17 @@ function renderReview() {
   const cond = (ks) => ks.filter(k => v[k]).map(k => esc(val(k, v[k].key))).join(' · ');
   const thumbs = GAL_ITEMS.map((x, i) => `<button class="th ${i === REV_IDX ? 'cur' : ''} ${x.review?.pick||''}" data-idx="${i}" title="${+x.item_id+1}">${x.after_file ? `<img loading="lazy" src="/files/${b}/${x.item_id}/${x.after_file}">` : ''}</button>`).join('');
   const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
+  const region = CFG.treatments[it.treatment]?.name_ko || it.treatment;
   el.innerHTML = `<div class="rev">
     <div class="rev-main">
-      <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, '시술 후')}</div>
+      <div class="cmp-bar">
+        <div class="pill" id="cmp-mode">${Object.entries(CMP_KO).map(([k, l]) => `<button data-m="${k}" class="${k === CMP_MODE ? 'on' : ''}">${l}</button>`).join('')}</div>
+        ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="${esc(region)} 부위 — 여기만 바뀌어야 합니다">부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 부위 마스크가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">부위 표시 없음</span>`}
+        <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
+        <div class="sp"></div>
+        <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
+      </div>
+      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%">${view}</div>
       <div class="thumbs"><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
     </div>
     <div class="rev-side">
@@ -922,6 +987,7 @@ function renderReview() {
         <div style="display:flex;align-items:center;gap:8px"><b style="font-size:var(--fs-lg)">${+it.item_id+1}번 사진</b>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
         ${fails ? `<div class="muted">${fails}</div>` : ''}
       </div>
+      <div><div class="rev-h">자동 게이트</div>${gateChips(it)}</div>
       <div><div class="rev-h">AI 점수</div><div class="scores">${scores}</div></div>
       <div><div class="rev-h">생성 조건</div><div class="muted cond-line">${cond(['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'])}</div></div>
       <div class="rev-act">
@@ -933,9 +999,41 @@ function renderReview() {
         ${reasonBlock(it, rv.pick === 'reject')}
       </div>
     </div></div>`;
-  bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; renderReview(); });
+  bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; ZOOM = {s:1,x:0,y:0}; renderReview(); });
   el.querySelector('.th.cur')?.scrollIntoView({block:'nearest', inline:'center'});
+  bindCompare(el);
 }
+function bindCompare(el) {
+  const cmp = el.querySelector('.cmp'); if (!cmp) return;
+  el.querySelectorAll('#cmp-mode button').forEach(bt => bt.onclick = () => { CMP_MODE = bt.dataset.m; try { localStorage.setItem('bna.cmp', CMP_MODE); } catch {} renderReview(); });
+  const mk = el.querySelector('#cmp-mask'); if (mk) mk.onclick = () => { MASK_ON = !MASK_ON; try { localStorage.setItem('bna.mask', MASK_ON ? '1' : '0'); } catch {} cmp.classList.toggle('mask-on', MASK_ON); mk.classList.toggle('primary', MASK_ON); };
+  const stages = [...cmp.querySelectorAll('.stage')];
+  const apply = () => { stages.forEach(st => st.style.transform = `translate(${ZOOM.x}px,${ZOOM.y}px) scale(${ZOOM.s})`); cmp.classList.toggle('zoomed', ZOOM.s > 1); const r = el.querySelector('#cmp-reset'); if (r) r.disabled = ZOOM.s === 1; };
+  el.querySelector('#cmp-reset').onclick = () => { ZOOM = {s:1,x:0,y:0}; apply(); };
+  apply();
+  // 휠 = 커서 기준 확대. 두 장이 같은 변환을 받아 같은 자리가 커진다(팔자·모공은 확대 없이는 못 본다).
+  cmp.addEventListener('wheel', e => {
+    e.preventDefault();
+    const st = e.target.closest('.stage') || stages[0]; if (!st) return;
+    const rect = st.getBoundingClientRect(); const px = (e.clientX - rect.left) / ZOOM.s, py = (e.clientY - rect.top) / ZOOM.s;
+    const ns = Math.min(6, Math.max(1, ZOOM.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    if (ns === 1) { ZOOM = {s:1,x:0,y:0}; } else { ZOOM.x -= px * (ns - ZOOM.s); ZOOM.y -= py * (ns - ZOOM.s); ZOOM.s = ns; }
+    apply();
+  }, {passive:false});
+  // 드래그 = 이동(확대 중) / 슬라이더 손잡이 = 경계 이동
+  let drag = null;
+  cmp.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    if (e.target.closest('.handle') || (CMP_MODE === 'wipe' && ZOOM.s === 1)) { drag = {wipe:true}; cmp.setPointerCapture(e.pointerId); moveWipe(e); return; }
+    if (ZOOM.s > 1) { drag = {x:e.clientX - ZOOM.x, y:e.clientY - ZOOM.y}; cmp.classList.add('dragging'); cmp.setPointerCapture(e.pointerId); }
+  });
+  const moveWipe = e => { const st = stages[0]; const r = st.getBoundingClientRect(); const pct = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)); cmp.style.setProperty('--wipe', pct.toFixed(1) + '%'); };
+  cmp.addEventListener('pointermove', e => { if (!drag) return; if (drag.wipe) moveWipe(e); else { ZOOM.x = e.clientX - drag.x; ZOOM.y = e.clientY - drag.y; apply(); } });
+  const up = () => { drag = null; cmp.classList.remove('dragging'); };
+  cmp.addEventListener('pointerup', up); cmp.addEventListener('pointercancel', up);
+  if (CMP_MODE === 'flip') cmp.addEventListener('click', e => { if (ZOOM.s === 1 && !e.target.closest('.handle')) flipToggle(cmp); });
+}
+function flipToggle(cmp) { FLIP_AFTER = !FLIP_AFTER; cmp.classList.toggle('show-after', FLIP_AFTER); const c = cmp.querySelector('.cap-b'); if (c) c.textContent = FLIP_AFTER ? '시술 후' : '시술 전'; }
 $('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => {
   VIEW = bt.dataset.v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt));
   renderGallery();
@@ -946,9 +1044,12 @@ $('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => {
 document.addEventListener('keydown', e => {
   if (VIEW !== 'review' || $('#rev').hidden || !CUR || (e.target instanceof Element && e.target.matches('input, textarea, select'))) return;
   const it = GAL_ITEMS[REV_IDX]; if (!it) return;
-  if (e.key === 'ArrowRight' && REV_IDX < GAL_ITEMS.length - 1) { REV_IDX++; renderReview(); }
-  else if (e.key === 'ArrowLeft' && REV_IDX > 0) { REV_IDX--; renderReview(); }
+  if (e.key === 'ArrowRight' && REV_IDX < GAL_ITEMS.length - 1) { REV_IDX++; ZOOM = {s:1,x:0,y:0}; renderReview(); }
+  else if (e.key === 'ArrowLeft' && REV_IDX > 0) { REV_IDX--; ZOOM = {s:1,x:0,y:0}; renderReview(); }
   else if (e.key === '1' || e.key === '2') { $('#rev').querySelector(`[data-act=${e.key === '1' ? 'pick' : 'reject'}]`)?.click(); }
+  else if (e.key === 'm' || e.key === 'M') { $('#cmp-mask')?.click(); }
+  else if (e.key === '0') { $('#cmp-reset')?.click(); }
+  else if (e.key === ' ' && CMP_MODE === 'flip') { const c = $('#rev .cmp'); if (c) flipToggle(c); }
   else return; e.preventDefault();
 });
 const DIRTY = new Set(); // 사유(태그·메모)를 고쳤지만 아직 저장 안 한 사진

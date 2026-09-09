@@ -149,6 +149,60 @@ def batches_payload():
     return sorted((batch_summary(d) for d in dirs), key=lambda b: b["mtime"], reverse=True)
 
 
+def mask_payload(bid: str, iid: str):
+    """시술 부위 마스크를 지금 만든다(없을 때). 랜드마크가 없는 PC 에서는 못 만든다 — 그때는 화면이 버튼을 숨긴다."""
+    d = OUT / bid / iid
+    if not d.is_dir() or "/" in bid or "/" in iid or ".." in bid or ".." in iid:
+        return {"ok": False, "error": "not found"}
+    if (d / "mask.png").exists():
+        return {"ok": True, "file": "mask.png"}
+    try:
+        meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
+        from PIL import Image
+        from .qa import landmarks
+        before = next(iter(sorted(d.glob("*_before.jpg"))), None)
+        if before is None:
+            return {"ok": False, "error": "시술 전 사진이 없습니다"}
+        region = load("treatments.yaml").get(meta.get("treatment"), {}).get("mask_region")
+        if region not in landmarks.REGIONS:
+            return {"ok": False, "error": "이 시술은 부위 마스크가 없습니다"}
+        img = Image.open(before); pts = landmarks.detect(img)
+        if pts is None:
+            return {"ok": False, "error": "얼굴을 못 찾았거나 랜드마크 모듈이 없습니다"}
+        landmarks.region_mask(img, pts, region).save(d / "mask.png")
+        return {"ok": True, "file": "mask.png"}
+    except Exception as e:                       # noqa: BLE001
+        return {"ok": False, "error": repr(e)}
+
+
+def _fake_gates(rng, fails):
+    """샘플·시뮬레이션 배치의 게이트 결과 — 실제 identity.check / structure.check 와 같은 키로 쓴다(화면이 한 코드로 읽게)."""
+    if "identity" in fails:
+        sim = round(rng.uniform(0.30, 0.44), 3); gate = "fail"
+    else:
+        roll = rng.random()
+        if roll < 0.15:
+            sim, gate = None, "n/a"
+        elif roll < 0.35:
+            sim = round(rng.uniform(0.45, 0.60), 3); gate = "review"
+        else:
+            sim = round(rng.uniform(0.60, 0.80), 3); gate = "ok"
+    idn = {"similarity": sim, "gate": gate, "passed": True if gate == "ok" else (False if gate == "fail" else None),
+           "hard_fail": gate == "fail", "measured": sim is not None}
+    st_p = False if "structure" in fails else (None if rng.random() < 0.15 else True)
+    st = {"passed": st_p, "face_detected": st_p is not None, "align_err_pct": round(rng.uniform(0, 12), 1),
+          "face_ratio_diff": round(rng.uniform(0, 0.1), 3), "luma_diff": round(rng.uniform(0, 0.15), 3), "region_in_frame": st_p is not False}
+    return idn, st
+
+
+def _demo_mask(d, size=(400, 500)):
+    """샘플 배치용 부위 오버레이 자리표시(뺨~입가 타원 두 개). 실제 배치는 랜드마크로 만든다."""
+    from PIL import Image, ImageDraw, ImageFilter
+    m = Image.new("L", size, 0); dr = ImageDraw.Draw(m)
+    dr.polygon([(150, 250), (180, 300), (170, 330), (135, 290)], fill=255); dr.polygon([(250, 250), (220, 300), (230, 330), (265, 290)], fill=255)
+    m.filter(ImageFilter.GaussianBlur(8)).save(d / "mask.png")
+
+
 def batch_detail(bid: str):
     d = OUT / bid
     if not d.is_dir():
@@ -158,6 +212,7 @@ def batch_detail(bid: str):
         iid = m["item_id"]; files = sorted(p.name for p in (d / iid).glob("*.jpg"))
         m["before_file"] = next((f for f in files if f.endswith("_before.jpg")), None)
         m["after_file"] = next((f for f in files if f.endswith("_after.jpg")), None)
+        m["mask_file"] = "mask.png" if (d / iid / "mask.png").exists() else None   # 검수 화면 부위 오버레이
         m["review"] = dict(rv.get(iid, {}))
         if m["review"].get("pick") == "pick":          # 화면 배지가 짐작하지 않게 실제 드라이브 상태를 싣는다
             m["review"]["drive"] = drivesync.state_of(d.name, iid)
@@ -310,10 +365,10 @@ def make_demo(treatment="nasolabial", mode="selfie", count=12, seed=7):
             dr = ImageDraw.Draw(img); dr.ellipse((100, 90, 300, 330), fill=f"hsl({hue},30%,88%)")
             dr.text((20, 460), f"DEMO {kind.upper()} #{iid}", fill="black"); dr.text((20, 20), "placeholder — no real generation", fill="black")
             img.save(d / iid / f"{stem}_{kind}.jpg", quality=80)
+        idn, st = _fake_gates(rng, fails); _demo_mask(d / iid)
         meta = {**spec, "item_id": iid, "batch_id": bid, "prompt_version": "demo", "attempt": attempt, "passed": passed,
-                "fail_reasons": fails, "cost": round(0.085 * attempt, 3), "demo": True,
-                "structure": {"passed": "structure" not in fails, "align_err": round(rng.uniform(0, 12), 1)},
-                "identity": {"hard_fail": "identity" in fails, "sim": round(rng.uniform(0.35, 0.8), 2)},
+                "fail_reasons": fails, "cost": round(0.085 * attempt, 3), "demo": True, "mask_file": "mask.png",
+                "structure": st, "identity": idn,
                 "vision": {"scores": scores, "failed_items": [f.split(":")[1] for f in fails if f.startswith("vision:")]}}
         (d / iid / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8"); items.append(meta)
     (d / "stats.json").write_text(json.dumps(summarize(items), ensure_ascii=False, indent=1), encoding="utf-8")
@@ -362,8 +417,9 @@ def sim_batch(treatment="nasolabial", mode="selfie", count=12, seed=None, item_s
                 img = Image.new("RGB", (400, 500), f"hsl({hue},{35 if kind == 'before' else 50}%,{70 if kind == 'before' else 78}%)")
                 dr = ImageDraw.Draw(img); dr.ellipse((100, 90, 300, 330), fill=f"hsl({hue},30%,88%)"); dr.text((20, 460), f"SIM {kind.upper()} #{iid}", fill="black")
                 img.save(d / iid / f"{stem}_{kind}.jpg", quality=80)
+            _demo_mask(d / iid); idn, st = _fake_gates(rng, fails)
             meta = {**spec, "item_id": iid, "batch_id": bid, "prompt_version": "sim", "attempt": attempt, "passed": passed, "fail_reasons": fails,
-                    "cost": round(0.085 * attempt, 3), "demo": True, "structure": {"passed": "structure" not in fails}, "identity": {"hard_fail": "identity" in fails},
+                    "cost": round(0.085 * attempt, 3), "demo": True, "mask_file": "mask.png", "structure": st, "identity": idn,
                     "vision": {"scores": {k: rng.randint(6, 10) for k in checklist}, "failed_items": [f.split(":")[1] for f in fails if f.startswith("vision:")]}}
             (d / iid / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
             if passed:
@@ -478,10 +534,13 @@ class Handler(SimpleHTTPRequestHandler):
                     data = f.read_bytes(); self.send_response(200); self.send_header("Content-Type", "application/zip")
                     self.send_header("Content-Disposition", f'attachment; filename="{f.name}"'); self.send_header("Content-Length", str(len(data))); self.end_headers(); return self.wfile.write(data)
                 return self._json({"error": "not found"}, 404)
+            if p.startswith("/api/mask/"):
+                _, _, _, bid, iid = p.split("/", 4)
+                r = mask_payload(bid, iid); return self._json(r, 200 if r.get("ok") else 404)
             if p.startswith("/files/"):
                 f = (OUT / p[len("/files/"):]).resolve()
                 if OUT.resolve() in f.parents and f.is_file():
-                    data = f.read_bytes(); self.send_response(200); self.send_header("Content-Type", "image/jpeg")
+                    data = f.read_bytes(); self.send_response(200); self.send_header("Content-Type", "image/png" if f.suffix == ".png" else "image/jpeg")
                     self.send_header("Content-Length", str(len(data))); self.end_headers(); return self.wfile.write(data)
                 return self._json({"error": "not found"}, 404)
             if p == "/":
