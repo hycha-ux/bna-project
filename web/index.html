@@ -147,7 +147,7 @@ tbody tr:last-child td { border-bottom:none }
 .item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
 .act { display:grid; grid-template-columns:1fr 1fr; gap:8px } .act .b { height:40px; font-size:var(--fs-md) }
 .dd { position:relative; margin-bottom:8px }
-.item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
+.item .pair { cursor:zoom-in } .item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
 .dd-btn { display:flex; align-items:center; gap:8px; height:36px; padding:0 12px; border:1px solid var(--ui-border); border-radius:var(--r-sm); background:#fff; font-size:var(--fs-sm); cursor:pointer; user-select:none }
 .dd[open] .dd-btn { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha) }
 .dd-val { flex:1; min-width:0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:var(--fw-m) } .dd-val.empty { color:var(--ui-lo); font-weight:var(--fw-r) } .dd-caret { color:var(--ui-lo); font-size:11px }
@@ -1005,6 +1005,7 @@ function renderGallery() {
   if (VIEW === 'review') { if (REV_IDX >= items.length) REV_IDX = Math.max(0, items.length - 1); renderReview(); $('#gal').innerHTML = ''; return; }
   $('#gal').innerHTML = items.map(itemCard).join('');
   bindActs($('#gal'));
+  $('#gal').querySelectorAll('.item .pair').forEach(p => { p.onclick = () => openReviewAt(p.closest('.item').id.slice(3)); p.title = '누르면 검수 모드에서 크게 봅니다'; });
 }
 function bindActs(root) {
   root.querySelectorAll('[data-act]').forEach(b => b.onclick = onAct); root.querySelectorAll('input[data-act=note]').forEach(b => b.onfocus = onAct);
@@ -1065,6 +1066,7 @@ function renderReview() {
         ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="${esc(region)} 부위 — 여기만 바뀌어야 합니다">부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 부위 마스크가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">부위 표시 없음</span>`}
         <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
         <div class="sp"></div>
+        <button class="b sm" id="cmp-back" title="브라우저 뒤로 가기·Esc 도 같습니다">← 격자로 <kbd>Esc</kbd></button>
         <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
       </div>
       <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%">${view}</div>
@@ -1098,6 +1100,7 @@ function bindCompare(el) {
   const stages = [...cmp.querySelectorAll('.stage')];
   const apply = () => { stages.forEach(st => st.style.transform = `translate(${ZOOM.x}px,${ZOOM.y}px) scale(${ZOOM.s})`); cmp.classList.toggle('zoomed', ZOOM.s > 1); const r = el.querySelector('#cmp-reset'); if (r) r.disabled = ZOOM.s === 1; };
   el.querySelector('#cmp-reset').onclick = () => { ZOOM = {s:1,x:0,y:0}; apply(); };
+  const bk = el.querySelector('#cmp-back'); if (bk) bk.onclick = () => setView('grid');
   apply();
   // 휠 = 커서 기준 확대. 두 장이 같은 변환을 받아 같은 자리가 커진다(팔자·모공은 확대 없이는 못 본다).
   cmp.addEventListener('wheel', e => {
@@ -1122,14 +1125,24 @@ function bindCompare(el) {
   if (CMP_MODE === 'flip') cmp.addEventListener('click', e => { if (ZOOM.s === 1 && !e.target.closest('.handle')) flipToggle(cmp); });
 }
 function flipToggle(cmp) { FLIP_AFTER = !FLIP_AFTER; cmp.classList.toggle('show-after', FLIP_AFTER); const c = cmp.querySelector('.cap-b'); if (c) c.textContent = FLIP_AFTER ? '시술 후' : '시술 전'; }
-$('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => {
-  VIEW = bt.dataset.v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === bt));
+/** 격자 ↔ 검수 전환 한 곳. push=true 면 브라우저 히스토리에 한 칸 넣어 '뒤로 가기'로 격자로 돌아온다 (2026-09-09 성연서님 요청). */
+function setView(v, {push = true} = {}) {
+  if (VIEW === v) return;
+  VIEW = v; $('#gal-view').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === v));
   renderGallery();
   // 검수 모드에선 위쪽 지표·통계를 접고(CSS) 사진 카드로 스크롤한다 — 매번 스크롤해서 내려오지 않게.
-  document.body.classList.toggle('reviewing', VIEW === 'review');
-  const gb = $('#gal-batch'); if (gb) gb.hidden = VIEW !== 'review';   // 검수 모드에선 목록·제목 카드가 접히므로 배치 제목을 여기 보인다 ([hidden] 이 CSS 를 이긴다)
-  if (VIEW === 'review') setTimeout(() => $('#rev')?.scrollIntoView({behavior:'smooth', block:'center'}), 60);
-});
+  document.body.classList.toggle('reviewing', v === 'review');
+  const gb = $('#gal-batch'); if (gb) gb.hidden = v !== 'review';   // 검수 모드에선 목록·제목 카드가 접히므로 배치 제목을 여기 보인다 ([hidden] 이 CSS 를 이긴다)
+  if (v === 'review') { setTimeout(() => $('#rev')?.scrollIntoView({behavior:'smooth', block:'center'}), 60); if (push) history.pushState({bnaView: 'review'}, ''); }
+  else if (push && history.state?.bnaView === 'review') history.back();   // 버튼으로 격자로 나가면 히스토리 칸도 같이 빼서 뒤로 가기가 두 번 필요하지 않게
+}
+$('#gal-view').querySelectorAll('button').forEach(bt => bt.onclick = () => setView(bt.dataset.v));
+window.addEventListener('popstate', () => { if (VIEW === 'review' && history.state?.bnaView !== 'review') setView('grid', {push: false}); });
+/** 격자에서 사진을 누르면 그 사진으로 검수 모드 */
+function openReviewAt(itemId) {
+  const i = GAL_ITEMS.findIndex(x => x.item_id === itemId); if (i < 0) return;
+  REV_IDX = i; ZOOM = {s:1, x:0, y:0}; setView('review');
+}
 document.addEventListener('keydown', e => {
   if (VIEW !== 'review' || $('#rev').hidden || !CUR || (e.target instanceof Element && e.target.matches('input, textarea, select'))) return;
   const it = GAL_ITEMS[REV_IDX]; if (!it) return;
@@ -1138,6 +1151,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === '1' || e.key === '2') { $('#rev').querySelector(`[data-act=${e.key === '1' ? 'pick' : 'reject'}]`)?.click(); }
   else if (e.key === 'm' || e.key === 'M') { $('#cmp-mask')?.click(); }
   else if (e.key === '0') { $('#cmp-reset')?.click(); }
+  else if (e.key === 'Escape') { setView('grid'); }
   else if (e.key === ' ' && CMP_MODE === 'flip') { const c = $('#rev .cmp'); if (c) flipToggle(c); }
   else return; e.preventDefault();
 });
