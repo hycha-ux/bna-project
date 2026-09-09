@@ -298,7 +298,9 @@ def save_review(req):
 # config/ 가 아니라 outputs/goals.json 에 둔다 — config 를 건드리면 프롬프트 버전 해시가 바뀐다(version.py).
 def goals_payload():
     p = OUT / "goals.json"
-    g = {"default": 30, "per": {}}
+    # pick_rate: 사람 채택률 목표. 자동화의 기준선 — AI 통과분 중 사람이 이 비율 이상 채택하면 사람 검수를 줄일 수 있다
+    # (2026-09-10 성연서님 "보수적으로 90%까지").
+    g = {"default": 30, "per": {}, "pick_rate": 0.9}
     if p.exists():
         try:
             g.update(json.loads(p.read_text(encoding="utf-8")))
@@ -311,6 +313,8 @@ def goals_save(req):
     g = goals_payload()
     if "default" in req:
         g["default"] = max(1, int(req["default"]))
+    if "pick_rate" in req:
+        g["pick_rate"] = min(1.0, max(0.0, float(req["pick_rate"])))
     if isinstance(req.get("per"), dict):
         g["per"] = {k: max(0, int(v)) for k, v in req["per"].items() if v not in (None, "")}
     OUT.mkdir(parents=True, exist_ok=True)

@@ -722,7 +722,10 @@ async function loadHome() {
   const pickRate = w.reviewed ? w.picked / w.reviewed : null;
   $('#home-kpis').innerHTML = [
     ['hero', '채택한 사진', ov.picked_total, '장', '누적 · 사람이 골라 드라이브에 올린 것'],
-    ['', '채택률', pickRate == null ? '—' : pct(pickRate), '', w.reviewed ? `이 기간 검수 ${w.reviewed}장 중 ${w.picked}장` : '이 기간에 검수한 사진이 없습니다'],
+    // 채택률 = 사람 기준 품질. 목표선(기본 90%)에 닿으면 사람 검수를 줄이는 근거가 된다. AI 통과율은 비용 쪽 참고치라 비용 카드에 둔다.
+    ['', '채택률', pickRate == null ? '—' : pct(pickRate), '', (() => { const g = (ov.goals || {}).pick_rate ?? 0.9, gt = `목표 ${Math.round(g * 100)}%`;
+        if (!w.reviewed) return `${gt} · 이 기간에 검수한 사진이 없습니다`;
+        const gap = pickRate - g; return `${gt} · 검수 ${w.reviewed}장 중 ${w.picked}장 <b class="${gap >= 0 ? '' : 'down'}">${gap >= 0 ? '달성' : `${Math.round(-gap * 100)}%p 부족`}</b>`; })()],
     ['', '검수 대기', ov.pending_total, '장', ov.pending_total ? 'AI 통과 · 사람이 아직 안 봄' : '밀린 검수가 없습니다'],
     ['', '이 기간 비용', `$${w.cost.toFixed(2)}`, '', `생성 ${w.total}장 · AI 통과 ${w.total ? pct(w.passed / w.total) : '—'}${p.total ? ' · ' + trend(w.passed / Math.max(1, w.total), p.passed / p.total) : ''}`]
   ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
@@ -1508,9 +1511,11 @@ function renderSettings() {
   $('#settings-body').innerHTML = `<div class="list">
     <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술별 목표 장수</b><span>홈 현황판의 기준. 전 시술 동일 (2026-09-09 성연서님: 일괄 30장)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-default" min="1" style="width:80px" value="${GOALS?.default ?? 30}"><button class="b sm" id="goal-save">저장</button></span></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>채택률 목표</b><span>홈 채택률 카드의 기준선. 사람이 채택한 비율이 여기 닿으면 검수를 줄일 근거가 됩니다 (2026-09-10 성연서님: 보수적으로 90%)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-rate" min="1" max="100" style="width:80px" value="${Math.round(((GOALS?.pick_rate ?? 0.9)) * 100)}">%<button class="b sm" id="goal-rate-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>모드별 기본 AI 모델</b><span>${Object.entries(CFG.default_provider||{}).map(([m,d]) => `${MODE_KO[m]||m}: ${d.gen} / ${d.edit} / ${d.qa}`).join(' · ')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
+  const gr = $('#goal-rate-save'); if (gr) gr.onclick = async () => { try { GOALS = await api('/api/goals', {pick_rate: (+$('#goal-rate').value || 90) / 100}); gr.textContent = '저장됨 ✓'; setTimeout(() => gr.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
   const gs = $('#goal-save'); if (gs) gs.onclick = async () => { try { GOALS = await api('/api/goals', {default: +$('#goal-default').value || 30}); gs.textContent = '저장됨 ✓'; setTimeout(() => gs.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
 }
 
