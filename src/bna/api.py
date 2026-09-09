@@ -226,7 +226,7 @@ def lessons_payload():
     a = lessons.active(OUT)
     from .version import prompt_version
     return {**s, "active": a, "scorecard": lessons.scorecard(OUT), "by_version": lessons.by_version(OUT),
-            "current_version": prompt_version(),
+            "current_version": prompt_version(), "settings_top_n": (lessons._cfg().get("settings") or {}).get("top_n", 3),
             "preview": {k: lessons.avoid_text(v) for k, v in (a.get("lines") or {}).items() if v}}
 
 

@@ -248,6 +248,20 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .pk-person { background:#E4ECF9 } .pk-before_condition { background:#FDE7C8 } .pk-scene { background:#E2F3EA } .pk-expression { background:#E2F3EA; outline:1px dashed #7CBF9A }
 .pk-mode_extra { background:#EEE9FB } .pk-avoid { background:#FBE5E5 } .pk-identity { background:#E0F1F7 } .pk-day { background:#F3EBD7 } .pk-skin { background:#F6E6F0 }
 .pk-change { background:#FFD9A8 } .pk-effect { background:#FFE7C7 } .pk-must_not { background:#F9DADA } .pk-timeline { background:#F3EBD7 }
+/* 학습 탭 흐름 */
+.flow-strip { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:var(--gap); font-size:var(--fs-sm); color:var(--ui-md) }
+.flow-strip .fs-step { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--ui-border); border-radius:999px; padding:5px 12px 5px 6px }
+.flow-strip .fs-step b { width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; font-size:11px; display:inline-flex; align-items:center; justify-content:center }
+.flow-strip i { font-style:normal; color:var(--ui-lo) }
+.card-head h3 .num { display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--pri-alpha); color:var(--primary); font-size:12px; align-items:center; justify-content:center; margin-right:8px; vertical-align:2px }
+.les-grid { display:grid; grid-template-columns:minmax(0,1fr) 28px minmax(0,1.3fr); gap:12px; align-items:start }
+.les-arrow { font-size:26px; color:var(--ui-lo); text-align:center; padding-top:22px }
+.tag-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--ui-border) } .tag-row:last-child { border-bottom:0 }
+.tag-row .n { font-weight:var(--fw-m); min-width:20px; text-align:right } .tag-row .meter { flex:1; height:6px; background:var(--ui-surface); border-radius:3px; overflow:hidden } .tag-row .meter i { display:block; height:100%; background:var(--bad); border-radius:3px }
+.tag-row .st { font-size:11px; padding:1px 8px; border-radius:999px; white-space:nowrap } .tag-row .st.on { background:var(--bad-weak); color:var(--bad) } .tag-row .st.off { background:var(--ui-surface); color:var(--ui-lo) }
+.les-empty { padding:14px; border:1px dashed var(--ui-border); border-radius:var(--r-md); color:var(--ui-md); font-size:var(--fs-sm); display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.delta.up { color:var(--bad) } .delta.down { color:var(--ok) }
+@media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
 .legend { display:flex; flex-wrap:wrap; gap:4px 6px; margin:6px 0 2px } .legend span { font-size:11px; color:var(--ui-md); padding:1px 8px; border-radius:999px }
 .prompt-tools { display:flex; align-items:center; gap:8px; margin-top:8px } .prompt-tools .muted { font-size:var(--fs-xs) }
 .lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0 }
@@ -256,6 +270,20 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--sp-2) } .prog .lead { display:flex; align-items:center; gap:var(--sp-2) } .prog .ttl { font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md) } .prog .big small { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:4px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
 .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px } .stack i { display:block; height:100%; transition:width .4s }
 .st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
+/* 학습 탭 흐름 */
+.flow-strip { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:var(--gap); font-size:var(--fs-sm); color:var(--ui-md) }
+.flow-strip .fs-step { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--ui-border); border-radius:999px; padding:5px 12px 5px 6px }
+.flow-strip .fs-step b { width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; font-size:11px; display:inline-flex; align-items:center; justify-content:center }
+.flow-strip i { font-style:normal; color:var(--ui-lo) }
+.card-head h3 .num { display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--pri-alpha); color:var(--primary); font-size:12px; align-items:center; justify-content:center; margin-right:8px; vertical-align:2px }
+.les-grid { display:grid; grid-template-columns:minmax(0,1fr) 28px minmax(0,1.3fr); gap:12px; align-items:start }
+.les-arrow { font-size:26px; color:var(--ui-lo); text-align:center; padding-top:22px }
+.tag-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--ui-border) } .tag-row:last-child { border-bottom:0 }
+.tag-row .n { font-weight:var(--fw-m); min-width:20px; text-align:right } .tag-row .meter { flex:1; height:6px; background:var(--ui-surface); border-radius:3px; overflow:hidden } .tag-row .meter i { display:block; height:100%; background:var(--bad); border-radius:3px }
+.tag-row .st { font-size:11px; padding:1px 8px; border-radius:999px; white-space:nowrap } .tag-row .st.on { background:var(--bad-weak); color:var(--bad) } .tag-row .st.off { background:var(--ui-surface); color:var(--ui-lo) }
+.les-empty { padding:14px; border:1px dashed var(--ui-border); border-radius:var(--r-md); color:var(--ui-md); font-size:var(--fs-sm); display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.delta.up { color:var(--bad) } .delta.down { color:var(--ok) }
+@media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
 .legend { display:flex; gap:var(--sp-3); flex-wrap:wrap; font-size:var(--fs-xs); color:var(--ui-lo) } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
 .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:20px; height:20px; border-radius:4px; background:var(--ui-surface); display:block; font-size:10px; color:#fff; text-align:center; line-height:20px; font-weight:700 } .cells b.st-queued, .cells b.st-skipped { color:var(--ui-lo) }
 .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
@@ -460,14 +488,25 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     </section>
 
     <section class="page" id="tab-lessons">
-      <div class="card"><div class="card-head"><h3>프롬프트 버전별 성적</h3><span class="muted" id="les-cur"></span></div>
+      <!-- 학습 탭 = 되먹임 고리 한 흐름 (2026-09-09 재구성): 제외 → 사유 집계 → 금지문/덜 뽑기 → 다음 생성 → 버전 비교 -->
+      <div class="flow-strip">
+        <span class="fs-step"><b>1</b>검수에서 제외</span><i>›</i>
+        <span class="fs-step"><b>2</b>사유가 쌓임</span><i>›</i>
+        <span class="fs-step"><b>3</b>금지문·덜 뽑기로 반영</span><i>›</i>
+        <span class="fs-step"><b>4</b>다음 생성에 적용</span><i>›</i>
+        <span class="fs-step"><b>5</b>버전끼리 제외율 비교</span>
+      </div>
+      <div class="card"><div class="card-head"><h3><span class="num">1</span>프롬프트 버전별 성적</h3><span class="muted" id="les-cur"></span><div class="tb-space"></div><span class="muted" id="les-cur-sum"></span></div>
         <div id="les-version"></div></div>
-      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>제외 사유에서 배운 것</h3><span class="muted" id="les-window"></span></div>
-        <div id="les-body" class="muted">불러오는 중…</div></div>
-      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>지금 프롬프트에 붙는 문장</h3></div><div id="les-preview" class="muted"></div></div>
-      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>메모 → 규칙으로 승격</h3></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">2</span>제외 사유 → 지금 프롬프트에 붙는 것</h3><span class="muted" id="les-window"></span></div>
+        <div class="les-grid">
+          <div><div class="rev-h">제외 사유 (최근)</div><div id="les-body" class="muted">불러오는 중…</div></div>
+          <div class="les-arrow">›</div>
+          <div><div class="rev-h">다음 생성부터 붙는 문장</div><div id="les-preview" class="muted"></div></div>
+        </div></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">3</span>메모 → 규칙으로 승격</h3><div class="tb-space"></div><span class="muted">자유 메모는 자동으로 안 들어갑니다. 영어 한 문장으로 다듬어 올려야 붙습니다.</span></div>
         <div id="les-notes"></div><div class="msg" id="les-msg"></div></div>
-      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>규칙 성적표</h3></div>
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">4</span>규칙 성적표</h3><div class="tb-space"></div><span class="muted">넣은 뒤 제외가 안 줄면 문장이 약한 것입니다</span></div>
         <div id="les-score"></div></div>
     </section>
 
@@ -1228,25 +1267,34 @@ function renderExports() {
 let LES = null, PLAN_ITEMS = [];
 async function loadLessons() {
   try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
-  const L = LES, tags = Object.entries(L.tags || {});
+  const L = LES, tags = Object.entries(L.tags || {}), st = (L.active || {});
+  const minN = 2, maxN = Math.max(1, ...tags.map(([, n]) => n));
   $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장`;
+  const goReview = `<button class="b sm" data-goto="jobs">작업 탭에서 검수하기</button>`;
+  // 2-좌: 사유별 건수 + 반영 여부 (min_count 2회부터 붙는다)
   $('#les-body').innerHTML = tags.length
-    ? `<div>${tags.map(([t, n]) => `<span class="chip ${L.active.from_tags.includes(t) ? 'bad' : ''}" title="${L.active.from_tags.includes(t) ? '지금 프롬프트에 반영 중' : '아직 반영 기준(2회) 미달'}">${esc(t)} ${n}</span>`).join(' ')}</div>`
-      + (Object.keys(L.active.weights || {}).length
-        ? `<div style="margin-top:10px"><b>덜 뽑는 조건</b><div style="margin-top:4px">${
-            Object.entries(L.active.weights).map(([a, vs]) => Object.keys(vs).map(k => `<span class="chip warn">${AXIS_KO[a] || a} · ${esc(val(a, k))}</span>`).join(' ')).join(' ')}</div></div>` : '')
-    : '아직 제외한 사진이 없습니다.';
+    ? tags.map(([t, n]) => { const on = (st.from_tags || []).includes(t);
+        return `<div class="tag-row"><span style="min-width:96px">${esc(t)}</span><span class="meter"><i style="width:${(n / maxN * 100).toFixed(0)}%"></i></span><span class="n">${n}</span>
+          <span class="st ${on ? 'on' : 'off'}" title="${on ? '지금 프롬프트에 금지문으로 붙어 있습니다' : `같은 사유가 ${minN}회 이상 쌓이면 자동으로 붙습니다`}">${on ? '반영 중' : `${minN}회부터 반영`}</span></div>`; }).join('')
+      + (Object.keys(st.weights || {}).length
+        ? `<div style="margin-top:10px"><div class="rev-h">덜 뽑는 조건</div><div class="muted" style="font-size:var(--fs-xs);margin-bottom:4px">제외가 몰린 조건값은 추첨 확률을 낮춥니다(빼지는 않음 — 다시 좋아졌는지 확인하려면 남겨야 합니다)</div>${
+            Object.entries(st.weights).map(([a, vs]) => Object.keys(vs).map(k => `<span class="chip warn">${AXIS_KO[a] || a} · ${esc(val(a, k))}</span>`).join(' ')).join(' ')}</div>` : '')
+    : `<div class="les-empty">아직 제외한 사진이 없습니다. 검수 모드에서 <b>제외</b>를 누르고 사유를 고르면 여기에 쌓입니다. ${goReview}</div>`;
+  // 2-우: 실제로 붙는 문장 (before/after)
   const pv = L.preview || {};
   $('#les-preview').innerHTML = Object.keys(pv).length
-    ? Object.entries(pv).map(([w, t]) => `<div style="margin-bottom:8px"><b>${w === 'before' ? '시술 전' : '시술 후'}</b><div class="mono">${esc(t)}</div></div>`).join('')
-    : '아직 붙는 문장이 없습니다';
+    ? Object.entries(pv).map(([w, t]) => `<div style="margin-bottom:8px"><b>${w === 'before' ? '시술 전 프롬프트 끝에' : '시술 후 프롬프트 끝에'}</b><div class="prompt"><span class="pk pk-avoid">${esc(t)}</span></div></div>`).join('')
+      + `<div class="muted" style="font-size:var(--fs-xs)">최대 ${(L.settings_top_n || 3)}개까지만 붙입니다. 안 겪은 실수까지 나열하면 프롬프트가 길어지고, 이미지 모델은 부정문의 단어에 끌립니다.</div>`
+    : `<div class="les-empty">아직 붙는 문장이 없습니다. 왼쪽 사유가 ${minN}회 이상 쌓이면 여기에 문장이 생깁니다.</div>`;
+  $('#les-body').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
+  // 3: 승격
   $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => `
     <div class="list-row" style="cursor:default;align-items:flex-start">
       <div class="t" style="flex:1"><b>${esc(n.note)}</b><span>${fmtBid(n.batch)} · ${+n.item + 1}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
         <input type="text" id="les-en-${i}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" style="width:100%;margin-top:6px">
       </div>
       <button class="b" data-promote="${i}">규칙으로 승격</button>
-    </div>`).join('') : '<div class="muted">승격할 메모가 없습니다.</div>';
+    </div>`).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
     if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
@@ -1255,19 +1303,23 @@ async function loadLessons() {
       msg('#les-msg', `규칙 ${r.count}개 — 다음 생성부터 붙습니다`, 'on'); loadLessons(); }
     catch (e) { msg('#les-msg', e.message, 'err'); }
   });
-  $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th>넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th></tr></thead><tbody>${
-    L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td></tr>`).join('')}</tbody></table>`
-    : '<div class="muted">아직 승격된 규칙이 없습니다.</div>';
+  // 4: 규칙 성적표 — 건수만이 아니라 검수 대비 비율
+  $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th>넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th><th>넣은 뒤 제외율</th></tr></thead><tbody>${
+    L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td><td>${r.after_reviewed ? pct(r.after_rejects / r.after_reviewed) : '—'}</td></tr>`).join('')}</tbody></table>`
+    : `<div class="les-empty">아직 승격된 규칙이 없습니다. 3번에서 규칙을 올리면 넣기 전·후 제외 건수가 여기 비교됩니다.</div>`;
   const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
+  // 1: 버전 표 + 현재 버전 한 줄 요약 + 이전 실버전 대비 제외율 변화
   $('#les-cur').textContent = L.current_version ? `지금 버전 ${L.current_version}` : '';
-  const vs = L.by_version || [];
-  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>통과 1장당 비용</th><th>제외 사유 상위</th></tr></thead><tbody>${
+  const vs = L.by_version || [], real = vs.filter(r => r.real), cur = vs.find(r => r.version === L.current_version), prev = real.find(r => r.version !== L.current_version);
+  const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
+  $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
+  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
     vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td title="${esc(r.version)}">${r.real ? esc(r.version) : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}</td>` +
       `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td><td>${r.reviewed}</td>` +
-      `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td><td>${r.cost_per_pass == null ? '—' : '$' + r.cost_per_pass}</td>` +
+      `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
       `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
-    <div class="muted" style="margin-top:8px">버전 = config 폴더 전체의 해시. 프롬프트·조건 파일을 고치면 새 줄이 생기고, 줄끼리 비교하면 고친 효과가 보입니다.</div>`
-    : '<div class="muted">아직 생성된 배치가 없습니다.</div>';
+    <div class="muted" style="margin-top:8px;font-size:var(--fs-xs)">버전 = 프롬프트·조건 설정 전체의 지문. 설정을 고치면 새 줄이 생기고, 줄끼리 제외율을 비교하면 고친 효과가 보입니다. 비용은 실행 쪽(티모)에서 집계합니다.</div>`
+    : `<div class="les-empty">아직 생성된 배치가 없습니다.</div>`;
 }
 
 // ---------- 설정 ----------
