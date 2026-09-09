@@ -289,11 +289,15 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .brow .h { display:flex; align-items:baseline; gap:6px } .brow .h b { font-size:var(--fs-sm) } .brow .h .n { margin-left:auto; font-variant-numeric:tabular-nums; font-size:var(--fs-sm); color:var(--ui-md) } .brow .h .n b { color:var(--primary); font-size:var(--fs-md) }
 .brow .m { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .brow .m i { display:block; height:100%; background:var(--primary); border-radius:4px } .brow.done .m i { background:var(--ok) }
 .brow .s { font-size:11px; color:var(--ui-lo) } .brow .s .pend { color:var(--warn) }
-.todo .todo-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--ui-border) } .todo .todo-row:last-child { border-bottom:0 }
-.todo .todo-row .k { flex:1; min-width:0 } .todo .todo-row .k b { display:block; font-size:var(--fs-md) } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo) }
-.todo .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums } .todo .big.warn { color:var(--warn) } .todo .big.ok { color:var(--ok) }
+/* 오늘 할 일: 모든 줄이 같은 3칸(글 | 숫자 | 버튼). 칸이 비어도 자리는 지킨다 — 숫자끼리·버튼끼리 세로로 맞는다 */
+.todo .todo-row { display:grid; grid-template-columns:minmax(0,1fr) 56px 84px; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--ui-border) } .todo .todo-row:last-child { border-bottom:0 }
+.todo .todo-row .k { min-width:0 } .todo .todo-row .k b { display:block; font-size:var(--fs-md) } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo) }
+.todo .todo-row .v { text-align:right; font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1.1 } .todo .v.warn { color:var(--warn) } .todo .v.ok { color:var(--ok) } .todo .v.plain { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) }
+.todo .todo-row .a { display:flex; justify-content:flex-end } .todo .todo-row .a .b { min-width:64px }
 .todo .tags-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px } .col { display:flex; flex-direction:column; gap:var(--gap) }
 .axis-wide { display:grid; grid-template-columns:1fr 1fr; gap:0 32px } .axis-wide .empty { grid-column:1 / -1 } @media (max-width:1100px) { .axis-wide { grid-template-columns:1fr } }
+table.fixed3 { table-layout:fixed; width:100% } table.fixed3 th:first-child, table.fixed3 td:first-child { width:78px; white-space:nowrap } table.fixed3 th:last-child, table.fixed3 td:last-child { width:112px }
+table.fixed3 .ell { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .statline { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; font-size:var(--fs-md); color:var(--ui-md); padding:4px 0 }
 .statline b { color:var(--ui-hi); font-weight:var(--fw-b) } .statline b.ok { color:var(--ok) } .statline b.bad { color:var(--bad) } .statline .sep { width:1px; height:18px; background:var(--ui-border) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
@@ -392,7 +396,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
           </div>
           <div class="card">
             <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
-            <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>통과 / 생성</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+            <div class="tbl-wrap"><table id="home-recent" class="fixed3"><thead><tr><th>시간</th><th>시술</th><th style="text-align:right">통과 / 생성</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
       </div>
@@ -678,9 +682,9 @@ async function loadHome() {
   ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
   renderBoard(); chartCombo(); chartAxis(); renderTodo();
   const tb = $('#home-recent tbody');
-  tb.innerHTML = batches.filter(b => HOME_SIM || !['sim', 'demo'].includes(b.kind)).slice(0, 7).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : s.pending ? `<span class="chip warn">검수 ${s.pending}</span>` : '<span class="chip ok">완료</span>';
-    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)} <span class="muted">${MODE_KO[b.mode]||''}</span></td><td>${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''}`}</td><td>${st}</td></tr>`; }).join('')
-    || '<tr><td colspan="4" class="empty">실제 생성 기록이 없습니다</td></tr>';
+  tb.innerHTML = batches.filter(b => HOME_SIM || !['sim', 'demo'].includes(b.kind)).slice(0, 7).map(b => { const s = b.stats || {}; const stc = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : s.pending ? `<span class="chip warn">검수 ${s.pending}</span>` : '';
+    return `<tr class="click" data-id="${b.batch_id}"><td class="muted">${fmtBid(b.batch_id)}</td><td><div class="ell">${tname(b.treatment)} <span class="muted">${MODE_KO[b.mode]||''}</span></div></td><td style="text-align:right;white-space:nowrap">${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''}`} ${stc}</td></tr>`; }).join('')
+    || '<tr><td colspan="3" class="empty">실제 생성 기록이 없습니다</td></tr>';
   tb.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
 }
 $('#home-sim').onchange = e => { HOME_SIM = e.target.checked; try { localStorage.setItem('bna.homesim', HOME_SIM ? '1' : '0'); } catch {} loadHome(); };
@@ -699,12 +703,16 @@ function renderBoard() {
 function renderTodo() {
   const q = OV.queue, L = OV.lessons || {}, g = OV.gates || {};
   $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month: 'long', day: 'numeric', weekday: 'short'});
-  const running = q.running ? `<div class="todo-row"><div class="k"><b>진행 중: ${tname(q.running.treatment)} ${MODE_KO[q.running.mode]||''}</b><span>대기 ${q.queued}개${q.paused ? ' · 일시정지' : ''}</span></div><button class="b sm" data-goto="create">대기열</button></div>` : '';
-  const pending = `<div class="todo-row"><div class="k"><b>검수 대기</b><span>${OV.pending_total ? 'AI 통과한 사진을 채택/제외로 갈라 주세요' : '밀린 검수가 없습니다'}</span></div><span class="big ${OV.pending_total ? 'warn' : 'ok'}">${OV.pending_total}</span>${OV.pending_total && OV.pending_batch ? `<button class="b sm primary" id="todo-review">검수 시작</button>` : ''}</div>`;
+  const row = (k, sub, v, a) => `<div class="todo-row"><div class="k"><b>${k}</b>${sub ? `<span>${sub}</span>` : ''}</div><div class="v ${v?.cls || ''}">${v?.text ?? ''}</div><div class="a">${a || ''}</div></div>`;
+  const running = q.running ? row(`진행 중: ${tname(q.running.treatment)} ${MODE_KO[q.running.mode]||''}`, q.paused ? '일시정지' : '생성 중', {text: q.queued, cls: 'plain'}, `<button class="b sm" data-goto="create">대기열</button>`) : '';
+  const pending = row('검수 대기', OV.pending_total ? 'AI 통과한 사진을 채택/제외로 갈라 주세요' : '밀린 검수가 없습니다', {text: OV.pending_total, cls: OV.pending_total ? 'warn' : 'ok'},
+    OV.pending_total && OV.pending_batch ? `<button class="b sm primary" id="todo-review">검수 시작</button>` : '');
   const tags = (L.top_tags || []);
-  const lessons = `<div class="todo-row"><div class="k"><b>제외 사유 상위</b><span>최근 ${L.window_days || 14}일 · 제외 ${L.rejected || 0}장</span>${tags.length ? `<div class="tags-line">${tags.map(([t, n]) => `<span class="chip ${(L.active_tags||[]).includes(t) ? 'bad' : ''}" title="${(L.active_tags||[]).includes(t) ? '지금 프롬프트에 반영 중' : '2회부터 반영'}">${esc(t)} ${n}</span>`).join('')}</div>` : ''}</div><button class="b sm" data-goto="lessons">학습</button></div>`;
+  const lessons = row('제외 사유 상위', `최근 ${L.window_days || 14}일 · 제외 ${L.rejected || 0}장` + (tags.length ? `<div class="tags-line">${tags.map(([t, n]) => `<span class="chip ${(L.active_tags||[]).includes(t) ? 'bad' : ''}" title="${(L.active_tags||[]).includes(t) ? '지금 프롬프트에 반영 중' : '2회부터 반영'}">${esc(t)} ${n}</span>`).join('')}</div>` : ''),
+    {text: L.rejected || 0, cls: L.rejected ? 'plain' : 'ok'}, `<button class="b sm" data-goto="lessons">학습</button>`);
   const idn = g.identity || {}, st = g.structure || {};
-  const gate = `<div class="todo-row"><div class="k"><b>자동 게이트가 못 잰 비율</b><span>동일인 ${idn.na_rate == null ? '—' : pct(idn.na_rate)} · 구조 ${st.na_rate == null ? '—' : pct(st.na_rate)}${(idn.na_rate || 0) > .3 ? ' · 부분 크롭이 많아 사람 검수 비중이 큽니다' : ''}</span></div></div>`;
+  const gate = row('자동 게이트 못 잰 비율', `동일인 · 구조${(idn.na_rate || 0) > .3 ? ' · 부분 크롭이 많아 사람 검수 비중이 큽니다' : ''}`,
+    {text: `${idn.na_rate == null ? '—' : pct(idn.na_rate)}<span class="muted" style="font-size:var(--fs-xs);font-weight:500"> · ${st.na_rate == null ? '—' : pct(st.na_rate)}</span>`, cls: 'plain'}, '');
   $('#home-todo').innerHTML = running + pending + lessons + gate;
   $('#home-todo').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
   const rb = $('#todo-review'); if (rb) rb.onclick = async () => { show('jobs'); await openBatch(OV.pending_batch, true); $('#gal-view [data-v=review]')?.click(); };
