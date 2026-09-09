@@ -625,9 +625,14 @@ export default async function handler(req, res) {
   // 학습 집계는 스냅샷 그대로. 승격(avoid.yaml 쓰기)은 PC 에서만 — 여기서 받으면 다음 스냅샷이 덮는다.
   if (p === '/api/lessons') {
     if (!snap.lessons) return json(res, 503, { error: '학습 집계가 아직 안 올라왔습니다 — 사무실 PC 의 push-cloud 가 한 번 더 돌면 보입니다.' });
-    return json(res, 200, { ...snap.lessons, no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
+    // 집계 숫자는 PC 스냅샷(최대 10분 지연)이지만, "검수 0건" 안내는 방금 누른 판정까지 세어 바로 숨긴다 —
+    // 눌렀는데 계속 0건이라고 나오면 안 먹은 줄 안다 (2026-09-10 성연서님).
+    const fresh = Object.values(ov).filter((r) => r && (r.pick === 'pick' || r.pick === 'reject')).length;
+    return json(res, 200, { ...snap.lessons, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
+      no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
   }
   if (p === '/api/lessons/promote') return json(res, 405, { error: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
+
 
   if (p === '/api/overview') {
     const want = String(url.searchParams.get('days') || '14');

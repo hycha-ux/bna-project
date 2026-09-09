@@ -1449,7 +1449,7 @@ async function loadLessons() {
   try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
   const L = LES, tags = Object.entries(L.tags || {}), st = (L.active || {});
   const minN = 2, maxN = Math.max(1, ...tags.map(([, n]) => n));
-  $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장`;
+  $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장` + (L.pending_sync ? ` · 방금 누른 ${L.pending_sync}건은 사무실 PC 가 가져가면(최대 10분) 집계에 들어갑니다` : '');
   const goReview = `<button class="b sm" data-goto="jobs">작업 탭에서 검수하기</button>`;
   renderLessonsFirst(L);
   // 2-좌: 사유별 건수 + 반영 여부 (min_count 2회부터 붙는다)
