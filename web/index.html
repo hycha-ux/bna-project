@@ -648,7 +648,7 @@ function show(tab) {
   if (tab === 'home') loadHome();
   if (tab === 'create') loadQueue();
   document.body.classList.toggle('reviewing', tab === 'jobs' && VIEW === 'review');
-  if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
+  if (tab === 'jobs') loadBatches().then(() => { if (!CUR && LIST_IDS[0]) openBatch(LIST_IDS[0]); });
   if (tab === 'library') loadLibrary();
   if (tab === 'lessons') loadLessons();
   if (tab === 'settings') loadGoals().then(renderSettings);
@@ -656,7 +656,7 @@ function show(tab) {
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
 try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
-$$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); loadBatches(); });
+$$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); });
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
@@ -898,11 +898,21 @@ setInterval(() => { if ($('#tab-create').classList.contains('active')) loadQueue
 setInterval(async () => { if (!$('#tab-create').classList.contains('active')) { try { setQueueStatus(await api('/api/queue')); } catch {} } }, 5000);
 
 // ---------- 작업 목록 ----------
+let LIST_IDS = [];
+function clearDetail() {
+  CUR = null; clearInterval(POLL); POLL = null;
+  if (VIEW === 'review') setView('grid', {push: false});
+  $('#detail-empty').hidden = false; $('#detail-body').hidden = true;
+  $$('#batches tbody tr').forEach(tr => tr.classList.remove('sel'));
+}
 async function loadBatches() {
   BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const q = SEARCH.toLowerCase();
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
   const list = BATCHES.filter(b => kindOk(b) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
+  LIST_IDS = list.map(b => b.batch_id);
+  // 고른 작업이 지금 목록(필터·검색)에 없으면 상세도 비운다 — 안 그러면 필터를 바꿔도 사진이 따라온다 (2026-09-09 성연서님)
+  if (CUR && !LIST_IDS.includes(CUR.batch_id)) clearDetail();
   const nTest = BATCHES.filter(b => b.kind !== 'run').length;
   $('#batches-empty').innerHTML = kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : '생성 기록이 없습니다';
   const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.kind === 'test')); loadBatches(); };
@@ -916,7 +926,8 @@ async function loadBatches() {
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
-$('#btn-refresh').onclick = loadBatches; $('#jobs-kind').onchange = loadBatches;
+$('#btn-refresh').onclick = loadBatches;
+$('#jobs-kind').onchange = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.kind === $('#jobs-kind').value)); loadBatches().then(() => { if (!CUR && LIST_IDS[0]) openBatch(LIST_IDS[0]); }); };
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
