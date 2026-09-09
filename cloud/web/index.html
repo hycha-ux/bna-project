@@ -299,6 +299,7 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 table.fixed3 { table-layout:fixed; width:100% } table.fixed3 th:first-child, table.fixed3 td:first-child { width:78px; white-space:nowrap } table.fixed3 th:last-child, table.fixed3 td:last-child { width:112px }
 table.fixed3 .ell { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .card-head .hsel { width:auto; min-width:110px; height:32px; font-size:var(--fs-xs); padding:0 28px 0 10px }
+#batches tr.test-row td { color:var(--ui-md) } #batches tr.test-row td:first-child { color:var(--ui-lo) }
 table.jobs th.num, table.jobs td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap } table.jobs td .okc { color:var(--ok) }
 table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-child { white-space:nowrap }
 #q-table { table-layout:fixed; width:100% } #q-table th:nth-child(1) { width:28px } #q-table th:nth-child(3) { width:80px } #q-table th:nth-child(4) { width:72px } #q-table th:nth-child(6) { width:150px }
@@ -355,7 +356,8 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">홈</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
-    <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="sim">시뮬레이션</button><button data-kind="demo">샘플</button></div>
+    <!-- 구분은 둘뿐: 실제 생성(돈 쓰고 만든 사진) / 테스트(시뮬레이션·샘플·프롬프트만 — 화면 확인용). 2026-09-09 성연서님 "구분이 불명확" -->
+    <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="test" title="시뮬레이션 · 샘플 · 프롬프트만 — 실제 사진이 아닌 확인용 기록">테스트</button></div>
     <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
     <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
     <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
@@ -459,7 +461,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><select id="jobs-kind" class="hsel"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="card-head"><h3>작업 목록</h3><select id="jobs-kind" class="hsel"><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
         <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
@@ -583,6 +585,7 @@ const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.fl
 const STAGE_KO = {skipped:'생략(목표 도달)', queued:'대기', before:'시술 전 생성', after:'시술 후 생성', postprocess:'후처리', qa:'AI 검수', retry:'재생성 대기', passed:'통과', failed:'탈락'};
 const MODE_KO = {selfie:'셀카형', clinical:'임상형'};
 const KIND_KO = {demo:'샘플', dry_run:'프롬프트만', run:'실제', sim:'시뮬레이션'};
+const KIND_TIP = {run:'실제로 AI 를 호출해 만든 사진 (비용 발생)', sim:'테스트 — 실제 호출 없이 진행 화면만 흉내낸 것', demo:'테스트 — 자리표시 사진, 화면 확인용', dry_run:'테스트 — 사진 없이 프롬프트 문장만 저장'};
 const FAIL_KO = {structure:'얼굴 정렬 불일치', identity:'동일 인물 아님', duplicate:'유사 이미지 중복', 'vision:hair':'머리카락 부자연', 'vision:ai_look':'AI 생성 티', 'vision:fingers':'손가락 오류', 'vision:skin_texture':'피부 질감 부자연', 'vision:drift':'시술 부위 외 변화', 'vision:effect_visible':'효과 미확인', 'vision:identity':'동일 인물 아님'};
 const SCORE_KO = {fingers:'손가락', skin_texture:'피부 질감', hair:'머리카락', identity:'동일 인물', drift:'부위 외 변화 없음', effect_visible:'효과 확인', ai_look:'자연스러움'};
 // AI 검수 점수의 정본 모양은 `{item: {score, note}}` 다(src/bna/qa/vision.py).
@@ -897,14 +900,19 @@ setInterval(async () => { if (!$('#tab-create').classList.contains('active')) { 
 // ---------- 작업 목록 ----------
 async function loadBatches() {
   BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const q = SEARCH.toLowerCase();
-  const list = BATCHES.filter(b => (!kind || b.kind === kind) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
+  const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
+  const list = BATCHES.filter(b => kindOk(b) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
+  const nTest = BATCHES.filter(b => b.kind !== 'run').length;
+  $('#batches-empty').innerHTML = kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : '생성 기록이 없습니다';
+  const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.kind === 'test')); loadBatches(); };
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
     const dry = b.kind === 'dry_run';
-    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
+    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}" title="${KIND_TIP[b.kind]||''}">${KIND_KO[b.kind]||b.kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td>
       <td>${dry ? '—' : `${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span>`}</td><td>${st}</td></tr>`; }).join('');
+  tb.querySelectorAll('tr').forEach(tr => { const b = BATCHES.find(x => x.batch_id === tr.dataset.id); if (b && b.kind !== 'run') tr.classList.add('test-row'); });
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
