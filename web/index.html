@@ -1311,8 +1311,9 @@ async function loadLessons() {
   const vs = L.by_version || [], real = vs.filter(r => r.real), cur = vs.find(r => r.version === L.current_version), prev = real.find(r => r.version !== L.current_version);
   const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
   $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
-  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
+  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
     vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td title="${esc(r.version)}">${r.real ? esc(r.version) : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}</td>` +
+      `<td>${Object.keys(r.providers || {}).length ? Object.entries(r.providers).map(([k, n]) => `${esc(k)} ${n}`).join(' · ') : '<span class="muted">—</span>'}${r.provider_mixed ? ' <span class="chip warn" title="한 버전 줄에 두 모델이 섞였습니다 — 줄끼리 비교가 무의미해집니다">섞임</span>' : ''}</td>` +
       `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td><td>${r.reviewed}</td>` +
       `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
       `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
