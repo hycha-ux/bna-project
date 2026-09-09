@@ -6,7 +6,14 @@
 #   Same rule as the daemon: anything started inside a session dies with it.
 #
 # Usage (from an ordinary PowerShell, no elevation needed):
-#   powershell -ExecutionPolicy Bypass -File tools\run-selfie-batches.ps1 -Treatments nasolabial,filler_nose,filler_neck -Count 8 -Seed 5
+#   powershell -ExecutionPolicy Bypass -File tools\run-selfie-batches.ps1 -Treatments nasolabial,filler_nose,filler_neck -Count 8
+#
+# Seed: 0 (the default) means "pick a fresh one each run" and the chosen value is logged.
+#   2026-09-09 - the default used to be a hard-coded 5. plan_batch is deterministic in the seed,
+#   so running the same treatment twice produced the SAME roster of people: the two nasolabial
+#   batches of 09-09 had items 0000/0002 identical across all 11 person axes, and their faces
+#   scored 0.421 / 0.392 ArcFace against each other vs 0.099 for the average pair.
+#   Pass -Seed <n> explicitly only when you are trying to reproduce a past run.
 #
 # NOTE: ASCII only on purpose. Windows PowerShell 5.1 reads .ps1 as CP949 on this PC,
 #       so Korean literals here would be silently mangled.
@@ -14,7 +21,7 @@
 param(
   [string[]]$Treatments = @('nasolabial', 'filler_nose', 'filler_neck'),
   [int]$Count = 8,
-  [int]$Seed = 5,
+  [int]$Seed = 0,
   [string]$KeysFile = 'C:\Users\medib\teemo\keys.env',
   [string]$LogFile = 'C:\Users\medib\teemo\out\run-selfie-batches.log'
 )
@@ -38,6 +45,8 @@ if (-not $env:OPENAI_API_KEY) { throw 'OPENAI_API_KEY missing - run: node C:\Use
 
 $env:PYTHONPATH = Join-Path $root 'src'
 $env:PYTHONIOENCODING = 'utf-8'
+# 0 = no seed was given -> draw one now, and write it to the log so a run can still be reproduced.
+if ($Seed -eq 0) { $Seed = Get-Random -Minimum 1 -Maximum 2147483647 }
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LogFile) | Out-Null
 "=== run start $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') seed=$Seed count=$Count ===" |
   Out-File -LiteralPath $LogFile -Encoding utf8

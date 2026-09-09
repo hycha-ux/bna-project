@@ -367,6 +367,33 @@ ok(_o["window"]["total"] <= _o2["window"]["total"], "시뮬·샘플 포함 시 �
 ok(all(b["target"] >= 1 for b in _o["board"]) and len(_o["board"]) >= len(_load("treatments.yaml")), "현황판은 시술 전부 + 목표 장수를 낸다")
 ok("picked" in _o["window"] and "pending_total" in _o and "na_rate" in _o["gates"]["identity"], "홈 KPI 에 채택·검수 대기·게이트 못 잼 비율이 있어야 한다")
 
+# ⑳ 인물 조합이 배치를 넘어 반복되지 않는다 (2026-09-09 티모 실측 — "같은 조건이면 얼굴이 비슷하다")
+#    뿌리는 둘이었다: 러너 기본 seed 가 5 로 고정 + 중복 금지가 배치 안에서만.
+#    같은 seed 로 두 번 돌린 09-09 nasolabial 배치의 0000·0002 가 인물 11축 전부 동일했고
+#    그 두 쌍의 얼굴 유사도가 0.421·0.392(전체 평균 0.099)였다.
+from bna.planner import plan_batch as _pb, signature as _sig
+_a = _pb("selfie", 8, 5, treatment="nasolabial")
+_b = _pb("selfie", 8, 5, treatment="nasolabial")
+ok([_sig(p) for p in _a] == [_sig(p) for p in _b], "같은 seed 는 같은 명단이어야 한다 (재현성은 유지)")
+_sa = {_sig(p) for p in _a}
+_c = _pb("selfie", 8, 5, treatment="nasolabial", avoid_sigs=_sa)
+ok(len({_sig(p) for p in _c} & _sa) == 0, "과거 배치가 쓴 인물 조합은 다음 배치에서 다시 안 나와야 한다")
+ok(len(_c) == 8, "과거 조합을 피하느라 배치 장수가 줄면 안 된다")
+# 조합이 말랐을 때: 배치가 조용히 비는 게 아니라 배치 안 중복 금지만 남기고 채운다(fail-open)
+_one = {k: v for k, v in zip(
+    ["country", "age", "gender", "face_shape", "skin_tone", "skin_condition", "body_type",
+     "hair_style", "hair_color", "eyes", "extras"],
+    ["korea", "30s", "female", "oval", "fair", "clear", "slim", "bob", "black", "double", "none"])}
+_d = _pb("selfie", 4, 1, fixed=_one, treatment="nasolabial")
+_e = _pb("selfie", 4, 1, fixed=_one, treatment="nasolabial", avoid_sigs={_sig(p) for p in _d})
+ok(len(_e) == 1, "가능한 조합이 1개뿐이면 과거에 썼더라도 그 1개를 낸다 (fail-open)")
+_runner = (_P(__file__).parent / "tools" / "run-selfie-batches.ps1").read_text(encoding="utf-8")
+ok("[int]$Seed = 0" in _runner and "Get-Random" in _runner,
+   "러너 기본 seed 는 고정값이 아니라 회차마다 새로 뽑아야 한다 (고정이면 명단이 통째로 반복된다)")
+_batch_src = (_P(__file__).parent / "src" / "bna" / "batch.py").read_text(encoding="utf-8")
+ok("avoid_sigs=past_signatures()" in _batch_src and "remember(plans" in _batch_src,
+   "Batch 는 과거 인물 조합을 읽어 피하고 이번 조합을 남겨야 한다 (한쪽만 있으면 레지스트리가 안 자란다)")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

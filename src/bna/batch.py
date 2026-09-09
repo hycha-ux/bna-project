@@ -4,7 +4,7 @@ import asyncio, io, json, time, uuid
 from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
-from .planner import plan_batch
+from .planner import plan_batch, past_signatures, remember
 from . import postprocess, refs, providers
 from .qa import structure, identity, dedup, vision, landmarks
 from .stats import summarize, write_manifest
@@ -142,7 +142,11 @@ class Batch:
 
     # ---------- 배치 ----------
     async def run(self):
-        plans = plan_batch(self.mode, self.count, self.seed, self.fixed, (self.avoid or {}).get("weights"), treatment=self.treatment)
+        # 과거 배치가 쓴 인물 조합을 피해서 뽑는다 — 안 그러면 같은 seed 로 두 번 돌린 배치가
+        # 인물 명단째로 겹친다(2026-09-09 실측, planner 머리말).
+        plans = plan_batch(self.mode, self.count, self.seed, self.fixed, (self.avoid or {}).get("weights"),
+                           treatment=self.treatment, avoid_sigs=past_signatures())
+        remember(plans, self.batch_id)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
         self.progress = Progress(self.dir, len(plans))
