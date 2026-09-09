@@ -19,13 +19,14 @@
  *     회차가 라벨로 그 작업을 찾아 **붙인다**(다시 넣지 않는다). 이게 없으면 재시도가 곧 이중 생성이다.
  *  4) **로컬 API 는 필요할 때만 띄운다** — 큐 러너가 같이 깨어나기 때문이다. 띄우는 건 이번
  *     회차에 실제로 넣을 요청이 있을 때뿐이고, 띄운 서버는 살려 둔다(생성이 몇 분씩 걸린다).
+ *     단 **파이썬 코드가 바뀌었고 큐가 비었을 때만** 갈아 끼운다(`ensureApi` 머리말).
  *
  * 상태를 읽는 곳: 로컬 큐 원장 `outputs/queue.json`(파일이 정본이라 서버가 꺼져 있어도 읽힌다).
  * 상태를 쓰는 곳: `cloud/lib/genreq.mjs`(전이 규칙 정본). 여기서 규칙을 다시 쓰지 마라.
  * 회귀 = `node ops/gen-poller-tests.mjs`(네트워크 0).
  */
-import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, appendFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, appendFileSync, writeFileSync, unlinkSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -35,6 +36,7 @@ const ROOT = path.dirname(HERE);
 const OUT = path.join(ROOT, 'outputs');
 const LOG = path.join(OUT, 'gen-poller.log');
 const LOCK = path.join(OUT, '.gen-poller.lock');
+const API_STATE = path.join(OUT, '.gen-poller-api.json');   // 우리가 띄운 로컬 API 의 pid·소스 시각
 const LOCK_STALE_MS = 10 * 60 * 1000;
 const PORT = Number(process.env.BNA_LOCAL_API_PORT) || 8765;
 const DRY = process.argv.includes('--dry');
@@ -148,13 +150,50 @@ function python() {
   return 'python';
 }
 
+/** 파이썬 소스의 가장 최근 수정 시각 — 떠 있는 서버가 옛 코드인지 판단하는 값. */
+function srcMtime(dir = path.join(ROOT, 'src', 'bna')) {
+  let newest = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === '__pycache__') continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) newest = Math.max(newest, srcMtime(p));
+    else if (e.name.endsWith('.py')) newest = Math.max(newest, statSync(p).mtimeMs);
+  }
+  return newest;
+}
+
+/** 그 포트를 실제로 물고 있는 프로세스 번호. pid 재사용으로 엉뚱한 프로세스를 죽이지 않으려는 확인이다. */
+function listeningPid(port = PORT) {
+  try {
+    const out = execFileSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'latin1', timeout: 8000 });
+    for (const line of out.split(/\r?\n/)) {
+      if (!line.includes(`:${port}`) || !/LISTENING/i.test(line)) continue;
+      const pid = Number(line.trim().split(/\s+/).pop());
+      if (Number.isInteger(pid)) return pid;
+    }
+  } catch { /* 못 재면 아무것도 죽이지 않는다 */ }
+  return null;
+}
+
 /**
- * 로컬 API 를 띄운다 — **띄운 서버는 죽이지 않는다.**
+ * 로컬 API 를 띄운다 — **띄운 서버는 (한 가지 경우만 빼고) 죽이지 않는다.**
  * 이 회차는 1분이면 끝나지만 생성은 몇 분씩 걸리므로, 부모가 죽어도 사는 자식(detached)이어야
  * 한다. 여기서 kill 하면 돈을 쓰고 시작한 배치가 그 자리에서 날아간다.
+ *
+ * 예외 하나 — **파이썬 코드가 바뀌었는데 옛 서버가 떠 있는 경우**. 이 서버는 한 번 뜨면 몇 날이고
+ * 살아 있어서, `git pull` 로 파이프라인이 바뀌어도 조용히 옛 코드로 계속 돈다(09-09 실측: 새로
+ * 생긴 `series` 칸이 오류 없이 통째로 무시돼 전·후 2장이 나왔다). 그래서 **①큐가 비었고
+ * ②소스가 서버보다 새롭고 ③그 포트를 물고 있는 게 우리가 띄운 그 프로세스일 때만** 갈아 끼운다.
  */
-async function ensureApi() {
-  if (await alive()) return 'already';
+async function ensureApi({ idle }) {
+  if (await alive()) {
+    const rec = readJson(API_STATE);
+    const stale = idle && rec && srcMtime() > (rec.src || 0) && listeningPid() === rec.pid;
+    if (!stale) return 'already';
+    try { process.kill(rec.pid); } catch { return 'already'; }
+    for (let i = 0; i < 20 && await alive(); i++) await sleep(500);
+    log('코드가 바뀌어 로컬 API 를 다시 띄운다(큐가 비어 있을 때만)');
+  }
   const p = spawn(python(), ['-m', 'bna.api', '--port', String(PORT), '--no-open'], {
     cwd: ROOT, env: { ...process.env, PYTHONPATH: 'src' },
     detached: true, stdio: 'ignore', windowsHide: true,
@@ -162,7 +201,14 @@ async function ensureApi() {
   p.unref();
   for (let i = 0; i < 60; i++) {
     await sleep(500);
-    if (await alive()) return 'spawned';
+    if (await alive()) {
+      // ⚠ 적어 둘 pid 는 `spawn` 이 준 것이 아니라 **그 포트를 실제로 물고 있는** 프로세스다.
+      // venv 의 python.exe 는 진짜 인터프리터를 자식으로 띄우는 껍데기라 둘이 다르다(09-09 실측
+      // 31096 vs 26344) — 껍데기 번호를 적어 두면 갈아 끼우기가 영영 안 걸린다.
+      const owner = listeningPid() ?? p.pid;
+      try { writeFileSync(API_STATE, JSON.stringify({ pid: owner, spawned: p.pid, at: Date.now(), src: srcMtime() }), 'utf8'); } catch { /* 기록 실패는 다음 회차가 덮는다 */ }
+      return 'spawned';
+    }
   }
   throw new Error(`로컬 API 가 30초 안에 안 떴다(포트 ${PORT})`);
 }
@@ -177,12 +223,18 @@ async function addToQueue(job) {
   return body.added[0];
 }
 
-/** 요청 → 로컬 큐 작업. 프로바이더(gen/edit/qa)는 안 보낸다 = providers.yaml 기본값. */
+/**
+ * 요청 → 로컬 큐 작업. 프로바이더(gen/edit/qa)는 안 보낸다 = providers.yaml 기본값.
+ * ⚠ **요청 필드가 늘면 여기도 늘려라.** 안 넘긴 칸은 오류 없이 기본값으로 떨어진다 — `series`
+ *   (경과 시리즈 시점)를 빠뜨리면 시점별 사진을 시켰는데 전·후 2장이 조용히 나온다.
+ *   `genreq.mjs` 의 `validate` 가 통과시키는 칸과 `queue.py` 의 `add` 가 받는 칸이 짝이다.
+ */
 export function jobSpec(req) {
   return {
     treatment: req.treatment, mode: req.mode, count: req.count,
     seed: req.seed ?? null, fixed: req.fixed || {},
     target_pass: req.target_pass ?? null, cost_cap: req.cost_cap ?? null,
+    series: req.series ?? null,
     simulate: !!req.simulate, label: labelOf(req.id),
   };
 }
@@ -216,7 +268,7 @@ async function main() {
         }
         if (!req || req.status !== 'accepted') { log(`건너뜀 ${a.id} — 상태가 ${req?.status}`); continue; }
         try {
-          await ensureApi();
+          await ensureApi({ idle: !queueJobs().some((j) => j.status === 'queued' || j.status === 'running') });
           const jobId = await addToQueue(jobSpec(req));
           await GR.annotate(token, a.id, { local_job_id: jobId });
           log(`${a.kind === 'accept' ? '받음' : '재등록'} ${a.id} → 큐 ${jobId} (${req.treatment}/${req.mode} ${req.count}장${req.simulate ? ' 시뮬' : ''})`);

@@ -43,6 +43,9 @@ ok(labelOf('abc') === 'genreq:abc' && jobSpec(REQ()).label === 'genreq:r1', '라
 const spec = jobSpec(REQ({ count: 8, target_pass: 4, fixed: { gender: 'female' }, simulate: true }));
 ok(spec.count === 8 && spec.target_pass === 4 && spec.fixed.gender === 'female' && spec.simulate === true && !('gen' in spec),
    '큐 작업은 요청 필드 그대로 + 프로바이더는 안 보낸다(기본값)');
+// 안 넘긴 칸은 오류 없이 기본값으로 떨어진다 — 조용히 다른 물건이 나오는 자리라 못 박아 둔다.
+ok(jobSpec(REQ({ series: ['immediate', '2w'] })).series.join(',') === 'immediate,2w' && jobSpec(REQ()).series === null,
+   '경과 시리즈 시점도 큐로 넘긴다(빠뜨리면 전·후 2장이 나온다)');
 const PG = { planned: 4, items: { '0000': { passed: true, cost: 0.085 }, '0001': { passed: true, cost: 0.17 }, '0002': { passed: false, cost: 0.255 }, '0003': { passed: true, cost: 0.085 } } };
 ok(resultOf({ total: 4, passed: 3 }, PG).cost === 0.595, '든 돈은 progress.json 항목 비용을 더해 낸다');
 ok(resultOf(null, PG).total === 4 && resultOf(null, PG).passed === 3, 'stats 가 없어도 progress 로 장수를 낸다');
