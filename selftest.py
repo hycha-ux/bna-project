@@ -273,6 +273,21 @@ for _t in _T:
             _bad[f"{_t} 과장금지 예외없음"] = 1
 ok(not _bad, f"시술 전수 × 60 표본에서 잠금 위반이 0 이어야 한다 — {_bad}")
 ok(_seen == {"neck", "lower", "full"}, f"세 잠금이 전부 실제로 뽑혀야 한다 — {_seen}")
+# 버전 성적표는 prompt_version(config 해시)으로만 묶인다 — 같은 버전을 다른 모델로 돌리면
+# 두 모델 성적이 한 줄에 섞여 "이전 버전 대비" 비교가 조용히 무의미해진다 (0909 티모)
+import tempfile as _tf, json as _js, time as _tm
+from bna import lessons as _LS
+with _tf.TemporaryDirectory() as _d:
+    _root = _Path(_d) if (_Path := __import__("pathlib").Path) else None
+    for _i, _gen in enumerate(("openai", "openai", "gemini")):
+        _it = _root / "b1" / f"{_i:04d}"; _it.mkdir(parents=True)
+        (_it / "meta.json").write_text(_js.dumps({
+            "prompt_version": "v-테스트", "treatment": "nasolabial", "passed": True, "cost": 0.5,
+            "providers": {"gen": _gen, "edit": _gen, "qa": _gen}}), encoding="utf-8")
+    _rows = _LS.by_version(_root)
+    ok(len(_rows) == 1 and _rows[0].get("provider_mixed") is True,
+       f"한 버전 줄에 모델이 둘 섞이면 provider_mixed 로 드러나야 한다 — {[(r['version'], r.get('providers')) for r in _rows]}")
+    ok(_rows[0]["providers"] == {"openai": 2, "gemini": 1}, f"모델별 장수가 세어져야 한다 — {_rows[0].get('providers')}")
 # identity_exempt 가 조용히 무효가 되면(파일 표현이 갈리면) 소리 내고 죽어야 한다
 try:
     _sv = sample_variation("selfie", 3, treatment="filler_nose")

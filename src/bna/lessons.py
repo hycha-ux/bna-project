@@ -203,7 +203,11 @@ def by_version(out_dir: Path) -> list:
                 continue
             v = it.get("prompt_version") or "?"
             a = acc.setdefault(v, {"version": v, "first": created, "last": created, "n": 0, "ai_pass": 0,
-                                   "reviewed": 0, "rejected": 0, "tags": {}, "treatments": {}, "cost": 0.0})
+                                   "reviewed": 0, "rejected": 0, "tags": {}, "treatments": {}, "cost": 0.0,
+                                   "providers": {}})
+            _pv = (it.get("providers") or {}).get("gen")
+            if _pv:                                     # 한 버전 줄에 두 모델이 섞였는지 보이게 (섞이면 비교가 무의미하다)
+                a["providers"][_pv] = a["providers"].get(_pv, 0) + 1
             a["first"] = min(a["first"], created); a["last"] = max(a["last"], created)
             a["n"] += 1; a["ai_pass"] += bool(it.get("passed")); a["cost"] += float(it.get("cost") or 0)
             t = it.get("treatment") or "?"; a["treatments"][t] = a["treatments"].get(t, 0) + 1
@@ -226,6 +230,7 @@ def by_version(out_dir: Path) -> list:
         a["cost_per_pass"] = round(a["cost"] / a["ai_pass"], 4) if a["ai_pass"] else None
         a["top_tags"] = sorted(a["tags"].items(), key=lambda kv: -kv[1])[:3]
         a["real"] = a["version"] not in ("sim", "demo", "?")
+        a["provider_mixed"] = len(a["providers"]) > 1     # True 면 이 줄의 통과율을 버전 비교에 쓰면 안 된다
         rows.append(a)
     rows.sort(key=lambda r: (r["real"], r["last"]), reverse=True)
     return rows

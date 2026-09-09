@@ -47,7 +47,11 @@ class Batch:
         spec = build_prompts(self.treatment, self.mode, variation, None if self.seed is None else self.seed * 1000 + idx,
                              avoid=(self.avoid or {}).get("lines"))
         item_id = f"{idx:04d}"
-        meta = {**spec, "item_id": item_id, "batch_id": self.batch_id, "prompt_version": self.pv, "cost": 0.0, "fail_reasons": []}
+        # 프로바이더를 같이 적는다 — 버전 성적표가 prompt_version(=config 해시)으로만 묶여서,
+        # 같은 버전을 다른 모델로 돌리면 두 모델의 성적이 한 줄에 섞인다(조용히 비교가 무의미해진다).
+        meta = {**spec, "item_id": item_id, "batch_id": self.batch_id, "prompt_version": self.pv,
+                "providers": {"gen": self.p_gen.name, "edit": self.p_edit.name, "qa": self.p_qa.name},
+                "cost": 0.0, "fail_reasons": []}
         t = load("treatments.yaml")[self.treatment]
         style_refs = refs.pick(self.mode, variation)
 
