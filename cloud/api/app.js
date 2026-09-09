@@ -631,6 +631,7 @@ export default async function handler(req, res) {
     return json(res, 200, { ...snap.lessons, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
       no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
   }
+  if (p === '/api/version_name') return json(res, 405, { error: '버전 메모는 사무실 PC 화면에서만 쓸 수 있습니다.' });
   if (p === '/api/lessons/promote') return json(res, 405, { error: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
 
 

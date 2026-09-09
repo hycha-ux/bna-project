@@ -157,6 +157,16 @@ def promote(note: str, en: str, where=None) -> dict:
     body = yaml.safe_dump({k: cfg[k] for k in ("settings", "tags", "custom") if k in cfg},
                           allow_unicode=True, sort_keys=False, width=200)
     p.write_text(head + "\n" + body, encoding="utf-8")
+    # 규칙을 넣으면 버전(설정 해시)이 바뀐다 — 새 버전에 "왜 바뀌었나"를 메모로 자동 남긴다. 사람이 나중에 고쳐도 된다.
+    try:
+        from .version import prompt_version
+        from .spec import ROOT
+        out = ROOT / "outputs"
+        nv = prompt_version()
+        if nv not in names_read(out):
+            names_set(out, nv, f"규칙 추가: {(note or en).strip()}")
+    except Exception:                                   # noqa: BLE001
+        pass
     return {"ok": True, "rule": rule, "count": len(cfg["custom"])}
 
 
@@ -177,6 +187,40 @@ def scorecard(out_dir: Path) -> list:
                     "after_rejects": sum(1 for r in after if r.get("pick") == "reject"),
                     "after_reviewed": len(after)})
     return out
+
+NAMES = "version_names.json"
+
+
+def names_read(out_dir: Path) -> dict:
+    """버전 해시 → 사람이 붙인 메모. outputs/ 에 둔다(config 에 두면 해시가 바뀐다)."""
+    p = out_dir / NAMES
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:                                   # noqa: BLE001
+        return {}
+
+
+def names_set(out_dir: Path, version: str, note: str) -> dict:
+    d = names_read(out_dir)
+    note = (note or "").strip()
+    if note:
+        d[version] = {"note": note[:80], "at": time.time()}
+    else:
+        d.pop(version, None)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / NAMES).write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    return d
+
+
+def aliases(rows: list, current=None) -> dict:
+    """해시 → 'v1'·'v2'… 처음 쓴 순서. 해시는 기계용이고 사람은 순번으로 읽는다 (2026-09-10 성연서님 "복잡하고 어렵다").
+    현재 버전으로 아직 사진을 안 만들었으면 다음 번호를 미리 준다. 시뮬·샘플은 번호를 안 받는다."""
+    real = sorted([r for r in rows if r.get("real")], key=lambda r: r["first"])
+    out = {r["version"]: f"v{i + 1}" for i, r in enumerate(real)}
+    if current and current not in out:
+        out[current] = f"v{len(real) + 1}"
+    return out
+
 
 def by_version(out_dir: Path) -> list:
     """프롬프트 버전별 성적 — 고도화의 기준선. 버전(config 해시)마다 AI 통과율·사람 제외율·상위 제외 사유를 낸다.
@@ -232,5 +276,9 @@ def by_version(out_dir: Path) -> list:
         a["real"] = a["version"] not in ("sim", "demo", "?")
         a["provider_mixed"] = len(a["providers"]) > 1     # True 면 이 줄의 통과율을 버전 비교에 쓰면 안 된다
         rows.append(a)
+    al, nm = aliases(rows), names_read(out_dir)
+    for r in rows:
+        r["alias"] = al.get(r["version"])
+        r["note"] = (nm.get(r["version"]) or {}).get("note", "")
     rows.sort(key=lambda r: (r["real"], r["last"]), reverse=True)
     return rows

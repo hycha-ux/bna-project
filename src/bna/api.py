@@ -265,9 +265,10 @@ def lessons_payload():
     # reviewed_total: 채택·제외 합계(원장 기준). 0이면 화면이 "첫 검수 안내"를 낸다 — 검수 0건인 상태에서
     # 되먹임 고리가 어디에 쌓이고 언제 붙는지가 안 보였다 (2026-09-10 성연서님 "구조가 안 그려진다").
     # tag_rules: 제외 사유 버튼 ↔ 붙을 영어 금지문. 안내에서 "이 버튼을 누르면 이 문장이 붙는다"를 실물로 보여준다.
-    bv = lessons.by_version(OUT)
+    bv = lessons.by_version(OUT); cur = prompt_version()
     return {**s, "active": a, "scorecard": lessons.scorecard(OUT), "by_version": bv,
-            "current_version": prompt_version(), "settings_top_n": st.get("top_n", 3),
+            "current_version": cur, "current_alias": lessons.aliases(bv, cur).get(cur),
+            "settings_top_n": st.get("top_n", 3),
             "settings": {"top_n": st.get("top_n", 3), "window_days": st.get("window_days", 14), "min_count": st.get("min_count", 2),
                          "axis_min_count": st.get("axis_min_count", 3), "axis_weight": st.get("axis_weight", 0.25)},
             # 버전 표와 같은 기준(review.json)으로 센다 — 원장(lessons.jsonl)으로 세면 옛 시뮬 판정이 빠져 표와 어긋난다
@@ -678,6 +679,10 @@ class Handler(SimpleHTTPRequestHandler):
                 r, code = export_payload(req); return self._json(r, code)
             if p == "/api/goals":                  # ⚠ 본문은 위에서 이미 읽었다(req). 다시 읽으면 단일 스레드 서버가 통째로 멈춘다 (2026-09-09 실측)
                 return self._json(goals_save(req))
+            if p == "/api/version_name":           # {version, note} → outputs/version_names.json (별명 순번은 자동, 메모만 사람이)
+                if not req.get("version"):
+                    return self._json({"error": "version 이 필요합니다"}, 400)
+                return self._json({"ok": True, "names": lessons.names_set(OUT, req["version"], req.get("note", ""))})
             if p == "/api/lessons/promote":
                 if not (req.get("en") or "").strip():
                     return self._json({"error": "프롬프트에 넣을 영어 문장이 필요합니다"}, 400)
