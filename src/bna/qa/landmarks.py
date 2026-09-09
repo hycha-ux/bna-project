@@ -39,11 +39,19 @@ NECK_DROP = 0.55          # 턱선에서 아래로 내릴 길이 (얼굴 높이 
 
 
 def neck_polygon(pts: np.ndarray) -> list:
-    """턱선을 따라 내려간 목 영역 폴리곤. 위변 = 턱선, 아래변 = 턱선을 그대로 아래로 평행이동."""
-    face_h = float(np.linalg.norm(np.asarray(pts[10], dtype=float) - np.asarray(pts[152], dtype=float)))
+    """턱선을 따라 내려간 목 영역 폴리곤. 위변 = 턱선, 아래변 = 턱선을 **얼굴 축 방향**으로 평행이동.
+
+    ⚠ 이미지 아래(+y)로 내리면 머리가 기울어진 셀카에서 밴드가 목을 벗어난다 —
+      2026-09-09 티모 실측(합성 모형): 기울기 10도 IoU 78% · 20도 62% · 30도 48%.
+      셀카는 기울기 10~30도가 흔하다. 얼굴 축(이마 10 → 턱 152)을 쓰면 기울기와 무관하다."""
+    top_pt = np.asarray(pts[10], dtype=float); chin = np.asarray(pts[152], dtype=float)
+    axis = chin - top_pt
+    face_h = float(np.linalg.norm(axis))
+    if face_h <= 0:                      # 랜드마크가 겹쳐 축이 없으면 예전처럼 아래로 (죽지는 않게)
+        axis = np.array([0.0, 1.0]); face_h = 1.0
+    step = axis / face_h * (face_h * NECK_DROP)
     top = [tuple(map(float, pts[i])) for i in JAW_LINE]
-    drop = face_h * NECK_DROP
-    bottom = [(x, y + drop) for x, y in reversed(top)]
+    bottom = [(x + float(step[0]), y + float(step[1])) for x, y in reversed(top)]
     return top + bottom
 LEFT_EYE, RIGHT_EYE, NOSE_TIP, MOUTH_L, MOUTH_R = 33, 263, 1, 61, 291
 
