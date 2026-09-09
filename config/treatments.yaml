@@ -15,8 +15,7 @@
 #   axis_ban          : 축별 금지값. 뿔테 안경은 콧대를 가린다 (extras), 목걸이는 목주름을 가린다 (context)
 #   mask_region       : qa/landmarks.py 폴리곤 키 (임상 마스크 합성). neck 은 턱선에서 아래로 내린 파생 영역
 #
-# ※ 문장은 전부 의료진 검토 전 초안 (2026-09-09). before_condition 이 있는 건 팔자·코필러·목주름필러 3종.
-#    나머지는 2단계(시술별 문장 작업)에서 채운다 — 구조 필드만 먼저 넣었다.
+# ※ 문장은 전부 의료진 검토 전 초안 (2026-09-09). before_condition 9종 전부 (티모 0907 초안 기반, 2단계 dry-run 으로 다듬음).
 # ※ 필러는 부위마다 Before 가 완전히 달라 한 칸으로 못 쓴다 → 코필러·목주름필러 2종으로 분할 (2026-09-09 성연서님 확정).
 
 nasolabial:
@@ -69,6 +68,19 @@ lifting:
   mask_region: jawline_midface
   timeline: [2w, 4w]
   effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  severity_min_age: {mild: 30s, marked: 40s}
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The jawline is starting to soften: a
+      slight fullness forming below the corners of the mouth, the mid-cheek volume sitting a
+      little lower than it once did, the jaw contour still visible but no longer crisp.
+      Ordinary skin. Do not make the face look younger or firmer than described.
+    marked: >
+      This person has never had any aesthetic treatment and the lower face shows honest age:
+      clearly sagging jawline with visible jowls, mid-face volume descended, a blurred contour
+      between the jaw and the neck, faint marionette lines. Ordinary skin. Do not make the face
+      look younger, firmer or more attractive than described.
   after_change: >
     jawline slightly firmer and more defined, mid-face lifted subtly, sagging reduced, same
     bone structure.
@@ -76,6 +88,7 @@ lifting:
     Do not change bone structure, face width, or eye shape. Do not slim the face beyond the lift.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock
+  axis_ban: {extras: [mask_chin]}            # 턱에 걸친 마스크가 턱선을 가린다
   identity_exempt: ["same face shape and jawline"]
   identity_note: >
     The bone structure and face shape stay exactly as in the reference; only the softness and
@@ -96,6 +109,16 @@ nose_lifting:
   mask_region: nose
   timeline: [1w, 2w]
   effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The nose bridge is fairly low with a
+      soft, undefined profile, and the tip is rounded rather than sharp. Otherwise an ordinary
+      face. Do not make the nose look more refined than described.
+    marked: >
+      This person has never had any aesthetic treatment. The nose bridge is low and flat, almost
+      without a visible ridge in profile, and the tip is broad and slightly drooping. Otherwise
+      an ordinary face. Do not make the nose look more refined than described.
   after_change: >
     nose bridge slightly higher and straighter, tip slightly more defined, subtle change only,
     rest of the face identical.
@@ -110,6 +133,7 @@ nose_lifting:
   axis_ban: {extras: [glasses, glasses_thick]}   # 안경이 콧대를 가린다
   drift_lock: [angle]                        # 정면만으로는 코 높이 변화가 안 보인다
   scene_allow:
+    lighting: [window, fluorescent, ceiling_harsh, mixed]   # 역광·야간은 콧대 윤곽이 안 보인다
     angle: [selfie_3q, selfie_side]          # 셀카 하이/로우 앵글은 코 길이를 왜곡
   framing_allow: [full_face, forehead_cut]   # 콧대가 화면에 있어야 한다
   age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
@@ -122,18 +146,31 @@ philtrum:
   mask_region: philtrum
   timeline: [immediate, 2w]
   effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The philtrum is a little long, with a
+      flat upper lip line and a slightly wide gap between the base of the nose and the lip.
+      Otherwise an ordinary face. Do not shorten or sharpen the upper lip beyond described.
+    marked: >
+      This person has never had any aesthetic treatment. The philtrum is clearly long: a wide,
+      flat stretch of skin between the nose base and a thin, low upper lip line, which makes the
+      upper lip look thin. Otherwise an ordinary face. Do not shorten or sharpen the upper lip
+      beyond described.
   after_change: >
     philtrum appears slightly shorter and upper lip line more defined, subtle.
   must_not_change: >
     Do not change lip thickness, lip width, or the nose.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock                    # 웃으면 인중이 짧아 보인다
+  axis_ban: {extras: [mask_chin, beard_light, beard_full]}   # 수염·마스크가 인중을 가린다
   identity_exempt: ["same lips and mouth width"]
   identity_note: >
     The mouth width and lip shape stay exactly as in the reference; only the upper lip line and
     the philtrum length change, as described below.
   drift_lock: [expression, angle]
   scene_allow:
+    lighting: [window, fluorescent, ceiling_harsh, mixed]
     expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
     angle: [front, selfie_side, selfie_3q, tilted]
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
@@ -147,6 +184,18 @@ skinbooster_embo:
   mask_region: full_face_skin
   timeline: [1w, 4w]
   effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  severity_min_age: {mild: early_20s, marked: 30s}
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The skin looks a little dull and
+      dehydrated: uneven light reflection on the cheeks, a few fine dry lines, slightly tired
+      tone. Not damaged, just lacking glow. Do not make the skin look fresher than described.
+    marked: >
+      This person has never had any aesthetic treatment. The skin is dull and dehydrated with a
+      rough surface: small flaky patches on the cheeks, fine crepey lines under the eyes and on
+      the cheeks, tired uneven tone with no glow. Do not make the skin look fresher or smoother
+      than described.
   after_change: >
     skin looks hydrated and plump with a natural glow, fine lines reduced, texture still
     visible (pores, tiny peach fuzz remain), no plastic smoothness.
@@ -155,6 +204,7 @@ skinbooster_embo:
     hydration treatment, not a pigment or contour treatment.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
+  axis_ban: {extras: [mask_chin, makeup_light], skin_condition: [clear]}   # 화장·마스크가 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
   drift_lock: [quality, lighting, color]     # 화질·빛이 바뀌면 그게 피부결 변화처럼 보인다
   scene_allow:
     quality: [mid, app_upload]               # 구형폰·전면카메라에서는 피부결 변화가 물리적으로 안 보인다
@@ -170,6 +220,16 @@ skin_pores:
   mask_region: cheeks_nose
   timeline: [2w, 4w]
   effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The pores on the cheeks and around the
+      nose are visibly enlarged, the skin surface slightly rough and a little oily. Otherwise
+      ordinary skin. Do not make the pores smaller or the skin smoother than described.
+    marked: >
+      This person has never had any aesthetic treatment. The pores are clearly open and dense
+      across both cheeks and the nose, an orange-peel skin texture, uneven oily surface with a
+      few blackheads. Do not make the pores smaller or the skin smoother than described.
   after_change: >
     enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
   must_not_change: >
@@ -177,6 +237,7 @@ skin_pores:
     texture after treatment.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
+  axis_ban: {extras: [mask_chin, makeup_light], skin_condition: [clear]}   # 화장·마스크가 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
   drift_lock: [quality, lighting, color]
   scene_allow:
     quality: [mid]                           # 모공은 화면에서 몇 픽셀이냐의 문제 — 가장 좋은 화질만
@@ -192,6 +253,17 @@ skin_redness:
   mask_region: cheeks
   timeline: [2w, 4w]
   effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. There is noticeable redness across both
+      cheeks and beside the nose: uneven, blotchy flushing that stays even at rest. Otherwise
+      ordinary skin with normal texture. Do not calm or even out the redness beyond described.
+    marked: >
+      This person has never had any aesthetic treatment. Strong, blotchy redness across both
+      cheeks, the nose and chin, with fine visible capillaries near the nostrils and a hot,
+      irritated look; the redness is uneven and patchy. Do not calm or even out the redness
+      beyond described.
   after_change: >
     facial redness on cheeks noticeably calmer and more even, skin tone uniform, natural
     texture preserved.
@@ -200,6 +272,7 @@ skin_redness:
     tone, texture and moles stay the same.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
+  axis_ban: {extras: [mask_chin, makeup_light], skin_condition: [clear]}   # 화장·마스크가 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
   drift_lock: [color, lighting]              # 따뜻한 색감은 홍조를 만들고 차가운 색감은 지운다 — 화이트밸런스가 시술로 둔갑
   scene_allow:
     color: [neutral]
