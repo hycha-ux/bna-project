@@ -166,8 +166,10 @@ tbody tr:last-child td { border-bottom:none }
 .cmp figure { position:relative; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--ui-surface,#F4F5F7); color:var(--ui-lo); font-size:12px }
 .cmp[data-mode=side] { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
 .cmp[data-mode=wipe], .cmp[data-mode=flip] { display:block }
-.cmp .stage { position:relative; transform-origin:0 0; will-change:transform; line-height:0 }
-.cmp .stage > img { display:block; max-width:100%; max-height:100%; width:auto; height:auto }
+/* ⚠ 사진은 절대 잘리면 안 된다 (2026-09-09 성연서님 "너무 잘려서 가독성이 떨어진다"). stage 가 figure 높이를 받고, img 는 그 안에 contain. */
+.cmp .stage { position:relative; transform-origin:0 0; will-change:transform; line-height:0; max-width:100%; height:100%; display:flex; align-items:center; justify-content:center }
+.cmp .stage > img { display:block; max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain }
+.cmp figure { height:min(60vh, 640px) }
 .cmp .stage .ov { position:absolute; inset:0; pointer-events:none; background:rgba(var(--accent-rgb,52,82,178),.42); mix-blend-mode:multiply;
   -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; outline:0 }
 .cmp .stage .ov::after { content:''; position:absolute; inset:0; -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; background:rgba(52,82,178,.9); opacity:.35 }
@@ -197,7 +199,10 @@ body.list-folded #tab-jobs > .card:first-child { padding-bottom:10px }
 body.reviewing #kpis, body.reviewing #gal-stats, body.reviewing #prog { display:none }
 body.reviewing #batches-wrap, body.reviewing #batches-empty { display:none }
 body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360px) }
-body.reviewing .rev-main .cmp figure { height:min(36vh, 340px) }   /* ⚠ 높이는 고정이어야 확대·슬라이더가 흔들리지 않는다. 비교 막대(≈38px)만큼 낮췄다 — 검수 모드 스크롤 0 규칙 */
+/* 검수 모드: 화면 높이에서 머리글·필터·막대·썸네일을 뺀 만큼 사진에 준다 — 세로 사진이 최대한 크게, 스크롤은 0. 상수는 1440×900 실측(overflow 0)으로 맞췄다 */
+body.reviewing .rev-main .cmp figure { height:max(320px, calc(100vh - 470px)) }
+/* 검수 모드에선 배치 제목 카드를 접고(제목은 사진 카드 머리글로) 그만큼 사진에 준다 */
+body.reviewing #detail-body > .card:first-child { display:none } body.reviewing #gal-batch { display:inline }
 body.reviewing .cmp-bar { padding:5px 10px }
 body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
 /* ⚠ overflow:auto 로 되돌리지 마라 — 그게 '불필요한 스크롤'의 정체였다(09-08).
@@ -458,7 +463,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div id="detail-body" hidden>
           <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
           <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
-          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
     </section>
@@ -912,6 +917,7 @@ async function openBatch(id, byUser = false) {
   $$('#batches tbody tr').forEach(tr => tr.classList.toggle('sel', tr.dataset.id === id));
   $('#detail-empty').hidden = true; $('#detail-body').hidden = false;
   const b = CUR, s = b.stats || {};
+  $('#gal-batch').textContent = `${tname(b.treatment) || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||'종류 미지정'} · ${KIND_KO[b.kind]||b.kind} · ${fmtBid(b.batch_id)}`;   // 검수 모드에서 배치 제목 카드를 접는 대신 여기에
   $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||'종류 미지정'}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
