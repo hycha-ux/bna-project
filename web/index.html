@@ -281,7 +281,11 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .delta.up { color:var(--bad) } .delta.down { color:var(--ok) }
 @media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
-.vnote input { width:100%; max-width:260px; margin-top:4px; font-size:var(--fs-xs); padding:3px 6px }
+.vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
+.vhash { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:var(--ui-lo); letter-spacing:0 }
+.vnote-txt { font-size:var(--fs-xs); color:var(--ui-md); cursor:text; border-bottom:1px dashed transparent } .vnote-txt[data-vedit]:hover { border-bottom-color:var(--ui-lo) }
+.vnote-add { font-size:var(--fs-xs); color:var(--ui-lo); cursor:pointer; opacity:0; transition:opacity .15s } tr:hover .vnote-add { opacity:1 }
+.vnote-in { width:240px; font-size:var(--fs-xs); padding:2px 6px; margin-top:2px }
 .les-first { border:1px solid var(--primary); border-radius:var(--r-md); background:#fff; padding:16px 18px; margin-bottom:var(--gap) }
 .les-first .lf-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px } .les-first .lf-head h3 { margin:0 }
 .les-first .lf-steps { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px }
@@ -1493,21 +1497,34 @@ async function loadLessons() {
     : `<div class="les-empty">아직 승격된 규칙이 없습니다. 3번에서 규칙을 올리면 넣기 전·후 제외 건수가 여기 비교됩니다.</div>`;
   const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
   // 1: 버전 표 + 현재 버전 한 줄 요약 + 이전 실버전 대비 제외율 변화
-  $('#les-cur').innerHTML = L.current_version ? `지금 버전 <b>${esc(L.current_alias || L.current_version)}</b> <span class="muted" title="설정 파일 전체의 지문(기계용). 설정을 고치면 바뀝니다">${esc(L.current_version)}</span>` : '';
+  $('#les-cur').innerHTML = L.current_version ? `지금 버전 <b>${esc(L.current_alias || L.current_version.slice(0, 7))}</b> <span class="vhash" title="설정 파일 전체의 지문(기계용). 설정을 고치면 바뀝니다">${esc(L.current_version)}</span>` : '';
   const vs = L.by_version || [], real = vs.filter(r => r.real), cur = vs.find(r => r.version === L.current_version), prev = real.find(r => r.version !== L.current_version);
   const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
   $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
   $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
-    vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td title="${esc(r.version)}">${r.real ? `<b>${esc(r.alias || r.version)}</b>` : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}${r.real ? `<div class="vnote"><input type="text" data-vnote="${esc(r.version)}" value="${esc(r.note || '')}" placeholder="무엇을 바꿨나 (예: 손가락 금지문 추가)" ${L.no_promote ? 'disabled' : ''} title="${L.no_promote ? esc(L.cloud_msg || '') : '적고 엔터 — 이 버전이 왜 생겼는지 메모'}"></div>` : ''}</td>` +
+    vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td>${r.real
+        ? `<div class="vcell"><b>${esc(r.alias || r.version.slice(0, 7))}</b>${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}<span class="vhash" title="설정 파일 전체의 지문(기계용)">${esc(r.version)}</span>${
+            r.note ? `<span class="vnote-txt" ${L.no_promote ? '' : `data-vedit="${esc(r.version)}" title="누르면 고칠 수 있습니다"`}>${esc(r.note)}</span>`
+            : (L.no_promote ? '' : `<a class="vnote-add" data-vedit="${esc(r.version)}">+ 메모</a>`)}</div>`
+        : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}</td>` +
       `<td>${Object.keys(r.providers || {}).length ? Object.entries(r.providers).map(([k, n]) => `${esc(k)} ${n}`).join(' · ') : '<span class="muted">—</span>'}${r.provider_mixed ? ' <span class="chip warn" title="한 버전 줄에 두 모델이 섞였습니다 — 줄끼리 비교가 무의미해집니다">섞임</span>' : ''}</td>` +
       `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td><td>${r.reviewed}</td>` +
       `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
       `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
     <div class="muted" style="margin-top:8px;font-size:var(--fs-xs)">v1·v2… 는 처음 쓴 순서입니다. 설정(프롬프트·조건·규칙)을 고치면 새 번호가 생기고, 번호끼리 제외율을 비교하면 고친 효과가 보입니다. 규칙을 승격하면 메모가 자동으로 붙습니다. 비용은 실행 쪽(티모)에서 집계합니다.</div>`
     : `<div class="les-empty">아직 생성된 배치가 없습니다.</div>`;
-  $('#les-version').querySelectorAll('[data-vnote]').forEach(inp => inp.onchange = async () => {
-    try { await api('/api/version_name', {version: inp.dataset.vnote, note: inp.value}); inp.style.borderColor = 'var(--ok)'; setTimeout(() => inp.style.borderColor = '', 1200); }
-    catch (e) { alert(e.message); } });
+  // 메모는 글자로만 보이고, 누르면 그 자리가 입력칸으로 바뀐다 — 줄마다 빈 입력칸을 두면 표가 폼처럼 보인다 (2026-09-10 성연서님 "중복으로 보인다")
+  $('#les-version').querySelectorAll('[data-vedit]').forEach(el => el.onclick = () => {
+    const v = el.dataset.vedit, cur = el.classList.contains('vnote-txt') ? el.textContent : '';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'vnote-in'; inp.value = cur; inp.placeholder = '무엇을 바꿨나 (예: 손가락 금지문 추가)';
+    el.replaceWith(inp); inp.focus();
+    let done = false;
+    const save = async () => { if (done) return; done = true;
+      try { await api('/api/version_name', {version: v, note: inp.value}); } catch (e) { alert(e.message); }
+      loadLessons(); };
+    inp.onkeydown = e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { done = true; loadLessons(); } };
+    inp.onblur = save;
+  });
 }
 
 // ---------- 설정 ----------
