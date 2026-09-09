@@ -241,6 +241,16 @@ body.reviewing .rev-side .score b { width:16px }
 .tags { display:flex; flex-wrap:wrap; gap:4px; margin:0 0 8px } .tags button { font-size:11px }
 button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .item input[type=text] { height:32px; font-size:12px }
+/* 프롬프트 색 구분 (2026-09-09): 문장이 어느 칸에서 왔는지. 색은 배경 틴트만, 글자는 그대로 */
+.prompt { font-size:var(--fs-sm); line-height:1.7; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px 12px; margin-top:6px; color:var(--ui-hi); word-break:break-word }
+.prompt .pk { border-radius:4px; padding:1px 3px; margin:0 1px; box-decoration-break:clone; -webkit-box-decoration-break:clone }
+.prompt .pk-template { color:var(--ui-lo) }
+.pk-person { background:#E4ECF9 } .pk-before_condition { background:#FDE7C8 } .pk-scene { background:#E2F3EA } .pk-expression { background:#E2F3EA; outline:1px dashed #7CBF9A }
+.pk-mode_extra { background:#EEE9FB } .pk-avoid { background:#FBE5E5 } .pk-identity { background:#E0F1F7 } .pk-day { background:#F3EBD7 } .pk-skin { background:#F6E6F0 }
+.pk-change { background:#FFD9A8 } .pk-effect { background:#FFE7C7 } .pk-must_not { background:#F9DADA } .pk-timeline { background:#F3EBD7 }
+.legend { display:flex; flex-wrap:wrap; gap:4px 6px; margin:6px 0 2px } .legend span { font-size:11px; color:var(--ui-md); padding:1px 8px; border-radius:999px }
+.prompt-tools { display:flex; align-items:center; gap:8px; margin-top:8px } .prompt-tools .muted { font-size:var(--fs-xs) }
+.lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0 }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
 .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--sp-2) } .prog .lead { display:flex; align-items:center; gap:var(--sp-2) } .prog .ttl { font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md) } .prog .big small { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:4px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
@@ -661,11 +671,11 @@ function chartStack() {
 }
 function chartTreat() {
   const rows = Object.entries(OV.by_treatment).filter(([,a]) => a.total).sort((a,b) => b[1].total - a[1].total);
-  $('#chart-treat').innerHTML = rows.length ? rows.map(([t, a]) => `<div class="hbar"><span title="${t}">${CFG.treatments[t]?.name_ko || t}</span><span class="t"><i class="${a.passed/a.total >= .6 ? 'ok' : ''}" style="width:${(a.passed/a.total*100).toFixed(0)}%"></i></span><span class="n">${pct(a.passed/a.total)} <span class="muted">${a.total}</span></span></div>`).join('') : '<div class="empty">기록 없음</div>';
+  $('#chart-treat').innerHTML = rows.length ? rows.map(([t, a]) => `<div class="hbar"><span title="${t}">${CFG.treatments[t]?.name_ko || t}</span><span class="t"><i class="${a.passed/a.total >= .6 ? 'ok' : ''}" style="width:${(a.passed/a.total*100).toFixed(0)}%"></i></span><span class="n">${pct(a.passed/a.total)} <span class="muted">${a.total}</span></span></div>`).join('') : '<div class="empty">기록이 없습니다</div>';
 }
 function chartAxis() {
   const d = OV.by_axis[AXIS_A] || {}; const rows = Object.entries(d).sort((a,b) => b[1].n - a[1].n).slice(0, 8);
-  $('#chart-axis').innerHTML = rows.length ? rows.map(([k, a]) => `<div class="hbar"><span title="${k}">${val(AXIS_A, k)}</span><span class="t"><i style="width:${(a.pass/a.n*100).toFixed(0)}%"></i></span><span class="n">${pct(a.pass/a.n)} <span class="muted">${a.n}</span></span></div>`).join('') : '<div class="empty">기록 없음</div>';
+  $('#chart-axis').innerHTML = rows.length ? rows.map(([k, a]) => `<div class="hbar"><span title="${k}">${val(AXIS_A, k)}</span><span class="t"><i style="width:${(a.pass/a.n*100).toFixed(0)}%"></i></span><span class="n">${pct(a.pass/a.n)} <span class="muted">${a.n}</span></span></div>`).join('') : '<div class="empty">기록이 없습니다</div>';
 }
 $$('#axis-pick button').forEach(b => b.onclick = () => { $$('#axis-pick button').forEach(x => x.classList.toggle('on', x === b)); AXIS_A = b.dataset.a; chartAxis(); });
 $$('#home-range button').forEach(b => b.onclick = () => { $$('#home-range button').forEach(x => x.classList.toggle('on', x === b)); HOME_DAYS = +b.dataset.d; loadHome(); });
@@ -732,16 +742,35 @@ $('#btn-plan').onclick = async () => {
     msg('#req-msg', '준비 중…'); const r = await api('/api/plan', q); const n = jobsFromForm().length;
     $('#plan-out').hidden = false; $('#plan-n').textContent = `${CFG.treatments[q.treatment].name_ko} · ${MODE_KO[q.mode]} · ${r.count}장${n > 1 ? ` (작업 ${n}개 중 첫 번째)` : ''}`;
     $('#dist').innerHTML = Object.entries(r.distribution).map(([a, d]) => `<div><h4>${AXIS_KO[a]||a}</h4>${bars(d, r.count, '', a)}</div>`).join('');
-    $('#prompts').innerHTML = r.items.slice(0, 20).map((s, i) => promptCard(s, i)).join('');
+    PLAN_ITEMS = r.items;
+    const draw = () => { $('#prompts').innerHTML = promptTools() + PLAN_ITEMS.slice(0, 20).map((s, i) => promptCard(s, i)).join(''); bindPkToggle($('#prompts'), draw); };
+    draw();
     msg('#req-msg', ''); $('#plan-out').scrollIntoView({behavior:'smooth'});
   } catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
+// 프롬프트 칸 이름 (비전공자 워딩). 조각(k)은 spec.segments 가 낸다.
+const PK_KO = {person:'인물', before_condition:'시술 전 상태', scene:'촬영 장면', expression:'표정', mode_extra:'셀카 규정', avoid:'금지문(학습)', identity:'동일인 잠금',
+  day:'촬영 시점', skin:'피부 상태', change:'시술 변화', effect:'효과 강도', must_not:'안 건드릴 곳', timeline:'경과', template:'고정 문장'};
+let PK_COLOR = true; try { PK_COLOR = localStorage.getItem('bna.pk') !== '0'; } catch {}
+function promptHtml(parts, raw) {
+  if (!PK_COLOR || !parts || !parts.length) return `<div class="mono">${esc(raw || '')}</div>`;
+  return `<div class="prompt">${parts.map(p => `<span class="pk pk-${p.k}" title="${PK_KO[p.k] || p.k}">${esc(p.t)}</span>`).join(' ')}</div>`;
+}
+function promptLegend(parts) {
+  if (!PK_COLOR) return '';
+  const ks = [...new Set((parts || []).map(p => p.k))].filter(k => k !== 'template');
+  return `<div class="legend">${ks.map(k => `<span class="pk-${k}">${PK_KO[k] || k}</span>`).join('')}</div>`;
+}
+function promptTools() {
+  return `<div class="prompt-tools"><button class="b sm" id="pk-toggle">${PK_COLOR ? '색 구분 끄기' : '색 구분 켜기'}</button><span class="muted">색 = 그 문장이 어느 칸(설정)에서 왔는지. 칸을 고치면 그 색 문장만 바뀝니다.</span></div>`;
+}
+function bindPkToggle(root, rerender) { const b = root.querySelector('#pk-toggle'); if (b) b.onclick = () => { PK_COLOR = !PK_COLOR; try { localStorage.setItem('bna.pk', PK_COLOR ? '1' : '0'); } catch {} rerender(); }; }
 function promptCard(s, i) {
   const v = s.variation, badges = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
   return `<div style="padding:12px 0;border-bottom:1px solid var(--ui-border)"><div class="head" style="display:flex;justify-content:space-between"><b>${i+1}</b><span class="muted">시술 후 변경: ${(s.after_changed_axes||[]).map(a=>AXIS_KO[a]||a).join(', ') || '없음'}</span></div>
     <div>${badges}</div>
-    <details style="margin-top:8px"><summary>시술 전 프롬프트</summary><div class="mono">${esc(s.before_prompt)}</div></details>
-    <details><summary>시술 후 프롬프트</summary><div class="mono">${esc(s.after_prompt)}</div></details></div>`;
+    <details style="margin-top:8px"><summary>시술 전 프롬프트</summary>${promptLegend(s.before_parts)}${promptHtml(s.before_parts, s.before_prompt)}</details>
+    <details><summary>시술 후 프롬프트</summary>${promptLegend(s.after_parts)}${promptHtml(s.after_parts, s.after_prompt)}</details></div>`;
 }
 $('#btn-estimate').onclick = async () => {
   const jobs = jobsFromForm(); if (!jobs.length) { msg('#req-msg', '시술과 유형을 선택하세요', 'err'); return; }
@@ -1152,8 +1181,8 @@ function detail(id) {
   $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
     <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(it.prompt_version) : ''}</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>생성 조건</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후 변경</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
-    <h3 style="margin-top:14px">시술 전 프롬프트</h3><div class="mono">${esc(it.before_prompt)}</div>
-    <h3 style="margin-top:10px">시술 후 프롬프트</h3><div class="mono">${esc(it.after_prompt)}</div>`;
+    <h3 style="margin-top:14px">시술 전 프롬프트</h3>${promptLegend(it.before_parts)}${promptHtml(it.before_parts, it.before_prompt)}
+    <h3 style="margin-top:10px">시술 후 프롬프트</h3>${promptLegend(it.after_parts)}${promptHtml(it.after_parts, it.after_prompt)}`;
   $('#dlg').showModal();
 }
 
@@ -1181,7 +1210,7 @@ function libCard(i) {
   const badges = ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
   return `<div class="item"><div class="pair">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
     <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}</span><span class="act"><button class="b" data-open="${i.batch_id}">작업</button><button class="b" data-unpick="${i.batch_id}/${i.item_id}">해제</button></span></div>
-    <div>${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
+    <div class="tags">${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
 }
 $('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
 $('#btn-export').onclick = async () => {
@@ -1196,7 +1225,7 @@ function renderExports() {
 
 
 // ---------- 학습 (제외 사유 → 프롬프트) ----------
-let LES = null;
+let LES = null, PLAN_ITEMS = [];
 async function loadLessons() {
   try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
   const L = LES, tags = Object.entries(L.tags || {});

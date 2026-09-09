@@ -186,6 +186,44 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     return after
 
 
+def _norm(x: str) -> str:
+    return " ".join(str(x).split())
+
+
+def segments(text: str, spans: list) -> list:
+    """프롬프트 문자열을 [{"k": 칸, "t": 문장}] 조각 목록으로. spans = [(칸, 그 칸이 넣은 문장)].
+    문장 위치를 찾아 표시하고, 어느 칸에도 안 속한 나머지는 템플릿 고정문(k="template")이다.
+    비전공자가 "이 문장은 어디서 왔나"를 화면에서 색으로 읽게 하려는 것 — 프롬프트 자체는 그대로다."""
+    text = _norm(text); marks = []
+    for k, v in spans:
+        v = _norm(v)
+        if not v:
+            continue
+        start = 0
+        while True:
+            i = text.find(v, start)
+            if i < 0:
+                break
+            if not any(a <= i < b or a < i + len(v) <= b for _, a, b in marks):
+                marks.append((k, i, i + len(v))); break
+            start = i + 1
+    marks.sort(key=lambda m: m[1])
+    out, pos = [], 0
+    def push(k, t):
+        t = t.strip()
+        if not t:
+            return
+        if out and t in (".", ",", ";", ":"):             # 홀로 남은 마침표는 앞 조각에 붙인다
+            out[-1]["t"] += t; return
+        out.append({"k": k, "t": t})
+    for k, a, b in marks:
+        if a > pos:
+            push("template", text[pos:a])
+        push(k, text[a:b]); pos = b
+    push("template", text[pos:])
+    return out
+
+
 def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
     None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게)."""
@@ -265,7 +303,16 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             expression_line=expression_line, mode_extra=str(mx.get("selfie_after", "")).strip(),
             after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
     changed = [k for k in after_var if after_var[k]["key"] != variation[k]["key"]]
+    before_parts = segments(before, [("person", person_description(variation)), ("before_condition", cond), ("scene", scene),
+                                     ("mode_extra", mode_extra), ("avoid", avoid_before)])
+    after_spans = [("identity", identity), ("change", t["after_change"]), ("effect", eff["effect_levels"][level]),
+                   ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after)]
+    if mode == "selfie":
+        after_spans += [("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
+                        ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][when].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
+    after_parts = segments(after, after_spans)
     return {"avoid_applied": {k: v for k, v in (avoid or {}).items() if v},
+            "before_parts": before_parts, "after_parts": after_parts,
             "treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
             "variation": variation, "after_variation": after_var,
             "after_changed_axes": changed, "generation": "edit" if mode == "clinical" else "identity_reference",
