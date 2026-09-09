@@ -76,6 +76,23 @@ python3 -m src.bna.cli --treatment nasolabial --mode clinical --count 30 --fix c
 python3 -m src.bna.cli --treatment nasolabial --mode selfie --count 50 --run                     # 실제 배치 (키 필요)
 ```
 
+### 돈 쓰는 배치는 이 순서로 (2026-09-09 사고 2건 뒤 확정)
+
+```bash
+node C:\Users\medib\teemo\tools\verify-keys.mjs         # ① 키가 살아 있나 (공짜 호출 1번)
+powershell -NoProfile -Command "Start-ScheduledTask -TaskName 'TeemoBnaSelfieRun'"   # ② 착수
+node tools/summarize-run.mjs --since 2026-09-09T10:25   # ③ 결과 요약
+```
+
+- **① 을 건너뛰지 마라.** `install-keys --check` 는 이름·길이만 본다 — 뒤에 29자가 덧붙은 키가
+  "✓ 설정됨" 으로 통과했고, 401 은 생성 1콜을 쓴 뒤에야 드러났다. 죽었으면 재발급 전에 `--repair`.
+- **② 를 세션 안에서 띄우지 마라.** 백그라운드로 돌린 배치가 세션 종료와 함께 죽었다(8장 중 3장,
+  나머지 두 시술은 시작도 못 함). 예약작업 `TeemoBnaSelfieRun`(트리거 없음, 손으로만 실행) =
+  `tools/run-selfie-batches.ps1`. 시술·장수·seed 를 바꾸려면 그 스크립트 인자를 고쳐 재등록한다.
+- 로그 = `C:\Users\medib\teemo\out\run-selfie-batches.log`. 진행 = 각 배치의 `progress.json`.
+- **통과율 0% 를 '품질이 나쁘다' 로 읽지 마라** — 항목별 `note` 를 먼저 열어라. 0909 엔 동일인 10·
+  피부 9 인데 `fingers` 만 구조적 0점이었다(프롬프트는 폰을 숨기라 하고 검사는 손을 요구했다).
+
 ## 대시보드 (로컬)
 ```bash
 PYTHONPATH=src python3 -m bna.api          # http://localhost:8765 자동 오픈
