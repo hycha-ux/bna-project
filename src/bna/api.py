@@ -261,8 +261,18 @@ def lessons_payload():
     s = lessons.summarize(OUT)
     a = lessons.active(OUT)
     from .version import prompt_version
-    return {**s, "active": a, "scorecard": lessons.scorecard(OUT), "by_version": lessons.by_version(OUT),
-            "current_version": prompt_version(), "settings_top_n": (lessons._cfg().get("settings") or {}).get("top_n", 3),
+    cfg = lessons._cfg(); st = cfg.get("settings") or {}
+    # reviewed_total: 채택·제외 합계(원장 기준). 0이면 화면이 "첫 검수 안내"를 낸다 — 검수 0건인 상태에서
+    # 되먹임 고리가 어디에 쌓이고 언제 붙는지가 안 보였다 (2026-09-10 성연서님 "구조가 안 그려진다").
+    # tag_rules: 제외 사유 버튼 ↔ 붙을 영어 금지문. 안내에서 "이 버튼을 누르면 이 문장이 붙는다"를 실물로 보여준다.
+    bv = lessons.by_version(OUT)
+    return {**s, "active": a, "scorecard": lessons.scorecard(OUT), "by_version": bv,
+            "current_version": prompt_version(), "settings_top_n": st.get("top_n", 3),
+            "settings": {"top_n": st.get("top_n", 3), "window_days": st.get("window_days", 14), "min_count": st.get("min_count", 2),
+                         "axis_min_count": st.get("axis_min_count", 3), "axis_weight": st.get("axis_weight", 0.25)},
+            # 버전 표와 같은 기준(review.json)으로 센다 — 원장(lessons.jsonl)으로 세면 옛 시뮬 판정이 빠져 표와 어긋난다
+            "reviewed_total": sum(int(r.get("reviewed") or 0) for r in bv),
+            "tag_rules": {t: (c or {}).get("en", "") for t, c in (cfg.get("tags") or {}).items()},
             "preview": {k: lessons.avoid_text(v) for k, v in (a.get("lines") or {}).items() if v}}
 
 

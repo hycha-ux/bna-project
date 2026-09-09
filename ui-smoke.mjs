@@ -122,6 +122,20 @@ try {
   await goto('#jobs');
   ok(!(await ev("document.body.innerText.includes('여기서 되는 것')")), '지운 안내 카드가 되살아나지 않았다');
 
+  // ⑦ 학습 탭 "첫 검수 안내"는 검수 수와 어긋나지 않는다 (2026-09-10 성연서님 "구조가 안 그려진다")
+  //    안내는 검수 0건일 때만 보이고, 보일 때는 서버 설정값(2회·14일)과 실제 금지문이 그대로 실려야 한다.
+  await goto('#lessons');
+  await ev("document.querySelector('[data-tab=lessons]')?.click()"); await sleep(1500);
+  const les = await (await fetch(BASE + '/api/lessons')).json();
+  const firstHidden = await ev("document.querySelector('#les-first')?.hidden");
+  ok(firstHidden === ((les.reviewed_total || 0) > 0), '첫 검수 안내는 검수 0건일 때만 보인다', `검수 ${les.reviewed_total} · hidden=${firstHidden}`);
+  if (!firstHidden) {
+    const txt = await ev("document.querySelector('#les-first')?.innerText || ''");
+    const en = (les.tag_rules || {})['손가락'] || '';
+    ok(txt.includes(`${les.settings.min_count}회 이상`) && txt.includes(`${les.settings.window_days}일`), '안내의 숫자가 서버 설정값과 같다');
+    ok(en && txt.includes(en), '안내에 실제 금지문(손가락)이 실린다');
+  }
+
   ok(errs.length === 0, 'JS 오류가 없다', errs.join(' / ') || '없음');
 } finally {
   ws.close(); chrome.kill(); if (api) api.kill();

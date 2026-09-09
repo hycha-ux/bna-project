@@ -280,6 +280,20 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .les-empty { padding:14px; border:1px dashed var(--ui-border); border-radius:var(--r-md); color:var(--ui-md); font-size:var(--fs-sm); display:flex; align-items:center; gap:10px; flex-wrap:wrap }
 .delta.up { color:var(--bad) } .delta.down { color:var(--ok) }
 @media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
+/* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
+.les-first { border:1px solid var(--primary); border-radius:var(--r-md); background:#fff; padding:16px 18px; margin-bottom:var(--gap) }
+.les-first .lf-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px } .les-first .lf-head h3 { margin:0 }
+.les-first .lf-steps { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px }
+.les-first .lf-step { background:var(--ui-surface); border-radius:var(--r-sm); padding:12px; font-size:var(--fs-sm); display:flex; flex-direction:column; gap:6px; min-width:0 }
+.les-first .lf-step .k { display:flex; align-items:center; gap:6px; font-weight:var(--fw-m); color:var(--ui-hi) }
+.les-first .lf-step .k b { width:20px; height:20px; border-radius:50%; background:var(--primary); color:#fff; font-size:11px; display:inline-flex; align-items:center; justify-content:center; flex:none }
+.les-first .lf-step .k small { color:var(--ui-lo); font-weight:400 }
+.les-first .lf-step .ex { background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-sm); padding:8px 10px; font-size:var(--fs-xs); color:var(--ui-md); line-height:1.6; word-break:break-word }
+.les-first .lf-step .ex code { font-size:11px; background:var(--ui-surface); padding:0 4px; border-radius:3px }
+.les-first .lf-step .ex .btn-look { display:inline-block; border:1px solid var(--ui-border); border-radius:4px; padding:0 6px; background:#fff; font-size:11px }
+.les-first .lf-step .ex .btn-look.bad { color:var(--bad); border-color:var(--bad) }
+.les-first .lf-note { margin-top:10px; font-size:var(--fs-xs); color:var(--ui-md) }
+@media (max-width:1100px) { .les-first .lf-steps { grid-template-columns:1fr 1fr } } @media (max-width:640px) { .les-first .lf-steps { grid-template-columns:1fr } }
 .pk-legend { display:flex; flex-wrap:wrap; gap:4px 6px; margin:6px 0 2px } .pk-legend span { font-size:11px; color:var(--ui-md); padding:1px 8px; border-radius:999px }
 .prompt-tools { display:flex; align-items:center; gap:8px; margin-top:8px } .prompt-tools .muted { font-size:var(--fs-xs) }
 .lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0; margin-top:4px }
@@ -525,6 +539,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <span class="fs-step"><b>4</b>다음 생성에 적용</span><i>›</i>
         <span class="fs-step"><b>5</b>버전끼리 제외율 비교</span>
       </div>
+      <div class="les-first" id="les-first" hidden></div>
       <div class="card"><div class="card-head"><h3><span class="num">1</span>프롬프트 버전별 성적</h3><span class="muted" id="les-cur"></span><div class="tb-space"></div><span class="muted" id="les-cur-sum"></span></div>
         <div id="les-version"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">2</span>제외 사유 → 지금 프롬프트에 붙는 것</h3><span class="muted" id="les-window"></span></div>
@@ -1398,12 +1413,42 @@ function renderExports() {
 
 // ---------- 학습 (제외 사유 → 프롬프트) ----------
 let LES = null, PLAN_ITEMS = [];
+// 검수 0건일 때만 뜨는 "첫 검수 안내". 아래 네 카드가 전부 비어 있으면 고리가 어디서 시작해 어디로 가는지
+// 안 보인다 (2026-09-10 성연서님 "검수를 하면 학습에 어떻게 쌓이는지 구조가 안 그려진다").
+// 설정값(2회·14일·3개)과 사유↔문장은 서버 값을 그대로 쓴다 — 여기 숫자를 박아 두면 avoid.yaml 과 어긋난다.
+function renderLessonsFirst(L) {
+  const box = $('#les-first'); if (!box) return;
+  const S = L.settings || {}, rules = L.tag_rules || {};
+  const first = Object.entries(rules).find(([t]) => t === '손가락') || Object.entries(rules)[0] || ['손가락', ''];
+  const [tag, en] = first;
+  box.hidden = (L.reviewed_total || 0) > 0;
+  if (box.hidden) return;
+  box.innerHTML = `
+    <div class="lf-head"><h3>아직 검수가 0건입니다 — 첫 판정을 누르면 이렇게 됩니다</h3><div class="tb-space"></div><button class="b sm" data-goto="jobs">작업 탭에서 검수하기</button></div>
+    <div class="lf-steps">
+      <div class="lf-step"><div class="k"><b>1</b>쌓기 <small>누르는 즉시</small></div>
+        <div>사진마다 <span class="btn-look">채택</span> 또는 <span class="btn-look bad">제외</span>를 누르고, 제외면 사유 버튼을 고릅니다.</div>
+        <div class="ex">예) 3번 사진 <span class="btn-look bad">제외</span> + <b>${esc(tag)}</b><br>→ <code>outputs/lessons.jsonl</code> 에 한 줄 추가<br><span class="muted">인터넷 화면에서 눌러도 사무실 PC 가 10분 안에 같은 원장으로 가져옵니다. 판정을 바꿔도 지우지 않고 줄을 더 씁니다.</span></div></div>
+      <div class="lf-step"><div class="k"><b>2</b>고르기 <small>자동</small></div>
+        <div>최근 <b>${S.window_days ?? 14}일</b> 안에 같은 사유가 <b>${S.min_count ?? 2}회 이상</b> 쌓이면 규칙이 켜집니다. 많이 나온 순으로 최대 <b>${S.top_n ?? 3}개</b>만.</div>
+        <div class="ex">예) ${esc(tag)} 1회 → 아직 안 붙음<br>${esc(tag)} ${S.min_count ?? 2}회 → <span class="chip bad">반영 중</span><br><span class="muted">1회는 우연일 수 있어 안 붙입니다. 같은 조건(예: 옆모습)에서 ${S.axis_min_count ?? 3}회 이상 몰리면 그 조건은 뽑힐 확률을 ${Math.round((S.axis_weight ?? 0.25) * 100)}% 로 낮춥니다.</span></div></div>
+      <div class="lf-step"><div class="k"><b>3</b>붙이기 <small>다음 생성부터</small></div>
+        <div>사유 버튼마다 정해진 영어 금지문이 프롬프트 끝에 붙습니다. 위 2번 카드 오른쪽에서 실제 문장을 볼 수 있습니다.</div>
+        <div class="ex">예) <b>${esc(tag)}</b> 버튼 ↔<div class="prompt" style="margin-top:4px"><span class="pk pk-avoid">${esc(en || '(avoid.yaml 에 문장이 없습니다)')}</span></div></div></div>
+      <div class="lf-step"><div class="k"><b>4</b>재기 <small>버전마다</small></div>
+        <div>규칙이 들어가면 설정 지문(버전)이 바뀝니다. 넣기 전 버전과 넣은 뒤 버전의 제외율을 1번 카드에서 비교합니다.</div>
+        <div class="ex">예) 넣기 전 제외율 40% → 넣은 뒤 15%<br><span class="muted">안 떨어지면 문장이 약한 것입니다. 그때 조건 회피로 올립니다.</span></div></div>
+    </div>
+    <div class="lf-note">자유 메모는 자동으로 프롬프트에 안 들어갑니다. 3번 카드에서 영어 한 문장으로 다듬어 「규칙으로 승격」을 눌러야 붙습니다. 채택도 원장에 같이 적혀 검수 수·제외율의 분모가 됩니다.</div>`;
+  box.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
+}
 async function loadLessons() {
   try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
   const L = LES, tags = Object.entries(L.tags || {}), st = (L.active || {});
   const minN = 2, maxN = Math.max(1, ...tags.map(([, n]) => n));
   $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장`;
   const goReview = `<button class="b sm" data-goto="jobs">작업 탭에서 검수하기</button>`;
+  renderLessonsFirst(L);
   // 2-좌: 사유별 건수 + 반영 여부 (min_count 2회부터 붙는다)
   $('#les-body').innerHTML = tags.length
     ? tags.map(([t, n]) => { const on = (st.from_tags || []).includes(t);
