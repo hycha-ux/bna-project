@@ -271,7 +271,10 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 @media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
 .pk-legend { display:flex; flex-wrap:wrap; gap:4px 6px; margin:6px 0 2px } .pk-legend span { font-size:11px; color:var(--ui-md); padding:1px 8px; border-radius:999px }
 .prompt-tools { display:flex; align-items:center; gap:8px; margin-top:8px } .prompt-tools .muted { font-size:var(--fs-xs) }
-.lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0 }
+.lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0; margin-top:4px }
+.lib .item .head { margin-bottom:4px } .lib .item .head .head-r { margin-left:auto; display:flex; gap:2px }
+/* 필터 카드: 내보낸 결과·메시지가 없으면 그 자리도 없다 (빈 여백이 카드 절반이었다) */
+#tab-library .toolbar { margin-bottom:0; padding-bottom:0; border-bottom:0 } #lib-exports:empty, #lib-msg:empty { display:none } #lib-exports:not(:empty) { margin-top:var(--sp-3); padding-top:var(--sp-3); border-top:1px solid var(--ui-border) }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
 .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--sp-2) } .prog .lead { display:flex; align-items:center; gap:var(--sp-2) } .prog .ttl { font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md) } .prog .big small { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:4px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
@@ -1294,7 +1297,7 @@ function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   const badges = ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
   return `<div class="item"><div class="pair">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
-    <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}</span><span class="act"><button class="b" data-open="${i.batch_id}">작업</button><button class="b" data-unpick="${i.batch_id}/${i.item_id}">해제</button></span></div>
+    <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span><span class="head-r"><button class="b sm ghost" data-open="${i.batch_id}" title="이 사진이 나온 작업으로">작업</button><button class="b sm ghost" data-unpick="${i.batch_id}/${i.item_id}" title="채택을 풀고 드라이브에서 내립니다">해제</button></span></div>
     <div class="tags">${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
 }
 $('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
