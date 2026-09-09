@@ -1246,7 +1246,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' && REV_IDX < GAL_ITEMS.length - 1) { REV_IDX++; ZOOM = {s:1,x:0,y:0}; renderReview(); }
   else if (e.key === 'ArrowLeft' && REV_IDX > 0) { REV_IDX--; ZOOM = {s:1,x:0,y:0}; renderReview(); }
   else if (e.key === '1' || e.key === '2') { $('#rev').querySelector(`[data-act=${e.key === '1' ? 'pick' : 'reject'}]`)?.click(); }
-  else if (e.key === 'm' || e.key === 'M') { $('#cmp-mask')?.click(); }
+  else if (e.key === 'm' || e.key === 'M' || e.code === 'KeyM') { $('#cmp-mask')?.click(); }   // 한글 입력 상태면 key 가 'ㅡ' 로 들어와서 code 로도 잡는다 (2026-09-09 성연서님 'm 눌러도 반응 없음')
   else if (e.key === '0') { $('#cmp-reset')?.click(); }
   else if (e.key === 'Escape') { setView('grid'); }
   else if (e.key === ' ' && CMP_MODE === 'flip') { const c = $('#rev .cmp'); if (c) flipToggle(c); }
