@@ -293,6 +293,8 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .todo .todo-row .k { flex:1; min-width:0 } .todo .todo-row .k b { display:block; font-size:var(--fs-md) } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo) }
 .todo .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums } .todo .big.warn { color:var(--warn) } .todo .big.ok { color:var(--ok) }
 .todo .tags-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px } .col { display:flex; flex-direction:column; gap:var(--gap) }
+.statline { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; font-size:var(--fs-md); color:var(--ui-md); padding:4px 0 }
+.statline b { color:var(--ui-hi); font-weight:var(--fw-b) } .statline b.ok { color:var(--ok) } .statline b.bad { color:var(--bad) } .statline .sep { width:1px; height:18px; background:var(--ui-border) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
 .kpi .t .up { color:var(--ok); font-weight:700 } .kpi .t .down { color:var(--bad); font-weight:700 } .kpi.hero .t .up, .kpi.hero .t .down { color:#fff }
 .report-row { display:flex; justify-content:space-between; align-items:baseline; padding:var(--sp-2) 0; min-height:48px; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
@@ -459,7 +461,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
         <div class="card empty" id="detail-empty">작업을 선택하세요</div>
         <div id="detail-body" hidden>
-          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div class="grid" id="kpis" style="grid-template-columns:repeat(6,1fr)"></div></div>
+          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div></div>
           <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
           <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
@@ -935,10 +937,9 @@ function renderProgress(pg, el, title) {
   const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="${+id+1} · ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.map(failKo).join(', '):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
   const state = s.running ? `<span class="chip warn">진행 중</span>` : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · ${c.skipped}장 생략</span>` : '');
   el.innerHTML = `<div class="top"><div class="lead">${title ? `<b class="ttl">${title}</b>` : ''}<span class="big">${s.done}<small>/ ${s.planned}</small></span>${state}</div>
-      <div class="muted">동시 ${s.active} · 재생성 ${s.retries}회 · 통과율 ${s.pass_rate!=null?pct(s.pass_rate):'—'} · 경과 ${fmtS(s.elapsed_s)}${s.running?` · 남은 시간 약 ${fmtS(s.eta_s)}`:''}</div></div>
+      <div class="muted">${s.running ? `남은 시간 약 ${fmtS(s.eta_s)} · ` : ''}경과 ${fmtS(s.elapsed_s)}${s.retries ? ` · 재생성 ${s.retries}회` : ''}</div></div>
     <div class="stack">${seg}</div>
-    <div class="legend">${order.filter(k => c[k]).map(k=>`<span><i class="st-${k}" style="${k==='queued'?'background:var(--ui-border)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}</div>
-    ${s.running ? `<div class="cells">${cells}</div>` : ''}`;
+    <div class="legend">${order.filter(k => c[k]).map(k=>`<span><i class="st-${k}" style="${k==='queued'?'background:var(--ui-border)':''}"></i>${STAGE_KO[k]} ${c[k]}</span>`).join('')}</div>`;
 }
 $('#gal-filter').onchange = renderGallery;
 $('#gal-axis').onchange = () => { const a = $('#gal-axis').value; const vals = new Set(CUR.items.map(it => it.variation?.[a]?.key).filter(Boolean));
@@ -946,10 +947,15 @@ $('#gal-axis').onchange = () => { const a = $('#gal-axis').value; const vals = n
 $('#gal-axis-val').onchange = renderGallery;
 function renderStats() {
   const s = CUR.stats, dry = CUR.kind === 'dry_run';
-  $('#kpis').innerHTML = [
-    ['생성 장수', s.total], ['AI 검수 통과', dry ? '—' : `${s.passed} (${pct(s.pass_rate)})`], ['장당 시도', dry ? '—' : `${s.attempts_per_pass}회`], ['장당 비용', dry ? '—' : `$${s.cost_per_pass}`],
-    ['검수 완료', `${s.reviewed} / ${s.total}`], ['채택 · 제외', `${s.picked} · ${s.rejected}`]
-  ].map(([l, v]) => `<div class="kpi compact" style="background:var(--ui-surface)"><div class="l">${l}</div><div class="v">${v ?? '—'}</div></div>`).join('');
+  // 배치를 보는 사람이 알고 싶은 건 셋: 쓸 수 있는 사진이 몇 장인가 · 왜 떨어졌나 · 검수가 어디까지 됐나 (2026-09-09 성연서님 "꼭 필요한 지표인지")
+  // 장당 시도·장당 비용은 운영 지표라 '지표 자세히 보기'와 티모 쪽 집계로 넘겼다.
+  const fr = Object.entries(s.fail_reasons || {}).sort((a, b) => b[1] - a[1]);
+  const fails = fr.length ? fr.slice(0, 4).map(([k, n]) => `<span class="chip bad">${esc(failKo(k))} ${n}</span>`).join(' ') + (fr.length > 4 ? ` <span class="muted">+${fr.length - 4}</span>` : '') : '<span class="muted">없음</span>';
+  $('#kpis').innerHTML = dry ? `<div class="statline"><span>프롬프트만 ${s.total}장 · 사진 없음</span></div>` : `<div class="statline">
+    <span><b class="${s.passed ? 'ok' : 'bad'}">AI 통과 ${s.passed}</b> / ${s.total}장</span>
+    <span class="sep"></span><span>탈락 사유 ${fails}</span>
+    <span class="sep"></span><span>검수 <b>${s.reviewed}</b> / ${s.passed} · 채택 <b class="ok">${s.picked}</b> · 제외 ${s.rejected}${s.pending ? ` · <span class="chip warn">대기 ${s.pending}</span>` : ''}</span>
+  </div>`;
   let html = '';
   if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
   if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h4>제외 사유</h4>${bars(s.review_tags, s.total, 'bad')}</div>`;
