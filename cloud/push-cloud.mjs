@@ -180,6 +180,10 @@ async function main() {
     const dropped = allBatches.length - batches.length;
     const overview = {};
     for (const d of DAYS) overview[String(d)] = await getJson(`/api/overview?days=${d}`);
+    // 학습 탭 — 인터넷 화면에서 "없는 경로: /api/lessons" 로 통째로 비어 있었다 (2026-09-10 성연서님).
+    // 집계는 PC 원장 기준이라 스냅샷에 실어 보내고, 승격(쓰기)만 PC 에서 한다.
+    let lessons = null;
+    try { lessons = await getJson('/api/lessons'); } catch (e) { console.log('  학습 집계 건너뜀 —', e.message); }
 
     const items = {};
     const progress = {};
@@ -212,6 +216,7 @@ async function main() {
       queue,
       library,
       overview,
+      lessons,
       items,
       progress,
       file_count: files.length,

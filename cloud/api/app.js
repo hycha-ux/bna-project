@@ -622,6 +622,13 @@ export default async function handler(req, res) {
   if (p === '/api/batches') return json(res, 200, REV.applyToList(snap.batches, ov, snap.items));
   if (p === '/api/library') return json(res, 200, REV.applyToLibrary(snap.library, ov, snap.items));
 
+  // 학습 집계는 스냅샷 그대로. 승격(avoid.yaml 쓰기)은 PC 에서만 — 여기서 받으면 다음 스냅샷이 덮는다.
+  if (p === '/api/lessons') {
+    if (!snap.lessons) return json(res, 503, { error: '학습 집계가 아직 안 올라왔습니다 — 사무실 PC 의 push-cloud 가 한 번 더 돌면 보입니다.' });
+    return json(res, 200, { ...snap.lessons, no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
+  }
+  if (p === '/api/lessons/promote') return json(res, 405, { error: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
+
   if (p === '/api/overview') {
     const want = String(url.searchParams.get('days') || '14');
     const ov = snap.overview || {};

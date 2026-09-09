@@ -1471,7 +1471,7 @@ async function loadLessons() {
       <div class="t" style="flex:1"><b>${esc(n.note)}</b><span>${fmtBid(n.batch)} · ${+n.item + 1}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
         <input type="text" id="les-en-${i}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" style="width:100%;margin-top:6px">
       </div>
-      <button class="b" data-promote="${i}">규칙으로 승격</button>
+      <button class="b" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''}>규칙으로 승격</button>
     </div>`).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
