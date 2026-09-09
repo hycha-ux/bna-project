@@ -543,6 +543,8 @@ class Handler(SimpleHTTPRequestHandler):
                     data = f.read_bytes(); self.send_response(200); self.send_header("Content-Type", "image/png" if f.suffix == ".png" else "image/jpeg")
                     self.send_header("Content-Length", str(len(data))); self.end_headers(); return self.wfile.write(data)
                 return self._json({"error": "not found"}, 404)
+            if p == "/favicon.ico":                # 브라우저가 매번 요청 — 500 대신 조용히 없음
+                self.send_response(204); self.end_headers(); return
             if p == "/":
                 self.path = "/index.html"
             return super().do_GET()
