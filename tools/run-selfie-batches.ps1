@@ -42,11 +42,26 @@ New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LogFile) | Out-Nu
 "=== run start $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') seed=$Seed count=$Count ===" |
   Out-File -LiteralPath $LogFile -Encoding utf8
 
+# From here on, do NOT let a stderr line abort the run.
+# 2026-09-09: with ErrorActionPreference='Stop', `& python ... 2>&1 | Out-File` turns the FIRST
+# stderr line into a terminating error. mediapipe/insightface print warnings to stderr on import,
+# so the task died ~2s in (LastTaskResult=1) while the batch it had already spawned kept a
+# half-written progress.json. Start-Process with file redirection keeps the streams as plain text.
+$ErrorActionPreference = 'Continue'
+
 foreach ($t in $Treatments) {
   "===== $t $(Get-Date -Format 'HH:mm:ss') =====" | Out-File -LiteralPath $LogFile -Append -Encoding utf8
-  & $py -m bna.cli --treatment $t --mode selfie --count $Count --seed $Seed --run 2>&1 |
-    Out-File -LiteralPath $LogFile -Append -Encoding utf8
-  "----- $t done exit=$LASTEXITCODE $(Get-Date -Format 'HH:mm:ss') -----" |
+  $so = "$LogFile.$t.out"
+  $se = "$LogFile.$t.err"
+  $p = Start-Process -FilePath $py -WorkingDirectory $root -NoNewWindow -Wait -PassThru `
+    -ArgumentList @('-m', 'bna.cli', '--treatment', $t, '--mode', 'selfie',
+                    '--count', "$Count", '--seed', "$Seed", '--run') `
+    -RedirectStandardOutput $so -RedirectStandardError $se
+  foreach ($f in @($so, $se)) {
+    if (Test-Path $f) { Get-Content -LiteralPath $f | Out-File -LiteralPath $LogFile -Append -Encoding utf8
+                        Remove-Item -LiteralPath $f -Force }
+  }
+  "----- $t done exit=$($p.ExitCode) $(Get-Date -Format 'HH:mm:ss') -----" |
     Out-File -LiteralPath $LogFile -Append -Encoding utf8
 }
 "=== run finished $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===" |
