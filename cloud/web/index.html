@@ -198,7 +198,7 @@ body.reviewing #kpis, body.reviewing #gal-stats, body.reviewing #prog { display:
 body.reviewing #batches-wrap, body.reviewing #batches-empty { display:none }
 body.reviewing .rev-main .pair figure { aspect-ratio:auto; height:min(40vh, 360px) }
 /* 검수 모드: 화면 높이에서 머리글·필터·막대·썸네일을 뺀 만큼 사진에 준다 — 세로 사진이 최대한 크게, 스크롤은 0. 상수는 1440×900 실측(overflow 0)으로 맞췄다 */
-body.reviewing .rev-main .cmp figure { height:max(320px, calc(100vh - 484px)) }
+body.reviewing .rev-main .cmp figure { height:max(320px, calc(100vh - 404px)) }
 /* 검수 모드에선 배치 제목 카드를 접고(제목은 사진 카드 머리글로) 그만큼 사진에 준다 */
 body.reviewing #detail-body > .card:first-child { display:none } body.reviewing #gal-batch { display:inline }
 body.reviewing .cmp-bar { padding:5px 10px }
@@ -209,8 +209,8 @@ body.reviewing .rev-side { padding:10px 14px; gap:6px }
 body.reviewing .th { flex-basis:40px }
 body.reviewing .thumbs { padding:6px 12px }
 /* 남은 세로는 카드 여백에서 짜낸다 — 검수 중엔 제목·목록보다 사진이 먼저다 */
-body.reviewing #tab-jobs > .card:first-child > .card-head { display:none }
-body.reviewing #tab-jobs > .card:first-child { padding-top:12px; padding-bottom:8px }
+body.reviewing #tab-jobs > .card:first-child { display:none }   /* 검수 모드: 목록 카드는 통째로 접는다 (필터는 사진 카드 머리글에 있다) */
+body.reviewing #detail { margin-top:0 }
 body.reviewing #detail-body > .card:first-child { padding-top:12px; padding-bottom:12px }
 body.reviewing #detail-body > .card:first-child .card-head { margin-bottom:0 }
 body.reviewing #detail { margin-top:8px }
@@ -298,6 +298,9 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .axis-wide { display:grid; grid-template-columns:1fr 1fr; gap:0 32px } .axis-wide .empty { grid-column:1 / -1 } @media (max-width:1100px) { .axis-wide { grid-template-columns:1fr } }
 table.fixed3 { table-layout:fixed; width:100% } table.fixed3 th:first-child, table.fixed3 td:first-child { width:78px; white-space:nowrap } table.fixed3 th:last-child, table.fixed3 td:last-child { width:112px }
 table.fixed3 .ell { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.card-head .hsel { width:auto; min-width:110px; height:32px; font-size:var(--fs-xs); padding:0 28px 0 10px }
+table.jobs th.num, table.jobs td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap } table.jobs td .okc { color:var(--ok) }
+table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-child { white-space:nowrap }
 .statline { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; font-size:var(--fs-md); color:var(--ui-md); padding:4px 0 }
 .statline b { color:var(--ui-hi); font-weight:var(--fw-b) } .statline b.ok { color:var(--ok) } .statline b.bad { color:var(--bad) } .statline .sep { width:1px; height:18px; background:var(--ui-border) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
@@ -452,23 +455,16 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
-        <div class="toolbar">
-          <span class="tl">목록</span><select id="jobs-kind"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select>
-          <span class="sep"></span>
-          <span class="tl">사진</span><select id="gal-filter"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option></select>
-          <select id="gal-axis"><option value="">조건 전체</option></select><select id="gal-axis-val" hidden><option value="">값 전체</option></select>
-          <span class="tb-space"></span><span class="muted" id="gal-count"></span>
-        </div>
-        <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>장당 시도</th><th>장당 비용</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
+        <div class="card-head"><h3>작업 목록</h3><select id="jobs-kind" class="hsel"><option value="">방식 전체</option><option value="run">실제 생성</option><option value="sim">시뮬레이션</option><option value="demo">샘플</option><option value="dry_run">프롬프트만</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <!-- 열 11 → 6 (2026-09-09 성연서님 정렬 점검): 장당 시도·비용은 운영 지표라 뺐고, 유형·방식은 시술 옆에 -->
+        <div class="tbl-wrap" id="batches-wrap"><table id="batches" class="jobs"><thead><tr><th>시간</th><th>시술</th><th class="num">생성</th><th class="num">AI 통과</th><th class="num">검수 · 채택</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
       </div>
       <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
         <div class="card empty" id="detail-empty">작업을 선택하세요</div>
         <div id="detail-body" hidden>
-          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div></div>
-          <div class="grid g-stats" id="gal-stats" style="margin-top:var(--gap)"></div>
-          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
+          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div><div class="grid g-stats" id="gal-stats" style="margin-top:var(--sp-2)"></div></div>
+          <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><select id="gal-filter" class="hsel"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option></select><select id="gal-axis" class="hsel"><option value="">조건 전체</option></select><select id="gal-axis-val" class="hsel" hidden><option value="">값 전체</option></select><span class="muted" id="gal-count"></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
     </section>
@@ -896,9 +892,10 @@ async function loadBatches() {
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
     const dry = b.kind === 'dry_run';
-    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
-      <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td><td>${dry ? '—' : (s.attempts_per_pass ?? '')}</td><td>${dry ? '—' : (s.cost_per_pass ?? '')}</td>
-      <td>${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span></td><td>${st}</td></tr>`; }).join('');
+    return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</td>
+      <td><b>${tname(b.treatment)}</b> <span class="muted">${MODE_KO[b.mode]||b.mode||''}</span> <span class="chip ${b.kind==='run'?'acc':''}">${KIND_KO[b.kind]||b.kind}</span></td>
+      <td class="num">${s.total ?? b.count ?? ''}</td><td class="num">${dry ? '—' : `<b>${s.passed ?? 0}</b> <span class="muted">${pct(s.pass_rate||0)}</span>`}</td>
+      <td class="num">${dry ? '—' : `${s.reviewed||0} · <b class="${s.picked ? 'okc' : ''}">${s.picked||0}</b>${s.pending ? ` <span class="chip warn">대기 ${s.pending}</span>` : ''}`}</td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
   return BATCHES;
 }
