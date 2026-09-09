@@ -125,6 +125,7 @@ def batch_summary(d: Path):
     rv = _reviews(d)
     st["reviewed"] = len(rv); st["picked"] = sum(1 for r in rv.values() if r.get("pick") == "pick")
     st["rejected"] = sum(1 for r in rv.values() if r.get("pick") == "reject")
+    st["pending"] = sum(1 for it in items if it.get("passed") and (rv.get(it.get("item_id"), {}).get("pick") not in ("pick", "reject")))   # AI 통과했는데 사람이 아직 안 본 것
     tags = {}
     for r in rv.values():
         for tg in r.get("tags", []):
@@ -248,13 +249,43 @@ def save_review(req):
     return rv, 200
 
 
+# ---------- 목표 장수 ----------
+# config/ 가 아니라 outputs/goals.json 에 둔다 — config 를 건드리면 프롬프트 버전 해시가 바뀐다(version.py).
+def goals_payload():
+    p = OUT / "goals.json"
+    g = {"default": 30, "per": {}}
+    if p.exists():
+        try:
+            g.update(json.loads(p.read_text(encoding="utf-8")))
+        except Exception:                       # noqa: BLE001
+            pass
+    return g
+
+
+def goals_save(req):
+    g = goals_payload()
+    if "default" in req:
+        g["default"] = max(1, int(req["default"]))
+    if isinstance(req.get("per"), dict):
+        g["per"] = {k: max(0, int(v)) for k, v in req["per"].items() if v not in (None, "")}
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "goals.json").write_text(json.dumps(g, ensure_ascii=False, indent=1), encoding="utf-8")
+    return g
+
+
 # ---------- 대시보드 집계 ----------
-def overview_payload(days=14):
-    """일별 생성·통과·탈락 사유, 시술별·조건별 통과율, 오늘 시간대별, 라이브러리 요약. dry_run 제외."""
+FAKE_KINDS = ("sim", "demo")
+
+
+def overview_payload(days=14, include_sim=False):
+    """일별 생성·통과·탈락 사유, 시술별·조건별 통과율, 채택(사람)·검수 대기·게이트, 라이브러리 요약. dry_run 제외.
+    include_sim=False 면 시뮬레이션·샘플 배치를 뺀다 — 홈의 통과율이 가짜 숫자로 오염되지 않게 (2026-09-09 홈 검토)."""
     import datetime as dt
     now = time.time(); today = dt.date.today()
     day_keys = [(today - dt.timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
-    daily = {k: {"total": 0, "passed": 0, "cost": 0.0, "fails": {}} for k in day_keys}
+    daily = {k: {"total": 0, "passed": 0, "picked": 0, "cost": 0.0, "fails": {}} for k in day_keys}
+    picked_all, pending_batches, win_rv = {}, {}, {"reviewed": 0, "picked": 0, "rejected": 0}
+    gates = {"identity": {}, "structure": {"ok": 0, "fail": 0, "n/a": 0}}
     prev = {"total": 0, "passed": 0, "cost": 0.0}
     hourly = [0] * 24; hourly_pass = [0] * 24
     by_treat = {}; by_axis = {a: {} for a in ("angle", "framing", "background", "lighting", "before_severity", "age", "country", "gender")}
@@ -266,16 +297,34 @@ def overview_payload(days=14):
             info = json.loads((d / "batch.json").read_text(encoding="utf-8")) if (d / "batch.json").exists() else {}
             if info.get("kind") == "dry_run":
                 continue
+            if not include_sim and (info.get("kind") in FAKE_KINDS or d.name.endswith(("-sim", "-demo"))):
+                continue
             created = info.get("created_at") or d.stat().st_mtime
             key = dt.date.fromtimestamp(created).isoformat(); in_win = key in daily
             in_prev = not in_win and created >= now - 2 * days * 86400
+            rvs = _reviews(d)
             for m in d.glob("*/meta.json"):
                 it = json.loads(m.read_text(encoding="utf-8"))
                 if it.get("dry_run"):
                     continue
                 p = bool(it.get("passed")); c = float(it.get("cost") or 0)
+                pick = (rvs.get(m.parent.name) or {}).get("pick")
+                t_all = picked_all.setdefault(it.get("treatment"), {"picked": 0, "pending": 0, "reviewed": 0})
+                if pick == "pick":
+                    t_all["picked"] += 1
+                if pick in ("pick", "reject"):
+                    t_all["reviewed"] += 1
+                elif p:
+                    t_all["pending"] += 1; pending_batches.setdefault(d.name, 0); pending_batches[d.name] += 1
+                g = (it.get("identity") or {}).get("gate")
+                if g:
+                    gates["identity"][g] = gates["identity"].get(g, 0) + 1
+                sp = (it.get("structure") or {}).get("passed", "?")
+                gates["structure"]["n/a" if sp is None else "ok" if sp else "fail"] += 1
                 if in_win:
                     dd = daily[key]; dd["total"] += 1; dd["passed"] += p; dd["cost"] += c
+                    dd["picked"] += pick == "pick"
+                    win_rv["reviewed"] += pick in ("pick", "reject"); win_rv["picked"] += pick == "pick"; win_rv["rejected"] += pick == "reject"
                     for r in it.get("fail_reasons", []):
                         g = r.split(":")[0] if not r.startswith("vision") else r
                         dd["fails"][g] = dd["fails"].get(g, 0) + 1; fails_total[g] = fails_total.get(g, 0) + 1
@@ -292,7 +341,24 @@ def overview_payload(days=14):
     q = queue().snapshot(); lib = library_payload()
     tot = sum(v["total"] for v in daily.values()); pas = sum(v["passed"] for v in daily.values()); cost = sum(v["cost"] for v in daily.values())
     tk = today.isoformat()
-    return {"days": days, "day_keys": day_keys, "daily": daily, "window": {"total": tot, "passed": pas, "cost": round(cost, 3)}, "prev": prev,
+    goals = goals_payload(); treatments = load("treatments.yaml")
+    board = []
+    for k, t in treatments.items():
+        a = picked_all.get(k, {"picked": 0, "pending": 0, "reviewed": 0})
+        board.append({"treatment": k, "name_ko": t.get("name_ko", k), "target": int((goals.get("per") or {}).get(k) or goals.get("default", 30)), **a})
+    for k, a in picked_all.items():                     # 정의에서 빠진 옛 시술(예: 분할 전 filler)도 채택본이 있으면 보인다
+        if k not in treatments and a["picked"]:
+            board.append({"treatment": k, "name_ko": k, "target": int(goals.get("default", 30)), "legacy": True, **a})
+    les = lessons.summarize(OUT); act = lessons.active(OUT)
+    id_n = sum(gates["identity"].values()); st_n = sum(gates["structure"].values())
+    newest_pending = max(pending_batches, key=lambda b: b) if pending_batches else None
+    return {"days": days, "day_keys": day_keys, "daily": daily, "include_sim": include_sim,
+            "window": {"total": tot, "passed": pas, "cost": round(cost, 3), **win_rv}, "prev": prev,
+            "picked_total": sum(a["picked"] for a in picked_all.values()), "pending_total": sum(a["pending"] for a in picked_all.values()),
+            "pending_batch": newest_pending, "board": board, "goals": goals,
+            "gates": {"identity": {**gates["identity"], "n": id_n, "na_rate": round(gates["identity"].get("n/a", 0) / id_n, 3) if id_n else None},
+                      "structure": {**gates["structure"], "n": st_n, "na_rate": round(gates["structure"]["n/a"] / st_n, 3) if st_n else None}},
+            "lessons": {"top_tags": list(les.get("tags", {}).items())[:3], "active_tags": act.get("from_tags", []), "rejected": les.get("rejected", 0), "window_days": les.get("window_days")},
             "today": {**daily.get(tk, {"total": 0, "passed": 0, "cost": 0.0}), "hourly": hourly, "hourly_pass": hourly_pass},
             "by_treatment": by_treat, "by_axis": by_axis, "fails_total": fails_total, "avg_attempt": round(attempts[0] / attempts[1], 2) if attempts[1] else None,
             "queue": {"running": next((j for j in q["jobs"] if j["status"] == "running"), None), "queued": sum(1 for j in q["jobs"] if j["status"] == "queued"), "paused": q["paused"]},
@@ -527,7 +593,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json(library_payload())
             if p.startswith("/api/overview"):
                 from urllib.parse import parse_qs
-                days = int(parse_qs(urlparse(self.path).query).get("days", ["14"])[0]); return self._json(overview_payload(days))
+                qs = parse_qs(urlparse(self.path).query)
+                days = int(qs.get("days", ["14"])[0]); return self._json(overview_payload(days, include_sim=qs.get("sim", ["0"])[0] == "1"))
+            if p == "/api/goals":
+                return self._json(goals_payload())
             if p.startswith("/exports/") and p.endswith(".zip"):
                 f = (OUT / "exports" / p[len("/exports/"):]).resolve()
                 if (OUT / "exports").resolve() in f.parents and f.is_file():
@@ -565,6 +634,8 @@ class Handler(SimpleHTTPRequestHandler):
                 r, code = start_run(req); return self._json(r, code)
             if p == "/api/export":
                 r, code = export_payload(req); return self._json(r, code)
+            if p == "/api/goals":                  # ⚠ 본문은 위에서 이미 읽었다(req). 다시 읽으면 단일 스레드 서버가 통째로 멈춘다 (2026-09-09 실측)
+                return self._json(goals_save(req))
             if p == "/api/lessons/promote":
                 if not (req.get("en") or "").strip():
                     return self._json({"error": "프롬프트에 넣을 영어 문장이 필요합니다"}, 400)

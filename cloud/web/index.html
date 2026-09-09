@@ -279,7 +279,17 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
 .mini { display:inline-block; width:90px; height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden; vertical-align:middle; margin-right:6px } .mini i { display:block; height:100%; background:var(--primary) }
 /* 대시보드 */
-.g-dash { grid-template-columns:1fr 320px; align-items:start } .col { display:flex; flex-direction:column; gap:var(--gap) }
+.g-dash { grid-template-columns:1fr 360px; align-items:start }
+.sim-toggle { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--ui-md); margin-right:8px; cursor:pointer } .sim-toggle input { width:auto; height:auto; margin:0 }
+.board { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px 20px } @media (max-width:1280px) { .board { grid-template-columns:1fr 1fr } }
+.brow { display:flex; flex-direction:column; gap:4px; padding:8px 10px; border-radius:var(--r-md); cursor:pointer } .brow:hover { background:var(--ui-surface) }
+.brow .h { display:flex; align-items:baseline; gap:6px } .brow .h b { font-size:var(--fs-sm) } .brow .h .n { margin-left:auto; font-variant-numeric:tabular-nums; font-size:var(--fs-sm); color:var(--ui-md) } .brow .h .n b { color:var(--primary); font-size:var(--fs-md) }
+.brow .m { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .brow .m i { display:block; height:100%; background:var(--primary); border-radius:4px } .brow.done .m i { background:var(--ok) }
+.brow .s { font-size:11px; color:var(--ui-lo) } .brow .s .pend { color:var(--warn) }
+.todo .todo-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--ui-border) } .todo .todo-row:last-child { border-bottom:0 }
+.todo .todo-row .k { flex:1; min-width:0 } .todo .todo-row .k b { display:block; font-size:var(--fs-md) } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo) }
+.todo .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums } .todo .big.warn { color:var(--warn) } .todo .big.ok { color:var(--ok) }
+.todo .tags-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px } .col { display:flex; flex-direction:column; gap:var(--gap) }
 .kpi.hero { background:var(--primary); color:#fff } .kpi.hero .l, .kpi.hero .t { color:rgba(255,255,255,.75) } .kpi.hero .t b { color:#fff } .kpi .unit { font-size:var(--fs-md); font-weight:var(--fw-m); margin-left:4px; color:var(--ui-lo) } .kpi.hero .unit { color:rgba(255,255,255,.75) }
 .kpi .t .up { color:var(--ok); font-weight:700 } .kpi .t .down { color:var(--bad); font-weight:700 } .kpi.hero .t .up, .kpi.hero .t .down { color:#fff }
 .report-row { display:flex; justify-content:space-between; align-items:baseline; padding:var(--sp-2) 0; min-height:48px; border-bottom:1px solid var(--ui-border) } .report-row:last-child { border-bottom:0 }
@@ -353,46 +363,35 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 
     <!-- ═══ 대시보드 ═══ -->
     <section class="page active" id="tab-home">
-      <div class="grid g-dash">
+      <!-- 홈 (2026-09-09 재구성): 첫 화면 = "쌓인 결과"와 "오늘 할 일". 시뮬레이션·샘플은 기본 제외 -->
+      <div class="card-head" style="margin-bottom:var(--sp-2)"><h3>채택 현황</h3><span class="muted" id="home-window"></span><div class="tb-space"></div>
+        <label class="sim-toggle" title="시뮬레이션·샘플 배치는 가짜 숫자입니다. 화면 확인용으로만 켜세요"><input type="checkbox" id="home-sim"> 시뮬레이션·샘플 포함</label>
+        <div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
+      <div class="grid g-kpi" id="home-kpis"></div>
+      <div class="grid g-dash" style="margin-top:var(--gap)">
         <div class="col">
-          <div>
-            <div class="card-head" style="margin-bottom:var(--sp-2)"><h3>생성 요약</h3><span class="muted" id="home-window"></span><div class="tb-space"></div><div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
-            <div class="grid g-kpi" id="home-kpis"></div>
+          <div class="card">
+            <div class="card-head"><h3>시술별 채택 현황판</h3><span class="muted" id="home-board-sum"></span><div class="tb-space"></div><span class="muted">목표 <b id="home-goal"></b>장 · 설정에서 바꿀 수 있습니다</span></div>
+            <div class="board" id="home-board"></div>
           </div>
           <div class="card">
-            <div class="card-head"><h3>생성 성과</h3><div class="tb-space"></div><span class="muted">일별 생성 장수 · 통과율</span></div>
+            <div class="card-head"><h3>추이</h3><div class="tb-space"></div><span class="muted">일별 생성 · 채택</span></div>
             <div id="chart-combo"></div>
           </div>
-          <div class="grid" style="grid-template-columns:1fr 1fr">
-            <div class="card"><div class="card-head"><h3>검수 성과</h3><div class="tb-space"></div><span class="muted">일별 통과 · 탈락 사유</span></div><div id="chart-stack"></div></div>
-            <div class="card"><div class="card-head"><h3>시술별 통과율</h3><div class="tb-space"></div><span class="muted">누적</span></div><div id="chart-treat"></div></div>
-          </div>
-          <div class="grid" style="grid-template-columns:1fr 1fr">
-            <div class="card">
-              <div class="card-head"><h3>조건별 통과율</h3><div class="tb-space"></div><span class="muted">누적</span></div>
-              <div class="toolbar pill" id="axis-pick" style="flex-wrap:wrap;border:0;padding-bottom:0"><button data-a="angle" class="on">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
-              <div id="chart-axis"></div>
-            </div>
-            <div class="card">
-              <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
-              <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>통과 / 생성</th><th>상태</th></tr></thead><tbody></tbody></table></div>
-            </div>
+          <div class="card">
+            <div class="card-head"><h3>조건별 통과율</h3><div class="tb-space"></div><span class="muted">AI 검수 기준 · 누적</span></div>
+            <div class="toolbar pill" id="axis-pick" style="flex-wrap:wrap;border:0;padding-bottom:0"><button data-a="__treat" class="on">시술</button><button data-a="__fails">탈락 사유</button><button data-a="angle">각도</button><button data-a="framing">프레이밍</button><button data-a="background">배경</button><button data-a="lighting">조명</button><button data-a="before_severity">시술 전 정도</button><button data-a="age">연령</button></div>
+            <div id="chart-axis"></div>
           </div>
         </div>
         <div class="col">
-          <div class="card">
-            <div class="card-head"><h3>오늘의 보고서</h3><div class="tb-space"></div><span class="muted" id="home-today-date"></span></div>
-            <h4>시간대별 생성</h4><div id="chart-today"></div>
-            <div id="home-today-rows"></div>
+          <div class="card todo">
+            <div class="card-head"><h3>오늘 할 일</h3><div class="tb-space"></div><span class="muted" id="home-today-date"></span></div>
+            <div id="home-todo"></div>
           </div>
           <div class="card">
-            <div class="card-head"><h3>실시간</h3><div class="tb-space"></div><button class="btn sm" data-goto="create">대기열</button></div>
-            <div id="home-running"></div>
-            <div id="home-live-rows"></div>
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>라이브러리</h3><div class="tb-space"></div><button class="btn sm" data-goto="library">보기</button></div>
-            <div id="home-lib"></div>
+            <div class="card-head"><h3>최근 작업</h3><div class="tb-space"></div><button class="btn sm" data-goto="jobs">전체 보기</button></div>
+            <div class="tbl-wrap"><table id="home-recent"><thead><tr><th>생성 시간</th><th>시술</th><th>통과 / 생성</th><th>상태</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
       </div>
@@ -639,7 +638,7 @@ function show(tab) {
   if (tab === 'jobs') loadBatches().then(() => { if (!CUR && BATCHES[0]) openBatch(BATCHES[0].batch_id); });
   if (tab === 'library') loadLibrary();
   if (tab === 'lessons') loadLessons();
-  if (tab === 'settings') renderSettings();
+  if (tab === 'settings') loadGoals().then(renderSettings);
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
@@ -656,21 +655,53 @@ let SEARCH = '', OUT_DIR = '';
 // ---------- 대시보드 ----------
 let OV = null, HOME_DAYS = 14, AXIS_A = 'angle';
 const trend = (cur, prev, inv) => prev ? `<span class="${(cur >= prev) !== !!inv ? 'up' : 'down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs((cur - prev) / prev * 100).toFixed(0)}%</span> vs 이전` : '이전 기간 없음';
+const LEGACY_KO = {filler: '필러(분할 전)'};   // 시술 정의에서 빠진 옛 이름
+const tname = t => CFG.treatments[t]?.name_ko || LEGACY_KO[t] || t || '';
+let HOME_SIM = false; try { HOME_SIM = localStorage.getItem('bna.homesim') === '1'; } catch {}
 async function loadHome() {
-  const [ov, batches] = await Promise.all([api('/api/overview?days=' + HOME_DAYS), api('/api/batches')]);
+  const [ov, batches] = await Promise.all([api(`/api/overview?days=${HOME_DAYS}&sim=${HOME_SIM ? 1 : 0}`), api('/api/batches')]);
   OV = ov; BATCHES = batches; const w = ov.window, p = ov.prev;
-  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}`;
+  $('#home-sim').checked = HOME_SIM;
+  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}${HOME_SIM ? ' · 시뮬레이션·샘플 포함' : ''}`;
+  const pickRate = w.reviewed ? w.picked / w.reviewed : null;
   $('#home-kpis').innerHTML = [
-    ['hero', '생성 장수', w.total, '장', p.total ? trend(w.total, p.total) : `오늘 ${OV.today.total}장`],
-    ['', 'AI 검수 통과', w.passed, '장', `통과율 ${w.total ? pct(w.passed / w.total) : '—'}${p.total ? ' · ' + trend(w.passed / Math.max(1, w.total), p.passed / p.total) : ''}`],
-    ['', '평균 시도', ov.avg_attempt ?? '—', '회', '통과 1장당'],
-    ['', '비용', `$${w.cost.toFixed(2)}`, '', `장당 $${w.passed ? (w.cost / w.passed).toFixed(3) : '—'}`]
+    ['hero', '채택한 사진', ov.picked_total, '장', '누적 · 사람이 골라 드라이브에 올린 것'],
+    ['', '채택률', pickRate == null ? '—' : pct(pickRate), '', w.reviewed ? `이 기간 검수 ${w.reviewed}장 중 ${w.picked}장` : '이 기간에 검수한 사진이 없습니다'],
+    ['', '검수 대기', ov.pending_total, '장', ov.pending_total ? 'AI 통과 · 사람이 아직 안 봄' : '밀린 검수가 없습니다'],
+    ['', '이 기간 비용', `$${w.cost.toFixed(2)}`, '', `생성 ${w.total}장 · AI 통과 ${w.total ? pct(w.passed / w.total) : '—'}${p.total ? ' · ' + trend(w.passed / Math.max(1, w.total), p.passed / p.total) : ''}`]
   ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
-  chartCombo(); chartStack(); chartTreat(); chartAxis(); chartToday(); renderLive(); renderHomeLib();
+  renderBoard(); chartCombo(); chartAxis(); renderTodo();
   const tb = $('#home-recent tbody');
-  tb.innerHTML = batches.slice(0, 6).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : '<span class="chip ok">완료</span>';
-    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${CFG.treatments[b.treatment]?.name_ko || b.treatment || ''}</td><td>${MODE_KO[b.mode]||''}</td><td>${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''} <span class="muted">${pct(s.pass_rate||0)}</span>`}</td><td>${st}</td></tr>`; }).join('');
-  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
+  tb.innerHTML = batches.filter(b => HOME_SIM || !['sim', 'demo'].includes(b.kind)).slice(0, 7).map(b => { const s = b.stats || {}; const st = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : s.pending ? `<span class="chip warn">검수 ${s.pending}</span>` : '<span class="chip ok">완료</span>';
+    return `<tr class="click" data-id="${b.batch_id}"><td>${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)} <span class="muted">${MODE_KO[b.mode]||''}</span></td><td>${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''}`}</td><td>${st}</td></tr>`; }).join('')
+    || '<tr><td colspan="4" class="empty">실제 생성 기록이 없습니다</td></tr>';
+  tb.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
+}
+$('#home-sim').onchange = e => { HOME_SIM = e.target.checked; try { localStorage.setItem('bna.homesim', HOME_SIM ? '1' : '0'); } catch {} loadHome(); };
+function renderBoard() {
+  const rows = OV.board || [], goal = OV.goals?.default ?? 30;
+  $('#home-goal').textContent = goal;
+  const done = rows.filter(r => r.picked >= r.target).length, sum = rows.reduce((a, r) => a + r.picked, 0);
+  $('#home-board-sum').textContent = `${sum}장 · 목표 달성 ${done} / ${rows.length}`;
+  $('#home-board').innerHTML = rows.map(r => { const ratio = Math.min(1, r.picked / Math.max(1, r.target));
+    return `<div class="brow ${r.picked >= r.target ? 'done' : ''}" data-t="${r.treatment}" title="라이브러리에서 보기">
+      <div class="h"><b>${esc(r.name_ko)}</b>${r.legacy ? '<span class="chip">옛 이름</span>' : ''}<span class="n"><b>${r.picked}</b> / ${r.target}</span></div>
+      <div class="m"><i style="width:${(ratio*100).toFixed(0)}%"></i></div>
+      <div class="s">${r.pending ? `<span class="pend">검수 대기 ${r.pending}</span> · ` : ''}검수 ${r.reviewed}${r.picked >= r.target ? ' · 목표 달성' : r.target - r.picked <= 5 ? ` · ${r.target - r.picked}장 남음` : ''}</div></div>`; }).join('');
+  $('#home-board').querySelectorAll('.brow').forEach(b => b.onclick = () => { show('library'); const sel = $('#lib-treatment'); if (sel) { sel.value = CFG.treatments[b.dataset.t] ? b.dataset.t : ''; renderLibrary(); } });
+}
+function renderTodo() {
+  const q = OV.queue, L = OV.lessons || {}, g = OV.gates || {};
+  $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month: 'long', day: 'numeric', weekday: 'short'});
+  const running = q.running ? `<div class="todo-row"><div class="k"><b>진행 중: ${tname(q.running.treatment)} ${MODE_KO[q.running.mode]||''}</b><span>대기 ${q.queued}개${q.paused ? ' · 일시정지' : ''}</span></div><button class="b sm" data-goto="create">대기열</button></div>` : '';
+  const pending = `<div class="todo-row"><div class="k"><b>검수 대기</b><span>${OV.pending_total ? 'AI 통과한 사진을 채택/제외로 갈라 주세요' : '밀린 검수가 없습니다'}</span></div><span class="big ${OV.pending_total ? 'warn' : 'ok'}">${OV.pending_total}</span>${OV.pending_total && OV.pending_batch ? `<button class="b sm primary" id="todo-review">검수 시작</button>` : ''}</div>`;
+  const tags = (L.top_tags || []);
+  const lessons = `<div class="todo-row"><div class="k"><b>제외 사유 상위</b><span>최근 ${L.window_days || 14}일 · 제외 ${L.rejected || 0}장</span>${tags.length ? `<div class="tags-line">${tags.map(([t, n]) => `<span class="chip ${(L.active_tags||[]).includes(t) ? 'bad' : ''}" title="${(L.active_tags||[]).includes(t) ? '지금 프롬프트에 반영 중' : '2회부터 반영'}">${esc(t)} ${n}</span>`).join('')}</div>` : ''}</div><button class="b sm" data-goto="lessons">학습</button></div>`;
+  const idn = g.identity || {}, st = g.structure || {};
+  const gate = `<div class="todo-row"><div class="k"><b>자동 게이트가 못 잰 비율</b><span>동일인 ${idn.na_rate == null ? '—' : pct(idn.na_rate)} · 구조 ${st.na_rate == null ? '—' : pct(st.na_rate)}${(idn.na_rate || 0) > .3 ? ' · 부분 크롭이 많아 사람 검수 비중이 큽니다' : ''}</span></div></div>`;
+  $('#home-todo').innerHTML = running + pending + lessons + gate;
+  $('#home-todo').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
+  const rb = $('#todo-review'); if (rb) rb.onclick = async () => { show('jobs'); await openBatch(OV.pending_batch, true); $('#gal-view [data-v=review]')?.click(); };
 }
 // ── SVG 헬퍼 ──
 const cw = (sel, fallback) => Math.max(200, Math.floor(document.querySelector(sel)?.clientWidth || fallback));
@@ -680,58 +711,31 @@ function chartCombo() {
   const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max), yr = r => T + (H - T - B) * (1 - r);
   const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-6}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
   const rgrid = [0, .5, 1].map(f => `<text class="axis" x="${W-R+6}" y="${yr(f)+4}">${f*100}%</text>`).join('');
-  const bars = keys.map((k, i) => `<rect class="bar" x="${x(i)+bw*.2}" y="${y(d[k].total)}" width="${bw*.6}" height="${y(0)-y(d[k].total)}" rx="3"><title>${k.slice(5)} · 생성 ${d[k].total} · 통과 ${d[k].passed}</title></rect>`).join('');
+  const bars = keys.map((k, i) => `<rect class="bar" x="${x(i)+bw*.2}" y="${y(d[k].total)}" width="${bw*.6}" height="${y(0)-y(d[k].total)}" rx="3"><title>${k.slice(5)} · 생성 ${d[k].total} · AI 통과 ${d[k].passed} · 채택 ${d[k].picked || 0}</title></rect>`).join('');
   const withData = keys.map((k, i) => [k, i]).filter(([k]) => d[k].total);
+  const picked = keys.map((k, i) => d[k].picked ? `<rect class="bar" style="fill:var(--ok)" x="${x(i)+bw*.2}" y="${y(d[k].picked)}" width="${bw*.6}" height="${y(0)-y(d[k].picked)}" rx="3"><title>${k.slice(5)} · 채택 ${d[k].picked}</title></rect>` : '').join('');
   const line = withData.map(([k, i], j) => `${j ? 'L' : 'M'}${(x(i)+bw/2).toFixed(1)},${yr(d[k].passed/d[k].total).toFixed(1)}`).join(' ');
-  const pts = withData.map(([k, i]) => `<circle class="ptok" cx="${x(i)+bw/2}" cy="${yr(d[k].passed/d[k].total)}" r="3.5"><title>${k.slice(5)} 통과율 ${pct(d[k].passed/d[k].total)}</title></circle>`).join('');
+  const pts = withData.map(([k, i]) => `<circle class="ptok" cx="${x(i)+bw/2}" cy="${yr(d[k].passed/d[k].total)}" r="3.5"><title>${k.slice(5)} AI 통과율 ${pct(d[k].passed/d[k].total)}</title></circle>`).join('');
   const step = Math.ceil(n / 8); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-8}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
-  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>통과율</span></div>`;
+  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + picked + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>채택 장수</span><span><i style="background:var(--ok);border-radius:50%"></i>AI 통과율</span></div>`;
 }
 const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:fingers','손가락','st5'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
-function chartStack() {
-  const keys = OV.day_keys, d = OV.daily; const W = cw('#chart-stack', 360), H = 200, L = 32, R = 8, T = 10, B = 24; const n = keys.length;
-  const max = Math.max(5, ...keys.map(k => d[k].total)); const bw = (W - L - R) / n; const x = i => L + i * bw, y = v => T + (H - T - B) * (1 - v / max);
-  const grid = [0, .5, 1].map(f => `<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(max*f)}" y2="${y(max*f)}"/><text class="axis" x="${L-5}" y="${y(max*f)+4}" text-anchor="end">${Math.round(max*f)}</text>`).join('');
-  const used = new Set(['passed']);
-  const bars = keys.map((k, i) => { let acc = 0; const segs = [['passed', d[k].passed], ...Object.entries(d[k].fails)]; return segs.map(([g, v]) => { if (!v) return ''; const meta = FAIL_GROUP.find(f => f[0] === g) || [g, g, 'st5']; used.add(meta[0]); const s = `<rect class="${meta[2]}" x="${x(i)+bw*.2}" y="${y(acc+v)}" width="${bw*.6}" height="${y(acc)-y(acc+v)}"><title>${k.slice(5)} · ${meta[1]} ${v}</title></rect>`; acc += v; return s; }).join(''); }).join('');
-  const step = Math.ceil(n / 5); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-7}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
-  const cls = {st0:'var(--ok)', st1:'#D64545', st2:'#E98A2E', st3:'#8FA9C8', st4:'#B8A0D9', st5:'#C4C9D1'};
-  $('#chart-stack').innerHTML = svgOpen(W, H) + grid + bars + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)">${FAIL_GROUP.filter(f => used.has(f[0])).map(f => `<span><i style="background:${cls[f[2]]}"></i>${f[1]}</span>`).join('')}</div>`;
-}
-function chartTreat() {
-  const rows = Object.entries(OV.by_treatment).filter(([,a]) => a.total).sort((a,b) => b[1].total - a[1].total);
-  $('#chart-treat').innerHTML = rows.length ? rows.map(([t, a]) => `<div class="hbar"><span title="${t}">${CFG.treatments[t]?.name_ko || t}</span><span class="t"><i class="${a.passed/a.total >= .6 ? 'ok' : ''}" style="width:${(a.passed/a.total*100).toFixed(0)}%"></i></span><span class="n">${pct(a.passed/a.total)} <span class="muted">${a.total}</span></span></div>`).join('') : '<div class="empty">기록이 없습니다</div>';
-}
 function chartAxis() {
-  const d = OV.by_axis[AXIS_A] || {}; const rows = Object.entries(d).sort((a,b) => b[1].n - a[1].n).slice(0, 8);
-  $('#chart-axis').innerHTML = rows.length ? rows.map(([k, a]) => `<div class="hbar"><span title="${k}">${val(AXIS_A, k)}</span><span class="t"><i style="width:${(a.pass/a.n*100).toFixed(0)}%"></i></span><span class="n">${pct(a.pass/a.n)} <span class="muted">${a.n}</span></span></div>`).join('') : '<div class="empty">기록이 없습니다</div>';
+  let rows;
+  if (AXIS_A === '__treat') {
+    rows = Object.entries(OV.by_treatment).filter(([, a]) => a.total).sort((a, b) => b[1].total - a[1].total).map(([t, a]) => [tname(t), a.passed / a.total, a.total]);
+  } else if (AXIS_A === '__fails') {
+    const tot = Object.values(OV.fails_total).reduce((a, b) => a + b, 0);
+    rows = Object.entries(OV.fails_total).sort((a, b) => b[1] - a[1]).map(([k, n]) => [failKo(k), n / Math.max(1, tot), n, 'bad']);
+  } else {
+    const d = OV.by_axis[AXIS_A] || {}; rows = Object.entries(d).sort((a, b) => b[1].n - a[1].n).slice(0, 8).map(([k, a]) => [val(AXIS_A, k), a.pass / a.n, a.n]);
+  }
+  $('#chart-axis').innerHTML = rows.length ? rows.map(([l, r, n, cls]) => `<div class="hbar"><span title="${esc(l)}">${esc(l)}</span><span class="t"><i class="${cls || (r >= .6 ? 'ok' : '')}" style="width:${(r*100).toFixed(0)}%"></i></span><span class="n">${pct(r)} <span class="muted">${n}</span></span></div>`).join('') : '<div class="empty">기록이 없습니다</div>';
 }
 $$('#axis-pick button').forEach(b => b.onclick = () => { $$('#axis-pick button').forEach(x => x.classList.toggle('on', x === b)); AXIS_A = b.dataset.a; chartAxis(); });
 $$('#home-range button').forEach(b => b.onclick = () => { $$('#home-range button').forEach(x => x.classList.toggle('on', x === b)); HOME_DAYS = +b.dataset.d; loadHome(); });
-function chartToday() {
-  const t = OV.today; const h = t.hourly, hp = t.hourly_pass; const W = cw('#chart-today', 280), H = 120, L = 8, R = 8, T = 14, B = 18; const max = Math.max(3, ...h);
-  const x = i => L + i * (W - L - R) / 23, y = v => T + (H - T - B) * (1 - v / max);
-  const path = arr => arr.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const area = path(h) + ` L${x(23)},${y(0)} L${x(0)},${y(0)} Z`;
-  const labels = [0, 6, 12, 18, 23].map(i => `<text class="axis" x="${x(i)}" y="${H-4}" text-anchor="middle">${i}시</text>`).join('');
-  const peak = h.indexOf(Math.max(...h)); const pk = h[peak] ? `<circle class="pt" cx="${x(peak)}" cy="${y(h[peak])}" r="3.5"/><text class="axis" x="${x(peak)}" y="${y(h[peak])-8}" text-anchor="middle" style="fill:var(--primary);font-weight:700">${h[peak]}</text>` : '';
-  $('#chart-today').innerHTML = svgOpen(W, H, 'short') + `<defs><linearGradient id="gradA" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1F3A5F" stop-opacity=".25"/><stop offset="1" stop-color="#1F3A5F" stop-opacity="0"/></linearGradient></defs><path class="area" d="${area}"/><path class="line" d="${path(h)}"/>${pk}${labels}</svg>`;
-  $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
-  $('#home-today-rows').innerHTML = `<div style="height:var(--sp-2)"></div><div class="report-row"><span class="k">오늘 생성</span><span class="v">${t.total}<small>장</small></span></div><div class="report-row"><span class="k">오늘 통과</span><span class="v ok">${t.passed}<small>장 · ${t.total ? pct(t.passed/t.total) : '—'}</small></span></div><div class="report-row"><span class="k">오늘 비용</span><span class="v">$${(t.cost||0).toFixed(2)}</span></div>`;
-}
-async function renderLive() {
-  const q = OV.queue; const el = $('#home-running'); const r = q.running;
-  if (r && r.batch_id) { try { const pg = await api(`/api/batches/${r.batch_id}/progress`); el.className = 'prog'; renderProgress(pg, el, `${CFG.treatments[r.treatment]?.name_ko || r.treatment} · ${MODE_KO[r.mode]}`); el.querySelector('.cells')?.remove(); } catch { el.innerHTML = ''; } }
-  else { el.className = ''; el.innerHTML = `<div class="muted" style="padding:6px 0 10px">진행 중인 작업이 없습니다${q.paused ? ' · 일시정지' : ''}</div>`; }
-  const w = OV.window;
-  $('#home-live-rows').innerHTML = `<div class="report-row"><span class="k">대기 작업</span><span class="v">${q.queued}<small>개</small></span></div><div class="report-row"><span class="k">기간 통과율</span><span class="v ok">${w.total ? pct(w.passed/w.total) : '—'}</span></div><div class="report-row"><span class="k">탈락 최다 사유</span><span class="v plain">${Object.entries(OV.fails_total).sort((a,b)=>b[1]-a[1])[0]?.[0] ? failKo(Object.entries(OV.fails_total).sort((a,b)=>b[1]-a[1])[0][0]) : '—'}</span></div>`;
-}
-function renderHomeLib() {
-  const l = OV.library; const rows = Object.entries(l.summary).map(([t, m]) => [t, Object.values(m).reduce((a,b)=>a+b,0), m]).sort((a,b) => b[1]-a[1]);
-  $('#home-lib').innerHTML = `<div class="report-row"><span class="k">채택한 사진</span><span class="v">${l.total}<small>장</small></span></div>` + (rows.length ? rows.map(([t, n, m]) => `<div class="report-row"><span class="k">${CFG.treatments[t]?.name_ko || t} <span class="muted">${Object.entries(m).map(([k,v]) => `${MODE_KO[k]||k} ${v}`).join(' · ')}</span></span><span class="v plain">${n}장</span></div>`).join('') : '');
-}
 setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
-let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); chartStack(); chartToday(); } }, 150); });
+let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); } }, 150); });
 
 // ---------- 생성 조건 ----------
 function selTreatments() { return $$('#q-treatments button.on').map(b => b.dataset.v); }
@@ -1317,12 +1321,16 @@ async function loadLessons() {
 }
 
 // ---------- 설정 ----------
+let GOALS = null;
+async function loadGoals() { try { GOALS = await api('/api/goals'); } catch { GOALS = {default: 30, per: {}}; } }
 function renderSettings() {
   $('#settings-body').innerHTML = `<div class="list">
     <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>시술별 목표 장수</b><span>홈 현황판의 기준. 전 시술 동일 (2026-09-09 성연서님: 일괄 30장)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-default" min="1" style="width:80px" value="${GOALS?.default ?? 30}"><button class="b sm" id="goal-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>모드별 기본 AI 모델</b><span>${Object.entries(CFG.default_provider||{}).map(([m,d]) => `${MODE_KO[m]||m}: ${d.gen} / ${d.edit} / ${d.qa}`).join(' · ')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
+  const gs = $('#goal-save'); if (gs) gs.onclick = async () => { try { GOALS = await api('/api/goals', {default: +$('#goal-default').value || 30}); gs.textContent = '저장됨 ✓'; setTimeout(() => gs.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
 }
 
 // ---------- init ----------
