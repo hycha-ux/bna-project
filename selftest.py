@@ -897,6 +897,20 @@ ok(_nares18["measured"] is False and _nares18["passed"] is None and _nares18["ha
    f"못 잼은 measured=False·passed=None·hard_fail=False 여야 한다(탈락으로 접으면 통계가 거짓말한다) — {_nares18}")
 
 
+# ⑱-6 버전 표에 '못 잼 비율' 칸 — 프레이밍 비중을 바꾼 효과가 보이는 유일한 자리다.
+#      통과율·제외율에는 안 나타난다(못 잼은 떨어진 게 아니라 안 잰 것이라 어느 분자에도 없다).
+_d18v = _P(_tf.mkdtemp())
+for _i18, (_g18, _ms18) in enumerate([("n/a", False), ("n/a", False), ("ok", True), ("fail", True)]):
+    _it18 = _d18v / "b" / f"{_i18:04d}"
+    _it18.mkdir(parents=True)
+    (_it18 / "meta.json").write_text(_j.dumps({
+        "prompt_version": "vX", "treatment": "nasolabial", "passed": _ms18,
+        "identity": {"gate": _g18, "measured": _ms18}}), encoding="utf-8")
+_row18 = [r for r in _L.by_version(_d18v) if r["version"] == "vX"][0]
+ok(_row18["id_na"] == 2 and _row18["id_na_rate"] == 0.5,
+   f"못 잼 비율의 분모는 그 버전의 전체 장수다 — 실제 {_row18['id_na']}/{_row18['n']} = {_row18['id_na_rate']}")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

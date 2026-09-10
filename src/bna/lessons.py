@@ -538,7 +538,8 @@ def by_version(out_dir: Path) -> list:
             v = it.get("prompt_version") or "?"
             a = acc.setdefault(v, {"version": v, "first": created, "last": created, "n": 0, "ai_pass": 0,
                                    "reviewed": 0, "rejected": 0, "tags": {}, "treatments": {}, "cost": 0.0,
-                                   "providers": {}, "attempts": 0, "id_review": 0, "id_measured": 0})
+                                   "providers": {}, "attempts": 0, "id_review": 0, "id_measured": 0,
+                                   "id_na": 0})
             _pv = (it.get("providers") or {}).get("gen")
             if _pv:                                     # 한 버전 줄에 두 모델이 섞였는지 보이게 (섞이면 비교가 무의미하다)
                 a["providers"][_pv] = a["providers"].get(_pv, 0) + 1
@@ -552,6 +553,10 @@ def by_version(out_dir: Path) -> list:
                 a["id_measured"] += 1
                 if _id.get("gate") == "review":
                     a["id_review"] += 1
+            elif _id.get("gate") == "n/a":
+                # 못 잼은 '떨어진 것'이 아니라 '기계가 아예 안 잰 것'이라 통과율 어디에도 안 나타난다.
+                # 프레이밍 비중을 바꾼 효과가 보이는 자리가 여기다 (2026-09-11 성연서님 B안, 목표 10% 미만).
+                a["id_na"] += 1
             t = it.get("treatment") or "?"; a["treatments"][t] = a["treatments"].get(t, 0) + 1
             rp = m.parent / "review.json"
             if rp.exists():
@@ -573,6 +578,9 @@ def by_version(out_dir: Path) -> list:
         a["attempts_per_item"] = round(a["attempts"] / a["n"], 2) if a["n"] else None
         # 잰 것 중에서만 센다 — 미검출(n/a)을 분모에 넣으면 게이트가 꺼진 배치가 '좋아 보인다'
         a["id_review_rate"] = round(a["id_review"] / a["id_measured"], 3) if a["id_measured"] else None
+        # ⚠ 못 잼 비율의 분모는 **그 버전의 전체 장수**다(잰 것 중이 아니라).
+        #   "몇 %에서 게이트가 꺼져 있었나"를 묻는 값이라 못 잰 것이 분모에 있어야 한다.
+        a["id_na_rate"] = round(a["id_na"] / a["n"], 3) if a["n"] else None
         a["top_tags"] = sorted(a["tags"].items(), key=lambda kv: -kv[1])[:3]
         a["real"] = a["version"] not in ("sim", "demo", "?")
         a["provider_mixed"] = len(a["providers"]) > 1     # True 면 이 줄의 통과율을 버전 비교에 쓰면 안 된다
