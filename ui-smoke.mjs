@@ -118,6 +118,12 @@ try {
   ok(await ev("(function(){var d=document.querySelector('#dlg');d.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:3,clientY:3}));return !d.open})()"),
      '딤(바깥)을 누르면 모달이 닫힌다');
 
+  // ⑤-2 검수 모드에서 사이드바 '작업 › 전체'를 누르면 검수를 닫고 목록이 보인다 (2026-09-10 성연서님 "반응을 안 해")
+  await ev("document.querySelector('#gal-view [data-v=review]')?.click()"); await sleep(800);
+  await ev("document.querySelector('#sub-jobs button[data-kind=\"\"]')?.click()"); await sleep(1200);
+  ok(!(await ev("document.body.classList.contains('reviewing')")), '사이드바 전체를 누르면 검수 모드가 닫힌다');
+  ok(await ev("!!document.querySelector('#batches-wrap')?.offsetHeight"), '사이드바 전체를 누르면 목록이 보인다');
+
   // ⑥ 화면 설명문은 다시 들어오지 않는다 (2026-09-08 "다 삭제 불필요해")
   await goto('#jobs');
   ok(!(await ev("document.body.innerText.includes('여기서 되는 것')")), '지운 안내 카드가 되살아나지 않았다');

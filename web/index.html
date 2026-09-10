@@ -705,10 +705,13 @@ function show(tab) {
   if (tab === 'lessons') loadLessons();
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
-$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => show(b.dataset.tab || b.dataset.goto));
+$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'jobs' && b.classList.contains('nav-item')) leaveReview(); show(t); });
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
 try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
-$$('#sub-jobs button').forEach(b => b.onclick = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); });
+// 사이드바에서 작업 항목을 누르면 검수 모드는 닫고 목록으로 간다 — 검수 중엔 목록 카드가 통째로 접혀 있어서
+// 필터만 바꾸면 화면에 아무 변화가 없었다 (2026-09-10 성연서님 "사이드바 전체를 누르면 반응을 안 해")
+const leaveReview = () => { if (VIEW === 'review') setView('grid', {push: false}); };
+$$('#sub-jobs button').forEach(b => b.onclick = () => { leaveReview(); $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); });
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
