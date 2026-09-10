@@ -62,6 +62,21 @@ def state_of(batch: str, item: str) -> str:
     return "pending"
 
 
+def links_of(batch: str, item: str) -> list:
+    """이 사진의 드라이브 채택본 파일들 → [{name, id, url}]. 화면의 '드라이브에서 열기'가 쓴다 (2026-09-10 성연서님).
+    원장은 state_of 와 같은 manifest 하나 — 실제로 올라간 것만 링크가 생긴다."""
+    key = f"{batch}/{item}"
+    try:
+        man = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    except Exception:                                   # noqa: BLE001
+        return []
+    out = []
+    for dest, m in man.items():
+        if dest.startswith(LANE_PICKED) and m.get("key") == key and m.get("id"):
+            out.append({"name": dest.rsplit("/", 1)[-1], "id": m["id"], "url": f"https://drive.google.com/file/d/{m['id']}/view"})
+    return sorted(out, key=lambda f: f["name"])
+
+
 def _run(key: str) -> None:
     try:
         p = subprocess.run(

@@ -434,7 +434,8 @@ def library_payload():
             items.append({"batch_id": d.parent.name, "item_id": d.name, "treatment": meta.get("treatment"), "mode": meta.get("mode"),
                           "variation": meta.get("variation", {}), "review": rv, "passed": meta.get("passed"), "demo": meta.get("demo", False),
                           "before_file": next((f for f in files if f.endswith("_before.jpg")), None),
-                          "after_file": last_after(files), "after_files": after_files_of(files), "picked_at": rv.get("updated_at")})
+                          "after_file": last_after(files), "after_files": after_files_of(files), "picked_at": rv.get("updated_at"),
+                          "drive": {"state": drivesync.state_of(d.parent.name, d.name), "files": drivesync.links_of(d.parent.name, d.name)}})
     items.sort(key=lambda x: x.get("picked_at") or 0, reverse=True)
     summary = {}
     for it in items:
