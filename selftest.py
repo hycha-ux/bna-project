@@ -669,6 +669,74 @@ for _n in ["old_before.jpg", "old_after.jpg"]:
 ok(len(_API.pair_files(_pd2, _meta)) == 2, "이름이 안 맞는 옛 배치는 fail-open 으로 전부 보여야 한다")
 
 
+# ⑯ 메모 → 규칙 초안 (2026-09-10 빌디 조율). 네트워크 0 — 가짜 프로바이더로 판정 로직만 잰다.
+from bna import notedraft as _ND, lessons as _LS
+
+class _FakeProv:
+    def __init__(self, data, fail=False):
+        self.data, self.fail, self.seen = data, fail, None
+    def chat_json(self, prompt, images=(), *, purpose="chat", model=None):
+        if self.fail:
+            raise RuntimeError("boom")
+        self.seen = prompt
+        return {"data": self.data, "model": "gpt-5.1",
+                "usage": {"prompt_tokens": 1634, "completion_tokens": 213}}
+
+_APPLIED = "head angle and camera height must match the stated framing; do not drift to a different pose"
+_META = {"treatment": "nasolabial", "mode": "selfie",
+         "avoid_applied": {"before": [_APPLIED], "after": [_APPLIED, "no text or watermarks"]},
+         "variation": {"framing": {"key": "cheek_only"}, "angle": {"key": "three_quarter"}}}
+
+# 16-1 그때 이미 붙어 있던 금지문이 입력에 실려야 한다. 안 실으면 있는 규칙을 또 규칙으로 낸다.
+_p = _FakeProv({"why": "프레이밍이 시술 부위를 잘랐다", "en": "Keep the treated area fully inside the frame.",
+                "kind": "rule", "covered_by": ""})
+_r = _ND.draft_rule("시술 부위 중앙이 잘려서 시술되지 않음", ["AI 티"], _META,
+                    {"before": "b-prompt", "after": "a-prompt"}, None, provider=_p)
+ok(_APPLIED in (_p.seen or ""), "already_applied(그때 붙어 있던 금지문)가 모델 입력에 있어야 한다")
+ok("a-prompt" in (_p.seen or "") and "cheek_only" in (_p.seen or ""),
+   "실제 쓴 프롬프트와 프레이밍 축 값이 모델 입력에 있어야 한다")
+ok(_r["kind"] == "rule" and _r["promotable"] is True, f"새 규칙이면 승격 가능해야 한다 — {_r}")
+
+# 16-2 이미 붙어 있던 문장이면 모델이 rule 이라 해도 승격은 아무 일도 안 한다(코드가 못박는다).
+_r2 = _ND.draft_rule("각도가 계속 틀어짐", ["각도"], _META, {}, None,
+                     provider=_FakeProv({"why": "각도 드리프트", "en": _APPLIED, "kind": "rule", "covered_by": ""}))
+ok(_r2["covered_by"] == _APPLIED and _r2["promotable"] is False,
+   f"이미 붙어 있던 문장은 covered_by 로 잡히고 승격 불가여야 한다 — {_r2}")
+
+# 16-3 모르는 kind 는 rule 로 밀지 않는다(승격 쪽으로 fail-open 하면 안 되는 축).
+_r3 = _ND.draft_rule("메모", [], _META, {}, None,
+                     provider=_FakeProv({"why": "x", "en": "Keep the pose steady.", "kind": "몰라", "covered_by": ""}))
+ok(_r3["kind"] is None and _r3["promotable"] is False, f"판정 불가는 None 이어야 한다 — {_r3}")
+
+# 16-4 en 은 프롬프트에 그대로 들어간다 — 비ASCII 제거 + 상한
+_r4 = _ND.draft_rule("메모", [], _META, {}, None,
+                     provider=_FakeProv({"why": "x", "en": "한글 Keep it real " + "z" * 400, "kind": "rule"}))
+ok(_r4["en"].isascii() and len(_r4["en"]) <= _ND.MAX_EN, f"en 은 ASCII·{_ND.MAX_EN}자 이내여야 한다 — {len(_r4['en'])}")
+
+# 16-5 호출 실패는 던지지 않고 키워드 표로 폴백한다(검수 화면이 멈추면 안 된다)
+_r5 = _ND.draft_rule("손가락이 이상함", ["손가락"], _META, {}, None, provider=_FakeProv({}, fail=True))
+ok(_r5["source"] == "keywords" and _r5["promotable"] is False and _r5["en"],
+   f"실패는 폴백이어야 하고 출처가 남아야 한다 — {_r5}")
+
+# 16-6 캐시 키는 화면 병합 키와 같은 함수여야 한다(따로 만들면 그룹 1 : 초안 2 가 된다)
+_src = open("src/bna/notedraft.py", encoding="utf-8").read()
+ok("lessons._norm(" in _src, "캐시 키는 lessons._norm 을 그대로 써야 한다")
+
+# 16-7 단가 정본은 config/pricing.yaml 하나 (실측: 검수 1회 $0.0042)
+ok(abs(_ND.usd_of("gpt-5.1", {"prompt_tokens": 1634, "completion_tokens": 213}) - 0.00417) < 0.0002,
+   "usd_of 가 실측 단가($0.0042)를 재현해야 한다")
+_ur = open("tools/usage_report.py", encoding="utf-8").read()
+ok("image_in\": 8.00" not in _ur and "token_rates" in _ur,
+   "usage_report 는 단가를 리터럴로 갖지 말고 pricing.yaml 의 token_rates 를 읽어야 한다")
+ok((load("pricing.yaml") or {}).get("token_rates"), "pricing.yaml 에 token_rates 가 있어야 한다")
+ok(load("providers.yaml").get("note_draft"), "초안 벤더는 providers.yaml 의 note_draft 가 정본이다")
+
+# 16-8 원장 칸 가르기 — 검수와 초안이 같은 모델이라 purpose 가 없으면 실단가가 흐려진다
+_oi = open("src/bna/providers/openai_img.py", encoding="utf-8").read()
+ok('"purpose": "qa"' in _oi and 'purpose="note_draft"' in _src,
+   "qa·note_draft 호출은 usage 원장에 purpose 를 남겨야 한다")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

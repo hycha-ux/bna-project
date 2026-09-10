@@ -33,3 +33,10 @@ class Provider:
     def qa(self, before: bytes, after: bytes, items: dict, mode: str) -> dict:
         """{item_key: {"score": 0-10, "note": str}}"""
         raise NotImplementedError
+
+    def chat_json(self, prompt: str, images=(), *, purpose: str = "chat", model: str = None) -> dict:
+        """텍스트(+이미지) → JSON 한 덩이. {"data": dict, "usage": dict, "model": str}
+
+        검수 채점(qa)이 아닌 텍스트 판단용(예: 메모 → 규칙 초안). 벤더마다 응답 모양이 달라
+        공통 계약을 여기 못박는다 — 미지원 벤더는 부르는 쪽이 fail-open 으로 폴백해야 한다."""
+        raise NotImplementedError

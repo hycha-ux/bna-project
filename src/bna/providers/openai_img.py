@@ -80,7 +80,7 @@ class OpenAIProvider(Provider):
             raise RuntimeError(f"이미지 없음: {json.dumps(payload)[:400]}")
         return base64.b64decode(data[0]["b64_json"])
 
-    def _post(self, path, *, files=None, data=None, body=None, retry_without=()):
+    def _post(self, path, *, files=None, data=None, body=None, retry_without=(), extra=None):
         """400 이 '모르는 파라미터' 때문이면 그 파라미터를 빼고 재시도한다(fail-open).
         API 가 옵션을 늘리거나 줄여도 파이프라인 전체가 멈추지는 않게.
 
@@ -106,6 +106,7 @@ class OpenAIProvider(Provider):
                     "size": (body or data or {}).get("size"),
                     "quality": (body or data or {}).get("quality"),
                     "refs": len(files or []) if files is not None else 0,
+                    **(extra or {}),
                 })
                 return j
             msg = r.text[:400]
@@ -163,7 +164,7 @@ class OpenAIProvider(Provider):
                             "image_url": {"url": "data:image/png;base64," + base64.b64encode(b).decode()}})
         body = {"model": self.cfg["vision_model"], "messages": [{"role": "user", "content": content}],
                 "response_format": {"type": "json_object"}}
-        j = self._post("/chat/completions", body=body)
+        j = self._post("/chat/completions", body=body, extra={"purpose": "qa"})
         raw = json.loads(j["choices"][0]["message"]["content"])
         # 모델이 항목을 빠뜨리면 0 으로 채우지 마라 — 0 은 '나쁨'이고 누락은 '못 잼'이다.
         # 못 잰 항목은 임계 미달로 떨어뜨려 재시도시키되, note 에 이유를 남긴다.
@@ -181,3 +182,23 @@ class OpenAIProvider(Provider):
             else:
                 out[k] = {"score": 0.0, "note": "채점 누락 — 모델이 이 항목을 안 냈다(미측정)"}
         return out
+
+    # --- 범용 JSON 응답 (검수 채점 외의 텍스트 판단용) ---
+    def chat_json(self, prompt: str, images=(), *, purpose: str = "chat", model: str = None) -> dict:
+        """텍스트(+이미지) → JSON 한 덩이. qa() 와 같은 모델·같은 원장을 쓴다.
+
+        ⚠ `purpose` 를 반드시 다르게 준다 — usage.jsonl 은 모델 이름으로 접히는데,
+          검수(qa)와 다른 용도가 한 칸에 섞이면 "검수 1회 $0.0042" 같은 **실측 단가가 조용히 흐려진다**
+          (그 값이 지금 회차 예산의 근거다). 원장에 purpose 를 같이 적어 칸을 가른다.
+        """
+        content = [{"type": "text", "text": prompt}]
+        for b in images or ():
+            kind = "image/png" if b[:8] == b"\x89PNG\r\n\x1a\n" else "image/jpeg"
+            content.append({"type": "image_url",
+                            "image_url": {"url": f"data:{kind};base64," + base64.b64encode(b).decode()}})
+        body = {"model": model or self.cfg["vision_model"],
+                "messages": [{"role": "user", "content": content}],
+                "response_format": {"type": "json_object"}}
+        j = self._post("/chat/completions", body=body, extra={"purpose": purpose})
+        return {"data": json.loads(j["choices"][0]["message"]["content"]),
+                "usage": j.get("usage") or {}, "model": body["model"]}

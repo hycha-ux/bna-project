@@ -10,6 +10,11 @@ default_provider:
   selfie:   {gen: openai, edit: openai, qa: openai}
   clinical: {gen: gemini, edit: gemini, qa: gemini}
 
+# 메모 → 규칙 초안(bna/notedraft.py)을 쓰는 벤더. **모드별로 가르지 않는다** —
+# 병합 그룹은 셀카·임상 메모가 한 줄에 섞일 수 있어서, 모드로 가르면 같은 표 안에서
+# 초안 문체·판정 기준이 그룹마다 갈린다. 한 벌로 고정하고 여기서만 바꾼다.
+note_draft: openai
+
 openai:
   image_model: gpt-image-2
   vision_model: gpt-5.1          # 검수(qa) 채점용 비전 모델

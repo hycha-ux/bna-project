@@ -6,3 +6,15 @@
 gemini:     {generate: 0.04, edit: 0.04, qa: 0.005}
 openai:     {generate: 0.19, edit: 0.19, qa: 0.01}     # 추정, 미실측 (2026-09-08)
 higgsfield: {generate: 0.05, edit: 0.05, qa: 0.0}
+
+# --- 토큰 단가 (USD / 1M 토큰) ---
+# 출처=developers.openai.com/api/docs/pricing, 확인일 2026-09-10.
+# [주의] 값을 바꾸면 확인일도 같이 바꿔라 — 낡은 요금표는 가짜 실측이 된다.
+# ⚠ 정본은 여기 하나다. tools/usage_report.py 와 src/bna/notedraft.py 가 같이 읽는다 —
+#   한쪽에 리터럴로 베끼면 같은 호출의 비용이 화면과 리포트에서 갈린다.
+token_rates:
+  gpt-image-2: {image_in: 8.00, cached_in: 2.00, out: 30.00, text_in: 8.00}
+  gpt-5.1:     {image_in: 1.25, cached_in: 0.125, out: 10.00, text_in: 1.25}
+# gpt-image-2 의 '텍스트 입력' 단가는 공표표에 따로 없어 이미지 입력과 같게 뒀다(보수적 가정).
+token_rate_assumed:
+  gpt-image-2: text_in

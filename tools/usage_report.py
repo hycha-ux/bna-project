@@ -17,14 +17,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# 공표 요금(USD / 1M 토큰). 출처=developers.openai.com/api/docs/pricing, 확인일 2026-09-10.
-# [주의] 값을 바꾸면 확인일도 같이 바꿔라 — 낡은 요금표는 가짜 실측이 된다.
-RATES = {
-    "gpt-image-2": {"image_in": 8.00, "cached_in": 2.00, "out": 30.00, "text_in": 8.00},
-    "gpt-5.1":     {"image_in": 1.25, "cached_in": 0.125, "out": 10.00, "text_in": 1.25},
-}
-# gpt-image-2 의 '텍스트 입력' 단가는 공표표에 따로 없어 이미지 입력과 같게 뒀다(보수적 가정).
-ASSUMED = {"gpt-image-2": "text_in"}
+# 단가 정본은 config/pricing.yaml 의 token_rates 하나다 — 여기에 다시 박지 마라.
+# (2026-09-10: 종전엔 이 파일에만 있었는데, 초안 호출[bna/notedraft.py]이 같은 표를 필요로 하게 됐다.
+#  두 벌이 되면 같은 호출의 비용이 리포트와 화면에서 갈린다.)
+import yaml
+_PRICING = yaml.safe_load((ROOT / "config" / "pricing.yaml").read_text(encoding="utf-8")) or {}
+RATES = _PRICING.get("token_rates") or {}
+ASSUMED = _PRICING.get("token_rate_assumed") or {}
 
 
 def rate_for(model):
@@ -58,7 +57,10 @@ def main():
         cached = int(det.get("cached_tokens") or 0)
         tin = int(u.get("input_tokens") or u.get("prompt_tokens") or 0)
         tout = int(u.get("output_tokens") or u.get("completion_tokens") or 0)
-        gk = f"{model} {r.get('size') or ''} {r.get('quality') or ''}".strip()
+        # purpose 로 칸을 가른다 — 검수(qa)와 초안(note_draft)이 같은 모델이라, 안 가르면
+        # "검수 1회 $0.0042"(회차 예산의 근거)가 조용히 흐려진다. 옛 줄엔 purpose 가 없어 경로로 채운다.
+        purpose = r.get("purpose") or ("qa" if r.get("path") == "/chat/completions" else "image")
+        gk = f"{model} {purpose} {r.get('size') or ''} {r.get('quality') or ''}".strip()
         g = groups[gk]
         g["n"] += 1; g["in"] += tin; g["cached"] += cached; g["out"] += tout
         if not rt:
