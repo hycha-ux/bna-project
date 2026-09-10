@@ -362,6 +362,10 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
 .chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
+.lib .item { position:relative } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
+.lib-check { display:flex; align-items:center; cursor:pointer; margin-right:2px } .lib-check input { width:16px; height:16px; margin:0; cursor:pointer; accent-color:var(--primary) }
+.lib .item .head { flex-wrap:wrap; row-gap:4px } .lib .item .head .id { white-space:nowrap } .lib .item .head .head-r { flex-basis:100%; margin-left:0; justify-content:flex-start; gap:4px } .lib .item .head .head-r .b { padding:2px 8px; font-size:11px }
+.lib-sel { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ui-md) } .lib-sel b { color:var(--primary) }
 .lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px } .lib .item .body { padding:8px 10px 10px } .lib .item .id { font-size:12px }
 /* ⚠ margin:auto 를 빼지 마라 — 리셋 CSS 의 `margin:0` 이 브라우저 기본 가운데 정렬을 지워
    모달이 좌상단에 붙는다(2026-09-08 실측 left 0·top 0). inset:0 과 한 쌍이다. */
@@ -536,7 +540,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 라이브러리 ═══ -->
     <section class="page" id="tab-library">
       <div class="card">
-        <div class="card-head"><h3>채택한 사진 · 드라이브 저장본</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><button class="btn sm primary" id="btn-export">현재 필터로 내보내기</button></div>
+        <div class="card-head"><h3>채택한 사진 · 드라이브 저장본</h3><span class="muted" id="lib-count"></span><div class="tb-space"></div><span class="lib-sel" id="lib-sel" hidden><b id="lib-sel-n">0</b>장 선택 <button class="b sm" id="btn-sel-dl" title="선택한 사진의 전·후 원본을 하나씩 내려받습니다 — 인터넷 화면에서도 됩니다">선택 다운로드</button><button class="b sm primary" id="btn-sel-export" title="선택한 사진을 zip 한 개 + 목록(csv)으로 묶어 사무실 PC 의 outputs/exports 에 저장합니다">선택 zip 내보내기</button><button class="b sm ghost" id="btn-sel-clear">선택 해제</button></span><button class="btn sm" id="btn-export" title="지금 필터(시술·종류)로 화면에 보이는 사진 전부를 zip 한 개 + 목록(csv)으로 묶어 사무실 PC 의 outputs/exports 에 저장합니다">보이는 전부 zip 내보내기</button></div>
         <div class="toolbar">
           <select id="lib-treatment"><option value="">시술 전체</option></select>
           <select id="lib-mode"><option value="">종류 전체</option><option value="selfie">셀카형</option><option value="clinical">임상형</option></select>
@@ -1463,6 +1467,8 @@ function renderLibrary() {
   $('#lib-groups').innerHTML = Object.entries(groups).map(([k, arr]) => { const [t, m] = k.split('|');
     return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
   $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
+  $('#lib-groups').querySelectorAll('[data-sel]').forEach(cb => cb.onchange = () => { if (cb.checked) LIB_SEL.add(cb.dataset.sel); else LIB_SEL.delete(cb.dataset.sel); renderLibSel(); });
+  renderLibSel();
   $('#lib-groups').querySelectorAll('[data-dl]').forEach(b => b.onclick = () => { const [bid, iid] = b.dataset.dl.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid); if (it) downloadItem(bid, iid, it); });
   $('#lib-groups').querySelectorAll('[data-zoom]').forEach(p => p.onclick = async () => {
     const [bid, iid] = p.dataset.zoom.split('/');
@@ -1473,6 +1479,9 @@ function renderLibrary() {
     await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('채택을 취소했습니다'); loadLibrary(); });
 }
 const LIB_DETAIL = {};   // 배치 상세 캐시 — 라이브러리에서 사진마다 다시 받지 않게
+const LIB_SEL = new Set(); // 체크한 사진 "<배치>/<아이템>" — 필터를 바꿔도 유지된다 (여러 시술에서 골라 한 번에 내보내기)
+function renderLibSel() { const n = LIB_SEL.size; $('#lib-sel').hidden = !n; $('#lib-sel-n').textContent = n; $('#btn-export').hidden = !!n;
+  $$('#lib-groups .item').forEach(el => { const cb = el.querySelector('[data-sel]'); if (cb) el.classList.toggle('sel', LIB_SEL.has(cb.dataset.sel)); }); }
 // 드라이브 버튼: 실제로 올라간 파일이 있을 때만 링크. 아니면 '저장 대기'로 비활성 (짐작하지 않는다 — 원장은 PC 의 manifest)
 function driveBtn(i) {
   const files = i.drive?.files || [];
@@ -1490,13 +1499,23 @@ async function downloadItem(bid, iid, it) {
 function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   const badges = ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
-  return `<div class="item"><div class="pair" data-zoom="${i.batch_id}/${i.item_id}" title="누르면 크게 비교하고 프롬프트를 봅니다">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
-    <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span><span class="head-r"><button class="b sm ghost" data-dl="${i.batch_id}/${i.item_id}" title="시술 전·후 원본 파일을 내려받습니다">다운로드</button>${driveBtn(i)}<button class="b sm ghost" data-open="${i.batch_id}" title="이 사진이 나온 작업으로">작업</button><button class="b sm ghost" data-unpick="${i.batch_id}/${i.item_id}" title="채택을 풀고 드라이브에서 내립니다">해제</button></span></div>
+  const key = `${i.batch_id}/${i.item_id}`;
+  return `<div class="item ${LIB_SEL.has(key) ? 'sel' : ''}"><div class="pair" data-zoom="${i.batch_id}/${i.item_id}" title="누르면 크게 비교하고 프롬프트를 봅니다">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
+    <div class="head"><label class="lib-check" title="선택해서 여러 장을 한 번에 내려받거나 내보냅니다"><input type="checkbox" data-sel="${key}" ${LIB_SEL.has(key) ? 'checked' : ''}></label><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span><span class="head-r"><button class="b sm ghost" data-dl="${i.batch_id}/${i.item_id}" title="시술 전·후 원본 파일을 내려받습니다">다운로드</button>${driveBtn(i)}<button class="b sm ghost" data-open="${i.batch_id}" title="이 사진이 나온 작업으로">작업</button><button class="b sm ghost" data-unpick="${i.batch_id}/${i.item_id}" title="채택을 풀고 드라이브에서 내립니다">해제</button></span></div>
     <div class="tags">${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
 }
 $('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
+$('#btn-sel-clear').onclick = () => { LIB_SEL.clear(); renderLibrary(); };
+$('#btn-sel-dl').onclick = async () => { const keys = [...LIB_SEL]; msg('#lib-msg', `${keys.length}장 내려받는 중…`);
+  for (const k of keys) { const [bid, iid] = k.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid); if (it) await downloadItem(bid, iid, it); }
+  msg('#lib-msg', `${keys.length}장 내려받음`, 'on'); };
+$('#btn-sel-export').onclick = async () => {
+  if (NO_CREATE()) { msg('#lib-msg', 'zip 묶기는 사무실 PC 화면에서만 됩니다 — 여기서는 「선택 다운로드」로 파일을 받으세요.', 'err'); return; }
+  try { msg('#lib-msg', '내보내는 중…'); const r = await api('/api/export', {items: [...LIB_SEL]});
+    if (r.error) throw new Error(r.error); EXPORTS.unshift(r); msg('#lib-msg', `${r.count}장 내보냄`, 'on'); renderExports(); }
+  catch (e) { msg('#lib-msg', e.message, 'err'); } };
 $('#btn-export').onclick = async () => {
-  if (NO_CREATE()) { msg('#lib-msg', CFG.cloud_msg || '이 화면에서는 내보내기를 할 수 없습니다.', 'err'); return; }
+  if (NO_CREATE()) { msg('#lib-msg', 'zip 묶기는 사무실 PC 화면에서만 됩니다 — 여기서는 사진을 체크해 「선택 다운로드」로 받으세요.', 'err'); return; }
   try { msg('#lib-msg', '내보내는 중…'); const r = await api('/api/export', {treatment: $('#lib-treatment').value || null, mode: $('#lib-mode').value || null});
     EXPORTS.unshift(r); msg('#lib-msg', `${r.count}장 내보냄`, 'on'); renderExports(); }
   catch (e) { msg('#lib-msg', e.message, 'err'); }

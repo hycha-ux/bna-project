@@ -460,10 +460,14 @@ USAGE_NOTICE = """B&A 생성 이미지 — 사용 범위: 회사 내부 참고�
 
 def export_payload(req):
     lib = library_payload()["items"]
-    sel = [i for i in lib if (not req.get("treatment") or i["treatment"] == req["treatment"]) and (not req.get("mode") or i["mode"] == req["mode"])]
+    picked = set(req.get("items") or [])                 # ["<배치>/<아이템>", …] — 화면에서 체크한 것만 (2026-09-10 성연서님 "선택해서 내보내기")
+    if picked:
+        sel = [i for i in lib if f'{i["batch_id"]}/{i["item_id"]}' in picked]
+    else:
+        sel = [i for i in lib if (not req.get("treatment") or i["treatment"] == req["treatment"]) and (not req.get("mode") or i["mode"] == req["mode"])]
     if not sel:
         return {"error": "내보낼 선택 항목이 없습니다"}, 400
-    name = time.strftime("%Y%m%d-%H%M%S") + "-" + (req.get("treatment") or "all") + "-" + (req.get("mode") or "all")
+    name = time.strftime("%Y%m%d-%H%M%S") + "-" + (f"selected{len(sel)}" if picked else (req.get("treatment") or "all") + "-" + (req.get("mode") or "all"))
     root = OUT / "exports" / name; root.mkdir(parents=True, exist_ok=True)
     rows = []
     for i in sel:
