@@ -200,7 +200,10 @@ async function main() {
     const files = [];
     for (const [bid, detail] of Object.entries(items)) {
       for (const it of detail.items || []) {
-        for (const f of [it.before_file, it.after_file]) {
+        // 전·후만 올리면 검수 화면의 시술 부위 표시(mask.png)와 시리즈 시점별 후 사진이 인터넷에서 404 다 —
+        // 버튼은 켜지는데 아무것도 안 그려졌다 (2026-09-10 성연서님 "온해도 안 보인다").
+        const wanted = [it.before_file, it.after_file, it.mask_file, ...Object.values(it.after_files || {})];
+        for (const f of [...new Set(wanted)]) {
           if (!f) continue;
           const abs = path.join(OUT, bid, it.item_id, f);
           if (existsSync(abs)) files.push({ key: `files/${bid}/${it.item_id}/${f}`, abs });
