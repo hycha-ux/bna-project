@@ -131,6 +131,12 @@ try {
   // 개발용 스위치가 꺼져 있으면 목록에 '테스트'라는 말이 없다 (2026-09-10 성연서님 "테스트가 굳이 필요할지")
   ok(!(await ev("localStorage.getItem('bna.dev') === '1'")) ? !(await ev("document.querySelector('#tab-jobs').innerText.includes('테스트')")) : true, '개발용 스위치가 꺼져 있으면 작업 화면에 테스트 항목이 없다');
 
+  // ⑤-3 대기열 표는 머리글과 줄의 칸 수가 같아야 한다 (2026-09-10 성연서님 "대기열 보드 정렬 오류" — 인터넷 화면 요청 줄이 6칸이었다)
+  await goto('#create'); await sleep(1500);
+  const qcols = await ev("(function(){var h=document.querySelectorAll('#q-table thead th').length; var r=document.querySelector('#q-table tbody tr'); return JSON.stringify([h, r ? r.children.length : h])})()");
+  const [qh, qr] = JSON.parse(qcols || '[0,0]');
+  ok(qh === qr, '대기열 줄의 칸 수가 머리글과 같다', `머리글 ${qh} · 줄 ${qr}`);
+
   // ⑥ 화면 설명문은 다시 들어오지 않는다 (2026-09-08 "다 삭제 불필요해")
   await goto('#jobs');
   ok(!(await ev("document.body.innerText.includes('여기서 되는 것')")), '지운 안내 카드가 되살아나지 않았다');

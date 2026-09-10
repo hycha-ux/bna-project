@@ -973,11 +973,13 @@ async function loadGenRequests() {
   $('#q-empty').hidden = reqs.length > 0; $('#q-empty').textContent = '보낸 요청이 없습니다. 왼쪽에서 조건을 고르고 "생성 요청 보내기"를 누르세요.';
   const cls = {requested:'', accepted:'warn', running:'warn', done:'ok', error:'bad', cancelled:''};
   tb.innerHTML = reqs.map((j, i) => {
-    const sub = j.status === 'running' && j.progress ? `${j.progress.done ?? 0}/${j.progress.planned ?? j.count}` : j.status === 'done' && j.result ? `통과 ${j.result.passed ?? '?'} / ${j.result.total ?? '?'}` : j.status === 'error' ? esc((j.error || '').slice(0, 80)) : j.status === 'requested' ? `${esc(j.requested_by || '')} · ${fmtDay(Date.parse(j.requested_at) / 1000)}` : '';
     const ctl = j.status === 'requested' ? `<button class="b sm danger" data-gq="cancel" data-id="${j.id}">취소</button>` : j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button>` : '';
-    return `<tr><td class="muted">${i + 1}</td><td><b>${tname(j.treatment)}</b> <span class="muted">${MODE_KO[j.mode] || j.mode}</span> ${j.simulate ? '<span class="chip">시뮬레이션</span>' : '<span class="chip acc">실제</span>'}</td>
-      <td class="num">${j.count} · ${j.target_pass ?? '—'}</td><td class="num">—</td>
-      <td><span class="chip ${cls[j.status] || ''}">${KO[j.status] || j.status}</span>${sub ? `<div class="muted" style="font-size:var(--fs-xs);margin-top:3px">${sub}</div>` : ''}</td>
+    // 머리글과 같은 10칸(#·시술·유형·방식·장수·목표·예상·상태·결과·조작) — 6칸만 내면 칸이 밀려 어긋난다 (2026-09-10 성연서님 "대기열 보드 정렬 오류")
+    const res = j.status === 'done' && j.result ? `${j.result.passed ?? '?'}/${j.result.total ?? '?'}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error || '')}">${esc((j.error || '').slice(0, 24))}</span>` : '';
+    const prog = j.status === 'running' && j.progress ? `<span class="muted"> ${j.progress.done ?? 0}/${j.progress.planned ?? j.count}</span>` : j.status === 'requested' && j.requested_by ? `<span class="muted" style="font-size:var(--fs-xs)"> ${esc(j.requested_by)}</span>` : '';
+    return `<tr><td class="muted">${i + 1}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode] || j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td>
+      <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">—</td>
+      <td style="white-space:nowrap"><span class="chip ${cls[j.status] || ''}">${KO[j.status] || j.status}</span>${prog}</td><td style="white-space:nowrap">${res}</td>
       <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-gq=cancel]').forEach(b => b.onclick = async () => { try { await api('/api/gen_requests/cancel', {id: b.dataset.id}); loadGenRequests(); } catch (e) { msg('#req-msg', e.message, 'err'); } });
   tb.querySelectorAll('[data-q=open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.id); });
