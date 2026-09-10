@@ -84,6 +84,14 @@ for _frag in ("tilts a degree or two", "open a little more", "slightly different
 ok("may differ slightly" in build_prompts("nose_lifting", "selfie", sample_variation("selfie", 5), 5)["after_prompt"],
    "expression_policy: free 시술은 종전 문장을 유지해야 한다")
 
+# ⑥-4 각도×프레이밍 금지 조합이 실제로 안 뽑히는가 (2026-09-10 검수 "카메라 앵글이 벗어남")
+#     아래 ⑳ 전수 검사가 이미 framing_ban_by_angle 을 보지만, 이 조합은 '왜 막았는지'가 검수 메모라
+#     되살아나면 같은 돈을 다시 태운다 — 시술·조합을 이름으로 못 박아 둔다.
+from bna.planner import plan_batch as _pb0
+_bad = [p_ for p_ in _pb0("selfie", 300, seed=3, treatment="nasolabial")
+        if p_["framing"]["key"] == "one_cheek" and p_["angle"]["key"] in ("tilted", "selfie_side", "chin_up")]
+ok(not _bad, f"팔자 300 표본에 '한쪽 볼 + 기울임/측면/턱들기' 조합이 0건이어야 한다 — 실제 {len(_bad)}건")
+
 # ⑦ 셀카 프롬프트가 조립되는가 (템플릿 키 누락 조기 발견)
 v = sample_variation("selfie", 5)
 p = build_prompts("nasolabial", "selfie", v, 5)

@@ -57,7 +57,11 @@ nasolabial:
     lighting: [window, fluorescent, ceiling_harsh, mixed]   # 어두운 밤·역광에서는 주름 그림자가 안 보인다
     angle: [front, selfie_3q, selfie_side, chin_up, tilted, selfie_high]   # selfie_low 는 팔자를 과장한다
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck, one_cheek]
-  framing_ban_by_angle: {selfie_side: [one_cheek], chin_up: [one_cheek]}
+  # tilted 추가(2026-09-10 검수): 고개를 기울인 채 한쪽 볼만 크게 잡으면 팔자가 프레임 밖으로 밀린다
+  #   — 성연서님 "카메라 앵글이 벗어남"(63cb/0005). 같은 배치의 one_cheek×selfie_3q 2장은 채택이라
+  #   프레이밍 축 전체를 막지 않고 이 조합만 막는다(학습 장치는 축 단위라 조합을 못 가른다).
+  #   ⚠ 근거는 실측 1건이다 — 되돌릴 땐 이 줄에서 tilted 만 빼라.
+  framing_ban_by_angle: {selfie_side: [one_cheek], chin_up: [one_cheek], tilted: [one_cheek]}
   age_weights: {late_teens: 0, early_20s: 0, late_20s: 1, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
 
 lifting:
