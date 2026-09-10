@@ -51,6 +51,25 @@ export async function saveReview(token, { batch, item, pick, tags, note }) {
   return rv;
 }
 
+/**
+ * 판정 한 건 읽기. **이 저장소는 private 이라 `b.url` 을 그냥 fetch 하면 `Forbidden` 이다.**
+ * 읽는 자리가 둘(화면 오버레이·사무실 PC 흡수)이라 여기 한 곳에 둔다 —
+ * 2026-09-10 실사고: 흡수 쪽이 제 손으로 `fetch(b.url)` 을 짜서 30건이 통째로 안 들어왔고,
+ * 그 실패가 한 건짜리 catch 에 삼켜져 **오류 없이 0건**으로 나왔다.
+ * 못 읽으면 null 을 준다(던지지 않는다) — 부르는 쪽이 세어서 소리를 낸다.
+ */
+export async function readOne(token, pathname) {
+  try {
+    const r = await get(pathname, { access: 'private', token });
+    if (!r || r.statusCode !== 200 || !r.stream) return null;
+    const chunks = [];
+    for await (const c of r.stream) chunks.push(Buffer.from(c));
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 /** 클라우드에 쌓인 판정 전부. { "<배치>/<아이템>": review } */
 export async function overlay(token) {
   const now = Date.now();
@@ -63,11 +82,8 @@ export async function overlay(token) {
       for (const b of page.blobs) {
         const id = parseBlobName(b.pathname);
         if (!id) continue;
-        const r = await get(b.pathname, { access: 'private', token });
-        if (!r || r.statusCode !== 200 || !r.stream) continue;
-        const chunks = [];
-        for await (const c of r.stream) chunks.push(Buffer.from(c));
-        try { map[id.key] = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { /* 깨진 한 건이 전체를 죽이지 않는다 */ }
+        const rv = await readOne(token, b.pathname);   // 깨진 한 건이 전체를 죽이지 않는다
+        if (rv) map[id.key] = rv;
       }
       cursor = page.hasMore ? page.cursor : null;
     } while (cursor);

@@ -441,6 +441,49 @@ finally:
     _api.OUT = _saved_out
 ok(_code == 200 and any("사용범위" in _n for _n in _names), f"내보내기 zip 에 사용 범위 안내가 들어가야 한다 — {_names}")
 
+# ── 재시도 정책 (2026-09-10 성연서님 "①재시도 때 Before 재사용 ②'효과가 안 보임'은 같은 조건 재시도 금지") ──
+from bna.batch import _retry_plan
+
+_rd, _rb = _retry_plan(["vision:effect_visible"])
+ok(_rd and _rb, "효과가 안 보임 → 조건을 다시 뽑고 Before 도 다시 그린다(같은 조건 재시도 금지)")
+
+_rd, _rb = _retry_plan(["vision:drift"])
+ok((not _rd) and (not _rb), "구도 흐트러짐 → 조건은 그대로, Before 재사용(After 만 다시)")
+
+_rd, _rb = _retry_plan(["vision:fingers"])
+ok((not _rd) and (not _rb), "손가락 → Before 재사용")
+
+_rd, _rb = _retry_plan(["identity"])
+ok((not _rd) and _rb, "동일인 어긋남 → 둘의 관계가 틀린 것이라 Before 부터 다시(조건은 그대로)")
+
+# 시리즈면 사유에 시점이 붙는다(`structure@2w`) — `@` 앞만 보지 않으면 정책이 통째로 안 걸린다
+_rd, _rb = _retry_plan(["vision:effect_visible@2w"])
+ok(_rd and _rb, "시점이 붙은 사유(`...@2w`)도 같은 정책으로 걸려야 한다")
+
+_rd, _rb = _retry_plan([])
+ok((not _rd) and (not _rb), "사유가 없으면 아무것도 다시 하지 않는다")
+
+# ── 항목별 합격선 (2026-09-10, 사람 검수 27건 근거) ──
+_qa = load("qa_checklist.yaml")
+ok((_qa.get("thresholds") or {}).get("effect_visible") == 6,
+   f"effect_visible 합격선은 6 이어야 한다(사람 채택 6점 40% · 5점 이하 0%) — 실제 {_qa.get('thresholds')}")
+ok(_qa["threshold"] == 7, "나머지 항목의 공통 합격선은 7 그대로여야 한다")
+
+# 컷은 vision.score 가 실제로 쓰는가 — 설정만 있고 코드가 안 읽으면 조용히 아무 일도 안 일어난다
+import bna.qa.vision as _v
+
+
+class _FakeQA:
+    def qa(self, b, a, items, mode):
+        return {"effect_visible": {"score": 6, "note": ""}, "drift": {"score": 6, "note": ""}}
+
+
+_r = _v.score(b"", b"", "selfie", _FakeQA())
+ok(_r["failed_items"] == ["drift"],
+   f"6점은 effect_visible 만 통과하고 drift 는 탈락해야 한다 — 실제 {_r['failed_items']}")
+ok(_r["cuts"]["effect_visible"] == 6 and _r["cuts"]["drift"] == 7, "어느 컷으로 쟀는지 판정에 남아야 한다")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

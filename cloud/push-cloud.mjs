@@ -133,11 +133,15 @@ async function absorbReviews(TOKEN) {
     return { taken: 0, done: [] };
   }
   const done = [];
+  const failed = [];
   for (const b of blobs) {
     const id = REV.parseBlobName(b.pathname);
     if (!id) continue;
     try {
-      const rv = await (await fetch(b.url)).json();
+      // ⚠ `fetch(b.url)` 로 읽지 마라 — 이 저장소는 private 이라 `Forbidden` 이다.
+      //   읽기는 REV.readOne 한 곳이다(화면 오버레이와 같은 경로).
+      const rv = await REV.readOne(TOKEN, b.pathname);
+      if (!rv) { failed.push(b.pathname); continue; }
       const local = readLocalReview(id.batch, id.item);
       // 이 PC 에서 더 나중에 고친 게 있으면 클라우드 값이 이기지 않는다(양쪽 다 사람이 누른다)
       if (local && (local.updated_at || 0) > (rv.updated_at || 0)) { done.push(b); continue; }
@@ -145,10 +149,15 @@ async function absorbReviews(TOKEN) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batch: id.batch, item: id.item, pick: rv.pick ?? null, tags: rv.tags || [], note: rv.note || '' }),
       });
-      if (r.ok) done.push(b);
-    } catch { /* 한 건 실패가 회차를 죽이지 않는다 — 다음 회차가 다시 본다 */ }
+      if (r.ok) done.push(b); else failed.push(`${b.pathname} (API ${r.status})`);
+    } catch (e) { failed.push(`${b.pathname} (${e.message})`); }   // 한 건 실패가 회차를 죽이지 않는다
   }
-  return { taken: done.length, done };
+  // 조용한 실패가 이 고리의 실패 모드였다 — 남은 게 있으면 반드시 소리를 낸다.
+  if (failed.length) {
+    console.log(`  ⚠ 검수 흡수 실패 ${failed.length}건 / 전체 ${blobs.length}건 — 사람이 누른 판정이 이 PC 에 안 들어왔다`);
+    for (const f of failed.slice(0, 5)) console.log('     ·', f);
+  }
+  return { taken: done.length, done, failed: failed.length, seen: blobs.length };
 }
 
 function readLocalReview(batch, item) {

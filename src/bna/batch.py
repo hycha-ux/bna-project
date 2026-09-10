@@ -13,6 +13,34 @@ from .progress import Progress
 
 MAX_ATTEMPTS = 3
 
+# ── 재시도 정책 (2026-09-10) ────────────────────────────────────────────────
+# 종전엔 탈락하면 **같은 조건으로 Before 부터 통째로** 3번까지 다시 뽑았다.
+# 실측이 그게 헛돌고 있음을 보여 줬다: 시도당 통과 14.5% → 3회 누적 예상 37.5% = 실제 37.0%.
+# 예상과 실제가 소수점까지 맞는다 = 3번이 완전히 독립된 주사위 = 재시도가 아무것도 안 배운다.
+#
+# 그래서 사유를 두 갈래로 가른다.
+#   RETRY_REDRAW  조건이 원인 — 같은 조건으로 다시 그려도 같은 벽이다 → **조건을 다시 뽑아** 그린다.
+#                 (성연서님 2026-09-10 "'효과가 안 보임'으로 떨어진 건 같은 조건 재시도 금지")
+#   REDO_BEFORE   Before 와 After 의 *관계*가 틀렸거나 Before 자체가 틀렸다 → Before 부터 다시.
+#   그 외(운)      Before 는 멀쩡한데 After 만 어긋난 것 → **Before 재사용, After 만 다시 그린다**(비용 절반).
+#
+# ⚠ 조건을 다시 뽑으면 그 배치의 변주 분포가 계획(plan)과 달라진다 → meta["redrawn"] 에 회차를 남긴다.
+#    안 남기면 나중에 "어떤 조건이 잘 통과하나" 통계가 조용히 오염된다.
+RETRY_REDRAW = {"vision:effect_visible", "structure"}
+REDO_BEFORE = {"identity", "vision:identity", "structure"}
+
+
+def _retry_plan(fail_reasons):
+    """탈락 사유 → (조건을 다시 뽑나, Before 를 다시 그리나).
+    사유는 시리즈일 때 `structure@2w` 처럼 시점이 붙으므로 `@` 앞만 본다.
+
+    ⚠ **조건을 다시 뽑으면 Before 도 반드시 다시 그린다** — 새 조건은 새 사람·새 장면이라
+      앞 회차의 Before 를 물려받으면 프롬프트와 사진이 서로 다른 사람을 말한다.
+      이 묶음은 여기 한 곳에 둔다(부르는 쪽에서 따로 켜면 두 곳이 갈린다)."""
+    base = {str(f).split("@", 1)[0] for f in (fail_reasons or [])}
+    redraw = bool(base & RETRY_REDRAW)
+    return redraw, (redraw or bool(base & REDO_BEFORE))
+
 
 class Batch:
     def __init__(self, treatment, mode, count, seed=None, fixed=None, gen=None, edit=None, qa=None, ab_prompt=None,
@@ -59,20 +87,40 @@ class Batch:
         t = load("treatments.yaml")[self.treatment]
         style_refs = refs.pick(self.mode, variation)
 
+        before_b = before = pts = mask_img = None      # 재시도 때 Before 를 물려받는 자리
+        prev_fail = []
+        meta["redrawn"] = []                           # 조건을 다시 뽑은 회차 (통계가 계획과 갈리는 걸 드러낸다)
         for attempt in range(1, MAX_ATTEMPTS + 1):
             meta["attempt"] = attempt; meta["fail_reasons"] = []
             loop = asyncio.get_event_loop()
+
+            # ── 재시도 정책: 사유를 보고 무엇을 다시 할지 고른다 (위 _retry_plan 주석이 근거) ──
+            redraw, redo_before = (False, True) if attempt == 1 else _retry_plan(prev_fail)
+            if redraw:
+                # 조건이 원인이면 같은 조건으로 다시 그리지 않는다 — 사람·장면을 다시 뽑는다.
+                # 씨앗은 회차마다 갈라야 한다(안 갈면 같은 변주가 다시 나와 재추첨이 무의미하다).
+                from .spec import sample_variation
+                rs = None if self.seed is None else self.seed * 1000 + idx + attempt * 100_000
+                variation = sample_variation(self.mode, rs, (self.avoid or {}).get("weights"), treatment=self.treatment)
+                spec = build_prompts(self.treatment, self.mode, variation, rs,
+                                     avoid=(self.avoid or {}).get("lines"), series=self.series)
+                meta.update({k: v for k, v in spec.items()})
+                meta["redrawn"].append(attempt)
+                style_refs = refs.pick(self.mode, variation)
+                # 조건이 바뀌면 Before 도 다시 — 그 묶음은 _retry_plan 안에 있다(여기서 또 켜지 않는다)
+
             self._p(item_id, "before", attempt=attempt)
-            # ① Before
-            before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
-                                                  spec["aspect"], None, style_refs, None)
-            meta["cost"] += self.pricing[self.p_gen.name]["generate"]
-            before = Image.open(io.BytesIO(before_b))
+            # ① Before — 다시 그릴 이유가 없으면 앞 회차 것을 그대로 쓴다(생성 1회 = 비용 절반)
+            if redo_before or before_b is None:
+                before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
+                                                      spec["aspect"], None, style_refs, None)
+                meta["cost"] += self.pricing[self.p_gen.name]["generate"]
+                before = Image.open(io.BytesIO(before_b))
+                pts = landmarks.detect(before)
+                mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
 
             # ② After — 시점마다 한 장. 시리즈가 아니면 시점 하나(종전과 같다). 참조는 항상 Before(After 를 다음 기준으로 쓰면 얼굴이 흘러간다)
             self._p(item_id, "after")
-            pts = landmarks.detect(before)
-            mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
             afters_out = []                                  # [(when, after_pp_bytes, after_pp_img)]
             for af in spec["afters"]:
                 after_prompt = self.p_edit.adapt_prompt(af["after_prompt"], "after")
@@ -138,6 +186,7 @@ class Batch:
             if meta["passed"]:
                 self._p(item_id, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
             self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
+            prev_fail = list(meta["fail_reasons"])      # 다음 회차가 "무엇을 다시 할지" 고르는 근거
         return meta
 
     def _should_stop(self):
