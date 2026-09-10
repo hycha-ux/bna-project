@@ -42,8 +42,12 @@ def treatment_rules(treatment: str, mode: str) -> dict:
     allow  : {축: 허용값} — 모드 화이트리스트와 교집합 (framing_allow · scene_allow)
     ban    : {축: 금지값} — context_ban
     framing_ban_by_angle · age_weights(0 = 그 나이 안 뽑음) · drift_lock · expression_policy
+    framing_weights : 시술별 프레이밍 가중(전역 weights.framing 에 곱한다). 0 은 쓰지 마라 —
+                      '안 뽑기'는 framing_allow 가 할 일이고, 여기서 0 을 주면 그 프레이밍이
+                      다시 쓸 만해졌는지 확인할 길이 사라진다(age_weights 와 달리 0 을 안 거른다).
     treatment 이 None 이면 빈 규칙 (예전 호출·테스트가 그대로 돈다)."""
-    r = {"allow": {}, "ban": {}, "age_weights": {}, "drift_lock": [], "framing_ban_by_angle": {}, "expression_policy": "free"}
+    r = {"allow": {}, "ban": {}, "age_weights": {}, "framing_weights": {}, "drift_lock": [],
+         "framing_ban_by_angle": {}, "expression_policy": "free"}
     if not treatment:
         return r
     t = load("treatments.yaml").get(treatment)
@@ -62,6 +66,7 @@ def treatment_rules(treatment: str, mode: str) -> dict:
         for a, ks in (t.get("axis_ban") or {}).items():
             r["ban"][a] = list(ks)
         r["framing_ban_by_angle"] = {k: list(v) for k, v in (t.get("framing_ban_by_angle") or {}).items()}
+        r["framing_weights"] = {str(k): float(v) for k, v in (t.get("framing_weights") or {}).items()}
     return r
 
 
@@ -149,10 +154,18 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
         options = v[axis]
         allowed = allowed_values(axis, keys, mode, v, tr)
         w = dict(weights.get(axis) or {})
+        # ⚠ 전역 가중(variations.yaml 의 weights)과 시술별 가중을 여기서 같이 곱한다.
+        #   planner.plan_batch 에도 같은 곱이 있다 — 한쪽만 고치면 배치 추첨과 단건 추첨이
+        #   조용히 다른 분포를 낸다(회귀 ⑱-4 가 두 경로를 함께 잰다).
+        for k, gw in (v.get("weights", {}).get(axis) or {}).items():
+            w[k] = w.get(k, 1.0) * float(gw)
         if axis == "age":                                # 시술별 나이 가중 (0 은 이미 allowed 에서 빠졌다)
             for k, aw in tr.get("age_weights", {}).items():
                 if aw > 0:
                     w[k] = w.get(k, 1.0) * aw
+        if axis == "framing":                            # 시술별 프레이밍 가중 (목주름은 목만 컷이 필수라 전역값과 다르다)
+            for k, fw in tr.get("framing_weights", {}).items():
+                w[k] = w.get(k, 1.0) * fw
         if w and len(allowed) > 1:
             ws = [max(0.01, float(w.get(k, 1.0))) for k in allowed]
             key = rng.choices(allowed, weights=ws, k=1)[0]

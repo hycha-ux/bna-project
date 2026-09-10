@@ -331,7 +331,16 @@ weights:
   age: {late_teens: 1, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
   # 셀카: 정면은 드물게, 부분 크롭 우세 (레퍼런스 후기 사진 비율 반영)
   angle: {front: 1, selfie_high: 1, selfie_low: 1, selfie_3q: 3, selfie_side: 2, chin_up: 2, tilted: 2}
-  framing: {full_face: 1, forehead_cut: 2, lower_face: 3, one_cheek: 2, nose_to_neck: 2, neck_only: 3}
+  # 프레이밍 (2026-09-11 성연서님 B안 "눈 안 보이는 컷은 계속 쓰되 비중을 줄인다", 목표 못 잼 10% 미만).
+  # 가중은 취향이 아니라 **프레이밍별 실측 못 잼률**에서 나왔다 —
+  #   한쪽 볼 7/7(100%) · 목만 3/4(75%) · 아래 얼굴 4/8(50%) · 코~목 1/8(12.5%) · 이마 잘림 0/11 · 얼굴 전체 0/8.
+  # 눈이 프레임 밖이면 얼굴 검출기가 시작을 못 한다(그림이 나빠서가 아니다) → 그 컷이 많을수록 게이트가 조용히 꺼진다.
+  # ⚠ 빼지 않고 낮추기만 한다. 리얼리티(초근접 후기 사진 느낌)를 버리지 않으려는 것이고,
+  #   0 으로 죽이면 모델이 나중에 좋아졌는지 확인할 길이 사라진다.
+  # ⚠ forehead_cut 을 제일 높였다 — '아주 가까운 셀카'인데 눈이 프레임 안이라, 리얼리티와 검사 가능성을 동시에 만족하는 유일한 칸이다.
+  # ⚠ 최소 1 rep 이라 실효 하한은 0.25 다(planner.WEIGHT_SCALE=4). 더 줄이려면 framing_allow 에서 빼라.
+  # 재계산·검증 = tools/framing_na_forecast.py (실측률을 원장에서 다시 읽어 예상 못 잼을 낸다)
+  framing: {full_face: 3, forehead_cut: 6, lower_face: 0.5, one_cheek: 0.25, nose_to_neck: 1.5, neck_only: 0.25}
   expression: {neutral_closed: 3, slight_smile: 1, relaxed_open: 2}   # 상담용 사진은 대부분 무표정
 
 output:

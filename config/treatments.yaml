@@ -356,4 +356,12 @@ filler_neck:
     angle: [chin_up, front, selfie_3q]       # selfie_high 는 목이 안 보인다
     lighting: [window, fluorescent, ceiling_harsh, mixed]
   framing_allow: [nose_to_neck, neck_only]   # 목이 화면에 있어야 한다. neck_only 는 이 시술 전용 프레이밍
+  # ⚠ 목주름만 전역 프레이밍 가중을 되돌린다(2026-09-11 성연서님 "목주름은 목만 프레이밍이 필수").
+  #   전역에서 neck_only 를 0.25 로 낮추자 이 시술에서도 14.7% 로 떨어졌는데, 목만 컷은
+  #   이 시술의 대표 구도다 — 전역 규칙의 부수 피해라 여기서 되돌린다(→ 약 25%).
+  # ⚠ 그리고 **목주름은 못 잼 10% 목표에서 빠진다.** 목만 컷은 얼굴이 아예 프레임 밖이고,
+  #   그나마 나은 nose_to_neck 도 실측 12.5% 라 **두 칸을 어떻게 섞어도 10% 아래가 안 된다**
+  #   (neck_only 를 0 으로 죽여도 12.5%). 이 시술의 동일인 판정은 기계가 아니라 사람 몫이고,
+  #   검수 화면이 identity.gate=="n/a" 로 그 컷을 갈라 준다.
+  framing_weights: {neck_only: 2}            # 전역 0.25 × 2 = 0.5 (≈ 25% 등장, 예상 못 잼 ≈ 28%)
   age_weights: {late_teens: 0, early_20s: 0, late_20s: 1, "30s": 3, "40s": 3, "50s": 3, "60s": 2}

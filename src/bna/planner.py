@@ -103,6 +103,7 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
     avoid_weights = avoid_weights or {}
     fixed = fixed or {}
     tw = tr.get("age_weights") or {}                     # 시술별 나이 가중 (0 은 allowed_values 가 뺀다)
+    fw = tr.get("framing_weights") or {}                 # 시술별 프레이밍 가중 (목주름만 전역과 다르다)
 
     queues = {}
     def draw(axis, opts):
@@ -114,7 +115,9 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
                 q.remove(o); return o
         w = weights.get(axis, {}); aw = avoid_weights.get(axis, {})
         def reps(o):                    # 기본 가중 × 시술 가중 × 학습 회피 가중, 최소 1
-            base = float(w.get(o, 1)) * (float(tw.get(o, 1.0)) if axis == "age" else 1.0)
+            base = float(w.get(o, 1)) * (float(tw.get(o, 1.0)) if axis == "age" else 1.0)                 * (float(fw.get(o, 1.0)) if axis == "framing" else 1.0)
+            # ⚠ 최소 1 이라 WEIGHT_SCALE(=4)보다 잘게는 못 나눈다 — 가중 0.25 가 바닥이고
+            #   그 아래로 적어도 0.25 로 취급된다. 더 줄여야 하면 framing_allow 에서 빼라.
             return max(1, round(WEIGHT_SCALE * base * float(aw.get(o, 1.0))))
         pool = [o for o in opts for _ in range(reps(o))]            # 가중치만큼 복제 후 섞기
         rng.shuffle(pool)

@@ -835,6 +835,68 @@ ok(_ID.REVIEW_BAND < _ID.THRESHOLD,
    "사람 확인 구간은 통과 문턱보다 낮아야 한다(뒤집히면 review 가 영영 안 생긴다)")
 
 
+# ⑱ 프레이밍 비중 조정 (2026-09-11 성연서님 B안) — 눈 안 보이는 컷은 쓰되 못 잼 10% 미만
+from collections import Counter as _C18
+from bna.planner import plan_batch as _pb18
+# 프레이밍별 실측 못 잼률(2026-09-11, demo 제외 46장). 표본이 작으니 값이 아니라 **순서**가 요점이다.
+# 새로 재려면 tools/framing_na_forecast.py — 이 상수는 그때 같이 갱신하고 근거(장수)를 남겨라.
+_NA18 = {"one_cheek": 1.00, "neck_only": 0.75, "lower_face": 0.50,
+         "nose_to_neck": 0.125, "forehead_cut": 0.0, "full_face": 0.0}
+_EXEMPT18 = {"filler_neck"}      # 목만 컷이 대표 구도인데 얼굴이 프레임 밖 — 어떻게 섞어도 10% 아래가 안 된다
+
+
+def _na18(t, n=1200, seed=18):
+    d = _C18(p["framing"]["key"] if isinstance(p["framing"], dict) else p["framing"]
+             for p in _pb18("selfie", n, seed=seed, treatment=t))
+    tot = sum(d.values()) or 1
+    return sum(c * _NA18[f] for f, c in d.items() if f in _NA18) / tot, {f: c / tot for f, c in d.items()}
+
+
+# ⚠ 씨앗을 하나만 쓰면 추첨 요동으로 9%대와 10%대를 오간다(0911 실측: 같은 설정이 9.3% / 10.5%).
+#    여러 씨앗의 **최악값**으로 본다 — 목표를 아슬아슬하게 맞추지 말라는 뜻이기도 하다.
+_over18 = []
+for _t18 in load("treatments.yaml"):
+    if _t18 in _EXEMPT18:
+        continue
+    _r18 = max(_na18(_t18, 1200, sd)[0] for sd in (18, 19, 20))
+    if _r18 >= 0.10:
+        _over18.append(f"{_t18} {_r18*100:.1f}%")
+ok(not _over18, f"목주름 외 전 시술의 예상 못 잼이 10% 미만이어야 한다 — 초과: {_over18}")
+
+# ⑱-2 '빼기'가 아니라 '낮추기'다. 0 으로 죽이면 모델이 좋아졌는지 확인할 길이 사라진다.
+_fw18 = load("variations.yaml")["weights"]["framing"]
+ok(all(float(x) > 0 for x in _fw18.values()) and set(_fw18) >= set(_NA18),
+   f"프레이밍 가중은 전부 0 보다 커야 한다(빼려면 framing_allow 에서 빼라) — {_fw18}")
+_r18n, _d18n = _na18("filler_neck")
+ok(_d18n.get("neck_only", 0) > 0.15,
+   f"목주름에서 목만 컷은 대표 구도라 살아 있어야 한다 — 실제 {_d18n.get('neck_only', 0)*100:.1f}%")
+
+# ⑱-3 목주름은 구조적으로 10% 에 못 간다 — 목만을 아예 0 으로 죽여도 nose_to_neck 자체가 12.5% 다.
+#      이 검사가 깨지면 '목주름도 됐다'가 아니라 실측률이 바뀐 것이니 면제를 다시 판단해라.
+ok(_NA18["nose_to_neck"] >= 0.10,
+   f"목주름 면제의 근거는 nose_to_neck 실측률이다 — 이 값이 내려갔으면 면제를 재검토하라({_NA18['nose_to_neck']})")
+
+# ⑱-4 추첨 경로가 둘이다(plan_batch · sample_variation). 시술별 프레이밍 가중을 한쪽만 반영하면
+#      배치와 단건이 조용히 다른 분포를 낸다 — 목만 컷 비중이 두 경로에서 같은지 본다.
+_sv18 = _C18(sample_variation("selfie", seed=_s, treatment="filler_neck")["framing"]["key"]
+             for _s in range(600))
+_svr18 = _sv18["neck_only"] / sum(_sv18.values())
+ok(abs(_svr18 - _d18n.get("neck_only", 0)) < 0.12,
+   f"두 추첨 경로의 프레이밍 분포가 비슷해야 한다 — plan_batch {_d18n.get('neck_only',0):.2f} vs sample_variation {_svr18:.2f}")
+
+# ⑱-5 검수 화면(빌디)이 '기계 못 잼' 배지에 쓰는 계약 필드다. 이름·값을 바꾸면 배지가 조용히 빈다.
+_orig18 = _ID.similarity
+_ID.similarity = lambda a, b: None          # '못 잼' = 검출 실패. 실제 이미지 없이 판정 로직만 본다
+try:
+    _nares18 = _ID.check(None, None)
+finally:
+    _ID.similarity = _orig18
+ok(_nares18["gate"] == "n/a",
+   f"얼굴을 못 잡으면 gate 는 정확히 'n/a' 여야 한다(검수 배지 계약) — 실제 {_nares18['gate']}")
+ok(_nares18["measured"] is False and _nares18["passed"] is None and _nares18["hard_fail"] is False,
+   f"못 잼은 measured=False·passed=None·hard_fail=False 여야 한다(탈락으로 접으면 통계가 거짓말한다) — {_nares18}")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
