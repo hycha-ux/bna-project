@@ -22,6 +22,11 @@ param(
   [string[]]$Treatments = @('nasolabial', 'filler_nose', 'filler_neck'),
   [int]$Count = 8,
   [int]$Seed = 0,
+  # Fix variation axes, e.g. -Fix country=korea (repeatable: -Fix country=korea,gender=female)
+  [string[]]$Fix = @(),
+  # Stop a batch once it has burned this much (USD). 2026-09-10: bna.cli has no cap, so a run
+  # that went wrong could only be stopped by hand. tools/run_paid.py takes the cap.
+  [double]$CostCap = 10.0,
   [string]$KeysFile = 'C:\Users\medib\teemo\keys.env',
   [string]$LogFile = 'C:\Users\medib\teemo\out\run-selfie-batches.log'
 )
@@ -62,9 +67,11 @@ foreach ($t in $Treatments) {
   "===== $t $(Get-Date -Format 'HH:mm:ss') =====" | Out-File -LiteralPath $LogFile -Append -Encoding utf8
   $so = "$LogFile.$t.out"
   $se = "$LogFile.$t.err"
+  $argv = @('tools\run_paid.py', '--treatment', $t, '--mode', 'selfie',
+            '--count', "$Count", '--seed', "$Seed", '--cost-cap', "$CostCap")
+  foreach ($f in $Fix) { $argv += @('--fix', $f) }
   $p = Start-Process -FilePath $py -WorkingDirectory $root -NoNewWindow -Wait -PassThru `
-    -ArgumentList @('-m', 'bna.cli', '--treatment', $t, '--mode', 'selfie',
-                    '--count', "$Count", '--seed', "$Seed", '--run') `
+    -ArgumentList $argv `
     -RedirectStandardOutput $so -RedirectStandardError $se
   foreach ($f in @($so, $se)) {
     if (Test-Path $f) { Get-Content -LiteralPath $f | Out-File -LiteralPath $LogFile -Append -Encoding utf8
