@@ -442,6 +442,21 @@ def library_payload():
     return {"items": items, "summary": summary, "total": len(items)}
 
 
+# 사용 범위 — 2026-09-10 파트장 확정 "내부만"(정본 docs/usage-policy.md).
+# zip 은 결과물이 이 시스템을 떠나는 유일한 경로라, 파일만 받은 사람도 범위를 알아야 한다.
+# 정책이 바뀌면 이 문구와 docs/usage-policy.md 를 같은 커밋에서 고친다.
+USAGE_NOTICE = """B&A 생성 이미지 — 사용 범위: 회사 내부 참고용만 (2026-09-10 파트장 확정)
+
+이 폴더의 이미지는 AI 로 생성한 시술 전후 예시입니다. 실제 환자 사진이 아닙니다.
+
+허용: 사내 참고·검토·기획 자료
+금지: 광고·SNS·홈페이지·인쇄물 등 대외 게시, 고객 대상 자료, 의료광고 심의 제출, 외부 공유
+
+의료진 검토자는 아직 지정 전이라 시술 지시문은 초안 상태입니다.
+정책 정본: docs/usage-policy.md · 문의: 티모(#team-lol)
+"""
+
+
 def export_payload(req):
     lib = library_payload()["items"]
     sel = [i for i in lib if (not req.get("treatment") or i["treatment"] == req["treatment"]) and (not req.get("mode") or i["mode"] == req["mode"])]
@@ -461,6 +476,7 @@ def export_payload(req):
                      v.get("framing", {}).get("key"), "|".join(i["review"].get("tags", [])), i["review"].get("note", "")])
     with (root / "manifest.csv").open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f); w.writerow(["treatment", "mode", "batch", "item", "before", "after", "country", "age", "gender", "angle", "framing", "tags", "note"]); w.writerows(rows)
+    (root / "사용범위-안내.txt").write_text(USAGE_NOTICE, encoding="utf-8")
     zip_path = shutil.make_archive(str(root), "zip", root_dir=root)
     return {"name": name, "count": len(sel), "dir": str(root), "zip": f"/exports/{name}.zip", "zip_bytes": Path(zip_path).stat().st_size}, 200
 

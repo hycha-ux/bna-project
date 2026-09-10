@@ -1,5 +1,12 @@
 # 구글드라이브 백업 — 파트장님 요청서 (2026-09-08, 티모)
 
+> **진행 상태 (2026-09-10)** — 파트장님이 폴더 링크를 주셔서 `GDRIVE_BACKUP_FOLDER_ID` 는 금고에 넣었습니다.
+> **남은 것은 접근 권한 하나**(A안의 서비스 계정 JSON *또는* B안의 OAuth 동의)입니다. 그게 없으면
+> 백업은 계속 `exit 3`(대기)입니다 — 받은 폴더 ID 는 `1aW…` 형태라 개인 드라이브 폴더로 보이니
+> **B안이 맞습니다**(서비스 계정은 저장용량이 0이라 개인 폴더에 못 올립니다).
+> B안 5번 명령은 이제 `--folder` 를 빼도 되고(폴더 ID 는 이미 저장됨), 끝나면 금고 이관까지 자동으로 합니다.
+
+
 성연서님 지시로 백업을 구축했습니다. **코드·예약작업은 끝났고, 남은 건 구글 계정 권한 하나**입니다.
 아래 A안(권장)이 되면 A로, 안 되면 B로 가면 됩니다. 둘 다 **10~15분**입니다.
 
@@ -54,11 +61,11 @@
 5. 파트장님 PC에서 아래 한 줄 실행 → 브라우저가 열리면 로그인 후 `허용`
 
    ```
-   node C:\Users\medib\bna-project\ops\drive-oauth-setup.mjs --client-id <ID> --client-secret <비밀> --folder <폴더ID>
+   node C:\Users\medib\bna-project\ops\drive-oauth-setup.mjs --client-id <ID> --client-secret <비밀>
    ```
 
    → 필요한 줄을 `_teemo_keys.txt` 에 자동으로 적습니다(값 미출력).
-6. 이어서 `node C:\Users\medib\teemo\install-keys.mjs`
+6. (자동) 금고 이관까지 스크립트가 이어서 합니다 — 끝나면 티모에게 알려 주세요. 첫 백업을 돌립니다.
 
 ---
 

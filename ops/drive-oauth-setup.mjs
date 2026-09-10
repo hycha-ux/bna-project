@@ -14,7 +14,7 @@
  */
 import { createServer } from 'node:http';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 const PORT = 53682; // 구글 콘솔의 '승인된 리디렉션 URI' 에 http://127.0.0.1:53682 를 넣어 둔다
 const OUT = 'C:\\Users\\medib\\_teemo_keys.txt';
@@ -79,7 +79,16 @@ const srv = createServer(async (req, res) => {
       '<h2>완료했습니다. 이 창을 닫으셔도 됩니다.</h2><p>티모가 이어서 처리합니다.</p>',
     );
     console.log(`받았습니다 — ${OUT} 에 ${folder ? 4 : 3}줄을 적었습니다(값은 화면에 찍지 않습니다).`);
-    console.log('이어서: node C:\\Users\\medib\\teemo\\install-keys.mjs');
+    // 금고 이관까지 여기서 끝낸다 (2026-09-10). 종전엔 "이어서 install-keys 를 돌리세요"라고 안내만 했는데,
+    // 그 한 줄이 안 돌면 토큰이 평문 txt 로 남는다 — 사람에게 시키는 단계는 적을수록 안전하다.
+    try {
+      const r = spawnSync(process.execPath, ['C:\Users\medib\teemo\install-keys.mjs'], { stdio: 'inherit' });
+      if (r.status !== 0) throw new Error(`install-keys 종료코드 ${r.status}`);
+      console.log('금고(keys.env)까지 옮겼습니다. 티모에게 알려 주시면 첫 백업을 돌립니다.');
+    } catch (e) {
+      console.error('금고 이관 실패:', e.message);
+      console.error(`⚠ ${OUT} 에 값이 평문으로 남아 있습니다 — node C:\Users\medib\teemo\install-keys.mjs 를 직접 돌려 주세요.`);
+    }
     setTimeout(() => process.exit(0), 300);
   } catch (e) {
     res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' }).end('<h2>실패했습니다.</h2>');

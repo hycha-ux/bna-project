@@ -422,6 +422,24 @@ from bna.api import estimate_payload as _est
 _e1 = _est({"treatment": "nasolabial", "mode": "selfie", "count": 8}); _e2 = _est({"treatment": "nasolabial", "mode": "selfie", "count": 8, "series": ["immediate", "2w"]})
 ok(_e2["afters"] == 2 and _e2["expected_cost_usd"] > _e1["expected_cost_usd"], "시리즈 비용은 시점 수만큼 커진다")
 
+
+# ㉑ 내보내기 zip 에 사용 범위 안내가 들어간다 (2026-09-10 파트장 "내부만" 확정, 정본 docs/usage-policy.md).
+#    zip 은 결과물이 이 시스템을 떠나는 유일한 경로라, 파일만 받은 사람도 범위를 알아야 한다.
+import json as _json, tempfile as _tf, zipfile as _zf, time as _time
+_tmp = _P(_tf.mkdtemp())
+_item = _tmp / "b1" / "0000"; _item.mkdir(parents=True)
+(_item / "x_before.jpg").write_bytes(b"x"); (_item / "x_after.jpg").write_bytes(b"x")
+(_item / "meta.json").write_text(_json.dumps({"treatment": "nasolabial", "mode": "selfie", "passed": True}), encoding="utf-8")
+(_item / "review.json").write_text(_json.dumps({"pick": "pick", "tags": [], "updated_at": _time.time()}), encoding="utf-8")
+_saved_out = _api.OUT
+try:
+    _api.OUT = _tmp
+    _res, _code = _api.export_payload({})
+    _names = _zf.ZipFile(_tmp / "exports" / (_res["name"] + ".zip")).namelist()
+finally:
+    _api.OUT = _saved_out
+ok(_code == 200 and any("사용범위" in _n for _n in _names), f"내보내기 zip 에 사용 범위 안내가 들어가야 한다 — {_names}")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
