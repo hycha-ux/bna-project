@@ -114,6 +114,10 @@ try {
   const scoreTxt = await ev("[...document.querySelectorAll('#rev .score b')].map(b=>b.textContent).join(',')");
   ok(scoreTxt !== '' && !/object|NaN/i.test(scoreTxt), 'AI 점수가 숫자로 보인다', scoreTxt || '(없음)');
 
+  // ④-2 제외 사유 드롭다운은 하나 고르면 바로 접힌다 (2026-09-10 성연서님 "펼쳐 있어서 꺼야 하는 번거로움")
+  const ddClosed = await ev("(function(){var d=document.querySelector('#rev details.dd'); if(!d) return null; d.open=true; var c=d.querySelector('input[data-act=tag]'); if(!c) return null; c.click(); return d.open===false})()");
+  ok(ddClosed !== false, '제외 사유를 고르면 드롭다운이 접힌다', ddClosed === null ? '(드롭다운 없음 — 건너뜀)' : '');
+
   // ⑤ 상세 모달은 가운데 뜨고 딤을 누르면 닫힌다
   await ev("document.querySelector('#rev [data-detail]')?.click()");
   await sleep(1000);

@@ -1359,7 +1359,8 @@ async function onAct(e) {
   const rv = it.review = it.review || {tags:[]};
   // 사유(태그·메모)는 로컬에만 두고 [사유 저장]으로 한 번에 저장
   if (act === 'note') { el.oninput = () => { rv.note = el.value; DIRTY.add(id); refreshFoot(it); }; el.onkeydown = ev => { if (ev.key === 'Enter' && DIRTY.has(id)) { DIRTY.delete(id); save(it); } }; return; }
-  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const v = el.closest('.dd').querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
+  if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const dd = el.closest('.dd'); dd.open = false;   // 고르면 바로 접는다 — 펼친 채 남아 매번 닫아야 했다 (2026-09-10 성연서님). 둘 이상은 다시 열어 고른다
+    const v = dd.querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
   if (act === 'savereason') { DIRTY.delete(id); await save(it, prev); return; }
   if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
   if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; DIRTY.delete(id); }
