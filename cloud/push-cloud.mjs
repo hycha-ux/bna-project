@@ -75,7 +75,13 @@ function queueIsBusy() {
   if (!existsSync(f)) return false;
   try {
     const q = JSON.parse(readFileSync(f, 'utf8'));
-    return (q.jobs || []).some((j) => !['done', 'failed', 'cancelled'].includes(j.status));
+    // 큐가 실제로 쓰는 상태는 queued · running · done · error · cancelled 다(src/bna/queue.py).
+    // ⚠ 종전 목록엔 `error` 가 빠지고 **없는 값 `failed`** 가 들어 있었다 — 그래서 오류로 끝난
+    //   작업이 하나라도 있으면 큐가 영원히 '바쁨'으로 잡혀, 로컬 API 가 꺼진 동안 10분 배치가
+    //   조용히 아무것도 안 올렸다(2026-09-10 실측: error 1건이 6개월째 남을 수도 있었다).
+    //   모르는 상태는 종전대로 '바쁨'으로 본다(fail-closed — 오판 비용이 돈이다).
+    const TERMINAL = ['done', 'error', 'cancelled'];
+    return (q.jobs || []).some((j) => !TERMINAL.includes(j.status));
   } catch {
     return true; // 못 읽으면 띄우지 않는다(fail-closed — 오판 비용이 돈이다)
   }
