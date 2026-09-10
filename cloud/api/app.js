@@ -39,6 +39,13 @@ import {
   signSession,
 } from '../lib/auth.mjs';
 
+/** 옛 스냅샷은 시각을 ko-KR 문자열("2026. 9. 10. 09:11:23" 또는 "9시 11분 23초", KST)로만 가진다 — 사무실 PC 가 새 코드로 올리기 전에도 시계가 돌게 여기서 epoch 로 푼다. */
+function parseKoTime(t) {
+  const m = /(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{1,2})(?::|시\s*)(\d{1,2})(?::|분\s*)(\d{1,2})/.exec(t || '');
+  if (!m) return null;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] - 9, +m[5], +m[6]) / 1000;   // KST = UTC+9
+}
+
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN || '';
 const SECRET = process.env.AUTH_SECRET || '';
 // 가입코드는 별도 값이 원칙이고, 없으면 옮겨오기 전 공용 비번을 그대로 쓴다.
@@ -630,7 +637,7 @@ export default async function handler(req, res) {
     const fresh = Object.values(ov).filter((r) => r && (r.pick === 'pick' || r.pick === 'reject')).length;
     // sync: 사무실 PC 가 이 집계를 만든 시각 + 예약작업 주기(10분). 훅이 있어 보통 더 빨리 오지만 "늦어도 언제"를 화면이 셀 수 있게.
     return json(res, 200, { ...snap.lessons, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
-      sync: { at: snap.generated_ts || null, at_text: snap.generated_at || null, interval_sec: 600 },
+      sync: { at: snap.generated_ts || parseKoTime(snap.generated_at), at_text: snap.generated_at || null, interval_sec: 600 },
       no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
   }
   if (p === '/api/version_name') return json(res, 405, { error: '버전 메모는 사무실 PC 화면에서만 쓸 수 있습니다.' });
