@@ -1632,14 +1632,17 @@ async function loadLessons() {
   const vs = L.by_version || [], real = vs.filter(r => r.real), cur = vs.find(r => r.version === L.current_version), prev = real.find(r => r.version !== L.current_version);
   const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
   $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
-  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
+  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th title="사진 1장을 얻기까지 평균 몇 번 그렸나. 프롬프트를 느슨하게 풀면 여기가 먼저 오릅니다">장당 시도</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
     vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td>${r.real
         ? `<div class="vcell"><b>${esc(r.alias || 'v?')}${r.title ? ` <span class="vtitle">${esc(r.title)}</span>` : ''}</b>${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}<span class="vhash" title="설정 파일 전체의 지문 — 빌디·티모와 이야기할 땐 이걸로">${esc(r.version)}</span>${
             r.note ? `<span class="vnote-txt" ${L.no_promote ? '' : `data-vedit="${esc(r.version)}" title="누르면 고칠 수 있습니다"`}>${esc(r.note)}</span>`
             : (L.no_promote ? '' : `<a class="vnote-add" data-vedit="${esc(r.version)}">+ 메모</a>`)}</div>`
         : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}</td>` +
       `<td>${Object.keys(r.providers || {}).length ? Object.entries(r.providers).map(([k, n]) => `${esc(k)} ${n}`).join(' · ') : '<span class="muted">—</span>'}${r.provider_mixed ? ' <span class="chip warn" title="한 버전 줄에 두 모델이 섞였습니다 — 줄끼리 비교가 무의미해집니다">섞임</span>' : ''}</td>` +
-      `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td><td>${r.reviewed}</td>` +
+      `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td>` +
+      // 장당 시도 = 재시도 비용. 괄호는 '같은 사람인지 애매해 다시 그린' 비율(잰 것 중에서만 — 못 잰 건 분모 밖).
+      `<td>${r.attempts_per_item == null ? '—' : `${r.attempts_per_item}회${r.id_review_rate ? ` <span class="muted" title="동일인 확인 구간(0.45~0.60)이라 다시 그린 비율">(닮음 재확인 ${pct(r.id_review_rate)})</span>` : ''}`}</td>` +
+      `<td>${r.reviewed}</td>` +
       `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
       `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
     <div class="muted" style="margin-top:8px;font-size:var(--fs-xs)">v1·v2… 는 처음 쓴 순서, 뒤 제목은 "어떤 시술을 만들었고 이전 버전에서 무엇이 바뀌었나"를 자동으로 적은 것입니다. 번호끼리 제외율을 비교하면 고친 효과가 보입니다. 메모는 사람이 덧붙이는 한 줄입니다.</div>`

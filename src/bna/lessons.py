@@ -397,12 +397,20 @@ def by_version(out_dir: Path) -> list:
             v = it.get("prompt_version") or "?"
             a = acc.setdefault(v, {"version": v, "first": created, "last": created, "n": 0, "ai_pass": 0,
                                    "reviewed": 0, "rejected": 0, "tags": {}, "treatments": {}, "cost": 0.0,
-                                   "providers": {}})
+                                   "providers": {}, "attempts": 0, "id_review": 0, "id_measured": 0})
             _pv = (it.get("providers") or {}).get("gen")
             if _pv:                                     # 한 버전 줄에 두 모델이 섞였는지 보이게 (섞이면 비교가 무의미하다)
                 a["providers"][_pv] = a["providers"].get(_pv, 0) + 1
             a["first"] = min(a["first"], created); a["last"] = max(a["last"], created)
             a["n"] += 1; a["ai_pass"] += bool(it.get("passed")); a["cost"] += float(it.get("cost") or 0)
+            # 재시도 비용 — 프롬프트를 느슨하게 풀면 동일인 게이트가 더 자주 되돌려보낼 수 있다.
+            # 그 대가가 버전 줄에 안 보이면 "제외율은 좋아졌는데 돈이 늘었다"를 못 읽는다 (2026-09-10 빌디 질문).
+            a["attempts"] += int(it.get("attempt") or 1)
+            _id = it.get("identity") or {}
+            if _id.get("measured"):
+                a["id_measured"] += 1
+                if _id.get("gate") == "review":
+                    a["id_review"] += 1
             t = it.get("treatment") or "?"; a["treatments"][t] = a["treatments"].get(t, 0) + 1
             rp = m.parent / "review.json"
             if rp.exists():
@@ -421,6 +429,9 @@ def by_version(out_dir: Path) -> list:
         a["ai_pass_rate"] = round(a["ai_pass"] / a["n"], 3) if a["n"] else 0
         a["reject_rate"] = round(a["rejected"] / a["reviewed"], 3) if a["reviewed"] else None
         a["cost_per_pass"] = round(a["cost"] / a["ai_pass"], 4) if a["ai_pass"] else None
+        a["attempts_per_item"] = round(a["attempts"] / a["n"], 2) if a["n"] else None
+        # 잰 것 중에서만 센다 — 미검출(n/a)을 분모에 넣으면 게이트가 꺼진 배치가 '좋아 보인다'
+        a["id_review_rate"] = round(a["id_review"] / a["id_measured"], 3) if a["id_measured"] else None
         a["top_tags"] = sorted(a["tags"].items(), key=lambda kv: -kv[1])[:3]
         a["real"] = a["version"] not in ("sim", "demo", "?")
         a["provider_mixed"] = len(a["providers"]) > 1     # True 면 이 줄의 통과율을 버전 비교에 쓰면 안 된다
