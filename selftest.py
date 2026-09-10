@@ -181,8 +181,9 @@ _s = _les.summarize(_d); _act = _les.active(_d)
 ok(_s["tags"].get("손가락") == 3, f"제외 사유가 집계돼야 한다 — 실제 {_s['tags']}")
 ok(_act["from_tags"] == ["손가락"], "많이 찍힌 사유가 금지문으로 켜져야 한다")
 ok(_act["weights"].get("angle", {}).get("side") == 0.25, "제외가 몰린 조건값은 가중치가 내려가야 한다")
-ok(len(_s["notes"]) == 3 and not _act["lines"].get("custom"),
-   "자유 메모는 승격 대기로만 남고 자동으로 프롬프트에 들어가지 않는다")
+ok(len(_s["notes"]) == 1 and _s["notes"][0]["count"] == 3 and not _act["lines"].get("custom"),
+   f"같은 자유 메모 3건은 한 줄로 병합돼 승격 대기로만 남고 자동으로 프롬프트에 들어가지 않는다 — {[(n['note'], n['count']) for n in _s['notes']]}")
+ok("five fingers" in _s["notes"][0]["suggest_en"], f"메모('손')를 보고 영어 초안이 채워져야 한다 — {_s['notes'][0]['suggest_en']!r}")
 # 채택으로 바꿔도 과거 줄은 안 지운다(전후 비교의 근거라 append-only 여야 한다)
 _les.record(_d, "b1", "0000", {"pick": "pick", "tags": [], "note": ""})
 ok(len(_les.read(_d)) == 4 and _les.summarize(_d)["rejected"] == 2,

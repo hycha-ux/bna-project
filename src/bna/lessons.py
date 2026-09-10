@@ -81,6 +81,50 @@ def _latest(rows: list) -> dict:
     return last
 
 
+# 자유 메모 → 영어 금지문 제안. 같은 메모가 반복되면 사람이 매번 영작하지 않도록 (2026-09-10 성연서님 "문구 제안·병합").
+# 키워드가 메모에 들어 있으면 그 문장을 미리 채운다. 사람이 고쳐서 승격하니 초안이지 정본이 아니다.
+# ⚠ config/ 가 아니라 여기 두는 이유: config 를 건드리면 프롬프트 버전이 바뀐다. 이 표는 프롬프트에 직접 안 들어간다.
+NOTE_SUGGEST = [
+    (("마취", "마취크림", "거즈", "테이프", "밴드", "패치"),
+     "no numbing cream, gauze, tape, patches or any clinic dressing visible on the skin"),
+    (("바늘", "주사기", "시린지", "니들"), "no needles, syringes or injection equipment anywhere in the frame"),
+    (("붓기", "부기", "멍", "붉", "홍조"), "no swelling, bruising or redness beyond what the stated time point allows"),
+    (("손", "손가락"), "hands and fingers must be anatomically correct with exactly five fingers, or keep hands out of frame entirely"),
+    (("머리", "머리카락", "헤어"), "render individual hair strands with a natural hairline; no melted, clumped or painted-on hair"),
+    (("치아", "이빨", "잇몸"), "teeth must be natural and correctly counted; no extra, merged or overly white teeth"),
+    (("눈동자", "눈", "시선"), "eyes must be symmetric with natural irises and a consistent gaze between the two photos"),
+    (("배경", "장면", "소품", "물건"), "the setting, clothing and props must be consistent and physically plausible; no floating or duplicated objects"),
+    (("거울", "반사"), "mirror reflections must match the subject exactly; no second face or mismatched reflection"),
+    (("옷", "의상", "귀걸이", "악세", "액세"), "clothing and accessories must stay identical between the two photos"),
+    (("피부", "질감", "모공", "플라스틱"), "keep real skin micro-texture: visible pores, faint peach fuzz, uneven tone; no airbrushed or plastic skin"),
+    (("다른 사람", "동일인", "딴사람", "얼굴이 바"), "the person must remain unmistakably the same individual as the reference: same bone structure, eye shape, nose width, lip shape and moles"),
+    (("과함", "과해", "너무 많이", "티가 많이"), "the treatment change must stay subtle and clinically plausible; do not exaggerate the result"),
+    (("효과 없", "차이 없", "변화 없"), "the treatment change must be clearly visible when the two photos are compared side by side"),
+    (("각도", "포즈", "고개"), "head angle and camera height must match the stated framing; do not drift to a different pose"),
+    (("텍스트", "글자", "워터마크", "로고"), "no text, captions, logos or watermarks anywhere in the image"),
+    (("어색", "부자연", "AI", "그림 같"), "must look like an ordinary phone snapshot, not a rendered or illustrated image; no glossy CGI sheen, no perfect symmetry"),
+]
+
+
+def suggest_en(note: str, tags=None) -> str:
+    """메모(한글) → 영어 금지문 초안. 키워드 표 우선, 없으면 같이 찍힌 사유 버튼의 문장, 그것도 없으면 빈 문자열."""
+    n = (note or "").replace(" ", "")
+    for keys, en in NOTE_SUGGEST:
+        if any(k.replace(" ", "") in n for k in keys):
+            return en
+    tag_cfg = (_cfg().get("tags") or {})
+    for t in tags or []:
+        if (tag_cfg.get(t) or {}).get("en"):
+            return tag_cfg[t]["en"]
+    return ""
+
+
+def _norm(note: str) -> str:
+    """병합 키 — 띄어쓰기·문장부호·대소문자 차이는 같은 메모로 본다."""
+    import re
+    return re.sub(r"[\s\.\,\!\?~\-_/·]+", "", (note or "")).lower()
+
+
 def summarize(out_dir: Path, treatment=None, mode=None) -> dict:
     """사유별·조건별 제외 집계 + 승격 대기 메모. 화면과 프롬프트가 같은 함수를 쓴다."""
     cfg = _cfg()
@@ -103,9 +147,29 @@ def summarize(out_dir: Path, treatment=None, mode=None) -> dict:
         if r.get("note"):
             notes.append({"note": r["note"], "at": r["at"], "batch": r["batch"], "item": r["item"],
                           "tags": r.get("tags", []), "treatment": r.get("treatment")})
-    notes.sort(key=lambda n: n["at"], reverse=True)
+    # 같은 메모는 한 줄로 병합 + 영어 초안. 이미 승격된 메모(custom.from)는 목록에서 뺀다 — 안 빼면 같은 메모를 또 올린다.
+    promoted = {_norm((c or {}).get("from", "")) for c in (cfg.get("custom") or [])} - {""}
+    groups = {}
+    for n in notes:
+        k = _norm(n["note"])
+        if not k or k in promoted:
+            continue
+        g = groups.setdefault(k, {"note": n["note"], "count": 0, "at": 0, "items": [], "tags": {}, "treatments": {}})
+        g["count"] += 1; g["at"] = max(g["at"], n["at"])
+        g["items"].append({"batch": n["batch"], "item": n["item"], "at": n["at"]})
+        for t in n.get("tags", []):
+            g["tags"][t] = g["tags"].get(t, 0) + 1
+        if n.get("treatment"):
+            g["treatments"][n["treatment"]] = g["treatments"].get(n["treatment"], 0) + 1
+    merged = []
+    for g in groups.values():
+        g["tags"] = [t for t, _ in sorted(g["tags"].items(), key=lambda kv: -kv[1])]
+        g["items"].sort(key=lambda x: x["at"], reverse=True)
+        g["suggest_en"] = suggest_en(g["note"], g["tags"])
+        merged.append(g)
+    merged.sort(key=lambda g: (-g["count"], -g["at"]))
     return {"window_days": st.get("window_days", 14), "rejected": len(recent), "rejected_all": len(rows),
-            "tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])), "axes": axes, "notes": notes[:50],
+            "tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])), "axes": axes, "notes": merged[:50],
             "custom": cfg.get("custom") or []}
 
 

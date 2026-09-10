@@ -283,6 +283,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .sync-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:var(--fs-sm); color:var(--ui-md); background:var(--ui-surface); border-radius:var(--r-md); padding:8px 14px; margin-bottom:var(--gap) }
 .sync-line b { color:var(--ui-hi) } .sync-line .cd { font-variant-numeric:tabular-nums; color:var(--primary) } .sync-line .sep { color:var(--ui-lo) } .sync-line .muted { font-size:var(--fs-xs) } .sync-line .b { margin-left:auto }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
+.note-g .note-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap } .note-g .note-in { margin-top:6px } .note-g .note-in input { width:100% } .note-g .note-in .hint { display:block; margin-top:3px; font-size:var(--fs-xs); color:var(--ui-lo) }
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
 .vhash { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:var(--ui-lo); letter-spacing:0 }
@@ -1503,10 +1504,12 @@ async function loadLessons() {
     : `<div class="les-empty">아직 붙는 문장이 없습니다. 왼쪽 사유가 ${minN}회 이상 쌓이면 여기에 문장이 생깁니다.</div>`;
   $('#les-body').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
   // 3: 승격
+  // 같은 메모는 서버가 한 줄로 묶고(count·items) 영어 초안(suggest_en)을 준다. 사람은 고치고 승격만 (2026-09-10 성연서님 "문구 제안·병합")
   $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => `
-    <div class="list-row" style="cursor:default;align-items:flex-start">
-      <div class="t" style="flex:1"><b>${esc(n.note)}</b><span>${fmtBid(n.batch)} · ${+n.item + 1}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
-        <input type="text" id="les-en-${i}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" style="width:100%;margin-top:6px">
+    <div class="list-row note-g" style="cursor:default;align-items:flex-start">
+      <div class="t" style="flex:1"><div class="note-h"><b>${esc(n.note)}</b>${n.count > 1 ? `<span class="chip warn" title="같은 메모가 적힌 사진 수 — 승격하면 한 규칙으로 합쳐집니다">${n.count}장 병합</span>` : ''}</div>
+        <span>${(n.items || []).slice(0, 4).map(x => `${fmtBid(x.batch)} · ${+x.item + 1}`).join(' / ')}${(n.items || []).length > 4 ? ` 외 ${n.items.length - 4}` : ''}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
+        <div class="note-in"><input type="text" id="les-en-${i}" value="${esc(n.suggest_en || '')}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" ${L.no_promote ? 'disabled' : ''}>${n.suggest_en ? `<span class="hint">메모를 보고 미리 채운 초안입니다 — 고쳐도 됩니다</span>` : `<span class="hint">맞는 초안이 없어 비워 뒀습니다 — 영어 한 문장을 적어 주세요</span>`}</div>
       </div>
       <button class="b" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''}>규칙으로 승격</button>
     </div>`).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
