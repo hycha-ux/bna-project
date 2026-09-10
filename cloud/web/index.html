@@ -368,7 +368,9 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
 dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:var(--fs-xl); font-weight:var(--fw-b) }
 .dlg-pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 16px } .dlg-pair figure { margin:0; background:var(--ui-surface); border-radius:var(--r-sm); overflow:hidden }
-.dlg-pair img { width:100%; height:min(46vh, 420px); object-fit:contain; display:block } .dlg-pair figcaption { font-size:var(--fs-xs); color:var(--ui-md); padding:4px 8px }
+.dlg-pair img { width:100%; height:min(46vh, 420px); object-fit:contain; display:block; transform-origin:0 0; will-change:transform; user-select:none; -webkit-user-drag:none } .dlg-pair figcaption { font-size:var(--fs-xs); color:var(--ui-md); padding:4px 8px; position:relative; background:var(--ui-surface) }
+.dlg-pair { position:relative; cursor:zoom-in; touch-action:none } .dlg-pair.zoomed { cursor:grab } .dlg-pair.zoomed:active { cursor:grabbing }
+.dlg-pair .zoom-hint { grid-column:1 / -1; font-size:var(--fs-xs); color:var(--ui-lo); text-align:right; margin-bottom:-4px }
 dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
 .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
 .toast.show { opacity:1; transform:translate(-50%,0) }
@@ -1412,7 +1414,7 @@ async function save(it, prev) {
 // 라이브러리(채택본)에서도 같은 모달을 연다 — 그땐 CUR 이 없으니 항목과 배치 id 를 직접 넘긴다 (2026-09-10 성연서님 "확대하면 비교와 프롬프트")
 function detail(id, item = null, bid = null) {
   const it = item || CUR.items.find(x => x.item_id === id), b = bid || CUR?.batch_id, v = it.variation||{}, av = it.after_variation||{};
-  const pair = b && (it.before_file || it.after_file) ? `<div class="dlg-pair">${it.before_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.before_file}"><figcaption>시술 전</figcaption></figure>` : ''}${it.after_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.after_file}"><figcaption>시술 후</figcaption></figure>` : ''}</div>` : '';
+  const pair = b && (it.before_file || it.after_file) ? `<div class="dlg-pair"><div class="zoom-hint"></div>${it.before_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.before_file}"><figcaption>시술 전</figcaption></figure>` : ''}${it.after_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.after_file}"><figcaption>시술 후</figcaption></figure>` : ''}</div>` : '';
   const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
   // 점수는 {score, note} 객체다. note 는 AI 가 그렇게 준 이유라 같이 보여 준다(검수의 근거).
   const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3><div class="scores lg">${
@@ -1426,6 +1428,23 @@ function detail(id, item = null, bid = null) {
     <h3 style="margin-top:14px">시술 전 프롬프트</h3>${promptLegend(it.before_parts)}${promptHtml(it.before_parts, it.before_prompt)}
     <h3 style="margin-top:10px">시술 후 프롬프트</h3>${promptLegend(it.after_parts)}${promptHtml(it.after_parts, it.after_prompt)}`;
   $('#dlg').showModal();
+  bindPairZoom($('#dlg-in .dlg-pair'));
+}
+// 모달의 전·후 두 장을 검수 모드처럼 휠로 같이 확대, 드래그로 이동, 더블클릭으로 원복 (2026-09-10 성연서님 "스크롤하면 커지던 것")
+function bindPairZoom(box) {
+  if (!box) return;
+  const imgs = [...box.querySelectorAll('img')]; let z = {s:1, x:0, y:0}, drag = null;
+  const apply = () => { imgs.forEach(im => im.style.transform = `translate(${z.x}px,${z.y}px) scale(${z.s})`); box.classList.toggle('zoomed', z.s > 1); const h = box.querySelector('.zoom-hint'); if (h) h.textContent = z.s > 1 ? `${z.s.toFixed(1)}× · 더블클릭 = 원래 크기` : '휠 = 확대(두 장 같이) · 드래그 = 이동'; };
+  box.addEventListener('wheel', e => { e.preventDefault(); const fig = e.target.closest('figure') || box.querySelector('figure'); const r = fig.getBoundingClientRect();
+    const px = (e.clientX - r.left - z.x) / z.s, py = (e.clientY - r.top - z.y) / z.s;
+    const ns = Math.min(6, Math.max(1, z.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    if (ns === 1) z = {s:1, x:0, y:0}; else { z.x -= px * (ns - z.s); z.y -= py * (ns - z.s); z.s = ns; }
+    apply(); }, {passive:false});
+  box.addEventListener('pointerdown', e => { if (z.s <= 1) return; drag = {x: e.clientX - z.x, y: e.clientY - z.y}; box.setPointerCapture(e.pointerId); });
+  box.addEventListener('pointermove', e => { if (!drag) return; z.x = e.clientX - drag.x; z.y = e.clientY - drag.y; apply(); });
+  const end = () => { drag = null; }; box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+  box.addEventListener('dblclick', () => { z = {s:1, x:0, y:0}; apply(); });
+  apply();
 }
 
 
