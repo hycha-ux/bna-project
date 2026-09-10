@@ -13,13 +13,22 @@ import base64
 import io
 import json
 import mimetypes
+import threading
+import time
 import requests
 
 from .base import Provider
-from ..spec import load
+from ..spec import load, ROOT
 
 API = "https://api.openai.com/v1"
 TIMEOUT = 300
+
+# 실청구 대조용 토큰 원장. config/pricing.yaml 의 호출당 단가는 **추정치**라
+# ($0.19/장, 2026-09-08 미실측) 그 위에 선 "통과 1장 $2.68" 도 추정 위에 서 있다.
+# API 응답의 usage 는 과금의 원장 그 자체이므로, 호출마다 한 줄씩 남겨 실단가를 사후에 잰다.
+# 집계 = tools/usage_report.py. 쓰기 실패는 삼킨다 — 계측이 생성을 죽이면 안 된다.
+_USAGE_LOCK = threading.Lock()
+_USAGE_PATH = ROOT / "outputs" / "usage.jsonl"
 
 
 class OpenAIProvider(Provider):
@@ -51,6 +60,19 @@ class OpenAIProvider(Provider):
             raise ValueError(f"지원하지 않는 aspect: {aspect} (providers.yaml aspect_size 에 추가해라)")
         return sizes[aspect]
 
+    def _log_usage(self, path, payload, extra):
+        u = (payload or {}).get("usage")
+        if not u:
+            return
+        rec = {"at": round(time.time(), 3), "path": path, "usage": u, **extra}
+        try:
+            with _USAGE_LOCK:
+                _USAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
+                with open(_USAGE_PATH, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
+        except Exception:
+            pass
+
     @staticmethod
     def _first_image(payload: dict) -> bytes:
         data = (payload.get("data") or [])
@@ -78,7 +100,14 @@ class OpenAIProvider(Provider):
                  if files is not None else
                  requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=TIMEOUT))
             if r.status_code < 400:
-                return r.json()
+                j = r.json()
+                self._log_usage(path, j, {
+                    "model": (body or data or {}).get("model"),
+                    "size": (body or data or {}).get("size"),
+                    "quality": (body or data or {}).get("quality"),
+                    "refs": len(files or []) if files is not None else 0,
+                })
+                return j
             msg = r.text[:400]
             if not (r.status_code == 400 and drop is None and retry_without):
                 raise RuntimeError(f"OpenAI {path} HTTP {r.status_code}: {msg}")
