@@ -99,9 +99,14 @@ class Batch:
             if redraw:
                 # 조건이 원인이면 같은 조건으로 다시 그리지 않는다 — 사람·장면을 다시 뽑는다.
                 # 씨앗은 회차마다 갈라야 한다(안 갈면 같은 변주가 다시 나와 재추첨이 무의미하다).
-                from .spec import sample_variation
+                #
+                # ⚠ 반드시 `plan_batch` 로 뽑아라. `sample_variation` 은 **고정 축(--fix)을 안 받는다** —
+                #   2026-09-10 실사고: 재추첨이 그걸 써서 "한국인 8세트" 지시가 재추첨된 2세트에서
+                #   일본인·동남아인으로 나왔다. 첫 시도만 고정을 지키고 재시도가 몰래 풀어 버린 것이다.
+                #   plan_batch 는 고정 축 + 과거 배치가 쓴 인물 조합 회피(avoid_sigs)까지 함께 지킨다.
                 rs = None if self.seed is None else self.seed * 1000 + idx + attempt * 100_000
-                variation = sample_variation(self.mode, rs, (self.avoid or {}).get("weights"), treatment=self.treatment)
+                variation = plan_batch(self.mode, 1, rs, self.fixed, (self.avoid or {}).get("weights"),
+                                       treatment=self.treatment, avoid_sigs=past_signatures())[0]
                 spec = build_prompts(self.treatment, self.mode, variation, rs,
                                      avoid=(self.avoid or {}).get("lines"), series=self.series)
                 meta.update({k: v for k, v in spec.items()})

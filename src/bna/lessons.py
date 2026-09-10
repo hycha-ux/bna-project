@@ -131,11 +131,22 @@ def summarize(out_dir: Path, treatment=None, mode=None) -> dict:
     st = cfg.get("settings") or {}
     win = float(st.get("window_days", 14)) * 86400
     now = time.time()
-    rows = [r for r in _latest(read(out_dir)).values()
-            if r.get("pick") == "reject"
-            and (treatment is None or r.get("treatment") == treatment)
-            and (mode is None or r.get("mode") == mode)]
+    judged = [r for r in _latest(read(out_dir)).values()
+              if r.get("pick") in ("pick", "reject")
+              and (treatment is None or r.get("treatment") == treatment)
+              and (mode is None or r.get("mode") == mode)]
+    rows = [r for r in judged if r.get("pick") == "reject"]
     recent = [r for r in rows if now - r.get("at", 0) <= win]
+    # 축 회피의 분모. **제외 건수만 세면 많이 쓴 조건값이 무조건 나쁜 값이 된다** —
+    # 2026-09-10 실사고: 한국인으로 27세트를 돌렸더니 country=korea 가 제외 10건으로 잡혀
+    # 추첨 가중치 0.25 로 눌렸고, 한 번도 안 써 본 일본·동남아가 상대적으로 4배 유리해졌다.
+    # 그래서 '한국인만' 시킨 회차에서 일본인·동남아인이 나왔다. 비율로 재야 한다.
+    uses = {}
+    for r in [x for x in judged if now - x.get("at", 0) <= win]:
+        for a, k in (r.get("axes") or {}).items():
+            if k:
+                uses.setdefault(a, {}).setdefault(k, 0)
+                uses[a][k] += 1
     tags, axes, notes = {}, {}, []
     for r in recent:
         for t in r.get("tags", []):
@@ -168,7 +179,9 @@ def summarize(out_dir: Path, treatment=None, mode=None) -> dict:
         g["suggest_en"] = suggest_en(g["note"], g["tags"])
         merged.append(g)
     merged.sort(key=lambda g: (-g["count"], -g["at"]))
+    judged_recent = [x for x in judged if now - x.get("at", 0) <= win]
     return {"window_days": st.get("window_days", 14), "rejected": len(recent), "rejected_all": len(rows),
+            "judged": len(judged_recent), "axis_uses": uses,
             "tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])), "axes": axes, "notes": merged[:50],
             "custom": cfg.get("custom") or []}
 
@@ -191,11 +204,34 @@ def active(out_dir: Path, treatment=None, mode=None) -> dict:
         for w in c.get("where", ["after"]):
             if c.get("en") and c["en"] not in lines.get(w, []):
                 lines.setdefault(w, []).append(c["en"])
-    # 축 회피: 제외가 몰린 조건값의 추첨 가중치를 낮춘다
-    amin, aw = int(st.get("axis_min_count", 3)), float(st.get("axis_weight", 0.25))
-    weights = {a: {k: aw for k, n in vals.items() if n >= amin} for a, vals in s["axes"].items()}
-    weights = {a: v for a, v in weights.items() if v}
-    return {"lines": lines, "weights": weights, "from_tags": [t for t, _ in picked], "rejected": s["rejected"]}
+    # 축 회피: 그 조건값이 **평균보다 유난히 잘 떨어질 때만** 추첨 가중치를 낮춘다.
+    #
+    # ⚠ 종전엔 제외 '건수'만 봤다. 그러면 많이 쓴 값이 자동으로 나쁜 값이 된다 — 분모가 없으니까.
+    #   2026-09-10 실사고: 한국인으로만 27세트를 돌린 뒤 country=korea 가 0.25 로 눌렸고,
+    #   한 번도 안 써 본 일본·동남아는 1.0 이라 4배 유리해졌다. 그래서 '한국인 고정' 회차에서
+    #   일본인·동남아인이 나왔다. 학습이 안 된 게 아니라 **거꾸로 배운 것**이다.
+    #   지금은 그 값의 제외율이 전체 제외율보다 `axis_rate_margin` 배 높을 때만 누른다.
+    amin = int(st.get("axis_min_count", 3))
+    aw = float(st.get("axis_weight", 0.25))
+    margin = float(st.get("axis_rate_margin", 1.3))
+    base = (s["rejected"] / s["judged"]) if s.get("judged") else 0.0
+    weights = {}
+    for a, vals in s["axes"].items():
+        hit = {}
+        for k, n in vals.items():
+            used = (s.get("axis_uses", {}).get(a) or {}).get(k, 0)
+            if used < amin or not base:
+                continue                            # 표본이 적으면 조건을 죽이지 않는다
+            if (n / used) >= base * margin:
+                hit[k] = aw
+        # 그 축에서 **써 본 값이 전부** 걸리면 아무것도 안 누른 것과 같다(상대 확률이 그대로다) → 축째로 뺀다.
+        # 비교 대상은 제외된 값 목록(vals)이 아니라 실제 사용된 값 목록이다 —
+        # vals 로 재면 "제외가 한 값에만 몰린" 정상 상황까지 통째로 빠진다.
+        used_vals = s.get("axis_uses", {}).get(a) or {}
+        if hit and len(hit) < max(len(used_vals), 1):
+            weights[a] = hit
+    return {"lines": lines, "weights": weights, "from_tags": [t for t, _ in picked], "rejected": s["rejected"],
+            "reject_rate": base}
 
 
 def avoid_text(lines: list) -> str:

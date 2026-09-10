@@ -177,16 +177,24 @@ for _i in range(3):
     _it.joinpath("meta.json").write_text(_json.dumps(
         {"treatment": "nasolabial", "mode": "selfie", "variation": {"angle": {"key": "side"}}}), encoding="utf-8")
     _les.record(_d, "b1", f"{_i:04d}", {"pick": "reject", "tags": ["손가락"], "note": "손이 6개"})
+# 비교군: 같은 수만큼 정면을 채택으로 넣는다. 비교군이 없으면 "그 값이 유난히 나쁜지"를 말할 수 없고,
+# 비교군 없이 누르는 것이 2026-09-10 에 고친 버그다(많이 쓴 값이 자동으로 나쁜 값이 되던 것).
+for _i in range(3):
+    _it = _d / "b2" / f"{_i:04d}"; _it.mkdir(parents=True)
+    _it.joinpath("meta.json").write_text(_json.dumps(
+        {"treatment": "nasolabial", "mode": "selfie", "variation": {"angle": {"key": "front"}}}), encoding="utf-8")
+    _les.record(_d, "b2", f"{_i:04d}", {"pick": "pick", "tags": [], "note": ""})
 _s = _les.summarize(_d); _act = _les.active(_d)
 ok(_s["tags"].get("손가락") == 3, f"제외 사유가 집계돼야 한다 — 실제 {_s['tags']}")
 ok(_act["from_tags"] == ["손가락"], "많이 찍힌 사유가 금지문으로 켜져야 한다")
 ok(_act["weights"].get("angle", {}).get("side") == 0.25, "제외가 몰린 조건값은 가중치가 내려가야 한다")
+ok("front" not in _act["weights"].get("angle", {}), "잘 통과한 조건값은 누르지 않아야 한다")
 ok(len(_s["notes"]) == 1 and _s["notes"][0]["count"] == 3 and not _act["lines"].get("custom"),
    f"같은 자유 메모 3건은 한 줄로 병합돼 승격 대기로만 남고 자동으로 프롬프트에 들어가지 않는다 — {[(n['note'], n['count']) for n in _s['notes']]}")
 ok("five fingers" in _s["notes"][0]["suggest_en"], f"메모('손')를 보고 영어 초안이 채워져야 한다 — {_s['notes'][0]['suggest_en']!r}")
 # 채택으로 바꿔도 과거 줄은 안 지운다(전후 비교의 근거라 append-only 여야 한다)
 _les.record(_d, "b1", "0000", {"pick": "pick", "tags": [], "note": ""})
-ok(len(_les.read(_d)) == 4 and _les.summarize(_d)["rejected"] == 2,
+ok(len(_les.read(_d)) == 7 and _les.summarize(_d)["rejected"] == 2,
    "원장은 append-only 이고 집계는 아이템별 마지막 판정만 센다")
 
 # 드라이브 레인: 채택만 올라가고, 제외는 지우는 게 아니라 내린다
@@ -482,6 +490,57 @@ _r = _v.score(b"", b"", "selfie", _FakeQA())
 ok(_r["failed_items"] == ["drift"],
    f"6점은 effect_visible 만 통과하고 drift 는 탈락해야 한다 — 실제 {_r['failed_items']}")
 ok(_r["cuts"]["effect_visible"] == 6 and _r["cuts"]["drift"] == 7, "어느 컷으로 쟀는지 판정에 남아야 한다")
+
+
+# ── 학습 되먹임 (2026-09-10 성연서님 "제외 이유 학습이 새 사진에 반영돼야 한다") ──
+import tempfile as _tf, time as _t, json as _j
+from pathlib import Path as _P
+from bna import lessons as _L
+
+def _ledger(rows):
+    d = _P(_tf.mkdtemp())
+    with (d / "lessons.jsonl").open("w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(_j.dumps({"at": _t.time(), "batch": "b", "item": r["item"], "pick": r["pick"],
+                              "tags": r.get("tags", []), "note": "", "treatment": "nasolabial",
+                              "mode": "selfie", "axes": r["axes"]}, ensure_ascii=False) + chr(10))
+    return d
+
+# 많이 쓴 조건값이 '제외 건수가 많다'는 이유만으로 눌리면 안 된다.
+# 실사고: 한국인만 27세트 돌린 뒤 country=korea 가 0.25 로 눌려, 안 써 본 나라가 4배 유리해졌다.
+_rows = ([{"item": f"k{i}", "pick": "reject", "axes": {"country": "korea"}} for i in range(8)]
+         + [{"item": f"kp{i}", "pick": "pick", "axes": {"country": "korea"}} for i in range(8)]
+         + [{"item": "j0", "pick": "reject", "axes": {"country": "japan"}},
+            {"item": "j1", "pick": "pick", "axes": {"country": "japan"}}])
+_a = _L.active(_ledger(_rows), "nasolabial", "selfie")
+ok("country" not in _a["weights"],
+   f"제외율이 같으면 많이 쓴 조건값을 누르지 않아야 한다 — 실제 {_a['weights'].get('country')}")
+
+# 반대로 정말 유난히 잘 떨어지는 값은 눌러야 한다(기능이 죽지 않았는지).
+_rows2 = ([{"item": f"b{i}", "pick": "reject", "axes": {"framing": "one_cheek"}} for i in range(9)]
+          + [{"item": f"g{i}", "pick": "pick", "axes": {"framing": "full_face"}} for i in range(8)]
+          + [{"item": "g9", "pick": "reject", "axes": {"framing": "full_face"}}])
+_a2 = _L.active(_ledger(_rows2), "nasolabial", "selfie")
+ok(_a2["weights"].get("framing", {}).get("one_cheek") is not None
+   and "full_face" not in _a2["weights"].get("framing", {}),
+   f"유난히 잘 떨어지는 값만 눌러야 한다 — 실제 {_a2['weights'].get('framing')}")
+
+# 한 축의 값이 전부 걸리면 상대 확률이 그대로다 = 누른 게 아니다 → 축째로 빼야 한다
+_rows3 = ([{"item": f"x{i}", "pick": "reject", "axes": {"angle": "front"}} for i in range(4)]
+          + [{"item": f"y{i}", "pick": "reject", "axes": {"angle": "tilted"}} for i in range(4)]
+          + [{"item": "z0", "pick": "pick", "axes": {"angle": "front"}}])
+_a3 = _L.active(_ledger(_rows3), "nasolabial", "selfie")
+ok("angle" not in _a3["weights"], f"축의 값이 전부 걸리면 그 축은 빼야 한다 — 실제 {_a3['weights'].get('angle')}")
+
+# 재추첨은 고정 축(--fix)을 지켜야 한다. sample_variation 은 fixed 를 받지 않으므로 쓰면 안 된다.
+_bsrc = (_P("src") / "bna" / "batch.py").read_text(encoding="utf-8")
+_redraw = _bsrc.split("if redraw:", 1)[1].split("style_refs = refs.pick", 1)[0]
+ok("plan_batch(" in _redraw and "sample_variation(" not in _redraw,
+   "재추첨은 plan_batch 로 뽑아야 한다(sample_variation 은 고정 축을 무시한다)")
+
+from bna.planner import plan_batch as _pb
+_p1 = _pb("selfie", 1, 4242, {"country": "korea"}, None, treatment="nasolabial")[0]
+ok(_p1["country"]["key"] == "korea", f"고정 축은 어떤 씨앗에서도 지켜져야 한다 — 실제 {_p1['country']['key']}")
 
 
 print()
