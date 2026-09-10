@@ -18,49 +18,68 @@
 #   그래서 "규칙 넣기 전/후" 제외율을 자동으로 갈라 잴 수 있다 — since 를 꼭 적어라.
 
 settings:
-  top_n: 3              # 한 번에 붙일 금지문 최대 개수
-  window_days: 14       # 최근 며칠의 제외를 볼지
-  min_count: 2          # 그 사유가 최소 몇 번 나와야 규칙을 켤지 (1번은 우연일 수 있다)
-  axis_min_count: 3     # 축 회피는 더 보수적으로 — 표본이 적으면 조건을 잘못 죽인다
-  axis_weight: 0.25     # 몰린 축값의 추첨 가중치(1.0 이 기본, 0 이면 완전 배제)
-
-# 제외 사유 버튼 ↔ 금지문. before/after 어디에 붙일지도 여기서 정한다.
+  top_n: 3
+  window_days: 14
+  min_count: 2
+  axis_min_count: 3
+  axis_weight: 0.25
 tags:
   손가락:
-    # 2026-09-10 성연서님 지시: 손은 잘 그리는 게 아니라 아예 안 나오는 게 기준이다.
-    en: "no hands, fingers, arms or phone anywhere in the frame"
-    where: [before, after]
+    en: no hands, fingers, arms or phone anywhere in the frame
+    where:
+    - before
+    - after
   피부 질감:
-    en: "keep real skin micro-texture: visible pores, faint peach fuzz, uneven tone; no airbrushed or plastic skin"
-    where: [before, after]
+    en: 'keep real skin micro-texture: visible pores, faint peach fuzz, uneven tone; no airbrushed or plastic skin'
+    where:
+    - before
+    - after
   머리카락:
-    en: "render individual hair strands with a natural hairline; no melted, clumped or painted-on hair"
-    where: [before, after]
+    en: render individual hair strands with a natural hairline; no melted, clumped or painted-on hair
+    where:
+    - before
+    - after
   동일 인물 아님:
-    en: "the person must remain unmistakably the same individual as the reference: same bone structure, eye shape, nose width, lip shape and moles"
-    where: [after]
+    en: 'the person must remain unmistakably the same individual as the reference: same bone structure, eye shape, nose width, lip shape and moles'
+    where:
+    - after
   AI 티:
-    en: "must look like an ordinary phone snapshot, not a rendered or illustrated image; no glossy CGI sheen, no perfect symmetry"
-    where: [before, after]
+    en: must look like an ordinary phone snapshot, not a rendered or illustrated image; no glossy CGI sheen, no perfect symmetry
+    where:
+    - before
+    - after
   효과 과함:
-    en: "the treatment change must stay subtle and clinically plausible; do not exaggerate the result"
-    where: [after]
+    en: the treatment change must stay subtle and clinically plausible; do not exaggerate the result
+    where:
+    - after
   효과 없음:
-    en: "the treatment change must be clearly visible when the two photos are compared side by side"
-    where: [after]
+    en: the treatment change must be clearly visible when the two photos are compared side by side
+    where:
+    - after
   장면 부자연:
-    en: "the setting, clothing and props must be consistent and physically plausible; no floating or duplicated objects"
-    where: [before, after]
+    en: the setting, clothing and props must be consistent and physically plausible; no floating or duplicated objects
+    where:
+    - before
+    - after
   각도:
-    en: "head angle and camera height must match the stated framing; do not drift to a different pose"
-    where: [before, after]
+    en: head angle and camera height must match the stated framing; do not drift to a different pose
+    where:
+    - before
+    - after
   시술 위치:
-    en: "the change must appear only at the treated area and nowhere else on the face"
-    where: [after]
-
-# 사람이 승격시킨 규칙. 화면의 「규칙으로 승격」이 여기에 줄을 더한다.
-#   - en: "..."          프롬프트에 붙을 영어 한 문장
-#     where: [after]     붙일 자리
-#     from: "원래 한글 메모"
-#     since: "2026-09-08" 도입일 — 전후 제외율 비교의 기준점이다. 빼지 마라.
-custom: []
+    en: the change must appear only at the treated area and nowhere else on the face
+    where:
+    - after
+custom:
+- en: no numbing cream, gauze, tape, patches or any clinic dressing visible on the skin
+  where:
+  - before
+  - after
+  from: 어색한 마취크림
+  since: '2026-09-10'
+- en: head angle and camera height must match the stated framing; do not drift to a different pose
+  where:
+  - before
+  - after
+  from: 동일한 각도, 구도, 표정
+  since: '2026-09-10'

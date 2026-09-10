@@ -183,6 +183,11 @@ context:
   outing_top: "wearing an everyday outing top (knit, blouse or jacket), clearly not home clothes"
   clinic_headband: "hair pushed back with a clinic headband, hairline slightly messy"
   hair_flat_after: "hair flattened and messy from lying on the treatment bed, tucked behind one ear"
+  # ⚠ cotton_pad 는 2026-09-10 성연서님 검수("어색한 마취크림" 5장)로 **후보에서 뺐다**(정의만 남긴다).
+  #   "크림을 그리라는 말이 프롬프트에 없다"는 가설이 있었으나 실측은 반대였다 — 제외된 5장 전부
+  #   after_variation.context = cotton_pad 였다(car_after 4·clinic_mirror 1). 착시가 아니라 명시 지시였다.
+  #   직후 흔적은 배경(clinic_*)·머리(clinic_headband·hair_flat_after)로만 낸다.
+  #   되살리려면 after_immediate.selfie.context 와 context_allow 4줄에 같이 넣어라(한쪽만이면 안 뽑힌다).
   cotton_pad: "a small cotton pad or dot of ointment still on the treated area"
 
 lighting:
@@ -265,10 +270,10 @@ context_allow:
   cafe:           [none, cap, necklace, hair_in_face, outing_top]
   outdoor:        [none, cap, necklace, hair_in_face, outing_top]
   car:            [none, cap, necklace, hair_in_face, outing_top]
-  clinic_waiting: [none, outing_top, clinic_headband, hair_flat_after, cotton_pad]
-  clinic_mirror:  [none, outing_top, clinic_headband, hair_flat_after, cotton_pad]
-  clinic_bed:     [none, clinic_headband, hair_flat_after, cotton_pad]
-  car_after:      [none, outing_top, hair_flat_after, cotton_pad]
+  clinic_waiting: [none, outing_top, clinic_headband, hair_flat_after]
+  clinic_mirror:  [none, outing_top, clinic_headband, hair_flat_after]
+  clinic_bed:     [none, clinic_headband, hair_flat_after]
+  car_after:      [none, outing_top, hair_flat_after]
 
 # 프레이밍 × 맥락 금지표 (그 부위가 화면에 없으면 그 소품도 없다). 실측(0908): forehead_cut + cap = 없는 이마에 챙 그림자
 framing_ban:
@@ -315,7 +320,7 @@ after_drift:
 after_immediate:
   selfie:
     background: [clinic_waiting, clinic_mirror, clinic_bed, car_after]
-    context: [outing_top, clinic_headband, hair_flat_after, cotton_pad]
+    context: [outing_top, clinic_headband, hair_flat_after]   # cotton_pad 제외(0910 성연서님 "어색한 마취크림")
     extras: [none, glasses, glasses_thick, mask_chin, tired]   # 같은 날 생길 수 있는 것만 (0909 dry-run: 직후 컷에 수염이 생겼다)
 
 # 축 가중치 (균형 샘플링 시 옵션별 등장 비율). 미지정 옵션은 1.

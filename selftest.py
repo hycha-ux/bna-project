@@ -49,6 +49,41 @@ AFTER_ONLY = {"outing_top", "clinic_headband", "hair_flat_after", "cotton_pad"}
 bad = [s for s in range(300) if sample_variation("selfie", s)["context"]["key"] in AFTER_ONLY]
 ok(not bad, f"Before 300 표본에 직후 전용 맥락이 0건이어야 한다 — 실제 {len(bad)}건")
 
+# ⑥-2 시술 직후 After 에 '피부에 바른 것'이 안 붙는가 (2026-09-10 "어색한 마취크림" 5/5 실측)
+#     cotton_pad 는 정의만 남기고 후보에서 뺐다 — 세 곳(after_immediate·context_allow·mode_rules) 중
+#     한 곳만 되살아나도 다시 뽑히므로 조립된 프롬프트 자체를 본다.
+_vy = load("variations.yaml")
+ok("cotton_pad" not in (_vy["after_immediate"]["selfie"]["context"]),
+   "after_immediate 후보에 cotton_pad 가 없어야 한다")
+ok(not [b for b, c in _vy["context_allow"].items() if "cotton_pad" in c],
+   f"context_allow 어느 배경에도 cotton_pad 가 없어야 한다 — 실제 {[b for b, c in _vy['context_allow'].items() if 'cotton_pad' in c]}")
+def _immediate_after(tr, seed):
+    """직후(immediate) 시점 After 프롬프트. 시리즈로 뽑아 그 시점만 본다."""
+    p_ = build_prompts(tr, "selfie", sample_variation("selfie", seed), seed, series=["immediate"])
+    for a_ in p_.get("afters") or []:
+        if a_["when"] == "immediate":
+            return a_["after_prompt"]
+    return p_["after_prompt"]
+
+_cream = [s_ for s_ in range(200)
+          if any(w in _immediate_after("nasolabial", s_) for w in ("cotton pad", "ointment"))]
+ok(not _cream, f"직후 After 200 표본에 크림·거즈 지시가 0건이어야 한다 — 실제 {len(_cream)}건")
+ok("clean and dry" in load("prompts/mode_extra.yaml")["after_day"]["same"],
+   "직후 설정에 '피부는 깨끗하고 마른 상태' 긍정문이 있어야 한다(금지어 나열 대신)")
+
+# ⑥-3 표정 잠금이 '얼굴 복사'가 되지 않는가 (2026-09-10 "동일한 각도, 구도, 표정" 2장)
+#     잠글 것은 웃음 하나다. 미세 차이 요구 문장이 빠지면 다시 복사로 돌아간다.
+_lock = build_prompts("nasolabial", "selfie", sample_variation("selfie", 5), 5)["after_prompt"]
+ok("must not change at all" not in _lock,
+   "표정 잠금에 '전혀 바뀌면 안 된다'는 절대 문구가 남아 있으면 안 된다(얼굴 전체를 복사시킨다)")
+ok("Do not smile" in _lock, "표정 잠금은 '웃지 마라'로 좁혀져야 한다")
+for _frag in ("tilts a degree or two", "open a little more", "slightly different place in the frame",
+              "not the reference photo edited"):
+    ok(_frag in _lock, f"표정 잠금이 미세 차이를 명시적으로 요구해야 한다 — '{_frag}'")
+# 잠금 없는 시술(free)은 종전대로 표정이 달라도 된다
+ok("may differ slightly" in build_prompts("nose_lifting", "selfie", sample_variation("selfie", 5), 5)["after_prompt"],
+   "expression_policy: free 시술은 종전 문장을 유지해야 한다")
+
 # ⑦ 셀카 프롬프트가 조립되는가 (템플릿 키 누락 조기 발견)
 v = sample_variation("selfie", 5)
 p = build_prompts("nasolabial", "selfie", v, 5)

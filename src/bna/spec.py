@@ -357,7 +357,20 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             after_scene = selfie_scene(a_scene)
             after_hair = f'{a["hair_color"]}, {a["hair_style"]}' + (f', {a["extras"]}' if a["extras"] else "")
             if tr.get("expression_policy") == "lock":
-                expression_line = f'Identical expression to the reference: {variation["expression"]["text"]}. The expression must not change at all between the two photos.'
+                # ⚠ "must not change at all" 은 표정만이 아니라 얼굴 전체를 복사시켰다
+                #   (2026-09-10 성연서님 "동일한 각도, 구도, 표정" 2장 — 이목구비·눈 뜬 정도까지 동일 = AI 티).
+                #   잠글 것은 '웃음'이지 '사람'이 아니다 → 금지는 표정 하나로 좁히고,
+                #   손으로 다시 찍었을 때 반드시 생기는 미세 차이는 **명시적으로 요구**한다.
+                #   이 문장은 drift_lock 에 angle 이 들어간 시술(팔자·리프팅)에서 특히 중요하다 —
+                #   각도 축이 잠기면 각도 문장까지 같아져 "같은 사진 복사"로 떨어진다.
+                expression_line = (
+                    f'The expression is the same as in the reference: {variation["expression"]["text"]}. '
+                    'Do not smile and do not tense the mouth or cheeks, since that alone would change the '
+                    'folds being treated. Everything else is a separate handheld photo and must show the small '
+                    'differences that always occur: the head tilts a degree or two differently, the eyes are '
+                    'open a little more or a little less, the lips rest with slightly different tension, and the '
+                    'face sits in a slightly different place in the frame. This is a second photo of the same '
+                    'person, not the reference photo edited.')
             else:
                 expression_line = f'Expression: {a["expression"]}; it may differ slightly from the reference.'
             which = "same" if w == "immediate" else "different"
