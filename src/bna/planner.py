@@ -24,6 +24,18 @@ def signature(plan: dict) -> tuple:
     return tuple(plan[a]["key"] if isinstance(plan[a], dict) else plan[a] for a in PERSON_AXES)
 
 
+# 구도 = 어떻게 찍혔나. 사람과 따로 센다 — 2026-09-10 성연서님 "전 사진과 동일한 구도"로 들어온 지적.
+# ⚠ 인물 서명에 장면 축을 **더하면 안 된다**. 축이 늘수록 조합이 유일해져 겹칠 일이 없어지고,
+#   그러면 회피가 강해지는 게 아니라 **약해진다**(같은 사람이 다시 나와도 장면이 다르면 통과).
+#   그래서 서명을 둘로 갈라 각각 대조한다.
+# 조명·색·화질은 뺐다 — 후보가 적어 금세 다 소진되고, 사람 눈에 '같은 구도'로 읽히는 건 이 셋이다.
+SCENE_SIG_AXES = ["framing", "angle", "background"]
+
+
+def scene_signature(plan: dict) -> tuple:
+    return tuple(plan[a]["key"] if isinstance(plan[a], dict) else plan[a] for a in SCENE_SIG_AXES)
+
+
 def past_signatures(path: Path = REGISTRY) -> set:
     """지난 배치들이 이미 쓴 인물 조합. 읽기 실패는 빈 집합으로 넘긴다(생성이 멈추면 안 된다)."""
     out = set()
@@ -36,20 +48,37 @@ def past_signatures(path: Path = REGISTRY) -> set:
     return out
 
 
+def past_scene_signatures(path: Path = REGISTRY) -> set:
+    """지난 배치들이 이미 쓴 구도 조합(프레이밍·각도·배경).
+    ⚠ 옛 줄에는 `scene` 이 없다 — 없는 줄은 그냥 건너뛴다(그 시절 구도는 모르는 것이지 없는 게 아니다)."""
+    out = set()
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            sc = json.loads(line).get("scene")
+            if sc:
+                out.add(tuple(sc))
+    except (OSError, ValueError):
+        return out
+    return out
+
+
 def remember(plans: list, batch_id: str, path: Path = REGISTRY) -> None:
     """이번 배치가 쓴 조합을 남긴다. 실패해도 배치는 그대로 진행한다(fail-open)."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
             for p in plans:
-                f.write(json.dumps({"sig": list(signature(p)), "batch": batch_id,
+                f.write(json.dumps({"sig": list(signature(p)), "scene": list(scene_signature(p)),
+                                    "batch": batch_id,
                                     "at": time.strftime("%Y-%m-%dT%H:%M:%S")}) + "\n")
     except OSError:
         pass
 
 
 def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, treatment=None,
-               avoid_sigs=None) -> list:
+               avoid_sigs=None, avoid_scene_sigs=None) -> list:
     """축마다 옵션을 섞은 순환 큐에서 뽑아 n개 안에 모든 옵션이 최대한 고르게 등장하도록 한다.
 
     avoid_weights: {축: {값: 0~1}} — 제외가 몰린 조건값을 **덜** 뽑는다(lessons.active).
@@ -58,6 +87,10 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
 
     avoid_sigs: 과거 배치가 이미 쓴 인물 조합(past_signatures()). 1차에서 이걸 피해 뽑고,
     n 을 못 채우면 2차에서 배치 안 중복 금지만 남긴다 — 배치가 말없이 줄어드는 게 더 나쁘다.
+
+    avoid_scene_sigs: 과거 배치가 이미 쓴 구도 조합(past_scene_signatures()). 인물과 따로 센다 —
+    2026-09-10 성연서님 "전 사진과 동일한 구도" 지적. 인물 서명에 장면 축을 더하면 조합이
+    유일해져 오히려 회피가 약해진다(그 이유는 scene_signature 주석).
     """
     rng = random.Random(seed)
     v = load("variations.yaml")
@@ -85,7 +118,8 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
         return queues[axis].pop(0)
 
     past = set(avoid_sigs or ())
-    plans, seen = [], set()
+    past_scenes = set(avoid_scene_sigs or ())
+    plans, seen, seen_scenes = [], set(), set()
     for strict in (True, False):          # 1차: 과거 배치와도 안 겹치게 / 2차: 조합이 말랐을 때만
         if len(plans) >= n:
             break
@@ -98,9 +132,17 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
             sig = tuple(p[a] for a in PERSON_AXES)
             if sig in seen or (strict and sig in past):
                 continue
-            seen.add(sig)
             for axis in SCENE_AXES:
                 p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr))
+            scene = tuple(p[a] for a in SCENE_SIG_AXES)
+            # 구도 중복 회피(2026-09-10). **1차에서만** 막는다 — 구도 후보는 유한해서
+            # 2차까지 막으면 배치가 말없이 줄어든다(그게 더 나쁘다는 게 이 루프의 원래 원칙).
+            if strict and (scene in seen_scenes or scene in past_scenes):
+                continue
+            # 인물 서명은 구도 검사까지 통과한 뒤에 잠근다 — 먼저 잠그면 구도 때문에 버린 회차가
+            # 멀쩡한 인물 조합까지 태워, 뽑을수록 후보가 마른다.
+            seen.add(sig)
+            seen_scenes.add(scene)
             plans.append({a: {"key": k, "text": v[a][k]} for a, k in p.items()})
     return plans
 

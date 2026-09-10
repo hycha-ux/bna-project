@@ -19,9 +19,15 @@ thresholds:
 # 2026-09-09 실사고: 셀카 프롬프트는 "폰이 보이지 않게" 라고 지시하는데 fingers 는 "손가락 다섯 개·자연스러운
 # 그립"을 요구했다. 심사가 "Hands or phone not visible in either image" 라고 적고 0점을 줬고, 그 결과
 # **모든 셀카가 100% 탈락**했다(3장 3회씩 재시도, $3.49 소각, 통과 0). 나머지 점수는 9·9·10·8 로 멀쩡했다.
-na_allowed: [fingers]
+na_allowed: []
 items:
-  fingers: "Hands/fingers anatomically correct: five fingers, natural joints, plausible phone grip. If no hands or phone are visible in either image, this item does not apply — reply with \"n/a\" instead of a number (this is normal for selfies, where the prompt asks to keep the phone out of shot)."
+  # 2026-09-10 성연서님 지시로 **뜻을 뒤집었다**: 종전 `fingers` 는 "손이 잘 그려졌나"를 물어서
+  # 손이 나온 컷을 9점으로 통과시켰다(0910 실측 2건). 기준은 "손이 나오면 안 된다"이므로 없을 때 10점이다.
+  # ⚠ 키 이름을 바꾼 건 의도다 — 같은 이름으로 뜻만 바꾸면 옛 회차의 `fingers` 점수와 새 점수가
+  #   한 열에 섞여 조용히 비교가 무의미해진다(옛 9점 = 손 있음, 새 9점 = 손 없음).
+  # ⚠ 없을 때가 만점이라 n/a 가 필요 없다(그래서 na_allowed 에서 뺐다). 0909 의 '전량 탈락' 사고는
+  #   요구하는 방향이라 생겼던 것이고, 이 방향은 기본값이 통과다.
+  hands_absent: "No hands, fingers, arms or phone are visible anywhere in either image. 10 = nothing of the sort is in frame. Score low if a hand, finger, arm or the phone appears in either photo, even partially or as a reflection, no matter how well drawn."
   skin_texture: "Skin has realistic pores/peach fuzz/minor imperfections, not plastic or repetitive"
   hair: "Hair strands flow naturally, no melted or merged edges"
   identity: "Before and After are unmistakably the same individual: eyes, eyebrows, nose, lips, face shape, moles/freckles all match (hard fail if not)"

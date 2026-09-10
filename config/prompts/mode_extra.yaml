@@ -7,9 +7,12 @@ selfie: >
   for the camera, the problem area is pushed close to the lens and fills the frame, composition is
   off-center and careless, the phone is not visible. Minor motion blur, slight overexposure or
   a color cast are acceptable and typical.
-selfie_with_hand: >
-  Casual selfie taken with a phone held in one hand; hand and phone edge partially visible
-  with anatomically correct fingers (five fingers, natural grip). Slight motion blur acceptable.
+# ⚠ selfie_with_hand 은 2026-09-10 성연서님 지시로 껐다 - "손이 나오면 안 된다"가 기준이라
+#   손·폰이 보이는 컷을 아예 안 만든다. 부르는 곳은 0곳이었지만, 살아 있는 키로 두면
+#   누군가 되살렸을 때 같은 회차의 금지문("no hands...")과 정면 충돌한다.
+# selfie_with_hand: >
+#   Casual selfie taken with a phone held in one hand; hand and phone edge partially visible
+#   with anatomically correct fingers (five fingers, natural grip). Slight motion blur acceptable.
 
 # After 셀카에도 붙는 규정 (0908 실측: Before 에만 넣었더니 After 에 폰이 대놓고 찍혔다)
 selfie_after: >

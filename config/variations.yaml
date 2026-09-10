@@ -174,6 +174,10 @@ context:
   cap: "wearing a baseball cap, brim shadow on the forehead"
   necklace: "thin necklace visible at the collar"
   hair_in_face: "loose hair strands falling across the cheek and jaw"
+  # ⚠ finger_on_cheek 은 2026-09-10 성연서님 지시로 **셀카 후보에서 뺐다**(정의만 남긴다).
+  #   손을 화면에 들이는 유일한 맥락인데, 같은 프롬프트에 붙는 금지문은 "손을 프레임 밖으로"라
+  #   서로를 배반했다. 실측: 0910 한국인 8세트 중 2건이 이 값으로 뽑혀 손이 나왔다.
+  #   되살리려면 mode_rules.selfie.context 와 context_allow 양쪽에 같이 넣어라(한쪽만 넣으면 안 뽑힌다).
   finger_on_cheek: "one finger pressing or pointing at the cheek to show the area"
   # ── 시술 직후 After 전용 ──
   outing_top: "wearing an everyday outing top (knit, blouse or jacket), clearly not home clothes"
@@ -232,7 +236,8 @@ mode_rules:
     #   2026-09-08 실측: 400 표본 중 35.8% — cotton_pad 는 시술 전 사진에 시술 흔적이다.
     #   After 는 after_immediate 가 따로 강제하므로 여기서 빼도 직후 컷은 그대로다.
     #   회귀: selftest.py ⑥. (배경×맥락·프레이밍×맥락 표는 별건 — 리뷰 문서 §2-4)
-    context: [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face, finger_on_cheek]
+    # finger_on_cheek 제거(2026-09-10 성연서님) — 손을 화면에 들이는 유일한 맥락이라 손 등장의 뿌리였다
+    context: [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face]
     angle: [selfie_3q, selfie_side, chin_up, tilted, selfie_high, selfie_low, front]
     lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed]   # 링라이트 제외 (스튜디오 느낌)
     color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외
@@ -255,11 +260,11 @@ background_lighting:
 # 배경 × 맥락 허용표 (셀카). 배경을 먼저 뽑고 맥락은 이 목록 안에서만.
 # 실측(0908): 배경·맥락이 독립 추첨이라 "차 안 + 수건 헤어밴드" 같은 조합이 나왔다.
 context_allow:
-  home:           [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face, finger_on_cheek]
-  bathroom:       [none, pajamas, home_tee, towel_headband, hair_in_face, finger_on_cheek]
-  cafe:           [none, cap, necklace, hair_in_face, finger_on_cheek, outing_top]
+  home:           [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face]
+  bathroom:       [none, pajamas, home_tee, towel_headband, hair_in_face]
+  cafe:           [none, cap, necklace, hair_in_face, outing_top]
   outdoor:        [none, cap, necklace, hair_in_face, outing_top]
-  car:            [none, cap, necklace, hair_in_face, finger_on_cheek, outing_top]
+  car:            [none, cap, necklace, hair_in_face, outing_top]
   clinic_waiting: [none, outing_top, clinic_headband, hair_flat_after, cotton_pad]
   clinic_mirror:  [none, outing_top, clinic_headband, hair_flat_after, cotton_pad]
   clinic_bed:     [none, clinic_headband, hair_flat_after, cotton_pad]

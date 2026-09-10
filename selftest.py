@@ -191,7 +191,7 @@ ok(_act["weights"].get("angle", {}).get("side") == 0.25, "제외가 몰린 조�
 ok("front" not in _act["weights"].get("angle", {}), "잘 통과한 조건값은 누르지 않아야 한다")
 ok(len(_s["notes"]) == 1 and _s["notes"][0]["count"] == 3 and not _act["lines"].get("custom"),
    f"같은 자유 메모 3건은 한 줄로 병합돼 승격 대기로만 남고 자동으로 프롬프트에 들어가지 않는다 — {[(n['note'], n['count']) for n in _s['notes']]}")
-ok("five fingers" in _s["notes"][0]["suggest_en"], f"메모('손')를 보고 영어 초안이 채워져야 한다 — {_s['notes'][0]['suggest_en']!r}")
+ok("no hands" in _s["notes"][0]["suggest_en"], f"메모('손')를 보고 영어 초안이 채워져야 한다 — {_s['notes'][0]['suggest_en']!r}")
 # 채택으로 바꿔도 과거 줄은 안 지운다(전후 비교의 근거라 append-only 여야 한다)
 _les.record(_d, "b1", "0000", {"pick": "pick", "tags": [], "note": ""})
 ok(len(_les.read(_d)) == 7 and _les.summarize(_d)["rejected"] == 2,
@@ -296,24 +296,29 @@ class _FakeQA:
     def qa(self, b, a, items, mode):
         return {k: {"score": self.sc.get(k, 9.0), "note": ""} for k in items}
 _good = {k: 9.0 for k in load("qa_checklist.yaml")["items"]}
-_r = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "fingers": None}))
-ok(_r["passed"] and _r["failed_items"] == [] and _r["na_items"] == ["fingers"],
-   f"손이 안 보이는 셀카는 fingers 가 n/a 이고 통과해야 한다 — {_r['failed_items']} / na={_r.get('na_items')}")
-_r0 = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "fingers": 0.0}))
-ok(not _r0["passed"] and "fingers" in _r0["failed_items"], "손이 보이는데 이상하면(0점) 종전대로 탈락이어야 한다")
+# 2026-09-10 성연서님 지시로 손 항목의 **뜻이 뒤집혔다**: "잘 그려졌나" → "아예 없어야 한다".
+# 그래서 없을 때가 만점이고, 나오면 잘 그려졌든 아니든 탈락이다.
+ok("fingers" not in _good and "hands_absent" in _good,
+   f"손 항목은 hands_absent 여야 한다(옛 키 fingers 가 살아 있으면 옛 점수와 섞인다) — {sorted(_good)}")
+_r = _VIS.score(b"", b"", "selfie", _FakeQA(_good))
+ok(_r["passed"] and _r["failed_items"] == [] and _r["na_items"] == [],
+   f"손이 안 보이면 만점 통과이고 n/a 가 필요 없다 — {_r['failed_items']} / na={_r.get('na_items')}")
+_r0 = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "hands_absent": 3.0}))
+ok(not _r0["passed"] and "hands_absent" in _r0["failed_items"],
+   "손이 나오면 탈락이어야 한다(잘 그려졌는지와 무관)")
 _rh = _VIS.score(b"", b"", "selfie", _FakeQA({**_good, "identity": 3.0}))
 ok(_rh["hard_fail"] == ["identity"], "동일인 임계 미달은 여전히 hard_fail 이어야 한다")
 # 심사 응답의 "n/a" 문자열이 실제로 None 으로 파싱되는가 (프로바이더 쪽 관문)
 import bna.providers.openai_img as _OI
 _parse = {}
-for _k, _v in {"fingers": {"score": "n/a", "note": "없음"}, "hair": {"score": 8, "note": ""},
+for _k, _v in {"hands_absent": {"score": "n/a", "note": "없음"}, "hair": {"score": 8, "note": ""},
                "skin_texture": {"score": True, "note": ""}}.items():
     _s = _v.get("score")
     if isinstance(_s, bool): _s = None
     if isinstance(_s, (int, float)): _parse[_k] = float(_s)
     elif isinstance(_s, str) and _s.strip().lower() in ("n/a", "na", "not applicable", "none"): _parse[_k] = None
     else: _parse[_k] = 0.0
-ok(_parse == {"fingers": None, "hair": 8.0, "skin_texture": 0.0},
+ok(_parse == {"hands_absent": None, "hair": 8.0, "skin_texture": 0.0},
    f'"n/a"→None · 숫자→그대로 · True(점수 아님)→0점(재시도) 이어야 한다 — {_parse}')
 # 버전 성적표는 prompt_version(config 해시)으로만 묶인다 — 같은 버전을 다른 모델로 돌리면
 # 두 모델 성적이 한 줄에 섞여 "이전 버전 대비" 비교가 조용히 무의미해진다 (0909 티모)
@@ -458,8 +463,8 @@ ok(_rd and _rb, "효과가 안 보임 → 조건을 다시 뽑고 Before 도 다
 _rd, _rb = _retry_plan(["vision:drift"])
 ok((not _rd) and (not _rb), "구도 흐트러짐 → 조건은 그대로, Before 재사용(After 만 다시)")
 
-_rd, _rb = _retry_plan(["vision:fingers"])
-ok((not _rd) and (not _rb), "손가락 → Before 재사용")
+_rd, _rb = _retry_plan(["vision:hands_absent"])
+ok((not _rd) and (not _rb), "손이 나옴 → 조건은 그대로, Before 재사용")
 
 _rd, _rb = _retry_plan(["identity"])
 ok((not _rd) and _rb, "동일인 어긋남 → 둘의 관계가 틀린 것이라 Before 부터 다시(조건은 그대로)")
@@ -541,6 +546,46 @@ ok("plan_batch(" in _redraw and "sample_variation(" not in _redraw,
 from bna.planner import plan_batch as _pb
 _p1 = _pb("selfie", 1, 4242, {"country": "korea"}, None, treatment="nasolabial")[0]
 ok(_p1["country"]["key"] == "korea", f"고정 축은 어떤 씨앗에서도 지켜져야 한다 — 실제 {_p1['country']['key']}")
+
+
+# ── 2026-09-10 성연서님 승인 3건 ────────────────────────────────────────────
+# ① 손: 셀카에서 '손가락으로 볼 가리키기'를 아예 안 뽑는다(손 등장의 뿌리였다)
+_vv = load("variations.yaml")
+ok("finger_on_cheek" not in (_vv["mode_rules"]["selfie"].get("context") or []),
+   "셀카 맥락 후보에 finger_on_cheek 이 없어야 한다")
+_ctx = {k for p in _pb("selfie", 120, seed=3, treatment="nasolabial") for k in [p["context"]["key"]]}
+ok("finger_on_cheek" not in _ctx, f"120 표본에서 한 번도 안 뽑혀야 한다 — {sorted(_ctx)}")
+ok("with anatomically correct fingers" not in
+   (_P("config") / "prompts" / "mode_extra.yaml").read_text(encoding="utf-8").split("# ⚠ selfie_with_hand")[0],
+   "손을 요구하는 문구가 살아 있는 설정으로 남아 있으면 안 된다")
+
+# ② 동일인 '사람 확인 구간'(0.45~0.60)은 자동 통과가 아니라 재시도다
+from bna.qa import identity as _ID
+ok(_ID.check.__doc__ and _ID.REVIEW_BAND == 0.45 and _ID.THRESHOLD == 0.60, "동일인 구간 상수는 그대로여야 한다")
+_bsrc2 = (_P("src") / "bna" / "batch.py").read_text(encoding="utf-8")
+ok('idn.get("gate") == "review"' in _bsrc2 and 'identity_review' in _bsrc2,
+   "batch 가 review 구간을 재시도 사유로 올려야 한다")
+_rd, _rb = _retry_plan(["identity_review"])
+ok((not _rd) and _rb, "review 구간은 조건은 그대로 두고 Before 부터 다시 그려야 한다")
+ok("identity_review" in _bsrc2.split("attempt < MAX_ATTEMPTS")[0].rsplit("gate", 1)[-1] or
+   'attempt < MAX_ATTEMPTS' in _bsrc2,
+   "마지막 회차에서는 review 를 통과시켜야 한다(애매한 걸 버리지 않는다)")
+
+# ③ 구도 중복: 과거 회차와 프레이밍·각도·배경 조합이 겹치지 않게
+from bna.planner import scene_signature as _ss, past_scene_signatures as _pss, SCENE_SIG_AXES as _SSA
+ok(_SSA == ["framing", "angle", "background"], f"구도 서명 축은 셋이다 — {_SSA}")
+_p0 = _pb("selfie", 6, seed=21, treatment="nasolabial")
+_used = {_ss(p) for p in _p0}
+_p1 = _pb("selfie", 6, seed=22, treatment="nasolabial", avoid_scene_sigs=_used)
+ok(not ({_ss(p) for p in _p1} & _used), "다음 배치는 과거 구도 조합을 피해야 한다")
+ok(len({_ss(p) for p in _p1}) == len(_p1), "한 배치 안에서도 구도 조합이 겹치지 않아야 한다")
+# 과거 조합을 전부 막아도 배치가 조용히 줄면 안 된다(2차 폴백)
+_all = {_ss(p) for p in _pb("selfie", 400, seed=1, treatment="nasolabial")}
+ok(len(_pb("selfie", 6, seed=23, treatment="nasolabial", avoid_scene_sigs=_all)) == 6,
+   "구도가 말라도 배치 개수는 채워야 한다(말없이 줄지 않는다)")
+# 인물 서명에 장면을 섞지 않았는가 — 섞으면 회피가 오히려 약해진다
+from bna.planner import signature as _sg
+ok(len(_sg(_p0[0])) == 11, f"인물 서명은 인물 축 11개만이어야 한다 — {len(_sg(_p0[0]))}")
 
 
 print()

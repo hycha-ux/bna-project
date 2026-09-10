@@ -646,8 +646,8 @@ const STAGE_KO = {skipped:'생략(목표 도달)', queued:'대기', before:'시�
 const MODE_KO = {selfie:'셀카형', clinical:'임상형'};
 const KIND_KO = {demo:'샘플', dry_run:'프롬프트만', run:'실제', sim:'시뮬레이션'};
 const KIND_TIP = {run:'실제로 AI 를 호출해 만든 사진 (비용 발생)', sim:'테스트 — 실제 호출 없이 진행 화면만 흉내낸 것', demo:'테스트 — 자리표시 사진, 화면 확인용', dry_run:'테스트 — 사진 없이 프롬프트 문장만 저장'};
-const FAIL_KO = {structure:'얼굴 정렬 불일치', identity:'동일 인물 아님', duplicate:'유사 이미지 중복', 'vision:hair':'머리카락 부자연', 'vision:ai_look':'AI 생성 티', 'vision:fingers':'손가락 오류', 'vision:skin_texture':'피부 질감 부자연', 'vision:drift':'시술 부위 외 변화', 'vision:effect_visible':'효과 미확인', 'vision:identity':'동일 인물 아님'};
-const SCORE_KO = {fingers:'손가락', skin_texture:'피부 질감', hair:'머리카락', identity:'동일 인물', drift:'부위 외 변화 없음', effect_visible:'효과 확인', ai_look:'자연스러움'};
+const FAIL_KO = {structure:'얼굴 정렬 불일치', identity:'동일 인물 아님', duplicate:'유사 이미지 중복', 'vision:hair':'머리카락 부자연', 'vision:ai_look':'AI 생성 티', 'vision:hands_absent':'손이 나옴', 'identity_review':'동일 인물 의심(확인 필요)', 'vision:skin_texture':'피부 질감 부자연', 'vision:drift':'시술 부위 외 변화', 'vision:effect_visible':'효과 미확인', 'vision:identity':'동일 인물 아님'};
+const SCORE_KO = {hands_absent:'손 없음', skin_texture:'피부 질감', hair:'머리카락', identity:'동일 인물', drift:'부위 외 변화 없음', effect_visible:'효과 확인', ai_look:'자연스러움'};
 // AI 검수 점수의 정본 모양은 `{item: {score, note}}` 다(src/bna/qa/vision.py).
 // 2026-09-08 성연서님 "AI 점수항목 오류" — 화면이 이걸 숫자로 다뤄 [object Object]·NaN% 가 나왔다.
 // 옛 평면 모양(숫자)도 받아 준다 — 예전 배치의 meta.json 이 그 모양이면 화면이 통째로 깨지면 안 된다.
@@ -816,7 +816,7 @@ function chartCombo() {
   const step = Math.ceil(n / 8); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-8}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
   $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + picked + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>채택 장수</span><span><i style="background:var(--ok);border-radius:50%"></i>AI 통과율</span></div>`;
 }
-const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:fingers','손가락','st5'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
+const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:hands_absent','손이 나옴','st5'],['identity_review','동일 인물 의심','st1'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
 function chartAxis() {
   let rows;
   if (AXIS_A === '__treat') {
@@ -1588,7 +1588,7 @@ async function loadLessons() {
     <div class="list-row note-g" style="cursor:default;align-items:flex-start">
       <div class="t" style="flex:1"><div class="note-h"><b>${esc(n.note)}</b>${n.count > 1 ? `<span class="chip warn" title="같은 메모가 적힌 사진 수 — 승격하면 한 규칙으로 합쳐집니다">${n.count}장 병합</span>` : ''}</div>
         <span>${(n.items || []).slice(0, 4).map(x => `${fmtBid(x.batch)} · ${+x.item + 1}`).join(' / ')}${(n.items || []).length > 4 ? ` 외 ${n.items.length - 4}` : ''}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
-        <div class="note-in"><input type="text" id="les-en-${i}" value="${esc(n.suggest_en || '')}" placeholder="프롬프트에 넣을 영어 한 문장 (예: hands must have exactly five fingers)" ${L.no_promote ? 'disabled' : ''}>${n.suggest_en ? `<span class="hint">메모를 보고 미리 채운 초안입니다 — 고쳐도 됩니다</span>` : `<span class="hint">맞는 초안이 없어 비워 뒀습니다 — 영어 한 문장을 적어 주세요</span>`}</div>
+        <div class="note-in"><input type="text" id="les-en-${i}" value="${esc(n.suggest_en || '')}" placeholder="프롬프트에 넣을 영어 한 문장 (예: no hands, fingers or phone anywhere in the frame)" ${L.no_promote ? 'disabled' : ''}>${n.suggest_en ? `<span class="hint">메모를 보고 미리 채운 초안입니다 — 고쳐도 됩니다</span>` : `<span class="hint">맞는 초안이 없어 비워 뒀습니다 — 영어 한 문장을 적어 주세요</span>`}</div>
       </div>
       <button class="b" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''}>규칙으로 승격</button>
     </div>`).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;

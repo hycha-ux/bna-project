@@ -27,7 +27,8 @@ settings:
 # 제외 사유 버튼 ↔ 금지문. before/after 어디에 붙일지도 여기서 정한다.
 tags:
   손가락:
-    en: "hands and fingers must be anatomically correct with exactly five fingers, or keep hands out of frame entirely"
+    # 2026-09-10 성연서님 지시: 손은 잘 그리는 게 아니라 아예 안 나오는 게 기준이다.
+    en: "no hands, fingers, arms or phone anywhere in the frame"
     where: [before, after]
   피부 질감:
     en: "keep real skin micro-texture: visible pores, faint peach fuzz, uneven tone; no airbrushed or plastic skin"

@@ -4,7 +4,7 @@ import asyncio, io, json, time, uuid
 from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
-from .planner import plan_batch, past_signatures, remember
+from .planner import plan_batch, past_signatures, past_scene_signatures, remember
 from . import postprocess, refs, providers
 from .qa import structure, identity, dedup, vision, landmarks
 from .stats import summarize, write_manifest
@@ -27,7 +27,9 @@ MAX_ATTEMPTS = 3
 # ⚠ 조건을 다시 뽑으면 그 배치의 변주 분포가 계획(plan)과 달라진다 → meta["redrawn"] 에 회차를 남긴다.
 #    안 남기면 나중에 "어떤 조건이 잘 통과하나" 통계가 조용히 오염된다.
 RETRY_REDRAW = {"vision:effect_visible", "structure"}
-REDO_BEFORE = {"identity", "vision:identity", "structure"}
+# identity_review = 닮음이 '사람 확인 구간'(0.45~0.60). 둘의 *관계*가 흔들린 것이라
+# hard fail 과 같이 Before 부터 다시 그린다(After 만 다시 그리면 같은 Before 를 기준으로 또 흘러간다).
+REDO_BEFORE = {"identity", "identity_review", "vision:identity", "structure"}
 
 
 def _retry_plan(fail_reasons):
@@ -106,7 +108,8 @@ class Batch:
                 #   plan_batch 는 고정 축 + 과거 배치가 쓴 인물 조합 회피(avoid_sigs)까지 함께 지킨다.
                 rs = None if self.seed is None else self.seed * 1000 + idx + attempt * 100_000
                 variation = plan_batch(self.mode, 1, rs, self.fixed, (self.avoid or {}).get("weights"),
-                                       treatment=self.treatment, avoid_sigs=past_signatures())[0]
+                                       treatment=self.treatment, avoid_sigs=past_signatures(),
+                                       avoid_scene_sigs=past_scene_signatures())[0]
                 spec = build_prompts(self.treatment, self.mode, variation, rs,
                                      avoid=(self.avoid or {}).get("lines"), series=self.series)
                 meta.update({k: v for k, v in spec.items()})
@@ -164,6 +167,13 @@ class Batch:
                 if st.get("passed") is False:
                     r["fail_reasons"].append("structure")
                 idn = identity.check(before_pp, after_pp); r["identity"] = idn
+                # '사람 확인 구간'(0.45~0.60)도 재시도로 돌린다 — 2026-09-10 성연서님 지시.
+                # 종전엔 gate="review" 를 hard_fail=False 로 흘려보내 기계가 통과시켰고,
+                # 그 컷(0910 실측 0.461 1건)이 "전·후가 다른 사람"으로 사람 눈에 걸렸다.
+                # 마지막 회차까지 review 면 그때는 통과시킨다 — 애매한 걸 버리는 것보다
+                # 사람에게 보이는 쪽이 낫다(사진은 남아 있고 최종 판단은 사람이 한다).
+                if idn.get("gate") == "review" and attempt < MAX_ATTEMPTS:
+                    r["fail_reasons"].append("identity_review")
                 if idn["hard_fail"]:
                     r["fail_reasons"].append("identity")
                 if not r["fail_reasons"]:
@@ -226,7 +236,8 @@ class Batch:
         # 과거 배치가 쓴 인물 조합을 피해서 뽑는다 — 안 그러면 같은 seed 로 두 번 돌린 배치가
         # 인물 명단째로 겹친다(2026-09-09 실측, planner 머리말).
         plans = plan_batch(self.mode, self.count, self.seed, self.fixed, (self.avoid or {}).get("weights"),
-                           treatment=self.treatment, avoid_sigs=past_signatures())
+                           treatment=self.treatment, avoid_sigs=past_signatures(),
+                           avoid_scene_sigs=past_scene_signatures())
         remember(plans, self.batch_id)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))

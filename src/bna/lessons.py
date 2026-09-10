@@ -89,7 +89,7 @@ NOTE_SUGGEST = [
      "no numbing cream, gauze, tape, patches or any clinic dressing visible on the skin"),
     (("바늘", "주사기", "시린지", "니들"), "no needles, syringes or injection equipment anywhere in the frame"),
     (("붓기", "부기", "멍", "붉", "홍조"), "no swelling, bruising or redness beyond what the stated time point allows"),
-    (("손", "손가락"), "hands and fingers must be anatomically correct with exactly five fingers, or keep hands out of frame entirely"),
+    (("손", "손가락"), "no hands, fingers, arms or phone anywhere in the frame"),
     (("머리", "머리카락", "헤어"), "render individual hair strands with a natural hairline; no melted, clumped or painted-on hair"),
     (("치아", "이빨", "잇몸"), "teeth must be natural and correctly counted; no extra, merged or overly white teeth"),
     (("눈동자", "눈", "시선"), "eyes must be symmetric with natural irises and a consistent gaze between the two photos"),

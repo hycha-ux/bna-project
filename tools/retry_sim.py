@@ -41,13 +41,21 @@ sys.path.insert(0, str(ROOT / "src"))
 from bna.batch import _retry_plan, MAX_ATTEMPTS   # noqa: E402
 
 
-def load_attempts():
-    """유료 회차의 최종 시도 결과 + 실제 시도·통과 수(가중치 보정에 쓴다)."""
+# 정책을 바꾼 날. 이 날 이후 회차는 **다른 규칙으로 돈 것**이라 같은 모수에 섞으면 안 된다 -
+# 2026-09-10 실측: 새 8세트를 같이 넣었더니 '현행' 재현이 43.0% 로 뜨고 실측 51.4% 와 8.4%p 어긋나
+# 보정 게이트가 숫자를 안 내고 죽었다(그게 맞는 동작이다). 정책 비교의 모수는 바꾸기 **전** 회차다.
+POLICY_CHANGE = "20260910"
+
+
+def load_attempts(until=POLICY_CHANGE):
+    """정책 변경 **전** 유료 회차의 최종 시도 결과 + 실제 시도·통과 수(가중치 보정에 쓴다)."""
     rows = []
     attempts = passes = 0
     for d in sorted(OUT.iterdir()):
         if not d.is_dir():
             continue
+        if until and d.name[:8] >= until:
+            continue                                    # 새 정책으로 돈 회차는 이 모수에 안 섞는다
         for it in sorted(d.iterdir()):
             f = it / "meta.json"
             if not f.exists():
@@ -72,8 +80,11 @@ def load_attempts():
                     pick = json.loads(rv.read_text(encoding="utf-8")).get("pick")
                 except Exception:
                     pick = None
+            sim = (m.get("identity") or {}).get("similarity")
             rows.append({"scores": sc, "reached": reached, "hard": [str(f).split("@")[0] for f in hard],
-                         "passed": bool(m.get("passed")), "pick": pick})
+                         "passed": bool(m.get("passed")), "pick": pick,
+                         # 0.45~0.60 = 기계가 통과시키던 '사람 확인 구간'
+                         "id_review": isinstance(sim, (int, float)) and 0.45 <= sim < 0.60})
             attempts += int(m.get("attempt") or 1)
             passes += bool(m.get("passed"))
     return rows, {"attempts": attempts, "passes": passes, "sets": len(rows)}
@@ -104,17 +115,20 @@ def draw(pool, cum, rng):
     return pool[lo]
 
 
-def judge(a, cuts, default_cut):
-    """이 시도가 통과했나 + 탈락 사유. 컷을 바꿔 다시 매긴다."""
+def judge(a, cuts, default_cut, id_review=False):
+    """이 시도가 통과했나 + 탈락 사유. 컷을 바꿔 다시 매긴다.
+    id_review: 닮음 '사람 확인 구간'(0.45~0.60)을 재시도 사유로 볼지 (2026-09-10 성연서님 승인 ②)."""
     if not a["reached"]:
         return False, a["hard"] or ["structure"]
+    if id_review and a.get("id_review"):
+        return False, ["identity_review"]
     # 여기 오면 structure/identity 는 이미 통과했다(batch.py 가 통과했을 때만 비전을 부른다).
     # 그래서 남은 판정은 비전 점수뿐이다.
     fails = [f"vision:{k}" for k, v in a["scores"].items() if v < cuts.get(k, default_cut)]
     return (not fails), fails
 
 
-def run_set(pool, cum, rng, cuts, default_cut, reuse_before, smart_retry):
+def run_set(pool, cum, rng, cuts, default_cut, reuse_before, smart_retry, id_review=False):
     """세트 하나를 정책대로 끝까지 굴린다 → (통과?, 비용)."""
     cost = 0.0
     prev = []
@@ -132,7 +146,7 @@ def run_set(pool, cum, rng, cuts, default_cut, reuse_before, smart_retry):
         a = draw(pool, cum, rng)
         if a["reached"]:
             cost += QA                                          # 비전 검수는 structure/identity 통과분만
-        ok, fails = judge(a, cuts, default_cut)
+        ok, fails = judge(a, cuts, default_cut, id_review)
         # 검수 화면엔 **기계 탈락작도 올라간다** - 2026-09-10 실측에서 사람이 채택한 10건 중 4건이
         # 기계가 버린 것이었다. 그래서 사람이 보는 건 늘 '마지막 시도의 사진'이다.
         # 기계 통과 여부로 채택 후보를 좁히면 실측($2.68)이 재현되지 않는다.
@@ -167,8 +181,10 @@ def main():
     ap.add_argument("--trials", type=int, default=20000)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--until", default=POLICY_CHANGE,
+                    help="이 날짜(YYYYMMDD) 앞의 회차만 모수로 쓴다. 정책이 섞이면 보정이 깨진다")
     a = ap.parse_args()
-    rows, real = load_attempts()
+    rows, real = load_attempts(a.until)
     if not rows:
         print("표본 없음 - 유료 회차 meta.json 이 있어야 한다('0원'이 아니라 '못 잼').")
         return 2
@@ -180,7 +196,7 @@ def main():
     chk = sim(pool, cum, max(a.trials, 20000), a.seed, **base_kw)
     real_rate = real["passes"] / real["sets"]
     gap = abs(chk["pass_rate"] - real_rate)
-    print(f"[보정] 현행 재현 {chk['pass_rate']*100:.1f}% vs 실측 {real_rate*100:.1f}% "
+    print(f"[보정] 현행 재현 {chk['pass_rate']*100:.1f}% vs 실측 {real_rate*100:.1f}% (모수: {a.until} 이전 회차) "
           f"(표본 {real['sets']}세트 / {real['attempts']}시도, 탈락 가중 x{w_fail:.2f})")
     if gap > 0.05:
         print(f"보정 실패 - 차이 {gap*100:.1f}%p. 이 표본으로는 정책 비교를 낼 수 없다.")
@@ -192,7 +208,8 @@ def main():
         ("②' 조건탈락도 Before 재사용 안 함", dict(cuts={}, default_cut=7, reuse_before=True, smart_retry=True)),
         ("③ 합격선만 6 (재시도는 종전)", dict(cuts={"effect_visible": 6}, default_cut=7, reuse_before=False, smart_retry=False)),
         ("①+③ 같이", dict(cuts={"effect_visible": 6}, default_cut=7, reuse_before=True, smart_retry=False)),
-        ("①+②+③ (지금 넣은 정책)", dict(cuts={"effect_visible": 6}, default_cut=7, reuse_before=True, smart_retry=True)),
+        ("①+②+③ (0910 오전 정책)", dict(cuts={"effect_visible": 6}, default_cut=7, reuse_before=True, smart_retry=True)),
+        ("+ 닮음 확인구간도 재시도 (지금)", dict(cuts={"effect_visible": 6}, default_cut=7, reuse_before=True, smart_retry=True, id_review=True)),
     ]
     out = []
     for name, kw in cases:
