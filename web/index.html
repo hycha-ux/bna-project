@@ -304,7 +304,9 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .les-first .lf-step .ex .btn-look.bad { color:var(--bad); border-color:var(--bad) }
 .les-first .lf-note { margin-top:10px; font-size:var(--fs-xs); color:var(--ui-md) }
 @media (max-width:1100px) { .les-first .lf-steps { grid-template-columns:1fr 1fr } } @media (max-width:640px) { .les-first .lf-steps { grid-template-columns:1fr } }
-.pk-legend { display:flex; flex-wrap:wrap; gap:4px 6px; margin:6px 0 2px } .pk-legend span { font-size:11px; color:var(--ui-md); padding:1px 8px; border-radius:999px }
+.pk-legend { display:flex; flex-wrap:wrap; gap:4px 6px; margin:6px 0 2px } .pk-legend span { font-size:11px; color:var(--ui-md); padding:1px 8px; border-radius:999px; cursor:pointer; border:1px solid transparent }
+.pk-legend span:hover { border-color:var(--ui-lo) } .pk-legend span.on { border-color:var(--primary); color:var(--primary); font-weight:600 }
+.prompt.focus .pk:not(.hit) { background:transparent !important; outline:0; color:var(--ui-lo); opacity:.55 } .prompt.focus .pk.hit { box-shadow:0 0 0 1.5px var(--primary) }
 .prompt-tools { display:flex; align-items:center; gap:8px; margin-top:8px } .prompt-tools .muted { font-size:var(--fs-xs) }
 .lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0; margin-top:4px }
 .lib .item .head { margin-bottom:4px } .lib .item .head .head-r { margin-left:auto; display:flex; gap:2px }
@@ -914,8 +916,18 @@ function promptHtml(parts, raw) {
 function promptLegend(parts) {
   if (!PK_COLOR) return '';
   const ks = [...new Set((parts || []).map(p => p.k))].filter(k => k !== 'template');
-  return `<div class="pk-legend">${ks.map(k => `<span class="pk-${k}">${PK_KO[k] || k}</span>`).join('')}</div>`;
+  return `<div class="pk-legend">${ks.map(k => `<span class="pk-${k}" data-k="${k}" title="누르면 이 칸 문장만 남기고 나머지는 흐리게">${PK_KO[k] || k}</span>`).join('')}</div>`;
 }
+// 알약을 누르면 그 칸 문장만 또렷하게, 나머지는 회색으로 (2026-09-10 성연서님). 같은 알약을 다시 누르면 원래대로.
+// 범례 바로 다음 형제가 그 프롬프트 상자다 — promptLegend + promptHtml 을 붙여 쓰는 자리 전부에 자동으로 먹는다.
+document.addEventListener('click', e => {
+  const pill = e.target.closest('.pk-legend [data-k]'); if (!pill) return;
+  const legend = pill.parentElement, box = legend.nextElementSibling; if (!box || !box.classList.contains('prompt')) return;
+  const k = pill.classList.contains('on') ? null : pill.dataset.k;
+  legend.querySelectorAll('[data-k]').forEach(x => x.classList.toggle('on', x.dataset.k === k));
+  box.classList.toggle('focus', !!k);
+  box.querySelectorAll('.pk').forEach(x => x.classList.toggle('hit', !!k && x.classList.contains('pk-' + k)));
+});
 function promptTools() {
   return `<div class="prompt-tools"><button class="b sm" id="pk-toggle">${PK_COLOR ? '색 구분 끄기' : '색 구분 켜기'}</button><span class="muted">색 = 그 문장이 어느 칸(설정)에서 왔는지. 칸을 고치면 그 색 문장만 바뀝니다.</span></div>`;
 }
