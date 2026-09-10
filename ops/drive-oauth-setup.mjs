@@ -29,12 +29,21 @@ function arg(name) {
   return i > -1 ? process.argv[i + 1] : null;
 }
 
-const id = arg('client-id');
-const secret = arg('client-secret');
-const folder = arg('folder');
+// 금고에 이미 들어 있으면 인자 없이도 돈다 — 값을 명령줄에 실으면 작업관리자·셸 기록에 남는다.
+const VAULT = String.raw`C:\Users\medib\teemo\keys.env`;
+function fromVault(key) {
+  if (!existsSync(VAULT)) return null;
+  const m = readFileSync(VAULT, 'utf8').match(new RegExp(`^${key}=(.+)$`, 'm'));
+  return m ? m[1].trim() : null;
+}
+
+const id = arg('client-id') || fromVault('GDRIVE_CLIENT_ID');
+const secret = arg('client-secret') || fromVault('GDRIVE_CLIENT_SECRET');
+const folder = arg('folder') || fromVault('GDRIVE_BACKUP_FOLDER_ID');
 if (!id || !secret) {
-  console.error('사용법: node ops/drive-oauth-setup.mjs --client-id <ID> --client-secret <비밀> [--folder <폴더ID>]');
-  console.error('  구글 클라우드 콘솔 → 사용자 인증 정보 → OAuth 클라이언트 ID(데스크톱 앱)에서 받는다.');
+  console.error('사용법: node ops/drive-oauth-setup.mjs [--client-id <ID> --client-secret <비밀>] [--folder <폴더ID>]');
+  console.error(`  인자를 안 주면 ${VAULT} 의 GDRIVE_CLIENT_ID·GDRIVE_CLIENT_SECRET 를 읽는다.`);
+  console.error('  값은 구글 클라우드 콘솔 → 사용자 인증 정보 → OAuth 클라이언트 ID(데스크톱 앱)에서 받는다.');
   process.exit(2);
 }
 
@@ -49,9 +58,20 @@ const url =
     prompt: 'consent', // 리프레시 토큰은 첫 동의 때만 나온다 — 매번 받도록 강제한다
   });
 
+// ⚠ 이 PC 크롬은 프로필이 14개고 기본(Default)이 회사 계정이 아니다 — `cmd start` 로 열면
+//   엉뚱한 계정으로 동의 화면이 떠서 마지막에 "폴더를 못 찾는다"로 끝난다(2026-09-10 실측).
+//   그래서 회사 계정이 붙은 프로필을 직접 지정해 연다. 크롬이 없으면 종전 방식으로 폴백한다.
+const CHROME = String.raw`C:\Program Files\Google\Chrome\Application\chrome.exe`;
+const CHROME_PROFILE = 'Profile 1'; // hy.cha@medibuilder.com
+
 console.log('브라우저가 열리면 파트장님 계정으로 로그인하고 [허용]을 눌러 주세요.');
+console.log(`(동의 화면 상단 계정이 회사 계정인지 꼭 확인해 주세요 — 프로필 "${CHROME_PROFILE}" 로 엽니다)`);
 console.log('안 열리면 이 주소를 직접 여세요:\n' + url);
-spawn('cmd', ['/c', 'start', '', url.replace(/&/g, '^&')], { detached: true, stdio: 'ignore' }).unref();
+if (existsSync(CHROME)) {
+  spawn(CHROME, [`--profile-directory=${CHROME_PROFILE}`, url], { detached: true, stdio: 'ignore' }).unref();
+} else {
+  spawn('cmd', ['/c', 'start', '', url.replace(/&/g, '^&')], { detached: true, stdio: 'ignore' }).unref();
+}
 
 const srv = createServer(async (req, res) => {
   const code = new URL(req.url, `http://127.0.0.1:${PORT}`).searchParams.get('code');
