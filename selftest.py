@@ -110,6 +110,11 @@ pr_src = open("src/bna/progress.py", encoding="utf-8").read()
 q_src = open("src/bna/queue.py", encoding="utf-8").read()
 ok("cloudpush.nudge" in pr_src, "progress.set(사진 1장 판정)이 끝나면 클라우드로 밀어 올려야 한다")
 ok("cloudpush.nudge" in q_src, "queue 러너가 배치를 끝내면 클라우드로 밀어 올려야 한다")
+# 사람이 기다리는 건 생성이 아니라 검수다 — 판정·규칙 승격도 즉시 올라가야 한다 (2026-09-10).
+api_src = open("src/bna/api.py", encoding="utf-8").read()
+ok("cloudpush.nudge" in api_src.split("def save_review")[1][:1200],
+   "검수 저장이 끝나면 클라우드로 밀어 올려야 한다")
+ok(api_src.count("cloudpush.nudge") >= 2, "규칙 승격도 클라우드로 밀어 올려야 한다")
 
 # ⑮ 스위치가 실제로 먹는가 — 꺼 두면 프로세스를 띄우지 않는다(다른 PC·CI 에서 조용히)
 import os as _os

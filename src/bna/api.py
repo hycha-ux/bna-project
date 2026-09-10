@@ -34,7 +34,7 @@ from .spec import ROOT, load, build_prompts, PERSON_AXES, SCENE_AXES, defaults_f
 from .planner import plan_batch, distribution
 from .stats import load_items, summarize
 from . import progress as prog
-from . import drivesync, lessons
+from . import cloudpush, drivesync, lessons
 from .queue import Queue
 
 OUT = ROOT / "outputs"
@@ -292,6 +292,10 @@ def save_review(req):
     if rv["pick"] != "pick" and before == "uploaded":
         rv["drive"] = "removed"
     lessons.record(OUT, req["batch"], req["item"], rv)      # 제외 사유를 교훈 원장에 쌓는다
+    # 검수도 '완료 지점'이다 (2026-09-10). 종전엔 생성 완료에만 훅이 걸려 있어, 사람이 판정을 눌러도
+    # 남의 화면(학습·검수 탭)에 뜨기까지 최대 10분(주기 회차)이 비었다 — 정작 사람이 기다리는 건
+    # 이쪽이다. 훅은 백그라운드+최소 간격이라 검수 응답을 늦추지 않는다(10장 연속 판정 → 업로드 몇 회).
+    cloudpush.nudge(f"검수 {req['batch']}/{req['item']} {rv['pick']}")
     return rv, 200
 
 
@@ -686,7 +690,9 @@ class Handler(SimpleHTTPRequestHandler):
             if p == "/api/lessons/promote":
                 if not (req.get("en") or "").strip():
                     return self._json({"error": "프롬프트에 넣을 영어 문장이 필요합니다"}, 400)
-                return self._json(lessons.promote(req.get("note", ""), req["en"], req.get("where")))
+                r = lessons.promote(req.get("note", ""), req["en"], req.get("where"))
+                cloudpush.nudge("규칙 승격")   # 금지문이 바뀌면 학습 탭의 '지금 붙는 문장'이 달라진다
+                return self._json(r)
             if p == "/api/review":
                 r, code = save_review(req); return self._json(r, code)
             if p == "/api/demo_run":
