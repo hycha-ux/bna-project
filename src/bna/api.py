@@ -238,13 +238,39 @@ def last_after(files: list):
     return list(af.values())[-1] if af else None
 
 
+def stem_of(meta: dict) -> str:
+    """이 아이템의 **현재** 파일 이름 앞부분. batch._save 와 같은 규칙이다(바꾸면 둘 다 바꿔라)."""
+    v = (meta or {}).get("variation") or {}
+    try:
+        return (f'{meta.get("treatment")}_{meta.get("mode")}_'
+                f'{v["country"]["key"]}{v["age"]["key"]}{v["gender"]["key"][0]}_{meta.get("item_id")}')
+    except (KeyError, TypeError):
+        return ""
+
+
+def pair_files(item_dir, meta: dict) -> list:
+    """전·후 한 쌍을 고를 후보 파일. **반드시 같은 회차의 것이어야 한다.**
+
+    ⚠ 2026-09-10 실사고: 재시도 때 조건을 다시 뽑으면 파일 이름 앞부분(사람 정보)이 바뀌는데
+      옛 회차 파일이 그대로 남는다. 그 상태에서 before 는 '첫 번째', after 는 '마지막'을 고르던 탓에
+      **전·후가 서로 다른 사람**으로 화면에 떴다(0910 배치 0000: before 일본인 / after 한국인,
+      성연서님이 '동일 인물 아님'으로 제외하셨는데 그게 정확한 판정이었다).
+      그래서 지금 meta 가 말하는 조건의 이름을 가진 파일만 본다. 그런 파일이 없으면(옛 배치 등)
+      종전대로 전부 본다 — 화면이 비는 것보다는 낫다(fail-open).
+    """
+    files = sorted(p.name for p in item_dir.glob("*.jpg"))
+    stem = stem_of(meta)
+    same = [f for f in files if stem and f.startswith(stem + "_")]
+    return same or files
+
+
 def batch_detail(bid: str):
     d = OUT / bid
     if not d.is_dir():
         return None
     rv = _reviews(d); items = []
     for m in sorted(load_items(d), key=lambda x: x.get("item_id", "")):
-        iid = m["item_id"]; files = sorted(p.name for p in (d / iid).glob("*.jpg"))
+        iid = m["item_id"]; files = pair_files(d / iid, m)
         m["before_file"] = next((f for f in files if f.endswith("_before.jpg")), None)
         m["after_file"] = last_after(files)                     # 대표 = 마지막 시점
         m["after_files"] = after_files_of(files)                # 시리즈면 {immediate: …, 2w: …}
@@ -430,7 +456,7 @@ def library_payload():
             d = r.parent; m = d / "meta.json"
             if not m.exists():
                 continue
-            meta = json.loads(m.read_text(encoding="utf-8")); files = sorted(p.name for p in d.glob("*.jpg"))
+            meta = json.loads(m.read_text(encoding="utf-8")); files = pair_files(d, meta)
             items.append({"batch_id": d.parent.name, "item_id": d.name, "treatment": meta.get("treatment"), "mode": meta.get("mode"),
                           "variation": meta.get("variation", {}), "review": rv, "passed": meta.get("passed"), "demo": meta.get("demo", False),
                           "before_file": next((f for f in files if f.endswith("_before.jpg")), None),

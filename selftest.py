@@ -600,6 +600,32 @@ ok(len({_ss(p) for p in _big}) >= 100,
    f"말라서 접어도 구도 다양성은 남아야 한다 — 고유 구도 {len({_ss(p) for p in _big})}개")
 
 
+# ── 전·후 짝 맞추기 (2026-09-10 실사고) ─────────────────────────────────────
+# 재시도로 조건을 다시 뽑으면 파일 이름 앞부분이 바뀌는데 옛 회차 파일이 남는다.
+# 그 상태에서 before 는 '첫 번째', after 는 '마지막'을 고르던 탓에 화면의 전·후가
+# **서로 다른 사람**이 됐다(0910 배치 0000: before 일본인 / after 한국인).
+import bna.api as _API
+_pd = _P(_tf.mkdtemp()) / "b" / "0000"
+_pd.mkdir(parents=True)
+for _n in ["nasolabial_selfie_japanlate_20sf_0000_before.jpg", "nasolabial_selfie_japanlate_20sf_0000_after.jpg",
+           "nasolabial_selfie_korealate_20sf_0000_before.jpg", "nasolabial_selfie_korealate_20sf_0000_after.jpg"]:
+    _pd.joinpath(_n).write_bytes(b"x")
+_meta = {"treatment": "nasolabial", "mode": "selfie", "item_id": "0000",
+         "variation": {"country": {"key": "japan"}, "age": {"key": "late_20s"}, "gender": {"key": "female"}}}
+_fp = _API.pair_files(_pd, _meta)
+_bf = next((f for f in _fp if f.endswith("_before.jpg")), None)
+_af = _API.last_after(_fp)
+ok(_bf and _af and _bf.replace("_before.jpg", "") == _af.replace("_after.jpg", ""),
+   f"전·후는 반드시 같은 회차(같은 이름)여야 한다 — before={_bf} after={_af}")
+ok("japan" in (_bf or ""), f"지금 meta 가 말하는 조건의 파일을 골라야 한다 — {_bf}")
+# 옛 배치(이름 규칙이 다른 것)는 종전대로 전부 본다 — 화면이 비는 것보다 낫다
+_pd2 = _P(_tf.mkdtemp()) / "b" / "0000"
+_pd2.mkdir(parents=True)
+for _n in ["old_before.jpg", "old_after.jpg"]:
+    _pd2.joinpath(_n).write_bytes(b"x")
+ok(len(_API.pair_files(_pd2, _meta)) == 2, "이름이 안 맞는 옛 배치는 fail-open 으로 전부 보여야 한다")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
