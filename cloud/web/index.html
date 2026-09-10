@@ -283,6 +283,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
+.vhash { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:var(--ui-lo); letter-spacing:0 }
 .vnote-txt { font-size:var(--fs-xs); color:var(--ui-md); cursor:text; border-bottom:1px dashed transparent } .vnote-txt[data-vedit]:hover { border-bottom-color:var(--ui-lo) }
 .vnote-add { font-size:var(--fs-xs); color:var(--ui-lo); cursor:pointer; opacity:0; transition:opacity .15s } tr:hover .vnote-add { opacity:1 }
 .vnote-in { width:240px; font-size:var(--fs-xs); padding:2px 6px; margin-top:2px }
@@ -1497,13 +1498,13 @@ async function loadLessons() {
     : `<div class="les-empty">아직 승격된 규칙이 없습니다. 3번에서 규칙을 올리면 넣기 전·후 제외 건수가 여기 비교됩니다.</div>`;
   const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
   // 1: 버전 표 + 현재 버전 한 줄 요약 + 이전 실버전 대비 제외율 변화
-  $('#les-cur').innerHTML = L.current_version ? `지금 버전 <b title="지문 ${esc(L.current_version)}">${esc(L.current_alias || 'v?')}</b>` : '';
+  $('#les-cur').innerHTML = L.current_version ? `지금 버전 <b>${esc(L.current_alias || 'v?')}</b> <span class="vhash">${esc(L.current_version)}</span>` : '';
   const vs = L.by_version || [], real = vs.filter(r => r.real), cur = vs.find(r => r.version === L.current_version), prev = real.find(r => r.version !== L.current_version);
   const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
   $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
   $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
     vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td>${r.real
-        ? `<div class="vcell" title="지문 ${esc(r.version)}"><b>${esc(r.alias || 'v?')}${r.title ? ` <span class="vtitle">${esc(r.title)}</span>` : ''}</b>${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}${
+        ? `<div class="vcell"><b>${esc(r.alias || 'v?')}${r.title ? ` <span class="vtitle">${esc(r.title)}</span>` : ''}</b>${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}<span class="vhash" title="설정 파일 전체의 지문 — 빌디·티모와 이야기할 땐 이걸로">${esc(r.version)}</span>${
             r.note ? `<span class="vnote-txt" ${L.no_promote ? '' : `data-vedit="${esc(r.version)}" title="누르면 고칠 수 있습니다"`}>${esc(r.note)}</span>`
             : (L.no_promote ? '' : `<a class="vnote-add" data-vedit="${esc(r.version)}">+ 메모</a>`)}</div>`
         : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}</td>` +
