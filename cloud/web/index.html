@@ -280,6 +280,8 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .les-empty { padding:14px; border:1px dashed var(--ui-border); border-radius:var(--r-md); color:var(--ui-md); font-size:var(--fs-sm); display:flex; align-items:center; gap:10px; flex-wrap:wrap }
 .delta.up { color:var(--bad) } .delta.down { color:var(--ok) }
 @media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
+.sync-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:var(--fs-sm); color:var(--ui-md); background:var(--ui-surface); border-radius:var(--r-md); padding:8px 14px; margin-bottom:var(--gap) }
+.sync-line b { color:var(--ui-hi) } .sync-line .cd { font-variant-numeric:tabular-nums; color:var(--primary) } .sync-line .sep { color:var(--ui-lo) } .sync-line .muted { font-size:var(--fs-xs) } .sync-line .b { margin-left:auto }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
@@ -545,6 +547,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <span class="fs-step"><b>4</b>다음 생성에 적용</span><i>›</i>
         <span class="fs-step"><b>5</b>버전끼리 제외율 비교</span>
       </div>
+      <div class="sync-line" id="les-sync" hidden></div>
       <div class="les-first" id="les-first" hidden></div>
       <div class="card"><div class="card-head"><h3><span class="num">1</span>프롬프트 버전별 성적</h3><span class="muted" id="les-cur"></span><div class="tb-space"></div><span class="muted" id="les-cur-sum"></span></div>
         <div id="les-version"></div></div>
@@ -1427,6 +1430,25 @@ const vname = v => { const r = (LES?.by_version || []).find(x => x.version === v
 // 검수 0건일 때만 뜨는 "첫 검수 안내". 아래 네 카드가 전부 비어 있으면 고리가 어디서 시작해 어디로 가는지
 // 안 보인다 (2026-09-10 성연서님 "검수를 하면 학습에 어떻게 쌓이는지 구조가 안 그려진다").
 // 설정값(2회·14일·3개)과 사유↔문장은 서버 값을 그대로 쓴다 — 여기 숫자를 박아 두면 avoid.yaml 과 어긋난다.
+// 인터넷 화면은 사무실 PC 스냅샷을 보므로 "언제 것이고 늦어도 언제 새 것이 오나"를 센다 — 아무 변화 없이 기다리게 두지 않는다 (2026-09-10 성연서님).
+// 0 이 되면 자동으로 다시 불러온다. PC 화면(실시간)에서는 줄 자체를 숨긴다.
+let SYNC_TIMER = null;
+function renderLessonsSync(L) {
+  const el = $('#les-sync'); if (!el) return;
+  clearInterval(SYNC_TIMER); SYNC_TIMER = null;
+  const sy = L.sync; if (!sy || !sy.at) { el.hidden = true; return; }
+  el.hidden = false;
+  const hhmm = t => { const d = new Date(t * 1000); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const tick = () => {
+    const now = Date.now() / 1000, left = Math.max(0, sy.at + (sy.interval_sec || 600) - now);
+    const m = Math.floor(left / 60), s = Math.floor(left % 60);
+    el.innerHTML = `<span>마지막 갱신 <b>${hhmm(sy.at)}</b></span><span class="sep">·</span><span>다음 갱신까지 <b class="cd">${left > 0 ? `${m}:${String(s).padStart(2, '0')}` : '확인 중…'}</b></span>` +
+      `<span class="muted">검수·승격은 보통 15초 안에 먼저 옵니다. 이 시계는 늦어도 언제 오는지입니다.</span><button class="b sm" id="les-sync-now">지금 확인</button>`;
+    $('#les-sync-now').onclick = () => loadLessons();
+    if (left <= 0) { clearInterval(SYNC_TIMER); SYNC_TIMER = null; setTimeout(loadLessons, 3000); }
+  };
+  tick(); SYNC_TIMER = setInterval(tick, 1000);
+}
 function renderLessonsFirst(L) {
   const box = $('#les-first'); if (!box) return;
   const S = L.settings || {}, rules = L.tag_rules || {};
@@ -1460,6 +1482,7 @@ async function loadLessons() {
   $('#les-window').textContent = `최근 ${L.window_days}일 · 제외 ${L.rejected}장` + (L.pending_sync ? ` · 방금 누른 ${L.pending_sync}건은 사무실 PC 가 가져가면(최대 10분) 집계에 들어갑니다` : '');
   const goReview = `<button class="b sm" data-goto="jobs">작업 탭에서 검수하기</button>`;
   renderLessonsFirst(L);
+  renderLessonsSync(L);
   // 2-좌: 사유별 건수 + 반영 여부 (min_count 2회부터 붙는다)
   $('#les-body').innerHTML = tags.length
     ? tags.map(([t, n]) => { const on = (st.from_tags || []).includes(t);

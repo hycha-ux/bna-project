@@ -628,7 +628,9 @@ export default async function handler(req, res) {
     // 집계 숫자는 PC 스냅샷(최대 10분 지연)이지만, "검수 0건" 안내는 방금 누른 판정까지 세어 바로 숨긴다 —
     // 눌렀는데 계속 0건이라고 나오면 안 먹은 줄 안다 (2026-09-10 성연서님).
     const fresh = Object.values(ov).filter((r) => r && (r.pick === 'pick' || r.pick === 'reject')).length;
+    // sync: 사무실 PC 가 이 집계를 만든 시각 + 예약작업 주기(10분). 훅이 있어 보통 더 빨리 오지만 "늦어도 언제"를 화면이 셀 수 있게.
     return json(res, 200, { ...snap.lessons, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
+      sync: { at: snap.generated_ts || null, at_text: snap.generated_at || null, interval_sec: 600 },
       no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
   }
   if (p === '/api/version_name') return json(res, 405, { error: '버전 메모는 사무실 PC 화면에서만 쓸 수 있습니다.' });

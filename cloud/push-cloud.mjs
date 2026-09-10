@@ -210,6 +210,7 @@ async function main() {
 
     const snap = {
       generated_at: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false }),
+      generated_ts: Date.now() / 1000,             // 화면의 "다음 갱신까지" 카운트다운용 (2026-09-10 성연서님)
       source: 'office-pc',
       config,
       batches,
