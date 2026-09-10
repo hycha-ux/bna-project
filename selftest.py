@@ -385,6 +385,25 @@ with _tf.TemporaryDirectory() as _d:
     _LS.handoffs_add(_hp, "각도가 벗어남.", "", "다시 적음", "prompt_design")
     _ho = _LS.handoffs_open(_hp)
     ok(len(_ho) == 1 and _ho[0]["kind"] == "prompt_design", f"넘기기 원장은 같은 메모를 마지막 줄로 접어야 한다 — {_ho}")
+    # 닫기 — 조치를 끝내면 '확인 대기'에서 빠지고 '처리됨'으로 간다
+    _rv = _LS.handoffs_resolve(_hp, "각도가 벗어남", "done", "after 프롬프트의 각도 문장을 고쳤다")
+    ok(_rv.get("ok") and not _LS.handoffs_open(_hp) and len(_LS.handoffs_done(_hp)) == 1,
+       f"처리하면 대기에서 빠지고 처리됨으로 가야 한다 — {_rv}")
+    ok(_LS.handoffs_done(_hp)[0].get("memo"), "닫힌 줄엔 무엇을 했는지(memo)가 남아야 한다")
+    # ⚠ 이 줄이 핵심이다: 닫힌 메모가 승격 대기 목록으로 **돌아오면 안 된다**.
+    #   열린 것만 빼면 닫는 순간 되돌아오고, 초안이 rule 이 아니라 화면은 또 '넘기기'를 보여 준다
+    #   → 사람이 또 누르고 또 닫는 무한 왕복 (2026-09-10 실측 tools/_probe_handoff_loop.py).
+    ok(_LS._norm("각도가 벗어남") in _LS.handoffs_notes(_hp),
+       "닫힌 넘기기도 handoffs_notes 에 남아 승격 대기 목록에서 빠져야 한다(무한 왕복 방지)")
+    ok("handoffs_notes(OUT)" in open("src/bna/api.py", encoding="utf-8").read(),
+       "화면 payload 의 제외 기준은 handoffs_open 이 아니라 handoffs_notes 여야 한다")
+    ok(not _LS.handoffs_resolve(_hp, "없는 메모", "done", "x").get("ok"), "넘긴 적 없는 메모는 못 닫는다")
+    ok(not _LS.handoffs_resolve(_hp, "각도가 벗어남", "open", "x").get("ok"), "open 으로는 닫을 수 없다")
+    # 소스에 날것 제어문자가 있으면 git 이 바이너리로 봐 diff·병합이 죽는다 (2026-09-10 promote.mjs 실사고)
+    for _f in ("cloud/lib/promote.mjs", "cloud/push-cloud.mjs", "cloud/api/app.js"):
+        _b = open(_f, "rb").read()
+        ok(not any(c in _b for c in (b"\x00", b"\x1f", b"\x7f")),
+           f"{_f} 에 날것 제어문자가 있으면 안 된다(이스케이프 '글자'로 써라)")
 # 버전 별명은 처음 쓴 순서다 — 마지막 사용 순으로 정렬된 표에서 번호가 뒤집히면 "v2가 v1보다 나아졌다"를 거꾸로 읽는다
 _al = _LS.aliases([{"version": "b", "first": 20, "real": True}, {"version": "a", "first": 10, "real": True},
                    {"version": "sim", "first": 5, "real": False}], current="c")

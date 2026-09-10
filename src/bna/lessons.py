@@ -315,12 +315,58 @@ def handoffs_add(out_dir: Path, note: str, en: str = "", why: str = "", kind=Non
     return row
 
 
-def handoffs_open(out_dir: Path) -> list:
-    """같은 메모는 마지막 줄만. status 가 open 인 것만."""
+def _handoffs_last(out_dir: Path) -> dict:
+    """같은 메모는 마지막 줄만(append-only 원장이라 뒤에 붙은 줄이 이긴다)."""
     last = {}
     for r in handoffs_read(out_dir):
-        last[_norm(r.get("note", ""))] = r
-    return [r for r in last.values() if r.get("status", "open") == "open"]
+        k = _norm(r.get("note", ""))
+        if k:
+            last[k] = r
+    return last
+
+
+def handoffs_open(out_dir: Path) -> list:
+    """아직 티모가 처리하지 않은 것 — 화면의 '티모 확인 대기' 목록."""
+    return [r for r in _handoffs_last(out_dir).values() if r.get("status", "open") == "open"]
+
+
+def handoffs_done(out_dir: Path) -> list:
+    """처리가 끝난 것 — 화면의 '처리됨' 목록. 무엇을 했는지는 `memo` 에 있다."""
+    return [r for r in _handoffs_last(out_dir).values() if r.get("status", "open") != "open"]
+
+
+def handoffs_notes(out_dir: Path) -> set:
+    """**넘긴 적 있는 메모 키 전부**(열림·닫힘 무관). 승격 대기 목록에서 빼는 기준은 이것이다.
+
+    ⚠ 여기서 `handoffs_open`(열린 것만)을 쓰면 안 된다 — 티모가 처리해 닫는 순간 그 메모가
+      승격 대기 목록으로 **돌아오고**, 초안이 여전히 rule 이 아니라 화면은 다시
+      '티모에게 넘기기'를 보여 준다. 사람이 또 누르고, 또 닫고… 무한 왕복이 된다
+      (2026-09-10 실측 = `tools/_probe_handoff_loop.py`). 승격된 메모를 `custom.from` 으로
+      영구히 빼는 것과 같은 규칙이다 — 조치가 끝난 메모는 다시 줄 세우지 않는다.
+      같은 실수가 또 나면 그건 이 목록이 아니라 성적표(`scorecard`)가 잡는다.
+    """
+    return {k for k in _handoffs_last(out_dir)}
+
+
+def handoffs_resolve(out_dir: Path, note: str, status: str = "done", memo: str = "", by: str = "teemo") -> dict:
+    """넘겨받은 메모를 닫는다. 원장은 append-only 라 지우지 않고 새 줄을 붙인다.
+
+    status: done(조치함) / wontfix(안 고치기로 함 — 이유를 memo 에). open 으로는 못 닫는다.
+    memo  : **무엇을 했는지 한 줄**. 이게 없으면 닫힌 기록이 '누가 언제 닫았다'뿐이라
+            나중에 같은 메모가 또 올라올 때 지난번에 뭘 했는지 아무도 모른다.
+    """
+    status = (status or "done").strip().lower()
+    if status == "open":
+        return {"ok": False, "error": "open 은 닫는 상태가 아니다 — done 또는 wontfix"}
+    prev = _handoffs_last(out_dir).get(_norm(note or ""))
+    if not prev:
+        return {"ok": False, "error": f"넘긴 적 없는 메모다: {note!r}"}
+    row = {**prev, "note": prev.get("note"), "status": status, "memo": (memo or "").strip()[:300],
+           "by": by, "at": time.time(), "resolved_from": prev.get("at")}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with (out_dir / HANDOFFS).open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return {"ok": True, "handoff": row}
 
 
 NAMES = "version_names.json"

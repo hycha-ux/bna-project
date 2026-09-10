@@ -212,6 +212,28 @@ PYTHONPATH=src python3 -m bna.api --demo   # 키 없이 화면 확인용 샘플 
   않았지만 차액이 메모당 ₩2 라 끌 이유가 없고, 그 사진 쌍은 **이미 검수 때 같은 벤더에 올라간다**
   (새로 생기는 노출이 없다). 메모가 짧을수록("이상함") 텍스트만으론 근거가 아예 없다.
 
+#### 승격감이 아니면 '티모에게 넘기기' (원장 = `outputs/handoffs.jsonl`, append-only)
+
+`promotable` 이 아닌 메모는 화면이 승격 대신 **넘기기**만 보여 준다 → `POST /api/lessons/handoff`
+→ 원장에 `status:"open"` 한 줄. 목록 = 학습 탭 '티모 확인 대기'.
+
+티모가 조치한 뒤 닫는다 — `PYTHONPATH=src python tools/handoff.py --done "<메모 일부>" --memo "무엇을 했는지"`
+(`--wontfix` 는 안 고치기로 한 경우, 이유를 `--memo` 에. `--memo` 없이는 못 닫는다 —
+없으면 닫힌 기록이 '누가 언제 닫았다'뿐이라 같은 메모가 또 올 때 지난 조치를 아무도 모른다.)
+
+- ⚠ **승격 대기 목록에서 빼는 기준은 `handoffs_notes`(넘긴 적 있는 전부)이지 `handoffs_open` 이 아니다.**
+  열린 것만 빼면 티모가 닫는 순간 그 메모가 목록으로 돌아오고, 초안이 여전히 `rule` 이 아니라
+  화면은 또 '넘기기'를 보여 준다 → 누르고 닫고 누르고… **무한 왕복**
+  (2026-09-10 실측 = `tools/_probe_handoff_loop.py`, 지금은 그 스크립트가 수리를 증명한다).
+  승격된 메모를 `custom.from` 으로 영구히 빼는 것과 같은 규칙이다. 같은 실수가 또 나면
+  이 목록이 아니라 **성적표(scorecard)**가 잡는다.
+- 닫힌 것은 payload 의 `handoffs_done` 으로 나간다(화면 '처리됨' 목록용).
+- ⚠ **소스에 날것 제어문자(0x00·0x1f·0x7f)를 넣지 마라.** ` ` 같은 이스케이프가 파일을 쓰는
+  단계에서 해석돼 진짜 1바이트로 들어가면 정규식의 뜻은 같아 테스트가 통과하는데 **git 이 그 파일을
+  바이너리로 판정**한다 — diff 가 안 보여 리뷰가 불가능하고 둘이 같이 고치면 병합도 못 한다
+  (2026-09-10 `cloud/lib/promote.mjs` 실사고, 수리 = `tools/_fix_ctrl_bytes.py`,
+  재발 감시 = `selftest.py`). 셸 히어독으로 소스를 쓰면 이 일이 조용히 생긴다.
+
 실호출 확인 = `PYTHONPATH=src python tools/notedraft_smoke.py [--no-images]`
 (키워드 표 답과 AI 답을 나란히 찍는다. 실호출이라 돈이 든다). 회귀 = `selftest.py` ⑯(13종).
 

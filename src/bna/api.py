@@ -292,7 +292,10 @@ def lessons_payload():
     # AI 초안(티모 notedraft, 캐시 outputs/note_drafts.json)을 병합 그룹에 붙인다. 승격 버튼은 promotable 로 (티모 요청).
     # 키워드 표 초안은 AI 초안이 없을 때만 남는다 — 화면이 "단어 매칭"이라고 표시한다.
     drafts = notedraft.read_cache(OUT)
-    handed = {lessons._norm(h.get("note", "")) for h in lessons.handoffs_open(OUT)}
+    # 넘긴 적 있는 메모는 **닫힌 것까지** 뺀다 — 열린 것만 빼면 티모가 처리해 닫는 순간
+    # 그 메모가 승격 대기로 돌아오고, 초안이 여전히 rule 이 아니라 화면은 또 '넘기기'를 보여 준다
+    # (무한 왕복). 정본·근거 = lessons.handoffs_notes 주석.
+    handed = lessons.handoffs_notes(OUT)
     notes = []
     for n in s.get("notes") or []:
         k = lessons._norm(n["note"])
@@ -317,7 +320,8 @@ def lessons_payload():
                          "axis_min_count": st.get("axis_min_count", 3), "axis_weight": st.get("axis_weight", 0.25)},
             # 버전 표와 같은 기준(review.json)으로 센다 — 원장(lessons.jsonl)으로 세면 옛 시뮬 판정이 빠져 표와 어긋난다
             "reviewed_total": sum(int(r.get("reviewed") or 0) for r in bv),
-            "handoffs": lessons.handoffs_open(OUT), "draft_totals": notedraft.totals(OUT),
+            "handoffs": lessons.handoffs_open(OUT), "handoffs_done": lessons.handoffs_done(OUT),
+            "draft_totals": notedraft.totals(OUT),
             "tag_rules": {t: (c or {}).get("en", "") for t, c in (cfg.get("tags") or {}).items()},
             "preview": {k: lessons.avoid_text(v) for k, v in (a.get("lines") or {}).items() if v}}
 
