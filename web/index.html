@@ -284,7 +284,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .sync-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:var(--fs-sm); color:var(--ui-md); background:var(--ui-surface); border-radius:var(--r-md); padding:8px 14px; margin-bottom:var(--gap) }
 .sync-line b { color:var(--ui-hi) } .sync-line .cd { font-variant-numeric:tabular-nums; color:var(--primary) } .sync-line .sep { color:var(--ui-lo) } .sync-line .muted { font-size:var(--fs-xs) } .sync-line .b { margin-left:auto }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
-.note-g .note-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap } .note-g .note-in { margin-top:6px } .note-g .note-in input { width:100% } .note-g .note-in .hint { display:block; margin-top:3px; font-size:var(--fs-xs); color:var(--ui-lo) }
+.note-g .note-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap } .note-g .note-why { margin-top:4px; font-size:var(--fs-sm); color:var(--ui-hi); padding:6px 10px; background:var(--ui-surface); border-radius:var(--r-sm); border-left:3px solid var(--primary) } .note-g .note-why.muted { color:var(--ui-md); border-left-color:var(--ui-lo) } .note-g .note-in { margin-top:6px } .note-g .note-in input { width:100% } .note-g .note-in .hint { display:block; margin-top:3px; font-size:var(--fs-xs); color:var(--ui-lo) }
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
 .vhash { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:var(--ui-lo); letter-spacing:0 }
@@ -1602,24 +1602,50 @@ async function loadLessons() {
     : `<div class="les-empty">아직 붙는 문장이 없습니다. 왼쪽 사유가 ${minN}회 이상 쌓이면 여기에 문장이 생깁니다.</div>`;
   $('#les-body').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
   // 3: 승격
-  // 같은 메모는 서버가 한 줄로 묶고(count·items) 영어 초안(suggest_en)을 준다. 사람은 고치고 승격만 (2026-09-10 성연서님 "문구 제안·병합")
-  $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => `
+  // 같은 메모는 서버가 한 줄로 묶고(count·items), AI 초안(draft: why·en·kind·promotable)을 붙여 준다 (티모 notedraft).
+  // 승격 버튼은 kind 가 아니라 promotable 로 — 이미 붙어 있는 문장을 또 올리면 프롬프트만 부푼다 (티모 요청).
+  // 승격감이 아니면(프롬프트 설계·검수기·조건 가중치) '티모에게 넘기기' — 연서님이 매번 판단하지 않게.
+  const KIND_KO = {rule: ['규칙감', 'ok', '금지문 한 줄로 막을 수 있는 실수'], prompt_design: ['프롬프트 설계', 'warn', '원인 문장이 이미 프롬프트에 있어 그걸 고쳐야 합니다 — 티모 영역'],
+    gate: ['검수기', 'warn', 'AI 검수기(구조·동일인)가 잡아야 할 일 — 티모 영역'], axis: ['조건 가중치', 'warn', '그 조건값(프레이밍·각도 등)이 뽑히는 확률 문제 — 티모 영역']};
+  $('#les-notes').innerHTML = (L.notes || []).length ? (L.notes || []).map((n, i) => { const d = n.draft, k = d && d.kind ? KIND_KO[d.kind] : null, can = !!(d && d.promotable);
+    const kindChip = d ? (k ? `<span class="chip ${k[1]}" title="${esc(k[2])}">${k[0]}</span>` : `<span class="chip" title="AI 가 어떤 종류의 문제인지 판정하지 못했습니다">판정 불가</span>`) : '';
+    const srcChip = d ? `<span class="chip acc" title="메모·태그·생성 조건·실제 프롬프트·전후 사진을 보고 AI 가 쓴 초안">AI 초안</span>` : (n.suggest_en ? `<span class="chip" title="메모의 단어만 보고 표에서 붙인 문장 — 원인을 본 게 아닙니다. 사무실 PC 가 다음 회차에 AI 초안을 만듭니다">단어 매칭</span>` : '');
+    return `
     <div class="list-row note-g" style="cursor:default;align-items:flex-start">
-      <div class="t" style="flex:1"><div class="note-h"><b>${esc(n.note)}</b>${n.count > 1 ? `<span class="chip warn" title="같은 메모가 적힌 사진 수 — 승격하면 한 규칙으로 합쳐집니다">${n.count}장 병합</span>` : ''}</div>
+      <div class="t" style="flex:1"><div class="note-h"><b>${esc(n.note)}</b>${n.count > 1 ? `<span class="chip warn" title="같은 메모가 적힌 사진 수 — 승격하면 한 규칙으로 합쳐집니다">${n.count}장 병합</span>` : ''}${kindChip}${srcChip}</div>
         <span>${(n.items || []).slice(0, 4).map(x => `${fmtBid(x.batch)} · ${+x.item + 1}`).join(' / ')}${(n.items || []).length > 4 ? ` 외 ${n.items.length - 4}` : ''}${(n.tags || []).length ? ' · ' + n.tags.map(esc).join(', ') : ''}</span>
-        <div class="note-in"><input type="text" id="les-en-${i}" value="${esc(n.suggest_en || '')}" placeholder="프롬프트에 넣을 영어 한 문장 (예: no hands, fingers or phone anywhere in the frame)" ${L.no_promote ? 'disabled' : ''}>${n.suggest_en ? `<span class="hint">메모를 보고 미리 채운 초안입니다 — 고쳐도 됩니다</span>` : `<span class="hint">맞는 초안이 없어 비워 뒀습니다 — 영어 한 문장을 적어 주세요</span>`}</div>
+        ${d && d.why ? `<div class="note-why">${esc(d.why)}</div>` : ''}
+        ${d && d.covered_by ? `<div class="note-why muted">이미 붙어 있는 문장이 이 실수를 덮습니다: “${esc(d.covered_by)}” — 승격해도 달라지는 게 없어요</div>` : ''}
+        <div class="note-in"><input type="text" id="les-en-${i}" value="${esc(n.suggest_en || '')}" placeholder="프롬프트에 넣을 영어 한 문장" ${L.no_promote ? 'disabled' : ''}>${d ? `<span class="hint">AI 초안입니다 — 고쳐도 됩니다${d.usd ? ` · $${(+d.usd).toFixed(4)}` : ''}</span>` : n.suggest_en ? `<span class="hint">단어 매칭 초안입니다 — 원인을 본 문장이 아니니 그대로 믿지 마세요</span>` : `<span class="hint">아직 초안이 없습니다 — 사무실 PC 가 다음 회차에 AI 초안을 만듭니다</span>`}</div>
       </div>
-      <button class="b" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''}>규칙으로 승격</button>
-    </div>`).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
-  // 인터넷 화면에서 보낸 승격 요청(사무실 PC 반영 전) — 목록 위에 '대기'로 보인다
-  const pp = L.pending_promotions || [];
-  if (pp.length) $('#les-notes').insertAdjacentHTML('afterbegin', pp.map(r => `<div class="list-row" style="cursor:default;background:var(--ui-surface)"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.en)}</span></div><span class="chip warn" title="사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 규칙이 되고 여기서 사라집니다">승격 대기</span></div>`).join(''));
+      <span style="display:flex;flex-direction:column;gap:6px;align-items:stretch">
+        ${can || !d ? `<button class="b ${can ? 'primary' : ''}" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''} title="${can ? 'AI 가 규칙감으로 판정했고 아직 안 붙어 있는 문장입니다' : '초안 없이 올립니다 — 문장을 직접 확인하세요'}">규칙으로 승격</button>` : ''}
+        <button class="b ${can ? 'ghost' : ''}" data-handoff="${i}" ${L.no_promote ? 'disabled' : ''} title="승격하지 않고 티모(프롬프트·검수기 담당)에게 넘깁니다. 이 목록에서 빠지고 '티모 확인' 칸으로 갑니다">티모에게 넘기기</button>
+      </span>
+    </div>`; }).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
+  // 인터넷 화면에서 보낸 요청(사무실 PC 반영 전) — 목록 위에 '대기'로
+  const pp = L.pending_promotions || [], ph = L.pending_handoffs || [];
+  if (pp.length || ph.length) $('#les-notes').insertAdjacentHTML('afterbegin',
+    pp.map(r => `<div class="list-row" style="cursor:default;background:var(--ui-surface)"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.en)}</span></div><span class="chip warn" title="사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 규칙이 되고 여기서 사라집니다">승격 대기</span></div>`).join('')
+    + ph.map(r => `<div class="list-row" style="cursor:default;background:var(--ui-surface)"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.why || r.en || '')}</span></div><span class="chip" title="사무실 PC 가 가져가면 티모 확인 목록에 들어갑니다">넘기기 대기</span></div>`).join(''));
+  // 티모 확인 목록 (PC 원장 outputs/handoffs.jsonl) — 목록 아래
+  const ho = L.handoffs || [];
+  if (ho.length) $('#les-notes').insertAdjacentHTML('beforeend', `<div class="rev-h" style="margin-top:12px">티모 확인 대기 ${ho.length}건 <span class="muted" style="font-weight:400">— 프롬프트·검수기·조건 쪽에서 고칠 것들 (outputs/handoffs.jsonl)</span></div>` +
+    ho.map(r => { const k = r.kind ? KIND_KO[r.kind] : null; return `<div class="list-row" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.why || '')}${r.en ? ` · <i>${esc(r.en)}</i>` : ''}</span></div>${k ? `<span class="chip ${k[1]}">${k[0]}</span>` : ''}<span class="muted" style="font-size:var(--fs-xs)">${fmtDay(r.at)}</span></div>`; }).join(''));
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
     if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
     try { const r = await api('/api/lessons/promote', {note: LES.notes[i].note, en, where: ['before', 'after']});
       if (r.error) throw new Error(r.error);
       msg('#les-msg', r.queued ? (r.message || '승격 요청을 보냈습니다') : `규칙 ${r.count}개 — 다음 생성부터 붙습니다`, 'on'); loadLessons(); }
+    catch (e) { msg('#les-msg', e.message, 'err'); }
+  });
+  $('#les-notes').querySelectorAll('[data-handoff]').forEach(b => b.onclick = async () => {
+    const i = b.dataset.handoff, n = LES.notes[i], d = n.draft || {}, en = ($('#les-en-' + i) || {}).value || '';
+    try { const r = CFG.cloud ? await api('/api/lessons/promote', {note: n.note, en, why: d.why || '', kind: d.kind || null, handoff: true})
+                              : await api('/api/lessons/handoff', {note: n.note, en, why: d.why || '', kind: d.kind || null});
+      if (r.error) throw new Error(r.error);
+      msg('#les-msg', r.queued ? (r.message || '티모에게 넘겼습니다') : '티모 확인 목록에 넣었습니다', 'on'); loadLessons(); }
     catch (e) { msg('#les-msg', e.message, 'err'); }
   });
   // 4: 규칙 성적표 — 건수만이 아니라 검수 대비 비율

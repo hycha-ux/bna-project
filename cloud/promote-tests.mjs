@@ -50,5 +50,10 @@ ok(JSON.stringify(validate({ en: 'x', where: ['nowhere'] }).ok.where) === '["bef
 ok(JSON.stringify(validate({ en: 'x', where: 'after' }).ok.where) === '["before","after"]', '배열이 아니어도 안 터진다');
 ok(validate({ en: 'x', note: null }).ok.note === '', '메모가 없어도 통과(메모 없이 승격할 수 있다)');
 
+// 넘기기(handoff): 영어 문장 없이 메모만으로 통과, 메모 없으면 거부 (2026-09-10 빌디)
+ok(validate({ note: '각도가 벗어남', handoff: true, why: '각도 드리프트', kind: 'axis' }).ok?.handoff === true, '넘기기는 영어 문장 없이 통과한다');
+ok(!!validate({ handoff: true }).error, '넘기기인데 메모가 없으면 거부한다');
+ok(validate({ en: 'x' }).ok.handoff === false, '승격은 handoff=false 로 저장된다');
+
 console.log(fails.length ? `\n${fails.length}건 실패` : '\n전부 통과');
 process.exit(fails.length ? 1 : 0);

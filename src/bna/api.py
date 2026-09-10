@@ -287,7 +287,25 @@ def lessons_payload():
     s = lessons.summarize(OUT)
     a = lessons.active(OUT)
     from .version import prompt_version
+    from . import notedraft
     cfg = lessons._cfg(); st = cfg.get("settings") or {}
+    # AI 초안(티모 notedraft, 캐시 outputs/note_drafts.json)을 병합 그룹에 붙인다. 승격 버튼은 promotable 로 (티모 요청).
+    # 키워드 표 초안은 AI 초안이 없을 때만 남는다 — 화면이 "단어 매칭"이라고 표시한다.
+    drafts = notedraft.read_cache(OUT)
+    handed = {lessons._norm(h.get("note", "")) for h in lessons.handoffs_open(OUT)}
+    notes = []
+    for n in s.get("notes") or []:
+        k = lessons._norm(n["note"])
+        if k in handed:
+            continue                                    # 이미 티모에게 넘긴 메모는 목록에서 뺀다
+        d = drafts.get(k)
+        if d and d.get("source") == "ai":
+            n["draft"] = {kk: d.get(kk) for kk in ("why", "en", "kind", "covered_by", "promotable", "source", "usd")}
+            n["suggest_en"] = d.get("en") or n.get("suggest_en", "")
+        else:
+            n["draft"] = None
+        notes.append(n)
+    s["notes"] = notes
     # reviewed_total: 채택·제외 합계(원장 기준). 0이면 화면이 "첫 검수 안내"를 낸다 — 검수 0건인 상태에서
     # 되먹임 고리가 어디에 쌓이고 언제 붙는지가 안 보였다 (2026-09-10 성연서님 "구조가 안 그려진다").
     # tag_rules: 제외 사유 버튼 ↔ 붙을 영어 금지문. 안내에서 "이 버튼을 누르면 이 문장이 붙는다"를 실물로 보여준다.
@@ -299,6 +317,7 @@ def lessons_payload():
                          "axis_min_count": st.get("axis_min_count", 3), "axis_weight": st.get("axis_weight", 0.25)},
             # 버전 표와 같은 기준(review.json)으로 센다 — 원장(lessons.jsonl)으로 세면 옛 시뮬 판정이 빠져 표와 어긋난다
             "reviewed_total": sum(int(r.get("reviewed") or 0) for r in bv),
+            "handoffs": lessons.handoffs_open(OUT), "draft_totals": notedraft.totals(OUT),
             "tag_rules": {t: (c or {}).get("en", "") for t, c in (cfg.get("tags") or {}).items()},
             "preview": {k: lessons.avoid_text(v) for k, v in (a.get("lines") or {}).items() if v}}
 
@@ -734,6 +753,15 @@ class Handler(SimpleHTTPRequestHandler):
                 if not req.get("version"):
                     return self._json({"error": "version 이 필요합니다"}, 400)
                 return self._json({"ok": True, "names": lessons.names_set(OUT, req["version"], req.get("note", ""))})
+            if p == "/api/lessons/drafts":         # {limit?} → 새 메모만 AI 초안 호출 (push-cloud 회차·화면 버튼이 부른다). 돈 쓰는 자리 — GET 에 숨기지 않는다
+                from . import notedraft
+                before = len(notedraft.read_cache(OUT))
+                cache = notedraft.ensure_drafts(OUT, lessons.summarize(OUT).get("notes") or [], limit=int(req.get("limit") or 20))
+                return self._json({"ok": True, "made": max(0, len(cache) - before), **notedraft.totals(OUT)})
+            if p == "/api/lessons/handoff":        # {note, en?, why?, kind?} → outputs/handoffs.jsonl — 승격감이 아닌 메모를 티모에게
+                if not (req.get("note") or "").strip():
+                    return self._json({"error": "메모가 비어 있습니다"}, 400)
+                return self._json({"ok": True, "handoff": lessons.handoffs_add(OUT, req["note"], req.get("en", ""), req.get("why", ""), req.get("kind"), req.get("by"))})
             if p == "/api/lessons/promote":
                 if not (req.get("en") or "").strip():
                     return self._json({"error": "프롬프트에 넣을 영어 문장이 필요합니다"}, 400)

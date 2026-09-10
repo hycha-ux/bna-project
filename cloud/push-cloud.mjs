@@ -133,8 +133,9 @@ async function absorbPromotions(TOKEN) {
   let taken = 0; const failed = [];
   for (const q of reqs) {
     try {
-      const r = await fetch(BASE + '/api/lessons/promote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note: q.note, en: q.en, where: q.where }) });
+      const r = q.handoff
+        ? await fetch(BASE + '/api/lessons/handoff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: q.note, en: q.en, why: q.why, kind: q.kind, by: q.by }) })
+        : await fetch(BASE + '/api/lessons/promote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: q.note, en: q.en, where: q.where }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok && (j.ok || /이미 있습니다/.test(j.error || ''))) { await PRO.remove(TOKEN, q._url); taken++; }
       else failed.push(`${q.id} (${j.error || 'API ' + r.status})`);
@@ -220,6 +221,12 @@ async function main() {
     // 학습 탭 — 인터넷 화면에서 "없는 경로: /api/lessons" 로 통째로 비어 있었다 (2026-09-10 성연서님).
     // 집계는 PC 원장 기준이라 스냅샷에 실어 보내고, 승격(쓰기)만 PC 에서 한다.
     let lessons = null;
+    // 새 메모의 AI 초안을 먼저 만든다(메모당 1회, 회차당 최대 20건) — 그래야 아래 집계에 실린다. 실패해도 집계는 올린다.
+    if (!DRY) {
+      try { const r = await (await fetch(BASE + '/api/lessons/drafts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"limit":20}' })).json();
+        if (r.made) console.log(`  메모 초안 ${r.made}건 생성 (누적 $${r.usd})`); }
+      catch (e) { console.log('  메모 초안 건너뜀 —', e.message); }
+    }
     try { lessons = await getJson('/api/lessons'); } catch (e) { console.log('  학습 집계 건너뜀 —', e.message); }
 
     const items = {};

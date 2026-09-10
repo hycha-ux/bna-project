@@ -288,6 +288,41 @@ def scorecard(out_dir: Path) -> list:
                     "after_reviewed": len(after)})
     return out
 
+HANDOFFS = "handoffs.jsonl"
+
+
+def handoffs_read(out_dir: Path) -> list:
+    """'티모에게 넘기기' 원장 — 승격감이 아닌 메모(프롬프트 설계·검수기·조건 가중치)를 사람이 넘긴 것. append-only."""
+    p = out_dir / HANDOFFS
+    if not p.exists():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        try:
+            if line.strip():
+                out.append(json.loads(line))
+        except Exception:                               # noqa: BLE001
+            continue
+    return out
+
+
+def handoffs_add(out_dir: Path, note: str, en: str = "", why: str = "", kind=None, by=None) -> dict:
+    row = {"note": (note or "").strip()[:300], "en": (en or "").strip()[:400], "why": (why or "").strip()[:200],
+           "kind": kind, "by": by, "at": time.time(), "status": "open"}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    with (out_dir / HANDOFFS).open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return row
+
+
+def handoffs_open(out_dir: Path) -> list:
+    """같은 메모는 마지막 줄만. status 가 open 인 것만."""
+    last = {}
+    for r in handoffs_read(out_dir):
+        last[_norm(r.get("note", ""))] = r
+    return [r for r in last.values() if r.get("status", "open") == "open"]
+
+
 NAMES = "version_names.json"
 
 

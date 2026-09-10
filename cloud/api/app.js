@@ -558,8 +558,9 @@ export default async function handler(req, res) {
   if (p === '/api/lessons/promote' && req.method === 'POST') {
     if (!TOKEN) return json(res, 503, { error: '저장소가 아직 연결되지 않았습니다(BLOB_READ_WRITE_TOKEN).' });
     let body = null; try { body = await readBody(req); } catch { body = null; }
-    if (!body || !(body.en || '').trim()) return json(res, 400, { error: '프롬프트에 넣을 영어 문장이 필요합니다' });
-    try { const r = await PRO.save(TOKEN, body, user?.email || null); return json(res, 200, { ok: true, queued: true, request: r, message: '승격 요청을 보냈습니다 — 사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 다음 생성부터 붙습니다' }); }
+    if (!body) return json(res, 400, { error: '요청이 비어 있습니다' });
+    try { const r = await PRO.save(TOKEN, body, user?.email || null);
+      return json(res, 200, { ok: true, queued: true, request: r, message: r.handoff ? '티모에게 넘겼습니다 — 사무실 PC 가 가져가면 티모 확인 목록에 들어갑니다' : '승격 요청을 보냈습니다 — 사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 다음 생성부터 붙습니다' }); }
     catch (e) { return json(res, 500, { error: '승격 요청을 저장하지 못했습니다 — ' + (e?.message || e) }); }
   }
 
@@ -653,7 +654,8 @@ export default async function handler(req, res) {
     const notes = (snap.lessons.notes || []).filter((n) => !pendKeys.has(norm(n.note)));
     return json(res, 200, { ...snap.lessons, notes, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
       sync: { at: snap.generated_ts || parseKoTime(snap.generated_at), at_text: snap.generated_at || null, interval_sec: 600 },
-      pending_promotions: pend.map((r) => ({ note: r.note, en: r.en, at: r.at, by: r.by })),
+      pending_promotions: pend.filter((r) => !r.handoff).map((r) => ({ note: r.note, en: r.en, at: r.at, by: r.by })),
+      pending_handoffs: pend.filter((r) => r.handoff).map((r) => ({ note: r.note, en: r.en, why: r.why, kind: r.kind, at: r.at, by: r.by })),
       no_promote: false, cloud_msg: '' });
   }
   if (p === '/api/version_name') return json(res, 405, { error: '버전 메모는 사무실 PC 화면에서만 쓸 수 있습니다.' });
