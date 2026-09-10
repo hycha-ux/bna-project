@@ -367,6 +367,8 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
    모달이 좌상단에 붙는다(2026-09-08 실측 left 0·top 0). inset:0 과 한 쌍이다. */
 dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
 dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:var(--fs-xl); font-weight:var(--fw-b) }
+.dlg-pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 16px } .dlg-pair figure { margin:0; background:var(--ui-surface); border-radius:var(--r-sm); overflow:hidden }
+.dlg-pair img { width:100%; height:min(46vh, 420px); object-fit:contain; display:block } .dlg-pair figcaption { font-size:var(--fs-xs); color:var(--ui-md); padding:4px 8px }
 dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
 .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
 .toast.show { opacity:1; transform:translate(-50%,0) }
@@ -1407,8 +1409,10 @@ async function save(it, prev) {
     bindActs($('#it-'+it.item_id));
   }
 }
-function detail(id) {
-  const it = CUR.items.find(x => x.item_id === id), v = it.variation||{}, av = it.after_variation||{};
+// 라이브러리(채택본)에서도 같은 모달을 연다 — 그땐 CUR 이 없으니 항목과 배치 id 를 직접 넘긴다 (2026-09-10 성연서님 "확대하면 비교와 프롬프트")
+function detail(id, item = null, bid = null) {
+  const it = item || CUR.items.find(x => x.item_id === id), b = bid || CUR?.batch_id, v = it.variation||{}, av = it.after_variation||{};
+  const pair = b && (it.before_file || it.after_file) ? `<div class="dlg-pair">${it.before_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.before_file}"><figcaption>시술 전</figcaption></figure>` : ''}${it.after_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.after_file}"><figcaption>시술 후</figcaption></figure>` : ''}</div>` : '';
   const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
   // 점수는 {score, note} 객체다. note 는 AI 가 그렇게 준 이유라 같이 보여 준다(검수의 근거).
   const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3><div class="scores lg">${
@@ -1417,7 +1421,7 @@ function detail(id) {
         why ? `<div class="score-why">${esc(why)}</div>` : ''}`; }).join('')}</div>` : '';
   const chk = [it.structure && `얼굴 정렬: ${it.structure.passed ? '통과' : '불일치'}`, it.identity && `동일 인물: ${it.identity.hard_fail ? '불일치' : '통과'}`].filter(Boolean).join(' · ');
   $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><button class="b" onclick="dlg.close()">닫기</button></div>
-    <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(vname(it.prompt_version)) : ''}</p>
+    <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(vname(it.prompt_version)) : ''}</p>${pair}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>생성 조건</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후 변경</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
     <h3 style="margin-top:14px">시술 전 프롬프트</h3>${promptLegend(it.before_parts)}${promptHtml(it.before_parts, it.before_prompt)}
     <h3 style="margin-top:10px">시술 후 프롬프트</h3>${promptLegend(it.after_parts)}${promptHtml(it.after_parts, it.after_prompt)}`;
@@ -1440,13 +1444,18 @@ function renderLibrary() {
   $('#lib-groups').innerHTML = Object.entries(groups).map(([k, arr]) => { const [t, m] = k.split('|');
     return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
   $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
+  $('#lib-groups').querySelectorAll('[data-zoom]').forEach(p => p.onclick = async () => {
+    const [bid, iid] = p.dataset.zoom.split('/');
+    try { LIB_DETAIL[bid] = LIB_DETAIL[bid] || await api('/api/batches/' + bid); const it = (LIB_DETAIL[bid].items || []).find(x => x.item_id === iid); if (it) detail(iid, it, bid); else toast('이 사진의 상세 정보를 찾지 못했습니다'); }
+    catch (e) { toast('상세를 불러오지 못했습니다 — ' + e.message); } });
   $('#lib-groups').querySelectorAll('[data-unpick]').forEach(b => b.onclick = async () => { const [bid, iid] = b.dataset.unpick.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
     await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('채택을 취소했습니다'); loadLibrary(); });
 }
+const LIB_DETAIL = {};   // 배치 상세 캐시 — 라이브러리에서 사진마다 다시 받지 않게
 function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   const badges = ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
-  return `<div class="item"><div class="pair">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
+  return `<div class="item"><div class="pair" data-zoom="${i.batch_id}/${i.item_id}" title="누르면 크게 비교하고 프롬프트를 봅니다">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
     <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span><span class="head-r"><button class="b sm ghost" data-open="${i.batch_id}" title="이 사진이 나온 작업으로">작업</button><button class="b sm ghost" data-unpick="${i.batch_id}/${i.item_id}" title="채택을 풀고 드라이브에서 내립니다">해제</button></span></div>
     <div class="tags">${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
 }
