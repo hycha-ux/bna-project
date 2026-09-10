@@ -587,6 +587,18 @@ ok(len(_pb("selfie", 6, seed=23, treatment="nasolabial", avoid_scene_sigs=_all))
 from bna.planner import signature as _sg
 ok(len(_sg(_p0[0])) == 11, f"인물 서명은 인물 축 11개만이어야 한다 — {len(_sg(_p0[0]))}")
 
+# 구도가 마르면 회피를 접어야 한다 — 안 접으면 남은 20n 번을 전부 거절로 헛돈다.
+# 2026-09-10 실측: 이 가드가 없을 때 n=400 계획이 분 단위로 늘어 회귀가 2분 → 7분이 됐다.
+import time as _tm2
+_t0 = _tm2.time()
+_big = _pb("selfie", 400, seed=31, treatment="nasolabial")
+_el = _tm2.time() - _t0
+ok(len(_big) == 400 and _el < 20,
+   f"구도 후보보다 많은 n 도 채우고 오래 걸리면 안 된다 — {len(_big)}개 / {_el:.1f}s")
+# 접더라도 '적당히 많이 다르게'는 지켜야 한다(접는 게 곧 포기는 아니다)
+ok(len({_ss(p) for p in _big}) >= 100,
+   f"말라서 접어도 구도 다양성은 남아야 한다 — 고유 구도 {len({_ss(p) for p in _big})}개")
+
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

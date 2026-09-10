@@ -31,6 +31,10 @@ def signature(plan: dict) -> tuple:
 # 조명·색·화질은 뺐다 — 후보가 적어 금세 다 소진되고, 사람 눈에 '같은 구도'로 읽히는 건 이 셋이다.
 SCENE_SIG_AXES = ["framing", "angle", "background"]
 
+# 구도가 '말랐다'고 볼 연속 거절 횟수. 후보 수(프레이밍×각도×배경)보다 넉넉히 크게 잡아
+# 운 나쁜 연속 충돌로 일찍 접지 않게 한다.
+SCENE_DRY_AFTER = 300
+
 
 def scene_signature(plan: dict) -> tuple:
     return tuple(plan[a]["key"] if isinstance(plan[a], dict) else plan[a] for a in SCENE_SIG_AXES)
@@ -124,6 +128,12 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
         if len(plans) >= n:
             break
         tries = 0
+        # 구도 후보는 유한하다(프레이밍×각도×배경). 다 쓰고 나면 그 뒤로는 아무리 뽑아도
+        # 전부 거절이라 20n 번을 헛돈다 — n=400 표본에서 회귀가 2분 → 7분이 됐다(0910 실측).
+        # 그래서 구도 때문에만 연달아 거절되면 이 배치에서는 구도 회피를 접는다(fail-open,
+        # "배치가 말없이 줄어드는 게 더 나쁘다"는 이 루프의 원래 원칙과 같다).
+        scene_dry = False
+        scene_rejects = 0
         while len(plans) < n and tries < n * 20:
             tries += 1
             p = {}
@@ -137,8 +147,12 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
             scene = tuple(p[a] for a in SCENE_SIG_AXES)
             # 구도 중복 회피(2026-09-10). **1차에서만** 막는다 — 구도 후보는 유한해서
             # 2차까지 막으면 배치가 말없이 줄어든다(그게 더 나쁘다는 게 이 루프의 원래 원칙).
-            if strict and (scene in seen_scenes or scene in past_scenes):
+            if strict and not scene_dry and (scene in seen_scenes or scene in past_scenes):
+                scene_rejects += 1
+                if scene_rejects >= SCENE_DRY_AFTER:
+                    scene_dry = True                  # 말랐다 — 이제부터 인물 중복만 본다
                 continue
+            scene_rejects = 0
             # 인물 서명은 구도 검사까지 통과한 뒤에 잠근다 — 먼저 잠그면 구도 때문에 버린 회차가
             # 멀쩡한 인물 조합까지 태워, 뽑을수록 후보가 마른다.
             seen.add(sig)
