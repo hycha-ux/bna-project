@@ -100,8 +100,12 @@ ok(p["before_prompt"] and p["after_prompt"], "셀카 Before/After 프롬프트�
 # ⑧ 동일인 게이트 — '안 재는 것'이 '통과'로 둔갑하지 않는가 (2026-09-08 실측 반영)
 from bna.qa import identity
 ok(identity.check.__doc__ and "n/a" in identity.check.__doc__, "identity.check 가 3값 게이트여야 한다")
-for gate, sim, want_hard, want_passed in [("ok", 0.75, False, True), ("review", 0.50, False, None),
-                                          ("fail", 0.20, True, False), ("n/a", None, False, None)]:
+# ⚠ 시료 점수는 상수에서 만든다 — 리터럴로 박으면 문턱을 재캘리브레이션할 때마다 여기가 같이
+#   틀리고, 그때 고쳐야 할 곳이 두 곳이 된다(2026-09-11 실사고: 0.60→0.45 로 내리자 0.5 가
+#   review 에서 ok 로 넘어가 이 검사가 깨졌다). 숫자를 잠그는 자리는 17-7 한 곳이다.
+_T, _R = identity.THRESHOLD, identity.REVIEW_BAND
+for gate, sim, want_hard, want_passed in [("ok", _T + 0.15, False, True), ("review", (_T + _R) / 2, False, None),
+                                          ("fail", _R - 0.15, True, False), ("n/a", None, False, None)]:
     # check() 는 이미지를 받으므로, 판정 로직만 보려고 similarity 를 가로챈다
     orig = identity.similarity
     identity.similarity = lambda a, b, _s=sim: _s
@@ -630,7 +634,9 @@ ok("with anatomically correct fingers" not in
 
 # ② 동일인 '사람 확인 구간'(0.45~0.60)은 자동 통과가 아니라 재시도다
 from bna.qa import identity as _ID
-ok(_ID.check.__doc__ and _ID.REVIEW_BAND == 0.45 and _ID.THRESHOLD == 0.60, "동일인 구간 상수는 그대로여야 한다")
+# 숫자 자체는 17-7 이 잠근다(실측 근거와 같은 자리에). 여기서는 '사람 확인 구간이 존재하는가'만 본다.
+ok(_ID.check.__doc__ and 0 < _ID.REVIEW_BAND < _ID.THRESHOLD,
+   f"사람 확인 구간이 있어야 한다 — 실제 {_ID.REVIEW_BAND}~{_ID.THRESHOLD}")
 _bsrc2 = (_P("src") / "bna" / "batch.py").read_text(encoding="utf-8")
 ok('idn.get("gate") == "review"' in _bsrc2 and 'identity_review' in _bsrc2,
    "batch 가 review 구간을 재시도 사유로 올려야 한다")
@@ -761,6 +767,72 @@ ok(load("providers.yaml").get("note_draft"), "초안 벤더는 providers.yaml �
 _oi = open("src/bna/providers/openai_img.py", encoding="utf-8").read()
 ok('"purpose": "qa"' in _oi and 'purpose="note_draft"' in _src,
    "qa·note_draft 호출은 usage 원장에 purpose 를 남겨야 한다")
+
+
+# 17 프레이밍 × 동일인 게이트 표 (2026-09-11) — ③ 게이트가 '어디서' 안 재는지 보이게
+def _metas(rows):
+    """meta.json 만 놓인 out_dir 을 만든다 (검수 원장 lessons.jsonl 은 일부러 안 만든다)."""
+    d = _P(_tf.mkdtemp())
+    for i, r in enumerate(rows):
+        it = d / "b1" / f"{i:04d}"
+        it.mkdir(parents=True)
+        (it / "meta.json").write_text(_j.dumps({
+            "batch_id": "b1", "item_id": f"{i:04d}", "treatment": "nasolabial", "mode": "selfie",
+            "demo": r.get("demo", False),
+            "variation": {"framing": {"key": r["framing"], "text": ""}},
+            "identity": {"gate": r["gate"]},
+            "structure": {"face_detected": r.get("mp", False)},
+        }, ensure_ascii=False), encoding="utf-8")
+    return d
+
+# 17-1 모수는 검수 원장이 아니라 생성 원장 전량이다 — 사람이 아직 안 본 장도 세야
+#      "게이트가 몇 %에서 꺼져 있나"가 나온다. 위 _ledger 와 달리 lessons.jsonl 이 아예 없다.
+_g = _L.gate_by_framing(_metas([{"framing": "one_cheek", "gate": "n/a"}] * 3
+                               + [{"framing": "full_face", "gate": "ok"}] * 2))
+ok(_g["total"] == 5 and _g["overall"]["na_rate"] == 0.6,
+   f"검수 안 한 장도 세야 한다 — 실제 total={_g['total']} na_rate={_g['overall']['na_rate']}")
+
+# 17-2 demo(시뮬레이션) 배치는 빠져야 한다. 자리표시 이미지는 before/after 가 사실상 같은 그림이라
+#      게이트가 늘 ok 로 나온다 — 섞으면 못 잼 비율이 낮아 보인다
+#      (2026-09-11 실측: 68장 중 22장이 시뮬, 그중 13장 ok → 32.6% 가 29.4% 로 읽혔다).
+_g2 = _L.gate_by_framing(_metas([{"framing": "one_cheek", "gate": "n/a"}] * 3
+                                + [{"framing": "full_face", "gate": "ok", "demo": True}] * 7))
+ok(_g2["total"] == 3 and _g2["excluded_demo"] == 7 and _g2["overall"]["na_rate"] == 1.0,
+   f"demo 배치는 모수에서 빠져야 한다 — 실제 total={_g2['total']} na_rate={_g2['overall']['na_rate']}")
+
+# 17-3 못 잼 중 'MediaPipe 는 잡은 것'을 갈라 센다 — 검출기 하나만 실패한 건은
+#      랜드마크 5점으로 다리를 놓아 구제할 수 있고, 둘 다 못 잡은 건은 그 길이 없다.
+_g3 = _L.gate_by_framing(_metas([{"framing": "lower_face", "gate": "n/a", "mp": True},
+                                 {"framing": "lower_face", "gate": "n/a", "mp": False}]))
+ok(_g3["overall"]["na_mp_ok"] == 1 and _g3["framings"][0]["na_mp_ok"] == 1,
+   f"못 잼 중 랜드마크는 잡은 건을 갈라 세야 한다 — 실제 {_g3['overall']['na_mp_ok']}")
+
+# 17-4 못 잼이 심한 프레이밍이 맨 위로 온다 (화면이 그대로 그리므로 정렬이 곧 결론이다)
+_g4 = _L.gate_by_framing(_metas([{"framing": "full_face", "gate": "ok"}] * 5
+                                + [{"framing": "one_cheek", "gate": "n/a"}] * 2))
+ok(_g4["framings"][0]["framing"] == "one_cheek",
+   f"못 잼 비율이 높은 프레이밍이 맨 위여야 한다 — 실제 {_g4['framings'][0]['framing']}")
+
+# 17-5 summarize 가 이 표를 실어 보내야 한다 (화면·빌디가 읽는 자리)
+ok("gate_by_framing" in _L.summarize(_metas([{"framing": "full_face", "gate": "ok"}])),
+   "lessons.summarize 응답에 gate_by_framing 이 있어야 한다")
+
+# 17-6 깨진 meta 한 장이 표 전체를 죽이지 않는다 (fail-open)
+_d6 = _metas([{"framing": "full_face", "gate": "ok"}])
+(_d6 / "b1" / "9999").mkdir(parents=True)
+(_d6 / "b1" / "9999" / "meta.json").write_text("{깨짐", encoding="utf-8")
+ok(_L.gate_by_framing(_d6)["total"] == 1, "깨진 meta 한 장이 표를 죽이면 안 된다")
+
+
+# 17-7 동일인 문턱은 실측으로 정해진 값이다 (2026-09-11 재캘리브레이션)
+#      음성 666쌍(서로 다른 item 의 before 교차)의 최대가 0.441 이라 0.45 가 오탐 0 의 최저 문턱이다.
+#      0.60 으로 되돌리면 같은 쌍을 26%(8/31) 죽이면서 막아 주는 건 0 이다 — 되돌리려면
+#      tools/_probe_sep_0911.py 를 다시 돌려 근거부터 새로 내라.
+from bna.qa import identity as _ID
+ok(_ID.THRESHOLD == 0.45 and _ID.REVIEW_BAND == 0.35,
+   f"동일인 문턱은 실측값(0.45/0.35)이어야 한다 — 실제 {_ID.THRESHOLD}/{_ID.REVIEW_BAND}")
+ok(_ID.REVIEW_BAND < _ID.THRESHOLD,
+   "사람 확인 구간은 통과 문턱보다 낮아야 한다(뒤집히면 review 가 영영 안 생긴다)")
 
 
 print()

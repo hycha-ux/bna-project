@@ -183,7 +183,67 @@ def summarize(out_dir: Path, treatment=None, mode=None) -> dict:
     return {"window_days": st.get("window_days", 14), "rejected": len(recent), "rejected_all": len(rows),
             "judged": len(judged_recent), "axis_uses": uses,
             "tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])), "axes": axes, "notes": merged[:50],
+            "gate_by_framing": gate_by_framing(out_dir, treatment, mode),
             "custom": cfg.get("custom") or []}
+
+
+GATES = ("ok", "review", "fail", "n/a")
+
+
+def gate_by_framing(out_dir: Path, treatment=None, mode=None) -> dict:
+    """프레이밍 × 동일인 게이트 표.
+
+    ⚠ 모수는 검수 원장(lessons.jsonl)이 아니라 **생성 원장(meta.json) 전량**이다 —
+      n/a 는 '사람이 뺀 것'이 아니라 '기계가 못 잰 것'이라, 사람이 아직 안 본 장까지 세야
+      "게이트가 몇 %에서 꺼져 있나"가 나온다. 검수분만 세면 못 잼이 과소로 보인다.
+    ⚠ demo(시뮬레이션) 배치는 뺀다. 자리표시 이미지는 before/after 가 사실상 같은 그림이라
+      게이트가 늘 ok 로 나오고, 그만큼 못 잼 비율을 낮춰 보이게 한다
+      (2026-09-11 실측: 전체 68장 중 22장이 시뮬이고 그중 13장이 ok — 이걸 섞으면
+       n/a 가 32.6% 인데 29.4% 로 읽힌다).
+    ⚠ 창(window_days)을 적용하지 않는다. 게이트가 재는지 여부는 최근 유행이 아니라
+      프레이밍의 구조적 성질이라, 표본이 적을수록 창으로 더 잘라내면 칸이 비어 버린다.
+    """
+    rows, demo = [], 0
+    try:
+        metas = sorted(Path(out_dir).glob("*/*/meta.json"))
+    except Exception:                                   # noqa: BLE001
+        return {"total": 0, "excluded_demo": 0, "framings": [], "overall": {}}
+    for m in metas:
+        try:
+            d = json.loads(m.read_text(encoding="utf-8"))
+        except Exception:                               # noqa: BLE001
+            continue                                    # 깨진 한 장이 표 전체를 죽이지 않는다
+        if d.get("demo"):
+            demo += 1
+            continue
+        if (treatment is not None and d.get("treatment") != treatment) or            (mode is not None and d.get("mode") != mode):
+            continue
+        g = (d.get("identity") or {}).get("gate")
+        rows.append({"framing": ((d.get("variation") or {}).get("framing") or {}).get("key") or "(미지정)",
+                     "gate": g if g in GATES else "?",
+                     # 랜드마크(MediaPipe)는 잡았는지 — 못 잼의 원인이 '검출기 하나만 실패'인지 가른다
+                     "mp": bool((d.get("structure") or {}).get("face_detected"))})
+    by = {}
+    for r in rows:
+        c = by.setdefault(r["framing"], {g: 0 for g in GATES})
+        c["n"] = c.get("n", 0) + 1
+        c[r["gate"]] = c.get(r["gate"], 0) + 1
+        if r["gate"] == "n/a" and r["mp"]:
+            c["na_mp_ok"] = c.get("na_mp_ok", 0) + 1
+    out = []
+    for f, c in by.items():
+        n = c.pop("n")
+        out.append({"framing": f, "n": n, **{g: c.get(g, 0) for g in GATES},
+                    "na_rate": round(c.get("n/a", 0) / n, 3),
+                    "na_mp_ok": c.get("na_mp_ok", 0)})
+    out.sort(key=lambda r: (-r["na_rate"], -r["n"]))
+    tot = len(rows)
+    ov = {g: sum(1 for r in rows if r["gate"] == g) for g in GATES}
+    ov["n"] = tot
+    ov["na_rate"] = round(ov["n/a"] / tot, 3) if tot else 0
+    ov["measured_rate"] = round((tot - ov["n/a"]) / tot, 3) if tot else 0
+    ov["na_mp_ok"] = sum(1 for r in rows if r["gate"] == "n/a" and r["mp"])
+    return {"total": tot, "excluded_demo": demo, "framings": out, "overall": ov}
 
 
 def active(out_dir: Path, treatment=None, mode=None) -> dict:
