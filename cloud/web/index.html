@@ -42,6 +42,7 @@ a { color:var(--primary) }
 .collapsed .side .brand-row { flex-direction:column; align-items:center; gap:8px; padding-bottom:10px } .collapsed .side .toggle { margin:0; width:36px; height:32px }
 .collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
 .sub { display:flex; flex-direction:column; padding:2px 0 var(--sp-1) 30px } .sub button { border:0; background:none; text-align:left; padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-r); color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:var(--fw-m) }
+.sub button { display:flex; align-items:center; gap:6px } .sub button .n { margin-left:auto; font-size:11px; color:var(--ui-lo) } .sub button .n.pend { color:#fff; background:var(--warn,#C98A1B); border-radius:999px; padding:0 6px; font-weight:600 }
 .nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
 .side .brand { font-size:var(--fs-lg); font-weight:var(--fw-b); color:var(--ui-hi); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
 .side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
@@ -392,8 +393,8 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">홈</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
-    <!-- 구분은 둘뿐: 실제 생성(돈 쓰고 만든 사진) / 테스트(시뮬레이션·샘플·프롬프트만 — 화면 확인용). 2026-09-09 성연서님 "구분이 불명확" -->
-    <div class="sub" id="sub-jobs"><button data-kind="">전체</button><button data-kind="run">실제 생성</button><button data-kind="test" title="시뮬레이션 · 샘플 · 프롬프트만 — 실제 사진이 아닌 확인용 기록">테스트</button></div>
+    <!-- 작업 아래는 시술별 목록 (2026-09-10 성연서님 "전체·테스트 대신 카테고리별로"). 테스트 기록은 설정의 '개발용 기록 보기'를 켜야 보인다 -->
+    <div class="sub" id="sub-jobs"></div>
     <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
     <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
     <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
@@ -512,7 +513,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><select id="jobs-kind" class="hsel"><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="card-head"><h3>작업 목록</h3><span class="muted" id="jobs-tr-label"></span><select id="jobs-kind" class="hsel" hidden><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
         <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
@@ -706,13 +707,26 @@ function show(tab) {
   if (tab === 'lessons') loadLessons();
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
-$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'jobs' && b.classList.contains('nav-item')) leaveReview(); show(t); });
+$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.remove('on')); } show(t); });
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
 try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
 // 사이드바에서 작업 항목을 누르면 검수 모드는 닫고 목록으로 간다 — 검수 중엔 목록 카드가 통째로 접혀 있어서
 // 필터만 바꾸면 화면에 아무 변화가 없었다 (2026-09-10 성연서님 "사이드바 전체를 누르면 반응을 안 해")
 const leaveReview = () => { if (VIEW === 'review') setView('grid', {push: false}); };
-$$('#sub-jobs button').forEach(b => b.onclick = () => { leaveReview(); $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x === b)); $('#jobs-kind').value = b.dataset.kind; show('jobs'); });
+// 개발용 기록(시뮬레이션·샘플·프롬프트만)은 평소 화면에서 아예 안 보인다 — 검수하는 사람이 볼 일이 없다 (2026-09-10 성연서님).
+// 설정 탭 스위치 하나가 작업 목록의 종류 셀렉트와 홈의 '시뮬레이션 포함' 체크를 같이 연다.
+let DEV_MODE = false; try { DEV_MODE = localStorage.getItem('bna.dev') === '1'; } catch {}
+let JOBS_TR = '';                                   // 사이드바에서 고른 시술. '' 이면 전 시술
+function applyDevMode() {
+  const sel = $('#jobs-kind'); if (sel) { sel.hidden = !DEV_MODE; if (!DEV_MODE) sel.value = 'run'; }
+  const hs = $('#home-sim')?.closest('label'); if (hs) hs.hidden = !DEV_MODE;
+  if (!DEV_MODE && HOME_SIM) { HOME_SIM = false; try { localStorage.setItem('bna.homesim', '0'); } catch {} }
+}
+function renderSubJobs() {
+  const trs = Object.entries(CFG.treatments || {});
+  $('#sub-jobs').innerHTML = trs.map(([k, t]) => `<button data-tr="${esc(k)}" class="${JOBS_TR === k ? 'on' : ''}">${esc(t.name_ko || k)}<span class="n" id="sub-n-${esc(k)}"></span></button>`).join('');
+  $$('#sub-jobs button').forEach(b => b.onclick = () => { leaveReview(); JOBS_TR = JOBS_TR === b.dataset.tr ? '' : b.dataset.tr; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === JOBS_TR)); show('jobs'); });
+}
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
@@ -1017,16 +1031,21 @@ function clearDetail() {
   $$('#batches tbody tr').forEach(tr => tr.classList.remove('sel'));
 }
 async function loadBatches() {
-  BATCHES = await api('/api/batches'); const kind = $('#jobs-kind').value; const q = SEARCH.toLowerCase();
+  BATCHES = await api('/api/batches'); const kind = DEV_MODE ? $('#jobs-kind').value : 'run'; const q = SEARCH.toLowerCase();
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
-  const list = BATCHES.filter(b => kindOk(b) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
+  const trOk = b => !JOBS_TR || b.treatment === JOBS_TR;
+  // 사이드바 시술마다 실제 배치 수 (검수 대기가 있으면 그 수를 먼저)
+  Object.keys(CFG.treatments || {}).forEach(k => { const mine = BATCHES.filter(b => b.kind === 'run' && b.treatment === k); const pend = mine.reduce((a, b) => a + (b.stats?.pending || 0), 0);
+    const el = $('#sub-n-' + k); if (el) { el.textContent = pend ? `${pend}` : (mine.length ? `${mine.length}` : ''); el.className = 'n' + (pend ? ' pend' : ''); el.title = pend ? `검수 대기 ${pend}장` : (mine.length ? `실제 생성 ${mine.length}건` : ''); } });
+  $('#jobs-tr-label').textContent = JOBS_TR ? (CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR) : '전 시술';
+  const list = BATCHES.filter(b => kindOk(b) && trOk(b) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
   LIST_IDS = list.map(b => b.batch_id);
   // 고른 작업이 지금 목록(필터·검색)에 없으면 상세도 비운다 — 안 그러면 필터를 바꿔도 사진이 따라온다 (2026-09-09 성연서님)
   if (CUR && !LIST_IDS.includes(CUR.batch_id)) clearDetail();
   const nTest = BATCHES.filter(b => b.kind !== 'run').length;
-  $('#batches-empty').innerHTML = kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : '생성 기록이 없습니다';
-  const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.kind === 'test')); loadBatches(); };
+  $('#batches-empty').innerHTML = DEV_MODE && kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : (JOBS_TR ? `${esc(CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR)} 생성 기록이 없습니다` : '생성 기록이 없습니다');
+  const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; loadBatches(); };
   tb.innerHTML = list.map(b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
     const dry = b.kind === 'dry_run';
@@ -1038,7 +1057,7 @@ async function loadBatches() {
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches;
-$('#jobs-kind').onchange = () => { $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.kind === $('#jobs-kind').value)); loadBatches().then(() => { if (!CUR && LIST_IDS[0]) openBatch(LIST_IDS[0]); }); };
+$('#jobs-kind').onchange = () => { loadBatches().then(() => { if (!CUR && LIST_IDS[0]) openBatch(LIST_IDS[0]); }); };
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
@@ -1565,9 +1584,11 @@ function renderSettings() {
     <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술별 목표 장수</b><span>홈 현황판의 기준. 전 시술 동일 (2026-09-09 성연서님: 일괄 30장)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-default" min="1" style="width:80px" value="${GOALS?.default ?? 30}"><button class="b sm" id="goal-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>채택률 목표</b><span>홈 채택률 카드의 기준선. 사람이 채택한 비율이 여기 닿으면 검수를 줄일 근거가 됩니다 (2026-09-10 성연서님: 보수적으로 90%)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-rate" min="1" max="100" style="width:80px" value="${Math.round(((GOALS?.pick_rate ?? 0.9)) * 100)}">%<button class="b sm" id="goal-rate-save">저장</button></span></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>개발용 기록 보기</b><span>시뮬레이션·샘플·프롬프트만 기록을 작업 목록과 홈에 보입니다. 화면 확인용이라 평소엔 꺼 둡니다</span></div><label class="sim-toggle"><input type="checkbox" id="dev-mode" ${DEV_MODE ? 'checked' : ''}> 켜기</label></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>모드별 기본 AI 모델</b><span>${Object.entries(CFG.default_provider||{}).map(([m,d]) => `${MODE_KO[m]||m}: ${d.gen} / ${d.edit} / ${d.qa}`).join(' · ')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
+  const dm = $('#dev-mode'); if (dm) dm.onchange = e => { DEV_MODE = e.target.checked; try { localStorage.setItem('bna.dev', DEV_MODE ? '1' : '0'); } catch {} applyDevMode(); };
   const gr = $('#goal-rate-save'); if (gr) gr.onclick = async () => { try { GOALS = await api('/api/goals', {pick_rate: (+$('#goal-rate').value || 90) / 100}); gr.textContent = '저장됨 ✓'; setTimeout(() => gr.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
   const gs = $('#goal-save'); if (gs) gs.onclick = async () => { try { GOALS = await api('/api/goals', {default: +$('#goal-default').value || 30}); gs.textContent = '저장됨 ✓'; setTimeout(() => gs.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
 }
@@ -1575,6 +1596,7 @@ function renderSettings() {
 // ---------- init ----------
 (async () => {
   CFG = await api('/api/config'); OUT_DIR = CFG.out_dir || '';
+  renderSubJobs(); applyDevMode();
   // ⚠ 안내 카드는 2026-09-08 성연서님 지시로 뺐다("이런 주석들 있는거 다 삭제 불필요해").
   //    되살리지 마라. "여기선 생성이 안 된다"는 사실은 **버튼 자체**가 말한다(아래) —
   //    화면 위에 문단으로 또 적지 않는다.

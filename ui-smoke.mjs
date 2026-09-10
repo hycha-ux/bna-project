@@ -120,9 +120,11 @@ try {
 
   // ⑤-2 검수 모드에서 사이드바 '작업 › 전체'를 누르면 검수를 닫고 목록이 보인다 (2026-09-10 성연서님 "반응을 안 해")
   await ev("document.querySelector('#gal-view [data-v=review]')?.click()"); await sleep(800);
-  await ev("document.querySelector('#sub-jobs button[data-kind=\"\"]')?.click()"); await sleep(1200);
-  ok(!(await ev("document.body.classList.contains('reviewing')")), '사이드바 전체를 누르면 검수 모드가 닫힌다');
-  ok(await ev("!!document.querySelector('#batches-wrap')?.offsetHeight"), '사이드바 전체를 누르면 목록이 보인다');
+  await ev("document.querySelector('.nav-item[data-tab=jobs]')?.click()"); await sleep(1200);
+  ok(!(await ev("document.body.classList.contains('reviewing')")), '사이드바 작업을 누르면 검수 모드가 닫힌다');
+  ok(await ev("!!document.querySelector('#batches-wrap')?.offsetHeight"), '사이드바 작업을 누르면 목록이 보인다');
+  // 개발용 스위치가 꺼져 있으면 목록에 '테스트'라는 말이 없다 (2026-09-10 성연서님 "테스트가 굳이 필요할지")
+  ok(!(await ev("localStorage.getItem('bna.dev') === '1'")) ? !(await ev("document.querySelector('#tab-jobs').innerText.includes('테스트')")) : true, '개발용 스위치가 꺼져 있으면 작업 화면에 테스트 항목이 없다');
 
   // ⑥ 화면 설명문은 다시 들어오지 않는다 (2026-09-08 "다 삭제 불필요해")
   await goto('#jobs');
