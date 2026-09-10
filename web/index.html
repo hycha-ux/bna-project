@@ -573,6 +573,10 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div id="les-notes"></div><div class="msg" id="les-msg"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">4</span>규칙 성적표</h3><div class="tb-space"></div><span class="muted">넣은 뒤 제외가 안 줄면 문장이 약한 것입니다</span></div>
         <div id="les-score"></div></div>
+      <!-- 5: 동일인 게이트 × 프레이밍 (2026-09-11 연서님 결정 B: 눈 안 보이는 프레이밍은 덜 뽑아 못 잼 10% 아래로).
+           모수는 검수분이 아니라 생성 전량(시뮬 제외) — "게이트가 몇 %에서 꺼져 있나"는 사람이 안 본 장까지 세야 나온다 (lessons.gate_by_framing). -->
+      <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">5</span>동일인 검사가 안 되는 프레이밍</h3><span class="muted" id="les-gate-sum"></span><div class="tb-space"></div><span class="muted">목표: 못 잼 10% 아래</span></div>
+        <div id="les-gate"></div></div>
     </section>
 
     <!-- ═══ 설정 · 도움말 ═══ -->
@@ -1577,6 +1581,21 @@ function renderLessonsFirst(L) {
     <div class="lf-note">자유 메모는 자동으로 프롬프트에 안 들어갑니다. 3번 카드에서 영어 한 문장으로 다듬어 「규칙으로 승격」을 눌러야 붙습니다. 채택도 원장에 같이 적혀 검수 수·제외율의 분모가 됩니다.</div>`;
   box.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
 }
+// 5: 프레이밍별 동일인 게이트 — 눈(두 눈·코·입꼬리)이 프레임에 다 있어야 기계가 잰다.
+//    한쪽 볼·코~목·목만은 뽑히는 순간 '못 잼'이 확정이라, 못 잼 비율은 검수기 성능이 아니라 **그 프레이밍을 얼마나 뽑느냐**다.
+function renderGateByFraming(G) {
+  const el = $('#les-gate'), sum = $('#les-gate-sum'); if (!el) return;
+  const ov = (G && G.overall) || {}, rows = (G && G.framings) || [];
+  if (!ov.n) { sum.textContent = ''; el.innerHTML = `<div class="les-empty">아직 실제 생성한 사진이 없습니다. 시뮬레이션 회차는 전·후가 같은 그림이라 여기서 뺍니다.</div>`; return; }
+  const lvl = r => r >= .3 ? 'bad' : r > .1 ? 'warn' : 'ok';
+  sum.innerHTML = `실제 생성 ${ov.n}장 중 못 잼 <span class="chip ${lvl(ov.na_rate)}">${pct(ov.na_rate)}</span>${G.excluded_demo ? ` · 시뮬 ${G.excluded_demo}장 제외` : ''}`;
+  el.innerHTML = `<div class="tbl-wrap"><table class="jobs"><thead><tr><th>프레이밍</th><th class="num">생성</th><th class="num">같은 사람</th><th class="num">사람 확인</th><th class="num">다른 사람</th><th class="num">못 잼</th><th class="num">못 잼 비율</th><th></th></tr></thead><tbody>${
+    rows.map(r => `<tr><td>${esc(val('framing', r.framing))}</td><td class="num">${r.n}</td><td class="num"><span class="okc">${r.ok}</span></td><td class="num">${r.review}</td><td class="num">${r.fail}</td><td class="num">${r['n/a']}</td><td class="num"><span class="chip ${lvl(r.na_rate)}">${pct(r.na_rate)}</span></td><td>${
+      (r.n - r.ok - r.review - r.fail - r['n/a']) > 0 ? `<span class="muted" title="동일인 검사를 안 돌린 회차(dry·시뮬 아님) — 비율 계산에는 들어가지만 판정값이 없습니다">미채점 ${r.n - r.ok - r.review - r.fail - r['n/a']}장</span>` :
+      r.na_rate >= .5 ? `<span class="muted" title="두 눈이 프레임 밖이라 구조적으로 못 잽니다 — 이 컷의 동일인 판단은 사람 검수 몫입니다">눈이 안 보임 · 사람 검수</span>` : r.na_mp_ok ? `<span class="muted" title="얼굴 인식기는 놓쳤지만 랜드마크는 잡은 장수 — 검출기 하나만 실패한 경우">랜드마크는 ${r.na_mp_ok}장 잡음</span>` : ''}</td></tr>`).join('')
+  }</tbody></table></div>
+  <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">못 잼은 "다른 사람"이 아니라 "기계가 못 잰 것"입니다. 두 눈·코·입꼬리가 다 보여야 재고, 한쪽 볼·코~목·목만은 뽑히는 순간 못 잼이 됩니다. 그래서 줄이는 방법은 검수기를 고치는 게 아니라 <b>그 프레이밍을 덜 뽑는 것</b>입니다(2026-09-11 결정 B). 모수는 검수한 사진이 아니라 생성한 사진 전부입니다.</div>`;
+}
 async function loadLessons() {
   try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
   const L = LES, tags = Object.entries(L.tags || {}), st = (L.active || {});
@@ -1585,6 +1604,7 @@ async function loadLessons() {
   const goReview = `<button class="b sm" data-goto="jobs">작업 탭에서 검수하기</button>`;
   renderLessonsFirst(L);
   renderLessonsSync(L);
+  renderGateByFraming(L.gate_by_framing);
   // 2-좌: 사유별 건수 + 반영 여부 (min_count 2회부터 붙는다)
   $('#les-body').innerHTML = tags.length
     ? tags.map(([t, n]) => { const on = (st.from_tags || []).includes(t);
