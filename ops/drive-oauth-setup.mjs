@@ -16,8 +16,12 @@ import { createServer } from 'node:http';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 
-const PORT = 53682; // 구글 콘솔의 '승인된 리디렉션 URI' 에 http://127.0.0.1:53682 를 넣어 둔다
+const PORT = 53682; // 데스크톱 앱 유형은 loopback(127.0.0.1:임의포트)을 자동 허용한다 — 콘솔에 URI 등록 불필요
 const OUT = 'C:\\Users\\medib\\_teemo_keys.txt';
+// ⚠ 윈도우 경로는 반드시 String.raw 로 쓴다 — 홑따옴표에 백슬래시 하나면 `\t` 가 탭으로,
+//   `\U`·`\m` 은 글자로 먹혀 경로가 조용히 깨진다(2026-09-10 실측: 이 줄이 깨져 있어
+//   동의는 끝나고 금고 이관만 실패 → 리프레시 토큰이 평문 txt 로 남을 뻔했다).
+export const INSTALL_KEYS = String.raw`C:\Users\medib\teemo\install-keys.mjs`;
 const SCOPE = 'https://www.googleapis.com/auth/drive';
 
 function arg(name) {
@@ -82,12 +86,12 @@ const srv = createServer(async (req, res) => {
     // 금고 이관까지 여기서 끝낸다 (2026-09-10). 종전엔 "이어서 install-keys 를 돌리세요"라고 안내만 했는데,
     // 그 한 줄이 안 돌면 토큰이 평문 txt 로 남는다 — 사람에게 시키는 단계는 적을수록 안전하다.
     try {
-      const r = spawnSync(process.execPath, ['C:\Users\medib\teemo\install-keys.mjs'], { stdio: 'inherit' });
+      const r = spawnSync(process.execPath, [INSTALL_KEYS], { stdio: 'inherit' });
       if (r.status !== 0) throw new Error(`install-keys 종료코드 ${r.status}`);
       console.log('금고(keys.env)까지 옮겼습니다. 티모에게 알려 주시면 첫 백업을 돌립니다.');
     } catch (e) {
       console.error('금고 이관 실패:', e.message);
-      console.error(`⚠ ${OUT} 에 값이 평문으로 남아 있습니다 — node C:\Users\medib\teemo\install-keys.mjs 를 직접 돌려 주세요.`);
+      console.error(`⚠ ${OUT} 에 값이 평문으로 남아 있습니다 — node ${INSTALL_KEYS} 를 직접 돌려 주세요.`);
     }
     setTimeout(() => process.exit(0), 300);
   } catch (e) {

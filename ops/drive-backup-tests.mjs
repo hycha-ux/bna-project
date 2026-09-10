@@ -6,7 +6,7 @@
  * ④JWT 서명이 진짜 검증되는가 ⑤값이 로그로 새지 않는가.
  */
 import { generateKeyPairSync, createVerify } from 'node:crypto';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { plan, walk, authMode, readKeys, signJwt, SKIP_DIRS, SKIP_EXT } from './drive-backup.mjs';
@@ -83,6 +83,28 @@ ok(SKIP_DIRS.has('exports') && SKIP_EXT.has('.zip'), '제외 목록은 export �
 const src = (await import('node:fs')).readFileSync(new URL('./drive-backup.mjs', import.meta.url), 'utf8');
 ok(!/DELETE/.test(src) && !/\btrash\b/.test(src.replace(/trashed=false/g, '')),
    '드라이브 삭제·휴지통 호출이 없어야 한다(단방향 백업)');
+
+// ⑨ 윈도우 경로 리터럴은 조용히 깨진다 — 백슬래시 하나면 `\t` 가 탭이 된다.
+//    (2026-09-10 실측 사고: 동의는 끝나고 금고 이관만 실패해 리프레시 토큰이 평문 txt 로 남을 뻔했다.
+//     화면엔 "금고 이관 실패" 한 줄뿐이라, 사람이 안 읽으면 백업은 영영 안 도는 채로 조용하다.)
+// 사람이 실행하는 두 진입점을 같은 자로 잰다 — 한쪽만 검사하면 나머지가 사각이 된다.
+const fsm = await import('node:fs');
+const oauthSrc = ['drive-oauth-setup.mjs', 'drive-connect.mjs']
+  .map((f) => fsm.readFileSync(new URL('./' + f, import.meta.url), 'utf8'))
+  .join('\n');
+// import 로 확인하지 않는다 — 이 모듈은 인자가 없으면 top-level 에서 process.exit(2) 라 테스트가 통째로 죽는다.
+// 검사 대상은 '코드'다 — 주석 안의 예시 경로까지 잡으면 설명을 못 쓴다.
+const codeOnly = oauthSrc
+  .split(/\r?\n/)
+  .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+  .join('\n')
+  .replace(/String\.raw`[^`]*`/g, 'RAW');
+ok(!/(?<!\\)\\Users\\/.test(codeOnly),
+   '경로 리터럴에 이스케이프 안 된 백슬래시가 없어야 한다(String.raw 밖)');
+// 그리고 그 경로가 실제로 존재해야 한다 — 오타면 "금고 이관 실패" 한 줄로 조용히 끝난다.
+const rawPath = /String\.raw`([^`]*install-keys[^`]*)`/.exec(oauthSrc)?.[1];
+ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
+   '금고 이관 대상(install-keys.mjs) 경로가 실제로 존재해야 한다');
 
 rmSync(root, { recursive: true, force: true });
 console.log();
