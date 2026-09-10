@@ -1611,12 +1611,15 @@ async function loadLessons() {
       </div>
       <button class="b" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''}>규칙으로 승격</button>
     </div>`).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
+  // 인터넷 화면에서 보낸 승격 요청(사무실 PC 반영 전) — 목록 위에 '대기'로 보인다
+  const pp = L.pending_promotions || [];
+  if (pp.length) $('#les-notes').insertAdjacentHTML('afterbegin', pp.map(r => `<div class="list-row" style="cursor:default;background:var(--ui-surface)"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.en)}</span></div><span class="chip warn" title="사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 규칙이 되고 여기서 사라집니다">승격 대기</span></div>`).join(''));
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
     if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
     try { const r = await api('/api/lessons/promote', {note: LES.notes[i].note, en, where: ['before', 'after']});
       if (r.error) throw new Error(r.error);
-      msg('#les-msg', `규칙 ${r.count}개 — 다음 생성부터 붙습니다`, 'on'); loadLessons(); }
+      msg('#les-msg', r.queued ? (r.message || '승격 요청을 보냈습니다') : `규칙 ${r.count}개 — 다음 생성부터 붙습니다`, 'on'); loadLessons(); }
     catch (e) { msg('#les-msg', e.message, 'err'); }
   });
   // 4: 규칙 성적표 — 건수만이 아니라 검수 대비 비율

@@ -22,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { del, list, put } from '@vercel/blob';
 import * as REV from './lib/reviews.mjs';
+import * as PRO from './lib/promote.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -124,6 +125,25 @@ async function connect() {
  * 로컬 API 를 거쳐 저장하는 이유: 그래야 드라이브 등록·프롬프트 학습 훅이 같이 탄다
  * (파일에 직접 쓰면 그 두 가지가 조용히 빠진다). 실패하면 지우지 않고 다음 회차가 잇는다.
  */
+/** 인터넷 화면에서 보낸 규칙 승격 요청 → 로컬 /api/lessons/promote. 넣은 것(또는 이미 있는 규칙)만 지운다. */
+async function absorbPromotions(TOKEN) {
+  if (!TOKEN) return { taken: 0 };
+  let reqs = [];
+  try { reqs = await PRO.pending(TOKEN); } catch (e) { console.log('  승격 요청 흡수 건너뜀 —', e.message); return { taken: 0 }; }
+  let taken = 0; const failed = [];
+  for (const q of reqs) {
+    try {
+      const r = await fetch(BASE + '/api/lessons/promote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: q.note, en: q.en, where: q.where }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && (j.ok || /이미 있습니다/.test(j.error || ''))) { await PRO.remove(TOKEN, q._url); taken++; }
+      else failed.push(`${q.id} (${j.error || 'API ' + r.status})`);
+    } catch (e) { failed.push(`${q.id} (${e.message})`); }
+  }
+  if (failed.length) { console.log(`  ⚠ 승격 요청 반영 실패 ${failed.length}건`); for (const f of failed.slice(0, 5)) console.log('     ·', f); }
+  return { taken, failed: failed.length };
+}
+
 async function absorbReviews(TOKEN) {
   if (!TOKEN) return { taken: 0, done: [] };
   let blobs = [];
@@ -180,6 +200,8 @@ async function main() {
     // ── 0. 클라우드에서 누른 검수를 먼저 흡수한다 (그래야 아래 스냅샷에 실린다) ──
     const absorbed = await absorbReviews(TOKEN);
     if (absorbed.taken) console.log(`  클라우드 검수 ${absorbed.taken}건 반영`);
+    const promoted = await absorbPromotions(TOKEN);
+    if (promoted.taken) console.log(`  클라우드 승격 요청 ${promoted.taken}건 반영`);
 
     // ── 1. 원장 긁기 (로컬 API 응답 그대로) ──────────────────────────────────
     const [config, allBatches, queue, library] = await Promise.all([

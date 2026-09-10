@@ -20,6 +20,7 @@ import path from 'node:path';
 import { get } from '@vercel/blob';
 import * as REV from '../lib/reviews.mjs';
 import * as GEN from '../lib/genreq.mjs';
+import * as PRO from '../lib/promote.mjs';
 import { seedbankUi } from '../lib/seedbank-ui.mjs';
 import {
   COOKIE,
@@ -553,6 +554,15 @@ export default async function handler(req, res) {
   }
 
   // ── 남은 쓰기 계열 — 돈 쓰는 버튼을 이 화면에 두지 않는다 ─────────────────
+  // 승격 요청 → Blob 에 적어 두면 사무실 PC 가 가져가 반영한다 (검수 판정과 같은 길). 여기서 avoid.yaml 을 고치지 않는다.
+  if (p === '/api/lessons/promote' && req.method === 'POST') {
+    if (!TOKEN) return json(res, 503, { error: '저장소가 아직 연결되지 않았습니다(BLOB_READ_WRITE_TOKEN).' });
+    let body = null; try { body = await readBody(req); } catch { body = null; }
+    if (!body || !(body.en || '').trim()) return json(res, 400, { error: '프롬프트에 넣을 영어 문장이 필요합니다' });
+    try { const r = await PRO.save(TOKEN, body, user?.email || null); return json(res, 200, { ok: true, queued: true, request: r, message: '승격 요청을 보냈습니다 — 사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 다음 생성부터 붙습니다' }); }
+    catch (e) { return json(res, 500, { error: '승격 요청을 저장하지 못했습니다 — ' + (e?.message || e) }); }
+  }
+
   if (req.method !== 'GET') return json(res, 405, { error: WRITE_MSG });
 
   const snap = await snapshot();
@@ -636,12 +646,17 @@ export default async function handler(req, res) {
     // 눌렀는데 계속 0건이라고 나오면 안 먹은 줄 안다 (2026-09-10 성연서님).
     const fresh = Object.values(ov).filter((r) => r && (r.pick === 'pick' || r.pick === 'reject')).length;
     // sync: 사무실 PC 가 이 집계를 만든 시각 + 예약작업 주기(10분). 훅이 있어 보통 더 빨리 오지만 "늦어도 언제"를 화면이 셀 수 있게.
-    return json(res, 200, { ...snap.lessons, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
+    // 승격 대기: 이미 요청한 메모는 목록에서 빼고 '대기' 로 따로 보인다 — 같은 메모를 두 번 올리지 않게
+    const pend = TOKEN ? await PRO.pending(TOKEN) : [];
+    const norm = (t) => String(t || '').replace(/[\s.,!?~\-_/·]+/g, '').toLowerCase();
+    const pendKeys = new Set(pend.map((r) => norm(r.note)));
+    const notes = (snap.lessons.notes || []).filter((n) => !pendKeys.has(norm(n.note)));
+    return json(res, 200, { ...snap.lessons, notes, reviewed_total: (snap.lessons.reviewed_total || 0) + fresh, pending_sync: fresh,
       sync: { at: snap.generated_ts || parseKoTime(snap.generated_at), at_text: snap.generated_at || null, interval_sec: 600 },
-      no_promote: true, cloud_msg: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
+      pending_promotions: pend.map((r) => ({ note: r.note, en: r.en, at: r.at, by: r.by })),
+      no_promote: false, cloud_msg: '' });
   }
   if (p === '/api/version_name') return json(res, 405, { error: '버전 메모는 사무실 PC 화면에서만 쓸 수 있습니다.' });
-  if (p === '/api/lessons/promote') return json(res, 405, { error: '규칙 승격은 사무실 PC 화면에서만 할 수 있습니다.' });
 
 
   if (p === '/api/overview') {
