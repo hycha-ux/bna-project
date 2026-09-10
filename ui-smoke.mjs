@@ -97,6 +97,11 @@ try {
   await sleep(600);
   ok(await ev("!document.body.classList.contains('list-folded')"), '펼치기 버튼이 실제로 목록을 되살린다');
 
+  // ②-2 '지표 자세히 보기'를 펼치면 카드가 여러 열로 깔린다 — 1열이면 카드 9장이 세로로 늘어선다 (2026-09-10 성연서님 "무한 스크롤")
+  await ev("(function(){var d=document.querySelector('#gal-stats details'); if(d) d.open=true;})()"); await sleep(400);
+  const cols = await ev("(function(){var g=document.querySelector('#gal-stats .g-stats'); if(!g) return -1; return getComputedStyle(g).gridTemplateColumns.split(' ').length})()");
+  ok(cols === -1 || cols >= 2, '지표 자세히 보기가 2열 이상으로 깔린다', `열 ${cols}`);
+
   // ③ 검수 모드는 스크롤이 없어야 한다 (2026-09-08 지시)
   await ev("document.querySelector('#gal-view [data-v=review]')?.click()");
   await sleep(1800);

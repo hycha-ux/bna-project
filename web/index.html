@@ -521,7 +521,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
         <div class="card empty" id="detail-empty">작업을 선택하세요</div>
         <div id="detail-body" hidden>
-          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div><div class="grid g-stats" id="gal-stats" style="margin-top:var(--sp-2)"></div></div>
+          <div class="card"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div><div id="gal-stats" style="margin-top:var(--sp-2)"></div></div>
           <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><select id="gal-filter" class="hsel"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option></select><select id="gal-axis" class="hsel"><option value="">조건 전체</option></select><select id="gal-axis-val" class="hsel" hidden><option value="">값 전체</option></select><span class="muted" id="gal-count"></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
@@ -1128,6 +1128,7 @@ function renderStats() {
   // 통계는 가끔 보는 값이다 — 항상 펼쳐 두면 매번 사진이 화면 밖으로 밀린다
   // (2026-09-08 실측: 사진까지 1108px 스크롤). 접어 두고 필요할 때 펼친다.
   $('#gal-stats').innerHTML = html
+    // ⚠ #gal-stats 자체에 grid 를 주지 마라 — <details> 가 250px 칸 하나에 갇혀 안쪽 격자가 1열로 무너지고 카드 9장이 세로로 늘어선다 (2026-09-10 성연서님 "무한 스크롤")
     ? `<details class="stats-fold"${STATS_OPEN ? ' open' : ''}><summary>지표 자세히 보기</summary><div class="grid g-stats">${html}</div></details>`
     : '';
   const d = $('#gal-stats details');
