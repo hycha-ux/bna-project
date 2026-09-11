@@ -509,7 +509,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
           <div class="card prog" id="prog-create" hidden></div>
           <div class="card" style="margin-top:0">
             <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
-            <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
           <div id="plan-out" hidden style="margin-top:var(--gap)">
@@ -652,6 +652,7 @@ const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('
 const pct = x => (x*100).toFixed(0) + '%';
 const fmtDay = t => { const d = new Date((t||0)*1000); return `${d.getMonth()+1}/${d.getDate()}`; };
 const fmtBid = id => { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}/.exec(id||''); return m ? `${+m[2]}/${+m[3]} ${m[4]}:${m[5]}` : id; };
+const fmtWhen = t => { if (!t) return '—'; const d = typeof t === 'number' ? new Date(t * 1000) : new Date(t); return isNaN(d) ? '—' : `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
 const fmtS = s => s == null ? '—' : s < 60 ? `${s}초` : s < 3600 ? `${Math.floor(s/60)}분 ${s%60}초` : `${Math.floor(s/3600)}시간 ${Math.floor(s%3600/60)}분`;
 const STAGE_KO = {skipped:'생략(목표 도달)', queued:'대기', before:'시술 전 생성', after:'시술 후 생성', postprocess:'후처리', qa:'AI 검수', retry:'재생성 대기', passed:'통과', failed:'탈락'};
 const MODE_KO = {selfie:'셀카형', clinical:'임상형'};
@@ -1003,10 +1004,10 @@ async function loadGenRequests() {
   const cls = {requested:'', accepted:'warn', running:'warn', done:'ok', error:'bad', cancelled:''};
   tb.innerHTML = reqs.map((j, i) => {
     const ctl = j.status === 'requested' ? `<button class="b sm danger" data-gq="cancel" data-id="${j.id}">취소</button>` : j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button>` : '';
-    // 머리글과 같은 10칸(#·시술·유형·방식·장수·목표·예상·상태·결과·조작) — 6칸만 내면 칸이 밀려 어긋난다 (2026-09-10 성연서님 "대기열 보드 정렬 오류")
-    const res = j.status === 'done' && j.result ? `${j.result.passed ?? '?'}/${j.result.total ?? '?'}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error || '')}">${esc((j.error || '').slice(0, 24))}</span>` : '';
+    // 머리글과 같은 11칸(#·시간·시술·유형·방식·장수·목표·예상·상태·결과·조작) — 6칸만 내면 칸이 밀려 어긋난다 (2026-09-10 성연서님 "대기열 보드 정렬 오류")
+    const res = j.status === 'done' && j.result ? `${j.result.passed ?? '?'}/${j.result.total ?? '?'}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error || '')}">${esc((j.error || '').slice(0, 60))}</span>` : '';
     const prog = j.status === 'running' && j.progress ? `<span class="muted"> ${j.progress.done ?? 0}/${j.progress.planned ?? j.count}</span>` : j.status === 'requested' && j.requested_by ? `<span class="muted" style="font-size:var(--fs-xs)"> ${esc(j.requested_by)}</span>` : '';
-    return `<tr><td class="muted">${i + 1}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode] || j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td>
+    return `<tr><td class="muted">${i + 1}</td><td class="muted" style="white-space:nowrap" title="요청 ${esc(j.requested_at || '')}${j.accepted_at ? ' · 받음 ' + esc(j.accepted_at) : ''}${j.done_at ? ' · 끝 ' + esc(j.done_at) : ''}">${fmtWhen(j.requested_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode] || j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td>
       <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">—</td>
       <td style="white-space:nowrap"><span class="chip ${cls[j.status] || ''}">${KO[j.status] || j.status}</span>${prog}</td><td style="white-space:nowrap">${res}</td>
       <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; }).join('');
@@ -1029,7 +1030,7 @@ async function loadQueue() {
     // 열마다 값 하나씩 (2026-09-09 성연서님: 합친 칸은 뒤죽박죽). 진행은 상태 옆 "5/8", 결과는 짧게 "5/6 · $0.94"
     const prog = j.status === 'running' && p ? `<span class="muted"> ${p.done}/${p.planned}</span>` : '';
     const res = j.status === 'done' ? `${r.passed ?? '?'}/${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ` <span class="chip acc" title="${esc(STOP_KO(r.stopped))}">${r.stopped.startsWith('target_pass') ? '목표 도달' : '상한 도달'}</span>` : ''}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error || '').slice(0, 24))}</span>` : '';
-    return `<tr><td class="muted">${i+1}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td>
+    return `<tr><td class="muted">${i+1}</td><td class="muted" style="white-space:nowrap">${fmtWhen(j.created_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td>
       <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">$${j.est_cost}</td>
       <td style="white-space:nowrap">${stKo[j.status]}${prog}</td><td style="white-space:nowrap">${res}</td>
       <td style="white-space:nowrap;text-align:right">${j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
