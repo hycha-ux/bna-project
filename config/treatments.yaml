@@ -81,10 +81,14 @@ nasolabial:
       주입 직후부터 결과가 보인다 (연서님 09-11 "필러는 시술 직후 즉각 나타나는 게 장점인 시술").
       그래서 위 immediate_level 이 final 이다.
     extent: 콧볼 옆에서 입꼬리까지 주름 전 길이, 양쪽 고르게. 프롬프트 축은 위 after_change
+    # 2026-09-11 성연서님 교정: "패치 위치가 이상하다 — 입술과 가까이 붙여 나오진 않는다".
+    #   종전 문장(티모 초안)은 패치를 '입꼬리 바로 옆'에 붙였다. 주입은 주름 위쪽(콧볼 옆)이므로
+    #   패치도 거기다. 위치는 그림에 그대로 나오는 값이라 추정으로 쓰면 안 되는 칸이었다.
     immediate_marks: >
-      Because the injections go in beside the mouth, there is one small round skin-coloured
-      dressing patch resting on the skin just beside each corner of the mouth, and the treated
-      fold is very slightly puffy with a faint pink dot at each injection point.
+      The injections go in along the upper part of the fold, next to the nostril. On each side
+      there is one small round skin-coloured dressing patch sitting high on the nasolabial fold
+      beside the nostril, clear of the lips and not touching the corner of the mouth, and the
+      treated fold is very slightly puffy with a faint pink dot at each injection point.
     # ⚠ `immediate_avoid` 는 일부러 비웠다 — 초안의 '직후 금지'는 크림·거즈·붕대·화장솜 나열인데,
     #   2026-09-10 실측에서 **금지 품목을 적으면 모델이 그걸 그렸다**(마취크림 5/5). 같은 일을
     #   막는 긍정문("시술 설명이 말하는 것만 피부에 있다")이 mode_extra 기본값으로 이미 붙는다.
@@ -93,7 +97,9 @@ nasolabial:
   expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
   drift_lock: [expression, angle]
   scene_allow:
-    expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
+    # 미소 제외(웃으면 시술 없이도 주름이 달라진다). 대신 **눈·시선 변주**를 열었다 —
+    # 입은 그대로라 주름 판정에 영향이 없고, 무표정 한 가지만 반복되는 AI 티는 여기서 흩어진다(2026-09-11).
+    expression: [neutral_closed, relaxed_open, gaze_off, gaze_screen, brow_up, eyes_narrow, blink_soft]
     lighting: [window, fluorescent, ceiling_harsh, mixed]   # 어두운 밤·역광에서는 주름 그림자가 안 보인다
     angle: [front, selfie_3q, selfie_side, chin_up, tilted, selfie_high]   # selfie_low 는 팔자를 과장한다
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck, one_cheek]
@@ -139,7 +145,9 @@ lifting:
     sagging along the jawline and mid-face change, as described below.
   drift_lock: [expression, angle, quality]   # 위에서 찍으면 시술 없이도 턱선이 올라간다 — 각도 동일이 생명
   scene_allow:
-    expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
+    # 미소 제외. 눈·시선은 **시선만** 연다 — 눈썹을 올리거나 눈을 가늘게 뜨면 눈가·이마가 같이 당겨져
+    # 그게 리프팅 효과로 둔갑한다(2026-09-11).
+    expression: [neutral_closed, relaxed_open, gaze_off, gaze_screen]
     angle: [front, selfie_3q, tilted]        # selfie_high 금지
     lighting: [window, fluorescent, ceiling_harsh, mixed]
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
@@ -224,7 +232,9 @@ philtrum:
   drift_lock: [expression, angle]
   scene_allow:
     lighting: [window, fluorescent, ceiling_harsh, mixed]
-    expression: [neutral_closed, relaxed_open]   # 미소 제외 — 웃으면 시술 없이도 주름이 달라진다
+    # 미소 제외(웃으면 시술 없이도 주름이 달라진다). 대신 **눈·시선 변주**를 열었다 —
+    # 입은 그대로라 주름 판정에 영향이 없고, 무표정 한 가지만 반복되는 AI 티는 여기서 흩어진다(2026-09-11).
+    expression: [neutral_closed, relaxed_open, gaze_off, gaze_screen, brow_up, eyes_narrow, blink_soft]
     angle: [front, selfie_side, selfie_3q, tilted]
   framing_allow: [full_face, forehead_cut, lower_face, nose_to_neck]
   age_weights: {late_teens: 0, early_20s: 2, late_20s: 3, "30s": 3, "40s": 2, "50s": 0, "60s": 0}
@@ -474,6 +484,8 @@ filler_eyelid:
   axis_ban: {extras: [glasses, glasses_thick, makeup_light, tired]}
   drift_lock: [expression, angle, lighting]   # 눈밑 그림자는 빛이 만든다 — 조명이 바뀌면 그게 효과로 둔갑
   scene_allow:
+    # ⚠ 여기는 일부러 안 넓혔다 — 이 시술의 판정 부위가 눈이다. 눈을 가늘게 뜨거나 눈썹을 올리면
+    #   눈밑 그림자·윗꺼풀 꺼짐이 같이 변해 시술 효과로 둔갑한다. 눈 시술은 표정 변주 폭이 구조적으로 좁다(2026-09-11).
     expression: [neutral_closed, relaxed_open]
     lighting: [window, fluorescent, ceiling_harsh, mixed]   # 역광·야간은 눈가가 통째로 어두워 판정 불가
     angle: [front, selfie_3q, tilted]                       # chin_up 은 눈밑이 가려지고 selfie_low 는 꺼짐을 과장

@@ -1144,6 +1144,37 @@ _solo = sum(1 for _s in range(60)
             != sample_variation("selfie", _s)["framing"]["key"])
 ok(_solo > 0, f"한 장짜리 After 의 구도 변주까지 잠기면 안 된다 — 실제 {_solo}건")
 
+# ㉑ 표정이 한 가지로 쏠리지 않는가 (2026-09-11 성연서님 "표정이 다 똑같아 AI 티가 난다")
+#    실측 74세트에서 무표정 2종이 96% 였다. 얼굴이 달라도 표정이 같으면 같은 사람처럼 보인다.
+import collections as _co
+def _expr_dist(t, n=400):
+    c = _co.Counter()
+    for _s in range(n):
+        c[sample_variation("selfie", _s, treatment=t)["expression"]["key"]] += 1
+    return c
+_ed = _expr_dist("nasolabial")
+ok(len(_ed) >= 5, f"입 주변 시술은 표정이 최소 5종은 나와야 한다 — 실제 {len(_ed)}종 {_ed.most_common()}")
+ok(max(_ed.values()) / sum(_ed.values()) <= 0.40,
+   f"한 표정이 40% 넘게 쏠리면 안 된다 — 실제 {max(_ed.values()) / sum(_ed.values()):.0%}")
+ok("slight_smile" not in _ed, "팔자에 미소가 들어가면 안 된다 (웃으면 시술 없이도 주름이 달라진다)")
+# 눈 시술은 반대다 — 눈·눈썹·시선을 건드리는 칸이 하나라도 새면 그게 시술 효과로 둔갑한다
+_EYE_MOVING = {"gaze_off", "gaze_screen", "brow_up", "eyes_narrow", "blink_soft"}
+_ee = _expr_dist("filler_eyelid")
+ok(not (_EYE_MOVING & set(_ee)),
+   f"눈 부위 시술에 눈·시선 변주가 들어가면 안 된다 — 실제 {sorted(_EYE_MOVING & set(_ee))}")
+# ⚠ 칸을 만들어도 모드 화이트리스트에 없으면 **한 번도 안 뽑힌다** (2026-09-11 실사고: 5칸을 넣고
+#   300 표본을 돌렸는데 분포가 종전 2종 그대로였다 — 오류도 경고도 없었다).
+_vy2 = load("variations.yaml")
+_wl = set(_vy2["mode_rules"]["selfie"]["expression"]) | set(_vy2["mode_rules"]["clinical"]["expression"])
+ok(set(_vy2["expression"]) <= _wl,
+   f"어느 모드에서도 안 뽑히는 유령 표정이 있으면 안 된다 — 실제 {sorted(set(_vy2['expression']) - _wl)}")
+
+# ㉒ 팔자 직후 패치 자리 (2026-09-11 성연서님 "입술과 가까이 붙여 나오진 않는다")
+#    위치는 그림에 그대로 나오는 값이라 초안 추정이 곧 오류가 된다.
+_im = _immediate_after("nasolabial", 7)
+ok("beside the nostril" in _im, "직후 패치는 콧볼 옆(주름 위쪽)에 있어야 한다")
+ok("just beside each corner of the mouth" not in _im, "직후 패치를 입꼬리 옆에 붙이면 안 된다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

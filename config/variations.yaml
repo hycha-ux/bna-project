@@ -216,10 +216,22 @@ quality:
 
 # 표정 축 (2026-09-09 신설). 팔자·리프팅·인중은 표정이 바뀌면 시술 없이도 B&A 가 된다 →
 # treatments.yaml 의 expression_policy: lock 이면 Before/After 같은 값 + After 에 "identical expression" 문장.
+# 표정. 2026-09-11 성연서님 지적("모든 인물의 표정이 똑같고 입 모양·위치가 다 동일해 AI 티가 난다").
+#   실측 74세트: neutral_closed 51% · relaxed_open 45% · slight_smile 4% — 사실상 무표정 2종이었다.
+#   ⚠ 시술 부위를 건드리지 않고 얼굴 인상을 바꾸는 곳은 **입이 아니라 눈·눈썹·시선**이다.
+#     웃으면 팔자가 저절로 깊어지고 입을 오므리면 입가 주름이 생겨서, 입 쪽은 넓힐 수가 없다.
+#     그래서 새 칸은 전부 '입은 그대로, 눈/시선/눈썹만 다른' 무표정 변형이다.
+#   ⚠ 눈 부위 시술(눈꺼풀·눈가 필러)은 이 새 칸들을 쓰면 안 된다 — 눈을 가늘게 뜨거나 눈썹을 올리면
+#     눈밑 그림자와 윗꺼풀 꺼짐이 같이 변해서 그게 시술 효과로 둔갑한다(treatments.yaml scene_allow 로 막는다).
 expression:
   neutral_closed: "neutral expression, mouth closed, not smiling"
   slight_smile: "slight closed-mouth smile"
   relaxed_open: "relaxed natural expression, lips slightly parted"
+  gaze_off: "neutral face, mouth closed, eyes looking slightly past the lens rather than into it"
+  gaze_screen: "not posing for the camera: eyes on their own face on the screen, lips resting barely apart"
+  brow_up: "mouth closed and relaxed, eyebrows lifted a little, the way people look when checking their own face"
+  eyes_narrow: "mouth closed, eyes narrowed a little against the light, no smile"
+  blink_soft: "caught half a second late: eyelids lowered as if mid-blink, mouth unchanged and relaxed"
 
 # 모드별 사용 제약
 mode_rules:
@@ -247,7 +259,10 @@ mode_rules:
     lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed]   # 링라이트 제외 (스튜디오 느낌)
     color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외
     quality: [mid, old, front_cam, app_upload]                               # flagship 제외
-    expression: [neutral_closed, slight_smile, relaxed_open]
+    # ⚠ 이 줄은 화이트리스트다 — expression 축에 칸을 만들어도 여기 안 적으면 **한 번도 안 뽑힌다**
+    #   (2026-09-11 실측: 새 칸 5개를 넣고 300 표본을 돌렸더니 분포가 종전 2종 그대로였다).
+    expression: [neutral_closed, slight_smile, relaxed_open,
+                 gaze_off, gaze_screen, brow_up, eyes_narrow, blink_soft]
   # 임상: 프레이밍·맥락은 고정
 
 # 배경별 호환 조명 (셀카 모드). 배경을 먼저 뽑고 조명은 이 목록 안에서만 선택.
@@ -341,7 +356,10 @@ weights:
   # ⚠ 최소 1 rep 이라 실효 하한은 0.25 다(planner.WEIGHT_SCALE=4). 더 줄이려면 framing_allow 에서 빼라.
   # 재계산·검증 = tools/framing_na_forecast.py (실측률을 원장에서 다시 읽어 예상 못 잼을 낸다)
   framing: {full_face: 3, forehead_cut: 6, lower_face: 0.5, one_cheek: 0.25, nose_to_neck: 1.5, neck_only: 0.25}
-  expression: {neutral_closed: 3, slight_smile: 1, relaxed_open: 2}   # 상담용 사진은 대부분 무표정
+  # 상담용 사진은 대부분 무표정이다 — 무표정을 줄이는 게 아니라 **무표정의 결을 늘린다**(2026-09-11).
+  # 합이 무표정 계열 13 : 미소 1 이라 "상담 사진 같음"은 그대로고, 같은 얼굴이 반복되는 느낌만 흩어진다.
+  expression: {neutral_closed: 3, slight_smile: 1, relaxed_open: 2,
+               gaze_off: 2, gaze_screen: 2, brow_up: 1.5, eyes_narrow: 1.5, blink_soft: 1}
 
 output:
   aspect: "4:5"
