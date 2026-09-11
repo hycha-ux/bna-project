@@ -69,17 +69,21 @@ nasolabial:
   must_not_change: >
     Do not change lip shape, lip volume, mouth width, nose, or jawline width. Do not smooth,
     brighten or tighten any other part of the face.
-  # facts 카드 자리 — 빌디 초안 + 의료진 확인 뒤 주석을 푼다 (2026-09-11).
-  #   ⚠ 푸는 순간 immediate_marks 가 mode_extra 의 기본 '피부에 아무것도 없음'을 대신하므로,
-  #     "무엇이·어디에" 를 반드시 적어라(예: 입가 옆 재생테이프). 자리만 비워 두면 안 붙는다.
-  # facts:
-  #   onset: 주입 직후부터 볼륨이 차 결과가 보인다 — 그래서 immediate_level: final
-  #   extent: 콧볼 옆에서 입꼬리까지 주름 전 구간, 양쪽
-  #   immediate_marks: >
-  #     (영어로. 예: small skin-coloured dressing patches beside each corner of the mouth,
-  #      slight puffiness along the injected fold)
-  #   immediate_avoid: (영어로. 직후에 하면 안 되는 것)
-  #   later: 며칠 뒤 상태
+  # 사실 카드 — 빌디 초안 `docs/treatment-facts-0911-buildy.md` 를 그대로 옮겼다 (2026-09-11).
+  #   ⚠ 의료진 검토 전이다. '며칠 뒤 멍'은 초안에서 미확인으로 표시된 줄이라 프롬프트에 안 실었다.
+  facts:
+    onset: >
+      주입 직후부터 결과가 보인다 (연서님 09-11 "필러는 시술 직후 즉각 나타나는 게 장점인 시술").
+      그래서 위 immediate_level 이 final 이다.
+    extent: 콧볼 옆에서 입꼬리까지 주름 전 길이, 양쪽 고르게. 프롬프트 축은 위 after_change
+    immediate_marks: >
+      Because the injections go in beside the mouth, there is one small round skin-coloured
+      dressing patch resting on the skin just beside each corner of the mouth, and the treated
+      fold is very slightly puffy with a faint pink dot at each injection point.
+    # ⚠ `immediate_avoid` 는 일부러 비웠다 — 초안의 '직후 금지'는 크림·거즈·붕대·화장솜 나열인데,
+    #   2026-09-10 실측에서 **금지 품목을 적으면 모델이 그걸 그렸다**(마취크림 5/5). 같은 일을
+    #   막는 긍정문("시술 설명이 말하는 것만 피부에 있다")이 mode_extra 기본값으로 이미 붙는다.
+    later: 1~2주 컷은 테이프 제거 상태, 효과 강도는 직후와 같다. 주입부 작은 멍 가능 여부는 미확인(의료진 확인 대기)
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
   drift_lock: [expression, angle]

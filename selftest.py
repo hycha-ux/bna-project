@@ -592,6 +592,12 @@ ok("only part of the treated line or fold changed" in _qa_src,
    "검수 effect_visible 은 일부 구간만 바뀐 컷을 감점해야 한다(부분 소거는 시술이 아니라 지우개)")
 ok("entire length of the fold" in _tr_all["nasolabial"]["after_change"],
    "팔자 시술 문장이 콧볼~입꼬리 전 구간을 못 박는다")
+# 살아 있는 카드(팔자 필러, 빌디 초안 docs/treatment-facts-0911-buildy.md)가 실제 프롬프트에 실리는가
+_pn = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
+ok("dressing patch" in _pn["afters"][0]["after_prompt"] and "dressing patch" not in _pn["afters"][1]["after_prompt"],
+   "팔자 직후 컷에만 입가 옆 재생테이프가 실린다(2주 컷에 테이프가 남으면 그게 더 큰 사고)")
+ok(not any(w in _pn["afters"][0]["after_prompt"] for w in ("cotton pad", "ointment", "bandage", "gauze")),
+   "직후 금지는 품목을 나열하지 않는다 — 적으면 모델이 그린다(0910 마취크림 5/5)")
 
 
 # ㉑ 내보내기 zip 에 사용 범위 안내가 들어간다 (2026-09-10 파트장 "내부만" 확정, 정본 docs/usage-policy.md).
