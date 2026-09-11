@@ -1240,6 +1240,13 @@ if _live(mode="selfie", treatment="nasolabial", when="immediate"):
        "실제 색인의 직후 참조가 시술 전(Before) 컷에 붙으면 안 된다")
     ok(not _live(mode="selfie", treatment="lifting", when="immediate"),
        "실제 색인의 팔자 참조가 다른 시술 컷에 붙으면 안 된다")
+    # 빌디 요청 문장 그대로: "팔자 직후 After 컷에만 이 참조가 잡힌다" — 붙는 칸 1개 / 안 붙는 칸 전부
+    _cells = {(tr, w): _live(mode="selfie", treatment=tr, when=w)
+              for tr in ("nasolabial", "lifting", "filler_nose")
+              for w in (None, "immediate", "1w", "2w", "4w")}
+    _hit = sorted(k for k, v in _cells.items() if v)
+    ok(_hit == [("nasolabial", "immediate")],
+       f"팔자 직후 After 컷에만 이 참조가 잡힌다 — 실제로 잡힌 칸 {_hit}")
 # 축을 만들어도 부르는 쪽이 안 넘기면 한 번도 안 걸린다(유령 칸) — 소비자를 직접 본다
 _bsrc = open("src/bna/batch.py", encoding="utf-8").read()
 ok("treatment=self.treatment" in _bsrc and "when=when" in _bsrc,
