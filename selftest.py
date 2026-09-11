@@ -1233,6 +1233,13 @@ ok(_idx_raises({"file": "selfie/nope.jpg", "mode": "selfie"}, FileNotFoundError)
 _refs_mod.load = _orig_rload
 _refs_mod.REF_DIR = _P(__file__).parent / "samples" / "reference"
 ok(isinstance(_refs_mod.check_index(), list), "실제 색인(config/samples_index.yaml)이 검증을 통과한다")
+# 살아 있는 색인이 **실제로** 그 컷에만 붙는가 (색인에 올려 두고 안 붙으면 넣은 사람은 붙은 줄 안다)
+_live = lambda **kw: [r["file"] for r in _refs_mod.candidates(**kw)]
+if _live(mode="selfie", treatment="nasolabial", when="immediate"):
+    ok(not _live(mode="selfie", treatment="nasolabial", when=None),
+       "실제 색인의 직후 참조가 시술 전(Before) 컷에 붙으면 안 된다")
+    ok(not _live(mode="selfie", treatment="lifting", when="immediate"),
+       "실제 색인의 팔자 참조가 다른 시술 컷에 붙으면 안 된다")
 # 축을 만들어도 부르는 쪽이 안 넘기면 한 번도 안 걸린다(유령 칸) — 소비자를 직접 본다
 _bsrc = open("src/bna/batch.py", encoding="utf-8").read()
 ok("treatment=self.treatment" in _bsrc and "when=when" in _bsrc,

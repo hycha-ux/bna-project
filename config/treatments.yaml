@@ -92,16 +92,21 @@ nasolabial:
     #      빛에 반질거리는 테두리로만 드러난다. 홍조는 볼 전체로 넓고 주사 자국이 점점이 보인다.
     #   교훈: 위치·재질은 그림에 그대로 나오는 값이라 **사진 없이 고치면 고칠 때마다 새 오류**다.
     #      다음에 이 칸을 또 바꾸려면 사진이 먼저다. 실측 원본 = samples/reference/selfie (A1 색인).
-    #   ⚠ 미확인 1건: 한쪽에 패치가 둘인지(팔자 아래끝 + 마리오네트) 양쪽 합쳐 둘인지는 사진 설명만으로
-    #      못 가른다. 시술 부위가 양측이므로 **한쪽에 둘**로 적었다 — 사진 확인 후 아니면 이 줄만 고쳐라.
+    #   ④ 같은 날, 티모가 그 사진(samples/reference/selfie/nasolabial_immediate_01.jpg)을 직접 열어
+    #      아래 문장을 실물에 맞췄다. 사진은 3/4 각도라 **한쪽만 보인다** — 그쪽에 패치가 둘이다.
+    #      양쪽 대칭으로 가정해 '한쪽에 둘'로 적는다(반대쪽이 다르면 이 줄만 고쳐라).
+    #      빌디 설명의 '입꼬리 바깥쪽 볼'은 실물에선 **입술에서 한참 떨어진 볼 한복판**이다 —
+    #      '입꼬리 바로 옆'으로 읽히면 09-07 초안으로 되돌아가므로 거리를 문장에 박았다.
+    #      홍조는 주름 둘레가 아니라 **볼 전체**이고 주사 자국도 볼 전체에 흩어져 있다.
     immediate_marks: >
-      The injections go in low, around the bottom of the fold and beside the mouth, not up next to
-      the nose. On each side there are two small round hydrocolloid dressing patches: they are
+      The injections go in low, into the cheek beside the fold and down toward the jaw, not up next
+      to the nose. On each side there are two small round hydrocolloid dressing patches: they are
       transparent and thin, the skin shows through them, and they are easy to miss - only a faint
-      glossy rim catches the light. One sits on the outer cheek just past the corner of the mouth,
-      at the lower end of the nasolabial fold; the other sits lower, over the marionette line
-      toward the jawline. Around them the cheek is broadly flushed pink and several small pinpoint
-      injection marks are clearly visible on it, and the treated fold is slightly puffy.
+      glossy rim catches the light. One sits out on the cheek, level with the corner of the mouth
+      but a clear distance to the side of it, well away from the lips; the other sits lower down,
+      near the jawline below the corner of the mouth, over the marionette area. The whole cheek on
+      each side is broadly flushed pink, with many tiny pinpoint injection marks scattered across
+      it rather than only along the fold, and the treated fold is slightly puffy.
     # ⚠ `immediate_avoid` 는 일부러 비웠다 — 초안의 '직후 금지'는 크림·거즈·붕대·화장솜 나열인데,
     #   2026-09-10 실측에서 **금지 품목을 적으면 모델이 그걸 그렸다**(마취크림 5/5). 같은 일을
     #   막는 긍정문("시술 설명이 말하는 것만 피부에 있다")이 mode_extra 기본값으로 이미 붙는다.

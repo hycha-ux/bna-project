@@ -15,20 +15,12 @@
 #   ≈ $0.010/호출). 세트 하나(Before 1 + After 2)면 3콜이라 ≈$0.031. 근거=outputs/usage.jsonl.
 # ⚠ 얼굴이 나오는 참조는 동의·이용 범위를 note 에 적고, 원본은 이 리포 밖에 둔다.
 #
-# 대기 중(2026-09-11 빌디): 온리프 촬영 팔자 필러 직후 셀카 1장 — 파일이 들어오면 아래 예시를
-#   주석에서 풀고 실제 파일명으로 바꾸면 끝이다(코드 수정 없음).
-# - file: selfie/nasolabial_immediate_onlif_0911.jpg
-#   mode: selfie
-#   treatment: nasolabial
-#   timeline: immediate
-#   tags: {lighting: window, quality: flagship, background: home}
-#   note: 온리프 병원 촬영 실사진, 눈 모자이크 처리본. 참조 전용(외부 게시 금지)
-refs: []
-# ⚠ 아래는 refs.pick 이 **시술·시점을 안 거르기** 때문에 일부러 refs 밖에 둔다 (2026-09-11 빌디).
-#   지금 pick 은 mode·lighting·quality·background 만 보므로, 이 사진을 refs 에 넣으면 팔자 직후가 아닌
-#   모든 셀카(Before 포함, 다른 시술 포함)에 홍조·패치 참조가 붙는다. pick 에 treatment·timeline 필터가
-#   붙으면(티모) 그때 refs 로 올린다.
-refs_pending:
+# 2026-09-11: 빌디가 `refs_pending` 에 대기시켜 둔 팔자 직후 실사를 **정식 색인으로 올렸다** —
+#   대기 사유였던 "pick 이 시술·시점을 안 거른다"가 같은 날 해소됐다(refs.py 의 treatment·timeline 축).
+#   ⚠ 이 사진은 회색 배경의 병원 촬영본인데 셀카 모드 참조로 들어간다. style_refs 는 *그림체*도 옮기므로
+#     첫 8장 회차에서 **배경이 회색 임상 배경으로 끌려가는지** 확인하라 — 끌려가면 mode 를 clinical 로
+#     옮기거나 배경만 잘라 쓰는 게 답이다(지금은 근거 0이라 빌디 태그 그대로 둔다).
+refs:
 - file: selfie/nasolabial_immediate_01.jpg
   mode: selfie
   treatment: nasolabial
