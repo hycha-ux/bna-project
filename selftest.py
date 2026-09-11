@@ -831,6 +831,13 @@ _ctor = _bsrc.split("def __init__", 1)[1].split("# ---------- 단일 아이템",
 ok("mkdir" not in _ctor, "Batch 생성자는 출력 폴더를 만들면 안 된다(실패해도 유령 회차가 남는다)")
 ok("self.dir.mkdir" in _bsrc.split("async def run(", 1)[-1] or "self.dir.mkdir(parents=True, exist_ok=True)" in _bsrc,
    "대신 첫 쓰기 자리에서 만들어야 한다(안 만들면 회차가 통째로 저장 실패한다)")
+# ⚠ 위 가드는 batch.py 만 본다. `batch.json` 은 **run() 보다 먼저** api.py 가 쓰므로 그쪽이
+#   진짜 첫 쓰기다 — 2026-09-11 실측: 생성자 mkdir 을 빼자 대기열로 들어온 실모드 요청이
+#   FileNotFoundError(2) 로 죽었다(대기열·직접 실행 두 진입점 모두). 쓰는 줄마다 짝을 강제한다.
+_asrc = (_Path(__file__).resolve().parent / "src" / "bna" / "api.py").read_text(encoding="utf-8")
+_writes = [s for s in _asrc.split('(b.dir / "batch.json").write_text')[:-1]]
+ok(len(_writes) >= 2 and all("b.dir.mkdir(parents=True, exist_ok=True)" in s[-400:] for s in _writes),
+   "api.py 가 batch.json 을 쓰기 직전에 폴더를 만들어야 한다(대기열·직접 실행 두 자리 모두)")
 ok("with anatomically correct fingers" not in
    (_P("config") / "prompts" / "mode_extra.yaml").read_text(encoding="utf-8").split("# ⚠ selfie_with_hand")[0],
    "손을 요구하는 문구가 살아 있는 설정으로 남아 있으면 안 된다")

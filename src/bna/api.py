@@ -98,6 +98,7 @@ def start_run(req):
                   req.get("gen") or None, req.get("edit") or None, req.get("qa") or None, series=req.get("series"))
     except providers.NotConfigured as e:
         return {"error": f"프로바이더 키 없음: {e}"}, 400
+    b.dir.mkdir(parents=True, exist_ok=True)   # 첫 쓰기 자리 — 위 `run_job` 의 같은 줄 주석 참고
     (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count,
                                                   "kind": "run", "created_at": time.time()}, ensure_ascii=False))
     RUNNING[b.batch_id] = {"status": "running", "started": time.time(), "error": None}
@@ -637,6 +638,10 @@ def run_job(job, on_batch):
         return sim_batch(on_batch=on_batch, **common)
     from .batch import Batch
     b = Batch(gen=job.get("gen") or None, edit=job.get("edit") or None, qa=job.get("qa") or None, **common)
+    # ⚠ 생성자는 폴더를 만들지 않는다(유령 회차 방지, Batch.__init__ 주석). 그런데 `batch.json` 은
+    #   `run()` 보다 **먼저** 쓰이므로 여기가 이 회차의 첫 쓰기다 — 만들지 않으면 FileNotFoundError
+    #   로 배치가 통째로 죽는다(2026-09-11 실측: 대기열로 들어온 실모드 요청 1건이 이 줄에서 터졌다).
+    b.dir.mkdir(parents=True, exist_ok=True)
     (b.dir / "batch.json").write_text(json.dumps({"batch_id": b.batch_id, "treatment": b.treatment, "mode": b.mode, "count": b.count, "kind": "run",
                                                   "target_pass": b.target_pass, "cost_cap": b.cost_cap, "series": b.series, "job_id": job["job_id"], "created_at": time.time()}, ensure_ascii=False))
     RUNNING[b.batch_id] = {"status": "running", "started": time.time(), "error": None}; on_batch(b.batch_id)
