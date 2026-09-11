@@ -667,6 +667,15 @@ for _i in range(120):
     for _tl in ("immediate", "2w"):
         _dr.add(drift_after(_pv, "selfie", _rnd.Random(_i * 7 + len(_tl)), timeline=_tl, treatment="nasolabial")["context"]["key"])
 ok("finger_on_cheek" not in _dr, f"After 드리프트도 finger_on_cheek 으로 가면 안 된다 — {sorted(_dr)}")
+
+# ── 유령 배치 폴더 (2026-09-11) ──────────────────────────────────────────────
+# 생성자가 `outputs/<배치>` 를 먼저 만들던 탓에, 키가 없거나 인자가 틀려 그 자리에서 죽어도
+# 빈 폴더가 남아 배치 목록에 진짜 회차처럼 보였다(실측 13개가 쌓여 있었다).
+_bsrc = (_Path(__file__).resolve().parent / "src" / "bna" / "batch.py").read_text(encoding="utf-8")
+_ctor = _bsrc.split("def __init__", 1)[1].split("# ---------- 단일 아이템", 1)[0]
+ok("mkdir" not in _ctor, "Batch 생성자는 출력 폴더를 만들면 안 된다(실패해도 유령 회차가 남는다)")
+ok("self.dir.mkdir" in _bsrc.split("async def run(", 1)[-1] or "self.dir.mkdir(parents=True, exist_ok=True)" in _bsrc,
+   "대신 첫 쓰기 자리에서 만들어야 한다(안 만들면 회차가 통째로 저장 실패한다)")
 ok("with anatomically correct fingers" not in
    (_P("config") / "prompts" / "mode_extra.yaml").read_text(encoding="utf-8").split("# ⚠ selfie_with_hand")[0],
    "손을 요구하는 문구가 살아 있는 설정으로 남아 있으면 안 된다")

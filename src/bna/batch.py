@@ -54,7 +54,11 @@ class Batch:
         self.fixed = fixed or {}
         self.batch_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
         self.dir = ROOT / "outputs" / self.batch_id
-        self.dir.mkdir(parents=True, exist_ok=True)
+        # ⚠ 여기서 폴더를 만들지 마라(2026-09-11). 생성자는 프로바이더를 잡기 전에 돌기 때문에,
+        #   키가 없거나 인자가 틀려 그 자리에서 죽어도 `outputs/<배치>` 가 남는다. 그 빈 폴더는
+        #   배치 목록·통계에 진짜 회차처럼 보이고, 실측 때마다 "이건 뭔가" 하고 다시 세게 된다
+        #   (실제로 13개가 쌓여 있었고, 그날 하루에만 3개를 더 만들었다).
+        #   폴더는 **처음 쓸 때** 만든다 — 아무것도 안 썼으면 그 회차는 없었던 것이 맞다.
         self.pv = prompt_version()
         # 제외 사유에서 배운 금지문·조건 회피. 배치 시작 시 한 번 읽어 회차 내내 같은 규칙을 쓴다
         # (아이템마다 다시 읽으면 도중에 검수한 게 섞여 들어가 이 배치의 조건이 갈린다).
@@ -223,7 +227,7 @@ class Batch:
             self.progress.set(item_id, stage, **kw)
 
     def _save(self, item_id, meta, before_b, after_b, mask_img=None, after_outs=None):
-        v = meta["variation"]; d = self.dir / item_id; d.mkdir(exist_ok=True)
+        v = meta["variation"]; d = self.dir / item_id; d.mkdir(parents=True, exist_ok=True)
         stem = f'{self.treatment}_{self.mode}_{v["country"]["key"]}{v["age"]["key"]}{v["gender"]["key"][0]}_{item_id}'
         (d / f"{stem}_before.jpg").write_bytes(before_b)
         if after_outs:                                       # 시리즈: 시점마다 _after_<when>.jpg (마지막 시점이 _after.jpg 역할)
@@ -245,6 +249,7 @@ class Batch:
         remember(plans, self.batch_id)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
+        self.dir.mkdir(parents=True, exist_ok=True)   # 여기가 첫 쓰기 — 생성자가 아니라 이 자리에서 만든다
         self.progress = Progress(self.dir, len(plans))
         for i in done:
             self.progress.set(i, "passed", passed=True)   # 이어하기: 이미 끝난 항목
