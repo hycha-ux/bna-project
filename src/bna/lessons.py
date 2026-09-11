@@ -255,6 +255,13 @@ def active(out_dir: Path, treatment=None, mode=None) -> dict:
     picked = [(t, n) for t, n in s["tags"].items()
               if n >= int(st.get("min_count", 2)) and t in tag_cfg][: int(st.get("top_n", 3))]
     lines = {"before": [], "after": []}
+    # not_at: 그 금지문을 **붙이지 않을 경과 시점**. 규칙 자체를 지우는 게 아니라 컷 단위로 뺀다 —
+    # 직후 컷엔 흔적(테이프·붓기)이 남는 게 정상이라 "흔적 금지"가 사실 카드와 정면으로 부딪힌다
+    # (2026-09-11 실사고). 붙일지 말지의 판정은 spec.build_prompts 가 이 표를 읽어 컷마다 한다.
+    not_at = {}
+    for c in list(tag_cfg[t] for t, _n in picked) + list(cfg.get("custom") or []):
+        if c.get("en") and c.get("not_at"):
+            not_at[c["en"]] = [str(w) for w in c["not_at"]]
     for t, _n in picked:
         c = tag_cfg[t]
         for w in c.get("where", ["before", "after"]):
@@ -290,8 +297,8 @@ def active(out_dir: Path, treatment=None, mode=None) -> dict:
         used_vals = s.get("axis_uses", {}).get(a) or {}
         if hit and len(hit) < max(len(used_vals), 1):
             weights[a] = hit
-    return {"lines": lines, "weights": weights, "from_tags": [t for t, _ in picked], "rejected": s["rejected"],
-            "reject_rate": base}
+    return {"lines": lines, "not_at": not_at, "weights": weights, "from_tags": [t for t, _ in picked],
+            "rejected": s["rejected"], "reject_rate": base}
 
 
 def avoid_text(lines: list) -> str:

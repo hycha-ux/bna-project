@@ -646,6 +646,35 @@ ok("dressing patch" in _pn["afters"][0]["after_prompt"] and "dressing patch" not
 ok(not any(w in _pn["afters"][0]["after_prompt"] for w in ("cotton pad", "ointment", "bandage", "gauze")),
    "직후 금지는 품목을 나열하지 않는다 — 적으면 모델이 그린다(0910 마취크림 5/5)")
 
+# ㉑ 사실 카드 ↔ 금지문 충돌 (2026-09-11 실사고: 직후 컷이 테이프를 '그려라'와 '그리지 마라'를 동시에 받았다)
+import yaml as _yaml
+_av_cfg = _yaml.safe_load((_P(__file__).parent / "config" / "prompts" / "avoid.yaml").read_text(encoding="utf-8"))
+_dress = [c for c in (_av_cfg.get("custom") or []) if "tape" in (c.get("en") or "")]
+ok(_dress and "immediate" in (_dress[0].get("not_at") or []),
+   "테이프·패치 금지 규칙엔 not_at: [immediate] 가 있어야 한다 — 직후 컷엔 카드가 테이프를 그리라고 한다")
+_ban = _dress[0]["en"]
+_pnq = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"],
+                     avoid={"before": [], "after": [_ban]}, avoid_not_at={_ban: ["immediate"]})
+ok(_ban not in _pnq["afters"][0]["after_prompt"] and _ban in _pnq["afters"][1]["after_prompt"],
+   "그 금지문은 직후 컷에서만 빠지고 다른 컷엔 그대로 붙는다(규칙을 지우는 게 아니라 컷 단위로 뺀다)")
+ok(_pnq["avoid_applied"]["after"] == [_ban],
+   "avoid_applied 는 마지막 컷(=after_prompt 가 실린 컷)에 붙은 목록이어야 한다 — 메모 초안이 이걸 정본으로 읽는다")
+_pni = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate"],
+                     avoid={"before": [], "after": [_ban]}, avoid_not_at={_ban: ["immediate"]})
+ok(_pni["avoid_applied"].get("after") in (None, []),
+   "직후 컷 하나만 만든 회차엔 그 금지문이 '붙였다'로 기록되면 안 된다(안 붙인 규칙을 붙였다고 적으면 또 승격시킨다)")
+try:
+    build_prompts("nasolabial", "selfie", _v, 5, series=["immediate"],
+                  avoid={"before": [], "after": [_ban]})     # not_at 없이 = 예외를 잊은 상태
+    _clash = None
+except ValueError as _e:
+    _clash = str(_e)
+ok(_clash and "not_at" in _clash,
+   f"예외를 안 적은 채 카드와 금지문이 같은 컷에 붙으면 소리 내고 멈춰야 한다 — {_clash}")
+_act = _les.active(_P(__file__).parent / "outputs", "nasolabial", "selfie")
+ok((_act.get("not_at") or {}).get(_ban) == ["immediate"],
+   f"lessons.active 가 not_at 표를 같이 돌려줘야 한다 — 안 넘기면 spec 이 예외를 모른 채 가드에 걸린다({_act.get('not_at')})")
+
 
 # ㉑ 내보내기 zip 에 사용 범위 안내가 들어간다 (2026-09-10 파트장 "내부만" 확정, 정본 docs/usage-policy.md).
 #    zip 은 결과물이 이 시스템을 떠나는 유일한 경로라, 파일만 받은 사람도 범위를 알아야 한다.

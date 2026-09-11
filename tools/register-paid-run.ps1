@@ -21,7 +21,11 @@ $runner = Join-Path $root 'tools\run-selfie-batches.ps1'
 if (-not (Test-Path $runner)) { throw "runner not found: $runner" }
 
 $args = "-ExecutionPolicy Bypass -File `"$runner`" -Treatments $Treatment -Count $Count " +
-        "-Seed $Seed -Fix $Fix -CostCap $CostCap -LogFile `"$LogFile`""
+        "-Seed $Seed -CostCap $CostCap -LogFile `"$LogFile`""
+# -Fix is appended only when it has a value. With an empty string the line used to read
+# "-Fix  -CostCap 4", and PowerShell then bound "-CostCap" as the value of -Fix: the cost cap
+# silently reverted to the 10.0 default. An axis you did not ask to fix must stay unfixed.
+if ($Fix -ne '') { $args += " -Fix $Fix" }
 if ($Series -ne '') { $args += " -Series $Series" }
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $args -WorkingDirectory $root
 # One-shot far in the future; we start it by hand right away. The trigger only exists because

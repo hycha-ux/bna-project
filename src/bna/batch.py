@@ -83,7 +83,8 @@ class Batch:
     # ---------- 단일 아이템 ----------
     async def run_item(self, idx: int, variation: dict) -> dict:
         spec = build_prompts(self.treatment, self.mode, variation, None if self.seed is None else self.seed * 1000 + idx,
-                             avoid=(self.avoid or {}).get("lines"), series=self.series)
+                             avoid=(self.avoid or {}).get("lines"), series=self.series,
+                             avoid_not_at=(self.avoid or {}).get("not_at"))
         item_id = f"{idx:04d}"
         # 프로바이더를 같이 적는다 — 버전 성적표가 prompt_version(=config 해시)으로만 묶여서,
         # 같은 버전을 다른 모델로 돌리면 두 모델의 성적이 한 줄에 섞인다(조용히 비교가 무의미해진다).
@@ -115,7 +116,8 @@ class Batch:
                                        treatment=self.treatment, avoid_sigs=past_signatures(),
                                        avoid_scene_sigs=past_scene_signatures())[0]
                 spec = build_prompts(self.treatment, self.mode, variation, rs,
-                                     avoid=(self.avoid or {}).get("lines"), series=self.series)
+                                     avoid=(self.avoid or {}).get("lines"), series=self.series,
+                                     avoid_not_at=(self.avoid or {}).get("not_at"))
                 meta.update({k: v for k, v in spec.items()})
                 meta["redrawn"].append(attempt)
                 style_refs = refs.pick(self.mode, variation)

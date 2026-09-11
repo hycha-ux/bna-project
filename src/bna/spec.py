@@ -323,13 +323,44 @@ def check_treatment_facts(treatment: str) -> None:
             raise ValueError(f"{treatment}.facts.{k} 는 직후 컷에만 실리는데 timeline 에 immediate 가 없다 — 죽은 설정")
 
 
-def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None) -> dict:
+DRESS_WORDS = ("tape", "patch", "gauze", "dressing", "numbing cream")
+
+
+def check_avoid_vs_facts(treatment: str, when: str, fact_texts: list, avoid_lines: list) -> None:
+    """사실 카드와 금지문이 **같은 컷에서 반대를 지시하면** 소리 내고 멈춘다 (2026-09-11 실사고).
+
+    그날 직후 컷엔 카드의 "입가에 재생테이프를 붙여라"와 09-10 승격 금지문의
+    "테이프·패치 보이지 마라"가 함께 들어갔다. 모델은 둘 중 하나를 골랐고 우리는
+    어느 쪽이 이겼는지도 모른 채 effect_visible 로 떨어졌다 — 조용한 모순이 제일 비싸다.
+    푸는 법은 규칙을 지우는 게 아니라 `avoid.yaml` 그 규칙에 `not_at: [<그 시점>]`.
+    """
+    facts = " ".join(str(x).lower() for x in fact_texts if x)
+    ban = " ".join(str(x).lower() for x in avoid_lines if x)
+    if not facts or not ban:
+        return
+    clash = [w for w in DRESS_WORDS if w in facts and w in ban]
+    if clash:
+        raise ValueError(
+            f"{treatment} {when} 컷: 사실 카드가 {clash} 를 그리라고 하는데 같은 컷 금지문이 "
+            f"그걸 금지한다 — avoid.yaml 의 그 규칙에 `not_at: [{when}]` 을 적어라")
+
+
+def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None,
+                  avoid_not_at=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
-    None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게)."""
+    None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게).
+    avoid_not_at: {금지문: [붙이지 않을 시점…]} — lessons.active 의 `not_at`."""
     from . import lessons
     av = avoid or {}
+    not_at = avoid_not_at or {}
     avoid_before = lessons.avoid_text(av.get("before") or [])
-    avoid_after = lessons.avoid_text(av.get("after") or [])
+    after_lines_all = list(av.get("after") or [])
+
+    def after_lines_at(w):
+        """그 컷에 실제로 붙는 금지문. 시점 예외(not_at)를 컷 단위로 뺀다."""
+        return [ln for ln in after_lines_all if str(w) not in (not_at.get(ln) or [])]
+
+    avoid_after = lessons.avoid_text(after_lines_all)
     t = load("treatments.yaml")[treatment]
     if mode not in t["modes"]:
         raise ValueError(f"{treatment} does not support mode {mode}")
@@ -450,6 +481,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
 
     def build_after(w, chg, lv, lowered):
         """시점 하나의 After. 시리즈든 아니든 같은 길 — 동일인 기준은 항상 Before 사진이다(After 를 다음 After 의 기준으로 쓰면 얼굴이 흘러간다)."""
+        # 금지문은 컷마다 다르다(not_at). 직후 컷은 카드가 흔적을 그리라고 하므로 흔적 금지가 빠진다.
+        lines_w = after_lines_at(w)
+        avoid_after = lessons.avoid_text(lines_w)
+        check_avoid_vs_facts(treatment, w, [s for _k, s in fact_spans(w)], lines_w)
         if mode == "clinical":
             a_var = variation
             txt = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=chg, avoid=avoid_after)
@@ -499,7 +534,13 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     last = afters[-1]
     before_parts = segments(before, [("person", person_description(variation)), ("before_condition", cond), ("scene", scene),
                                      ("mode_extra", mode_extra), ("avoid", avoid_before)])
-    return {"avoid_applied": {k: v for k, v in (avoid or {}).items() if v},
+    # ⚠ `avoid_applied` 는 "그 사진에 실제로 붙어 있던 금지문"이고 메모 초안(notedraft)이 정본으로 읽는다.
+    #   after_prompt·after_parts 가 마지막 컷이므로 여기도 **마지막 컷에 붙은 목록**이어야 짝이 맞는다 —
+    #   전체 목록을 적으면 직후 컷에서 빠진 규칙을 "이미 붙여 봤다"고 보고해 같은 규칙을 또 승격시킨다.
+    applied = {k: list(v) for k, v in (avoid or {}).items() if v}
+    if applied.get("after"):
+        applied["after"] = after_lines_at(last["when"])
+    return {"avoid_applied": {k: v for k, v in applied.items() if v},
             "before_parts": before_parts, "after_parts": last["after_parts"],
             "treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
             "variation": variation, "after_variation": last["after_variation"],
