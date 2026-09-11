@@ -677,7 +677,8 @@ const VAL_KO = {
   before_severity:{mild:'약함', moderate:'보통', marked:'뚜렷함'}, effect_level:{early:'거의 없음 (직후)', subtle:'은은하게', moderate:'눈에 띄게'}, timeline:{immediate:'시술 직후', '1w':'1주 뒤', '2w':'2주 뒤', '4w':'4주 뒤'},
 };
 const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
-const failKo = r => FAIL_KO[r] || r;
+// 시리즈(직후·2주…) 배치는 사유에 '@시점' 꼬리가 붙는다(batch.py) — 어느 컷에서 떨어졌는지가 원인 분석의 핵심이라 같이 보여 준다
+const failKo = r => { const [k, w] = String(r).split('@'); return (FAIL_KO[k] || k) + (w ? ` · ${val('timeline', w)}` : ''); };
 let POLL = null;
 const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', expression:'표정', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
@@ -1150,7 +1151,7 @@ function renderStats() {
   let html = '';
   if (!dry && Object.keys(s.fail_reasons||{}).length) html += `<div class="card"><h4>AI 검수 탈락 사유</h4>${bars(s.fail_reasons, s.total, 'bad', null, failKo)}</div>`;
   if (Object.keys(s.review_tags||{}).length) html += `<div class="card"><h4>제외 사유</h4>${bars(s.review_tags, s.total, 'bad')}</div>`;
-  if (!dry) ['angle','framing','background','lighting','before_severity','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h4>${AXIS_KO[a]||a}별 통과율</h4>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
+  if (!dry) ['angle','framing','background','lighting','before_severity','effect_level','timeline','age','country'].forEach(a => { if (s.by_axis?.[a]) html += `<div class="card"><h4>${AXIS_KO[a]||a}별 통과율</h4>${bars(s.by_axis[a], s.total, 'ok', a)}</div>`; });
   // 통계는 가끔 보는 값이다 — 항상 펼쳐 두면 매번 사진이 화면 밖으로 밀린다
   // (2026-09-08 실측: 사진까지 1108px 스크롤). 접어 두고 필요할 때 펼친다.
   $('#gal-stats').innerHTML = html
