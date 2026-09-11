@@ -80,6 +80,10 @@ class Batch:
         from .spec import series_points
         self.series = series_points(treatment, series) or None
 
+    def _refs(self, variation: dict, when: str = None) -> list:
+        """이 컷에 붙일 참조 사진. `when=None` = 시술 전(Before) 컷 (2026-09-11 A1 축 신설)."""
+        return refs.pick(self.mode, variation, treatment=self.treatment, when=when)
+
     # ---------- 단일 아이템 ----------
     async def run_item(self, idx: int, variation: dict) -> dict:
         spec = build_prompts(self.treatment, self.mode, variation, None if self.seed is None else self.seed * 1000 + idx,
@@ -92,7 +96,10 @@ class Batch:
                 "providers": {"gen": self.p_gen.name, "edit": self.p_edit.name, "qa": self.p_qa.name},
                 "cost": 0.0, "fail_reasons": []}
         t = load("treatments.yaml")[self.treatment]
-        style_refs = refs.pick(self.mode, variation)
+        # 참조는 **컷마다 다시 고른다** (2026-09-11). 종전엔 한 번 골라 Before·After 에 같이 썼는데,
+        # 그러면 '팔자 직후' 참조가 시술 전 컷에도 들어가 아직 시술도 안 한 얼굴에 패치를 그린다.
+        # 시점 축은 refs.pick(when=...) 이 가른다 — when=None 이 곧 Before 다.
+        style_refs = self._refs(variation)
 
         before_b = before = pts = mask_img = None      # 재시도 때 Before 를 물려받는 자리
         prev_fail = []
@@ -120,7 +127,7 @@ class Batch:
                                      avoid_not_at=(self.avoid or {}).get("not_at"))
                 meta.update({k: v for k, v in spec.items()})
                 meta["redrawn"].append(attempt)
-                style_refs = refs.pick(self.mode, variation)
+                style_refs = self._refs(variation)
                 # 조건이 바뀌면 Before 도 다시 — 그 묶음은 _retry_plan 안에 있다(여기서 또 켜지 않는다)
 
             self._p(item_id, "before", attempt=attempt)
@@ -146,7 +153,9 @@ class Batch:
                         after = landmarks.composite_outside_mask(before, after, mask_img)
                     meta["cost"] += self.pricing[self.p_edit.name]["edit"]
                 else:
-                    after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, style_refs, None)
+                    # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)
+                    after_refs = self._refs(af.get("after_variation") or variation, af["when"])
+                    after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
                     after = Image.open(io.BytesIO(after_b))
                     meta["cost"] += self.pricing[self.p_edit.name]["generate"]
                 afters_out.append((af["when"], af, after))

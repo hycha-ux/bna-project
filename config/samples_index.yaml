@@ -1,10 +1,28 @@
 # 참조 이미지 라이브러리 색인. samples/reference/{clinical,selfie}/ 에 파일을 넣고 여기에 태그.
-# 생성 시 mode·lighting·quality 태그가 맞는 참조를 1~2장 style_refs 로 함께 입력.
-# 예:
-# - file: selfie/iphone_window_01.jpg
+# 생성 시 태그가 맞는 참조를 1~2장 style_refs 로 함께 입력한다. 고르는 코드 = src/bna/refs.py 하나.
+#
+# 칸 (2026-09-11 시술·시점 축 신설 — 그 전엔 mode 와 조명·화질·배경만 봤다):
+#   file       : samples/reference/ 아래 상대경로. **파일이 없으면 소리 내고 죽는다**(색인에만 있는 유령 금지)
+#   mode       : selfie | clinical  (필수)
+#   treatment  : 이 시술 컷에만 쓴다. 목록 가능. **안 적으면 범용** — 모든 시술에 붙는다
+#   timeline   : 이 시점 After 에만 쓴다 (immediate | 1w | 2w | 4w). 목록 가능. 안 적으면 범용
+#   tags       : {lighting, quality, background} — 맞을수록 우선. 거르지는 않는다(점수축)
+#   note       : 출처·이용 가능 여부 (사람이 읽는 칸)
+#
+# ⚠ **시점 태그가 붙은 참조는 시술 전(Before) 컷에 절대 안 들어간다.** 직후 사진엔 패치·홍조가
+#   찍혀 있어서, Before 에 붙으면 아직 시술도 안 한 얼굴에 그 흔적이 그려진다 — 오류 없이 전량 불량.
+# ⚠ 참조 1장은 공짜가 아니다: 그 호출의 입력 이미지 토큰이 붙는다(실측 1024x1280 기준 1,280토큰
+#   ≈ $0.010/호출). 세트 하나(Before 1 + After 2)면 3콜이라 ≈$0.031. 근거=outputs/usage.jsonl.
+# ⚠ 얼굴이 나오는 참조는 동의·이용 범위를 note 에 적고, 원본은 이 리포 밖에 둔다.
+#
+# 대기 중(2026-09-11 빌디): 온리프 촬영 팔자 필러 직후 셀카 1장 — 파일이 들어오면 아래 예시를
+#   주석에서 풀고 실제 파일명으로 바꾸면 끝이다(코드 수정 없음).
+# - file: selfie/nasolabial_immediate_onlif_0911.jpg
 #   mode: selfie
+#   treatment: nasolabial
+#   timeline: immediate
 #   tags: {lighting: window, quality: flagship, background: home}
-#   note: 실제 촬영, 상업 이용 가능 확인됨
+#   note: 온리프 병원 촬영 실사진, 눈 모자이크 처리본. 참조 전용(외부 게시 금지)
 refs: []
 # ⚠ 아래는 refs.pick 이 **시술·시점을 안 거르기** 때문에 일부러 refs 밖에 둔다 (2026-09-11 빌디).
 #   지금 pick 은 mode·lighting·quality·background 만 보므로, 이 사진을 refs 에 넣으면 팔자 직후가 아닌

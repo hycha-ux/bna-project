@@ -81,14 +81,27 @@ nasolabial:
       주입 직후부터 결과가 보인다 (연서님 09-11 "필러는 시술 직후 즉각 나타나는 게 장점인 시술").
       그래서 위 immediate_level 이 final 이다.
     extent: 콧볼 옆에서 입꼬리까지 주름 전 길이, 양쪽 고르게. 프롬프트 축은 위 after_change
-    # 2026-09-11 성연서님 교정: "패치 위치가 이상하다 — 입술과 가까이 붙여 나오진 않는다".
-    #   종전 문장(티모 초안)은 패치를 '입꼬리 바로 옆'에 붙였다. 주입은 주름 위쪽(콧볼 옆)이므로
-    #   패치도 거기다. 위치는 그림에 그대로 나오는 값이라 추정으로 쓰면 안 되는 칸이었다.
+    # ⚠ 이 칸은 하루에 두 번 뒤집혔다. 아래가 **실사진 기준**이고 앞의 두 판은 전부 추정이었다.
+    #   ① 티모 0907 초안 — 패치를 '입꼬리 바로 옆'에. 근거 없음(추정).
+    #   ② 2026-09-11 오전, 성연서님 "패치 위치가 이상하다 — 입술과 가까이 붙여 나오진 않는다" →
+    #      티모가 "주입은 주름 위쪽이니 패치도 콧볼 옆"으로 고쳤다. 이것도 **사진 없이 한 추론**이라
+    #      방향만 반대로 틀린 같은 오류였다.
+    #   ③ 2026-09-11 오후, 성연서님이 온리프에서 촬영한 실제 직후 사진을 확인(빌디 전달) →
+    #      패치는 아래쪽이다. 콧볼 옆이 아니라 **입꼬리 바깥 볼(팔자 아래 끝)** 과 **마리오네트 자리(턱선 쪽)**.
+    #      재질도 살색 스티커가 아니라 **투명 하이드로콜로이드** — 피부가 비쳐 자세히 봐야 보이고
+    #      빛에 반질거리는 테두리로만 드러난다. 홍조는 볼 전체로 넓고 주사 자국이 점점이 보인다.
+    #   교훈: 위치·재질은 그림에 그대로 나오는 값이라 **사진 없이 고치면 고칠 때마다 새 오류**다.
+    #      다음에 이 칸을 또 바꾸려면 사진이 먼저다. 실측 원본 = samples/reference/selfie (A1 색인).
+    #   ⚠ 미확인 1건: 한쪽에 패치가 둘인지(팔자 아래끝 + 마리오네트) 양쪽 합쳐 둘인지는 사진 설명만으로
+    #      못 가른다. 시술 부위가 양측이므로 **한쪽에 둘**로 적었다 — 사진 확인 후 아니면 이 줄만 고쳐라.
     immediate_marks: >
-      The injections go in along the upper part of the fold, next to the nostril. On each side
-      there is one small round skin-coloured dressing patch sitting high on the nasolabial fold
-      beside the nostril, clear of the lips and not touching the corner of the mouth, and the
-      treated fold is very slightly puffy with a faint pink dot at each injection point.
+      The injections go in low, around the bottom of the fold and beside the mouth, not up next to
+      the nose. On each side there are two small round hydrocolloid dressing patches: they are
+      transparent and thin, the skin shows through them, and they are easy to miss - only a faint
+      glossy rim catches the light. One sits on the outer cheek just past the corner of the mouth,
+      at the lower end of the nasolabial fold; the other sits lower, over the marionette line
+      toward the jawline. Around them the cheek is broadly flushed pink and several small pinpoint
+      injection marks are clearly visible on it, and the treated fold is slightly puffy.
     # ⚠ `immediate_avoid` 는 일부러 비웠다 — 초안의 '직후 금지'는 크림·거즈·붕대·화장솜 나열인데,
     #   2026-09-10 실측에서 **금지 품목을 적으면 모델이 그걸 그렸다**(마취크림 5/5). 같은 일을
     #   막는 긍정문("시술 설명이 말하는 것만 피부에 있다")이 mode_extra 기본값으로 이미 붙는다.

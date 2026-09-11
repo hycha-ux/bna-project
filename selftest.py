@@ -1169,11 +1169,76 @@ _wl = set(_vy2["mode_rules"]["selfie"]["expression"]) | set(_vy2["mode_rules"]["
 ok(set(_vy2["expression"]) <= _wl,
    f"어느 모드에서도 안 뽑히는 유령 표정이 있으면 안 된다 — 실제 {sorted(set(_vy2['expression']) - _wl)}")
 
-# ㉒ 팔자 직후 패치 자리 (2026-09-11 성연서님 "입술과 가까이 붙여 나오진 않는다")
-#    위치는 그림에 그대로 나오는 값이라 초안 추정이 곧 오류가 된다.
+# ㉒ 팔자 직후 패치 자리·재질 (2026-09-11 오후, 온리프 실제 촬영본으로 확정)
+#    같은 날 오전엔 정반대('콧볼 옆')를 여기서 지키고 있었다 — 둘 다 사진 없이 한 추정이었다.
+#    이제 기준은 실사진 하나다: 패치는 **아래쪽**(입꼬리 바깥 볼·마리오네트)이고 **투명**이다.
 _im = _immediate_after("nasolabial", 7)
-ok("beside the nostril" in _im, "직후 패치는 콧볼 옆(주름 위쪽)에 있어야 한다")
-ok("just beside each corner of the mouth" not in _im, "직후 패치를 입꼬리 옆에 붙이면 안 된다")
+# ⚠ 'beside the nostril' 단독으로 재지 마라 — after_change 가 주름 *길이*를 말할 때 같은 말을 쓴다
+#   (콧볼 옆에서 입꼬리까지). 금지 대상은 패치를 거기 앉히는 문장 하나다.
+ok("patch sitting high" not in _im and "patches sitting high" not in _im,
+   "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 실사진은 아래쪽")
+ok("The injections go in low" in _im, "주입점이 아래쪽이라고 말해야 한다(실사진)")
+ok("skin-coloured dressing patch" not in _im,
+   "직후 패치를 살색으로 그리면 안 된다 — 실물은 투명 하이드로콜로이드다")
+for _frag in ("transparent", "hydrocolloid", "corner of the mouth", "marionette"):
+    ok(_frag in _im, f"직후 흔적 문장에 '{_frag}' 가 있어야 한다(실사진 기준)")
+ok("faint pink dot" not in _im and "flushed pink" in _im,
+   "홍조는 '점 하나'가 아니라 볼 전체로 넓어야 한다(실사진)")
+
+# ㉓ 참조 사진(A1)이 시술·시점을 거르는가 (2026-09-11 빌디 "refs.pick 이 거르는지 확인")
+#    종전엔 **안 걸렀다** — 모드와 조명·화질·배경만 봤다. 그래서 '팔자 직후' 실사진을 색인에 넣으면
+#    리프팅 컷에도, 시술 전(Before) 컷에도 들어간다. 뒤쪽이 특히 나쁘다: 아직 시술도 안 한 얼굴에
+#    패치와 홍조가 그려지는데 오류는 하나도 안 난다.
+import bna.refs as _refs_mod
+import tempfile as _tf
+_rd = _P(_tf.mkdtemp()); (_rd / "selfie").mkdir()
+for _f in ("na_imm.jpg", "generic.jpg", "lift_2w.jpg"):
+    (_rd / "selfie" / _f).write_bytes(b"\xff\xd8\xff")
+_refs_mod.REF_DIR = _rd
+_orig_rload = _refs_mod.load
+_IDX = {"refs": [
+    {"file": "selfie/na_imm.jpg", "mode": "selfie", "treatment": "nasolabial", "timeline": "immediate"},
+    {"file": "selfie/generic.jpg", "mode": "selfie"},
+    {"file": "selfie/lift_2w.jpg", "mode": "selfie", "treatment": "lifting", "timeline": "2w"},
+]}
+def _use(idx):
+    _refs_mod.load = lambda n: idx if n == "samples_index.yaml" else _orig_rload(n)
+_use(_IDX)
+def _names(**kw):
+    return [r["file"] for r in _refs_mod.candidates(**kw)]
+ok(_names(mode="selfie", treatment="nasolabial", when="immediate")
+   == ["selfie/na_imm.jpg", "selfie/generic.jpg"], "팔자 직후 컷엔 그 시술·그 시점 참조 + 범용이 붙는다")
+ok(_names(mode="selfie", treatment="nasolabial", when=None) == ["selfie/generic.jpg"],
+   "시점 태그가 붙은 참조는 시술 전(Before) 컷에 절대 안 들어간다")
+ok(_names(mode="selfie", treatment="lifting", when="immediate") == ["selfie/generic.jpg"],
+   "다른 시술의 참조가 섞이면 안 된다")
+ok(_names(mode="selfie", treatment="nasolabial", when="2w") == ["selfie/generic.jpg"],
+   "같은 시술이라도 다른 시점의 참조가 섞이면 안 된다")
+ok(_names(mode="clinical", treatment="nasolabial", when="immediate") == [],
+   "모드가 다르면 안 붙는다(종전 축 유지)")
+def _idx_raises(entry, exc=Exception):
+    _use({"refs": [entry]})
+    try:
+        _refs_mod.check_index(); return False
+    except exc:
+        return True
+    finally:
+        _use(_IDX)
+ok(_idx_raises({"file": "selfie/generic.jpg", "mode": "selfie", "treatment": "nasolabail"}),
+   "시술 이름 오타는 조용히 범용이 되지 말고 소리 내고 죽는다")
+ok(_idx_raises({"file": "selfie/generic.jpg", "mode": "selfie", "timeline": "3w"}),
+   "없는 시점 이름도 막는다")
+ok(_idx_raises({"file": "selfie/nope.jpg", "mode": "selfie"}, FileNotFoundError),
+   "색인에만 있고 파일이 없는 참조는 유령이다 — 죽는다")
+_refs_mod.load = _orig_rload
+_refs_mod.REF_DIR = _P(__file__).parent / "samples" / "reference"
+ok(isinstance(_refs_mod.check_index(), list), "실제 색인(config/samples_index.yaml)이 검증을 통과한다")
+# 축을 만들어도 부르는 쪽이 안 넘기면 한 번도 안 걸린다(유령 칸) — 소비자를 직접 본다
+_bsrc = open("src/bna/batch.py", encoding="utf-8").read()
+ok("treatment=self.treatment" in _bsrc and "when=when" in _bsrc,
+   "batch 가 참조를 고를 때 시술·시점을 실제로 넘겨야 한다")
+ok(_bsrc.count("self._refs(") >= 3 and "refs.pick(self.mode, variation)" not in _bsrc,
+   "Before·재추첨·After 세 자리 모두 새 경로를 써야 한다(한 곳이라도 옛 호출이면 그 컷만 안 걸린다)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
