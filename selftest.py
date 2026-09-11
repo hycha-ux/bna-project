@@ -655,6 +655,18 @@ ok("finger_on_cheek" not in (_vv["mode_rules"]["selfie"].get("context") or []),
    "셀카 맥락 후보에 finger_on_cheek 이 없어야 한다")
 _ctx = {k for p in _pb("selfie", 120, seed=3, treatment="nasolabial") for k in [p["context"]["key"]]}
 ok("finger_on_cheek" not in _ctx, f"120 표본에서 한 번도 안 뽑혀야 한다 — {sorted(_ctx)}")
+# ⚠ 위 두 줄은 **Before 축만** 본다. 2026-09-11 실측: 사람이 '손가락'으로 뺀 9건 중 **4건은 Before 가 아니라
+#   After 드리프트**가 finger_on_cheek 으로 옮겨간 것이었다(Before 는 hair_in_face). 09-10 보고가
+#   "나머지는 손과 무관한 설정"이라고 잘못 가른 이유가 이 사각이다 — `variation` 만 보고 `after_variation` 을 안 봤다.
+#   제거는 두 경로를 다 덮지만(아래 실측 0/N), 덮는다는 사실 자체에 가드가 없으면 다음에 또 못 본다.
+import random as _rnd
+from bna.spec import drift_after
+_dr = set()
+for _i in range(120):
+    _pv = _pb("selfie", 1, seed=900 + _i, treatment="nasolabial")[0]
+    for _tl in ("immediate", "2w"):
+        _dr.add(drift_after(_pv, "selfie", _rnd.Random(_i * 7 + len(_tl)), timeline=_tl, treatment="nasolabial")["context"]["key"])
+ok("finger_on_cheek" not in _dr, f"After 드리프트도 finger_on_cheek 으로 가면 안 된다 — {sorted(_dr)}")
 ok("with anatomically correct fingers" not in
    (_P("config") / "prompts" / "mode_extra.yaml").read_text(encoding="utf-8").split("# ⚠ selfie_with_hand")[0],
    "손을 요구하는 문구가 살아 있는 설정으로 남아 있으면 안 된다")
