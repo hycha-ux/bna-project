@@ -1297,6 +1297,33 @@ ok("treatment=self.treatment" in _bsrc and "when=when" in _bsrc,
 ok(_bsrc.count("self._refs(") >= 3 and "refs.pick(self.mode, variation)" not in _bsrc,
    "Before·재추첨·After 세 자리 모두 새 경로를 써야 한다(한 곳이라도 옛 호출이면 그 컷만 안 걸린다)")
 
+# ㉕ 프롬프트 패치 번호 v{n} + 카테고리 (2026-09-11 성연서님 "v{n} 넘버 붙이자, 카테고리도")
+#    번호는 **설정 해시**로 센다 — 종전엔 prompt_version 전체(git sha 포함)로 세서 *문서 한 줄만
+#    커밋해도* 번호가 올라갔다(실측 v10·v11·v12 가 전부 같은 프롬프트 d677e740). 번호로 부르자는
+#    취지가 "같은 프롬프트를 세 이름으로 부르는" 결과가 되던 자리다.
+# ⚠ 시료 해시는 **8자**로 쓴다 — 이름표 물려받기가 뒷자리 6자 미만을 'sim'·'demo' 같은 가짜로 보고 건너뛴다.
+_vr = [{"version": v, "real": True, "first": i} for i, v in enumerate(
+    ["aaa-11111111", "bbb-22222222", "ccc-22222222", "ddd-33333333"])]
+_va = _L.aliases(_vr, "eee-33333333")
+ok([_va[r["version"]] for r in _vr] == ["v1", "v2", "v2", "v3"],
+   f"코드만 바뀐 같은 설정은 같은 번호여야 한다 — 실제 {[_va[r['version']] for r in _vr]}")
+ok(_va["eee-33333333"] == "v3", "아직 사진이 없어도 설정이 같으면 그 번호를 쓴다(새 번호를 만들지 않는다)")
+ok(_L.aliases(_vr, "fff-99999999")["fff-99999999"] == "v4", "설정이 새로우면 다음 번호를 미리 준다")
+ok(set(_L.CAT_BY_CONFIG.values()) <= set(_L.VERSION_CATS),
+   f"자동 카테고리가 허용 목록 밖을 내면 안 된다 — 실제 {sorted(set(_L.CAT_BY_CONFIG.values()) - set(_L.VERSION_CATS))}")
+for _f in ("treatments.yaml", "variations.yaml", "effects.yaml", "samples_index.yaml", "qa_checklist.yaml"):
+    ok(_f in _L.CAT_BY_CONFIG, f"프롬프트를 바꾸는 설정 {_f} 에 카테고리가 있어야 한다(없으면 칸이 조용히 빈다)")
+_d25 = _P(_tf.mkdtemp())
+_L.names_set(_d25, "aaa-11111111", "손으로 붙인 이름", cat="변주")
+ok(_L.names_read(_d25)["aaa-11111111"]["cat"] == "변주", "이름표에 카테고리가 같이 저장돼야 한다")
+ok(_L._note_by_config(_L.names_read(_d25), "zzz-11111111").get("cat") == "변주",
+   "설정 해시가 같으면 **카테고리까지** 물려받아야 한다(한쪽만 따라오면 반쪽 표기가 된다)")
+try:
+    _L.names_set(_d25, "bbb-22222222", "x", cat="없는칸"); _catbad = False
+except ValueError:
+    _catbad = True
+ok(_catbad, "모르는 카테고리는 조용히 저장하지 말고 소리 내고 죽는다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

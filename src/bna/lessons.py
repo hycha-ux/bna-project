@@ -331,7 +331,7 @@ def promote(note: str, en: str, where=None) -> dict:
         out = ROOT / "outputs"
         nv = prompt_version()
         if nv not in names_read(out):
-            names_set(out, nv, f"규칙 추가: {(note or en).strip()}")
+            names_set(out, nv, f"규칙 추가: {(note or en).strip()}", cat="검수")
     except Exception:                                   # noqa: BLE001
         pass
     return {"ok": True, "rule": rule, "count": len(cfg["custom"])}
@@ -448,11 +448,21 @@ def names_read(out_dir: Path) -> dict:
         return {}
 
 
-def names_set(out_dir: Path, version: str, note: str) -> dict:
+# 프롬프트 패치 카테고리 (2026-09-11 성연서님 "v{n} 넘버 붙이자 … 카테고리도 붙일 수 있으면").
+# 번호(v1·v2…)는 `aliases` 가 자동으로 주고, *무엇을 건드린 회차인가*는 이 칸이 말한다.
+# ⚠ 정본은 여기 하나다 — 화면·회귀·보고가 같이 읽는다. 늘릴 땐 "그 이름으로 과거 회차를 다시
+#   부를 수 있나"를 먼저 봐라(카테고리가 잘게 쪼개지면 같은 패치가 매번 다른 칸으로 들어간다).
+VERSION_CATS = ("사실", "변주", "참조", "효과", "검수", "동일인", "문안", "기타")
+
+
+def names_set(out_dir: Path, version: str, note: str, cat: str = None) -> dict:
     d = names_read(out_dir)
     note = (note or "").strip()
+    cat = (cat or "").strip() or None
+    if cat and cat not in VERSION_CATS:
+        raise ValueError(f"모르는 카테고리 {cat!r} (가능: {VERSION_CATS})")
     if note:
-        d[version] = {"note": note[:80], "at": time.time()}
+        d[version] = {"note": note[:80], "at": time.time(), **({"cat": cat} if cat else {})}
     else:
         d.pop(version, None)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -471,8 +481,8 @@ CONFIG_KO = {
 }
 
 
-def _git_changed(prev_sha: str, sha: str) -> list:
-    """두 커밋 사이에 바뀐 config/ 파일을 사람 말로. 깃이 없거나 커밋을 모르면 빈 목록(제목은 시술만으로 만든다)."""
+def _changed_rels(prev_sha: str, sha: str) -> list:
+    """두 커밋 사이에 바뀐 config/ 파일의 상대경로. 깃이 없거나 커밋을 모르면 빈 목록."""
     import subprocess
     from .spec import ROOT
     try:
@@ -480,9 +490,54 @@ def _git_changed(prev_sha: str, sha: str) -> list:
                                       cwd=ROOT, text=True, stderr=subprocess.DEVNULL, timeout=5)
     except Exception:                                   # noqa: BLE001
         return []
+    return [line.strip().replace("config/", "", 1) for line in out.splitlines() if line.strip()]
+
+
+# 설정 파일 → 패치 카테고리. **자동 추정의 근거**다(사람이 안 적어도 칸이 비지 않게).
+# 근거가 '어느 파일이 바뀌었나'라는 사실이라 추측이 아니다 — 사람이 명시하면 그쪽이 이긴다.
+CAT_BY_CONFIG = {
+    "treatments.yaml": "사실", "variations.yaml": "변주", "clinical_rig.yaml": "변주",
+    "effects.yaml": "효과", "samples_index.yaml": "참조",
+    "qa_checklist.yaml": "검수", "prompts/avoid.yaml": "검수",
+    "prompts/identity_lock.md": "동일인", "prompts/identity_lock_lower.md": "동일인",
+    "prompts/identity_lock_neck.md": "동일인",
+    "prompts/after_selfie.md": "문안", "prompts/after_clinical.md": "문안",
+    "prompts/before.md": "문안", "prompts/mode_extra.yaml": "문안",
+}
+
+
+def auto_cat(prev_sha: str, sha: str) -> str:
+    """바뀐 설정 파일에서 카테고리를 뽑는다. 여러 개면 최대 2개까지(더 붙이면 못 읽는다)."""
+    cats = []
+    for rel in _changed_rels(prev_sha, sha):
+        c = CAT_BY_CONFIG.get(rel)
+        if c and c not in cats:
+            cats.append(c)
+    return "·".join(cats[:2])
+
+
+def auto_cats(rows: list) -> dict:
+    """버전 → 자동 카테고리. 같은 설정 해시는 같은 값을 쓴다(번호와 축을 맞춘다).
+
+    ⚠ 직전 회차와의 diff 라 **연속으로 읽어야** 맞다 — 중간 회차가 빠지면 그 구간의 변경이
+      다음 회차 것으로 몰린다. 그래서 첫 회차는 비운다('무엇에서 바뀌었나'의 기준이 없다).
+    """
+    real = sorted([r for r in rows if r.get("real")], key=lambda r: r["first"])
+    out, by_cfg, prev = {}, {}, None
+    for r in real:
+        h = _cfg_hash(r["version"])
+        if h in by_cfg:                                 # 같은 프롬프트면 같은 카테고리
+            out[r["version"]] = by_cfg[h]
+        else:
+            by_cfg[h] = out[r["version"]] = "" if prev is None else auto_cat(prev.split("-")[0], r["version"].split("-")[0])
+        prev = r["version"]
+    return out
+
+
+def _git_changed(prev_sha: str, sha: str) -> list:
+    """두 커밋 사이에 바뀐 config/ 파일을 사람 말로."""
     names = []
-    for line in out.splitlines():
-        rel = line.strip().replace("config/", "", 1)
+    for rel in _changed_rels(prev_sha, sha):
         ko = CONFIG_KO.get(rel) or ("브랜드" if rel.startswith("brand/") else rel)
         if ko not in names:
             names.append(ko)
@@ -509,13 +564,32 @@ def titles(rows: list, treatments_ko: dict) -> dict:
     return out
 
 
+def _cfg_hash(version: str) -> str:
+    """prompt_version = `git짧은sha-설정해시`. 프롬프트를 가르는 건 **뒷자리 하나**다."""
+    return version.rsplit("-", 1)[-1]
+
+
 def aliases(rows: list, current=None) -> dict:
     """해시 → 'v1'·'v2'… 처음 쓴 순서. 해시는 기계용이고 사람은 순번으로 읽는다 (2026-09-10 성연서님 "복잡하고 어렵다").
-    현재 버전으로 아직 사진을 안 만들었으면 다음 번호를 미리 준다. 시뮬·샘플은 번호를 안 받는다."""
+    현재 버전으로 아직 사진을 안 만들었으면 다음 번호를 미리 준다. 시뮬·샘플은 번호를 안 받는다.
+
+    ⚠ 번호는 **설정 해시**로 센다 (2026-09-11 성연서님 "프롬프트 패치 v{n} 넘버 붙이자").
+      종전엔 `prompt_version` 전체로 셌는데 그건 git sha 를 포함해서, **문서 한 줄만 커밋해도**
+      번호가 하나 올라갔다 — 실측으로 v10·v11·v12 가 전부 같은 프롬프트(`d677e740`)였다.
+      번호로 부르자는 취지가 "같은 프롬프트를 세 이름으로 부르는" 결과가 되므로 기준을 옮긴다.
+      같은 이유로 `_note_by_config`(이름표 물려받기)가 이미 설정 해시를 보고 있었다 — 축을 맞춘다.
+      ⚠ 이 변경으로 **과거 번호가 당겨진다**(옛 v12 = 새 v8). 옛 번호로 적어 둔 메모가 있으면 어긋난다.
+    """
     real = sorted([r for r in rows if r.get("real")], key=lambda r: r["first"])
-    out = {r["version"]: f"v{i + 1}" for i, r in enumerate(real)}
-    if current and current not in out:
-        out[current] = f"v{len(real) + 1}"
+    out, order = {}, {}
+    for r in real:
+        h = _cfg_hash(r["version"])
+        if h not in order:
+            order[h] = f"v{len(order) + 1}"
+        out[r["version"]] = order[h]
+    if current:
+        h = _cfg_hash(current)
+        out[current] = order.get(h) or f"v{len(order) + 1}"
     return out
 
 
@@ -610,7 +684,7 @@ def by_version(out_dir: Path) -> list:
         a["real"] = a["version"] not in ("sim", "demo", "?")
         a["provider_mixed"] = len(a["providers"]) > 1     # True 면 이 줄의 통과율을 버전 비교에 쓰면 안 된다
         rows.append(a)
-    al, nm = aliases(rows), names_read(out_dir)
+    al, nm, ac = aliases(rows), names_read(out_dir), auto_cats(rows)
     try:
         from .spec import load
         tko = {k: v.get("name_ko", k) for k, v in load("treatments.yaml").items()}
@@ -620,6 +694,10 @@ def by_version(out_dir: Path) -> list:
     for r in rows:
         r["alias"] = al.get(r["version"])
         r["title"] = ti.get(r["version"], "")
-        r["note"] = (nm.get(r["version"]) or _note_by_config(nm, r["version"])).get("note", "")
+        # 이름표와 카테고리는 **같은 칸에서 같이** 꺼낸다 — 따로 꺼내면 설정 해시로 물려받을 때
+        # 한쪽만 따라와 'v8 [변주]' 가 'v8 [ ]' 로 반쪽이 된다(2026-09-11 카테고리 신설).
+        _nm = nm.get(r["version"]) or _note_by_config(nm, r["version"])
+        r["note"] = _nm.get("note", "")
+        r["cat"] = _nm.get("cat", "") or ac.get(r["version"], "")   # 사람이 적은 게 우선, 없으면 자동
     rows.sort(key=lambda r: (r["real"], r["last"]), reverse=True)
     return rows

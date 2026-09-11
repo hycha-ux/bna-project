@@ -753,10 +753,14 @@ class Handler(SimpleHTTPRequestHandler):
                 r, code = export_payload(req); return self._json(r, code)
             if p == "/api/goals":                  # ⚠ 본문은 위에서 이미 읽었다(req). 다시 읽으면 단일 스레드 서버가 통째로 멈춘다 (2026-09-09 실측)
                 return self._json(goals_save(req))
-            if p == "/api/version_name":           # {version, note} → outputs/version_names.json (별명 순번은 자동, 메모만 사람이)
+            if p == "/api/version_name":           # {version, note, cat?} → outputs/version_names.json (별명 순번은 자동, 메모·카테고리만 사람이)
                 if not req.get("version"):
                     return self._json({"error": "version 이 필요합니다"}, 400)
-                return self._json({"ok": True, "names": lessons.names_set(OUT, req["version"], req.get("note", ""))})
+                try:
+                    names = lessons.names_set(OUT, req["version"], req.get("note", ""), req.get("cat"))
+                except ValueError as e:            # 모르는 카테고리는 조용히 무시하지 말고 사람에게 돌려준다
+                    return self._json({"error": str(e)}, 400)
+                return self._json({"ok": True, "names": names, "cats": list(lessons.VERSION_CATS)})
             if p == "/api/lessons/drafts":         # {limit?} → 새 메모만 AI 초안 호출 (push-cloud 회차·화면 버튼이 부른다). 돈 쓰는 자리 — GET 에 숨기지 않는다
                 from . import notedraft
                 before = len(notedraft.read_cache(OUT))
