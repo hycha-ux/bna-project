@@ -642,7 +642,10 @@ seedify(document.body);
 document.addEventListener('click', e => { document.querySelectorAll('details.dd[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; }); });
 
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.status); return j; };
+const api = async (p, body) => { const r = await fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)} : {}); const j = await r.json();
+  // ⚠ 배치 상세는 '중단됨' 사연을 error 칸에 실어 온다(1880d20: "세션 종료로 중단…"). 그건 응답 실패가 아니라 배치의 상태다 —
+  //   error 만 보고 던지면 그 줄이 영영 안 눌린다 (2026-09-11 성연서님 "팔자주름 3번째 리스트가 안 눌리는데"). 본문이 있으면 살려 보낸다.
+  if (!r.ok || (j.error && !j.batch_id)) throw new Error(j.error || r.status); return j; };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const msg = (id, text, cls) => { const el = $(id); el.textContent = text; el.className = 'rp-msg' + (cls ? ' ' + cls : ''); };
 const toast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); };
@@ -1100,6 +1103,7 @@ async function openBatch(id, byUser = false) {
   const b = CUR, s = b.stats || {};
   $('#gal-batch').textContent = `${tname(b.treatment) || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||'종류 미지정'} · ${KIND_KO[b.kind]||b.kind} · ${fmtBid(b.batch_id)}`;   // 검수 모드에서 배치 제목 카드를 접는 대신 여기에
   $('#detail-head').innerHTML = `<h3>${CFG.treatments[b.treatment]?.name_ko || b.treatment || '시술 미지정'} · ${MODE_KO[b.mode]||b.mode||'종류 미지정'}</h3><span class="chip">${KIND_KO[b.kind]||b.kind}</span><div class="tb-space"></div><span class="muted" title="${b.batch_id}">${fmtBid(b.batch_id)}</span>`;
+  if (b.error) $('#detail-head').insertAdjacentHTML('beforeend', `<span class="chip bad" title="${esc(b.error)}">중단됨 · ${esc(String(b.error).split(' — ')[0].slice(0, 30))}</span>`);
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
