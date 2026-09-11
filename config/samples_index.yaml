@@ -6,3 +6,17 @@
 #   tags: {lighting: window, quality: flagship, background: home}
 #   note: 실제 촬영, 상업 이용 가능 확인됨
 refs: []
+# ⚠ 아래는 refs.pick 이 **시술·시점을 안 거르기** 때문에 일부러 refs 밖에 둔다 (2026-09-11 빌디).
+#   지금 pick 은 mode·lighting·quality·background 만 보므로, 이 사진을 refs 에 넣으면 팔자 직후가 아닌
+#   모든 셀카(Before 포함, 다른 시술 포함)에 홍조·패치 참조가 붙는다. pick 에 treatment·timeline 필터가
+#   붙으면(티모) 그때 refs 로 올린다.
+refs_pending:
+- file: selfie/nasolabial_immediate_01.jpg
+  mode: selfie
+  treatment: nasolabial
+  timeline: immediate
+  tags: {lighting: fluorescent, quality: flagship, background: clinic_waiting}
+  note: >
+    온리프 병원 촬영 팔자 필러 직후 실사 (2026-09-11 성연서님 제공, 눈 모자이크). 투명 하이드로콜로이드 패치가
+    입꼬리 바깥쪽 볼(팔자 아래 끝)과 입가 주름(턱선 쪽)에 하나씩, 볼 넓게 홍조 + 주사 자국 점점이.
+    After(직후) 컷 전용 — Before 나 다른 시점에 쓰면 안 된다.
