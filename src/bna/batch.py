@@ -151,16 +151,20 @@ class Batch:
             q_before = variation["quality"]["key"]
             before_out = postprocess.apply(before, q_before, self.mode, pp_seed)
             before_pp = Image.open(io.BytesIO(before_out))
-            outs = []                                        # [(when, bytes, img)]
+            outs = []                                        # [(when, bytes, img, ungate)]
             for when, af, after in afters_out:
                 q_after = af["after_variation"]["quality"]["key"]
                 ab = postprocess.apply(after, q_after, self.mode, pp_seed)
-                outs.append((when, ab, Image.open(io.BytesIO(ab))))
+                # 강도를 낮춘 시점(직후·1주)은 `effect_visible` 을 묻긴 하되 **탈락 사유로 쓰지 않는다** —
+                # 프롬프트가 "거의 안 보이게" 시켜 놓고 검수가 "눈에 띄어야 한다"로 재면 지시를 지킬수록 떨어진다.
+                # 판정은 spec 이 만들 때 실어 보낸 `effect_lowered` 하나다(여기서 시점 이름을 다시 보지 마라).
+                ungate = ("effect_visible",) if af.get("effect_lowered") else ()
+                outs.append((when, ab, Image.open(io.BytesIO(ab)), ungate))
 
             # ④ 검수 3단 — After 마다. 세트는 전부 통과해야 통과. 시점별 결과는 meta["after_results"][when] 에 남긴다
             self._p(item_id, "qa")
             meta["after_results"] = {}
-            for when, ab, after_pp in outs:
+            for when, ab, after_pp, ungate in outs:
                 r = {"fail_reasons": []}
                 st = structure.check(before_pp, after_pp, self.mode, t["mask_region"]); r["structure"] = st
                 # passed 는 3값이다 — True(통과) / False(탈락) / None(못 잼). None 을 실패로 세면 같은 컷에 돈만 쓴다.
@@ -177,7 +181,7 @@ class Batch:
                 if idn["hard_fail"]:
                     r["fail_reasons"].append("identity")
                 if not r["fail_reasons"]:
-                    vs = await loop.run_in_executor(None, vision.score, before_out, ab, self.mode, self.p_qa)
+                    vs = await loop.run_in_executor(None, vision.score, before_out, ab, self.mode, self.p_qa, ungate)
                     r["vision"] = vs; meta["cost"] += self.pricing[self.p_qa.name]["qa"]
                     r["fail_reasons"] += [f"vision:{k}" for k in vs["failed_items"]]
                 meta["after_results"][when] = r
@@ -192,7 +196,7 @@ class Batch:
                 if not dd["passed"]:
                     meta["fail_reasons"].append("duplicate")
             after_out = outs[-1][1]
-            after_outs = {when: ab for when, ab, _ in outs}
+            after_outs = {when: ab for when, ab, _img, _ung in outs}
 
             meta["passed"] = not meta["fail_reasons"]
             meta["mask_file"] = "mask.png" if mask_img is not None else None

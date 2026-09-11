@@ -509,6 +509,33 @@ from bna.api import estimate_payload as _est
 _e1 = _est({"treatment": "nasolabial", "mode": "selfie", "count": 8}); _e2 = _est({"treatment": "nasolabial", "mode": "selfie", "count": 8, "series": ["immediate", "2w"]})
 ok(_e2["afters"] == 2 and _e2["expected_cost_usd"] > _e1["expected_cost_usd"], "시리즈 비용은 시점 수만큼 커진다")
 
+# ⑳-2 직후 컷에는 effect_visible 을 걸지 않는다 (2026-09-11 빌디 지적, 시리즈 켜기 전 수리)
+#      프롬프트는 직후 컷에 "변화가 거의 안 보여야 하고 최종 결과를 보여주지 마라"(early)라고 시키는데
+#      검수는 같은 컷에 "눈에 띄어야 한다 6점 이상"을 요구했다 = 지시대로 그릴수록 떨어지는 구조.
+#      실생성 회차에 시리즈가 0건이라 아직 안 터졌을 뿐이고, 켜는 순간 직후 컷이 전멸한다.
+ok(_sr["afters"][0]["effect_lowered"] is True and _sr["afters"][1]["effect_lowered"] is False,
+   "강도를 낮춘 시점만 effect_lowered 로 표시된다(마지막 시점은 최종 강도라 아니다)")
+ok(_pl["afters"][0]["effect_lowered"] is False, "시리즈가 아니면 낮추지 않으므로 종전대로 effect_visible 을 건다")
+
+
+class _QaStub:
+    """검수 모델 대역 — effect_visible 만 컷 아래(3점), 나머지는 만점."""
+    def qa(self, b, a, items, mode):
+        return {k: {"score": 3.0 if k == "effect_visible" else 10.0, "note": ""} for k in items}
+
+
+from bna.qa import vision as _vis
+_vg = _vis.score(b"", b"", "selfie", _QaStub())
+_vu = _vis.score(b"", b"", "selfie", _QaStub(), ungate=("effect_visible",))
+ok("effect_visible" in _vg["failed_items"] and not _vg["passed"], "평소엔 effect_visible 미달이 탈락이다")
+ok(_vu["failed_items"] == [] and _vu["passed"] and _vu["ungated"] == ["effect_visible"],
+   f"직후 컷은 effect_visible 로 탈락하지 않는다 — 실제 {_vu['failed_items']}")
+ok(_vu["scores"]["effect_visible"]["score"] == 3.0,
+   "점수는 그대로 남긴다(안 묻는 게 아니라 안 거는 것 — 직후 컷이 정말 변화가 적었나를 나중에 검산한다)")
+_batch_src2 = (_Path(__file__).resolve().parent / "src" / "bna" / "batch.py").read_text(encoding="utf-8")
+ok('af.get("effect_lowered")' in _batch_src2 and '"immediate"' not in _batch_src2,
+   "배치는 시점 이름을 다시 보지 말고 spec 이 실어 보낸 effect_lowered 하나만 봐야 한다(규칙 두 벌 금지)")
+
 
 # ㉑ 내보내기 zip 에 사용 범위 안내가 들어간다 (2026-09-10 파트장 "내부만" 확정, 정본 docs/usage-policy.md).
 #    zip 은 결과물이 이 시스템을 떠나는 유일한 경로라, 파일만 받은 사람도 범위를 알아야 한다.

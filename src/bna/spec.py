@@ -337,25 +337,33 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))
 
     def change_for(w, final_level):
-        """시점 하나의 시술 지시문. 시리즈면 최종 강도를 시점에 맞춰 낮춘다(직후 = 거의 안 보임 + 붓기)."""
+        """시점 하나의 시술 지시문. 시리즈면 최종 강도를 시점에 맞춰 낮춘다(직후 = 거의 안 보임 + 붓기).
+
+        `lowered` 를 같이 돌려주는 이유(2026-09-11): 검수의 `effect_visible` 은 "변화가 눈에 띄나"를
+        묻는데, 여기서 강도를 낮춘 컷은 **안 띄는 게 정상**이라 같은 자로 재면 지시대로 그릴수록
+        떨어진다. 그 판정을 검수 쪽에서 다시 계산하면 규칙이 두 벌이 되어 조용히 갈리므로,
+        **낮췄다는 사실을 만든 자리에서 그대로 실어 보낸다**(배치가 이걸 읽어 그 항목을 안 건다).
+        """
         lv = final_level
+        lowered = False
         if pts:
             sl = (eff.get("series_levels") or {}).get(w, "final")
+            lowered = sl != "final"
             lv = final_level if sl == "final" else sl
         c = f'{t["after_change"].strip()} {eff["effect_levels"][lv]}.'
         if t.get("must_not_change"):
             c += " " + " ".join(str(t["must_not_change"]).split())
         if mode == "selfie":
             c += f' {eff["timeline"][w].capitalize()}.'
-        return c, lv
+        return c, lv, lowered
 
-    change, _lv = change_for(when, level)
+    change, _lv, _low = change_for(when, level)
     variation = {**variation, "before_severity": {"key": sev, "text": str(cond).strip()},
                  "effect_level": {"key": level, "text": eff["effect_levels"][level]},
                  "timeline": {"key": when, "text": eff["timeline"][when]}}
     mx = load("prompts/mode_extra.yaml")
 
-    def build_after(w, chg, lv):
+    def build_after(w, chg, lv, lowered):
         """시점 하나의 After. 시리즈든 아니든 같은 길 — 동일인 기준은 항상 Before 사진이다(After 를 다음 After 의 기준으로 쓰면 얼굴이 흘러간다)."""
         if mode == "clinical":
             a_var = variation
@@ -395,13 +403,14 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                      ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after),
                      ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
                      ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
-        return {"when": w, "effect_level": lv, "after_prompt": " ".join(txt.split()), "after_variation": a_var,
+        return {"when": w, "effect_level": lv, "effect_lowered": lowered,
+                "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}
 
     afters = []
     for w in (pts or [when]):
-        chg, lv = change_for(w, level)
-        afters.append(build_after(w, chg, lv))
+        chg, lv, lowered = change_for(w, level)
+        afters.append(build_after(w, chg, lv, lowered))
     last = afters[-1]
     before_parts = segments(before, [("person", person_description(variation)), ("before_condition", cond), ("scene", scene),
                                      ("mode_extra", mode_extra), ("avoid", avoid_before)])
