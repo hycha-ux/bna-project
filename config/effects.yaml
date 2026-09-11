@@ -1,8 +1,12 @@
 # 효과 강도·경과 시점 문구
 # 경과 시리즈(2026-09-09 성연서님: 기본 직후·2주, 세트 단위 채택): 최종 강도는 강도 짝 표로 정하고, 시점마다 이렇게 낮춘다.
 #   early = 변화가 거의 안 보이고 붓기·발적만 / subtle = 은은 / final = 정해진 최종 강도
+# ⚠ `immediate` 은 시술별로 재정의된다 — treatments.yaml 의 `immediate_level: final|early` (여기가 기본값).
+#   2026-09-11 빌디/성연서님 지적: 필러는 "직후 즉각 나타나는 게 장점인 시술"이라 직후 컷이 곧 최종 강도이고,
+#   거기에 붓기·발적만 얹는 게 맞다. 여기서 일괄 early 로 낮추면 필러의 판매 포인트를 우리 손으로 지운다.
+#   에너지 시술(리프팅·스킨부스터)은 정말로 직후엔 변화가 없으므로 기본값 early 그대로.
 series_levels:
-  immediate: early
+  immediate: early          # 기본값. 시술별 재정의 = treatments.yaml 의 immediate_level
   1w: subtle
   2w: final
   4w: final

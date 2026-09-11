@@ -32,5 +32,8 @@ items:
   hair: "Hair strands flow naturally, no melted or merged edges"
   identity: "Before and After are unmistakably the same individual: eyes, eyebrows, nose, lips, face shape, moles/freckles all match (hard fail if not)"
   drift: "clinical: nothing outside the treated area changed (expression, angle, lighting, background). selfie: only scene/hair/expression may differ; facial features and treated-area effect must be consistent"
-  effect_visible: "The treatment effect is noticeable but within natural, non-exaggerated range"
+  # 2026-09-11 빌디/성연서님 검수: 09:49 팔자 배치에서 주름 **중앙만** 지워지고 콧볼 쪽·입꼬리 쪽은 그대로였다.
+#   종전 문항은 "눈에 띄나"만 물어서 한 토막만 지워진 컷도 통과한다 — 부분 소거는 시술이 아니라 지우개로 보인다.
+#   ⚠ 문항 글이 바뀌었으므로 이 줄 앞뒤 회차의 effect_visible 점수는 **다른 자로 잰 값**이다(컷 6 은 그대로).
+  effect_visible: "The treatment effect is noticeable but within natural, non-exaggerated range, and it covers the whole treated area: if only part of the treated line or fold changed while the rest of it is unchanged, or one side changed more than the other, score low even when the changed part looks good."
   ai_look: "Overall image does not look AI-generated (no over-symmetry, waxy glow, odd artifacts)"

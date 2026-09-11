@@ -262,6 +262,39 @@ def series_points(treatment: str, series) -> list:
     return [w for w in TIMELINE_ORDER if w in series and w in allowed]
 
 
+FACT_KEYS_PROMPT = ("immediate_marks", "immediate_avoid")   # 프롬프트에 그대로 들어가는 칸 (영어)
+FACT_KEYS_HUMAN = ("onset", "extent", "later")              # 사람이 읽는 근거 칸 (한국어 가능)
+
+
+def check_treatment_facts(treatment: str) -> None:
+    """`immediate_level` · `facts` 사실 카드의 죽은 설정을 **소리 내서** 막는다 (2026-09-11).
+
+    이 두 칸의 실패 모드는 '틀린 값'이 아니라 **아무도 안 읽는 값**이다 — 카드에 적어 두고
+    프롬프트엔 안 실려서, 적은 사람은 반영된 줄 알고 그림만 계속 어긋난다(0909 identity_exempt 와 같은 유형).
+    그래서 ①오타 칸 ②직후 시점이 없는 시술의 직후 설정 ③읽는 자리가 없는 값을 전부 여기서 세운다.
+    """
+    t = load("treatments.yaml")[treatment]
+    has_imm = "immediate" in (t.get("timeline") or [])
+    lvl = t.get("immediate_level")
+    if lvl is not None:
+        ok = ("final",) + tuple(load("effects.yaml")["effect_levels"])
+        if str(lvl) not in ok:
+            raise ValueError(f"{treatment}.immediate_level={lvl!r} 은 없는 강도다 (가능: {ok})")
+        if not has_imm:
+            raise ValueError(f"{treatment}.immediate_level 을 적었는데 timeline 에 immediate 가 없다 — 죽은 설정")
+    facts = t.get("facts")
+    if facts is None:
+        return
+    if not isinstance(facts, dict) or not facts:
+        raise ValueError(f"{treatment}.facts 가 비었다 — 빈 카드는 적지 마라(주석으로 두고 채울 때 푼다)")
+    bad = [k for k in facts if k not in FACT_KEYS_PROMPT + FACT_KEYS_HUMAN]
+    if bad:
+        raise ValueError(f"{treatment}.facts 에 모르는 칸 {bad} (가능: {FACT_KEYS_PROMPT + FACT_KEYS_HUMAN})")
+    for k in FACT_KEYS_PROMPT:
+        if facts.get(k) and not has_imm:
+            raise ValueError(f"{treatment}.facts.{k} 는 직후 컷에만 실리는데 timeline 에 immediate 가 없다 — 죽은 설정")
+
+
 def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
     None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게)."""
@@ -272,6 +305,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     t = load("treatments.yaml")[treatment]
     if mode not in t["modes"]:
         raise ValueError(f"{treatment} does not support mode {mode}")
+    check_treatment_facts(treatment)
     rng = random.Random(seed)
     mode_extra = load("prompts/mode_extra.yaml")[mode].strip()
     if "expression" not in variation:                # 예전 계획(표정 축 없던 시절)도 조립되게
@@ -348,11 +382,23 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         lowered = False
         if pts:
             sl = (eff.get("series_levels") or {}).get(w, "final")
+            if w == "immediate" and t.get("immediate_level"):
+                # 시술별 재정의(2026-09-11). 필러는 직후가 곧 결과라 최종 강도로 그리고 붓기·발적만 얹는다 —
+                # 여기서 일괄 early 로 낮추면 "직후에 바로 보인다"는 필러의 판매 포인트를 우리가 지운다.
+                sl = str(t["immediate_level"])
             lowered = sl != "final"
             lv = final_level if sl == "final" else sl
         c = f'{t["after_change"].strip()} {eff["effect_levels"][lv]}.'
         if t.get("must_not_change"):
             c += " " + " ".join(str(t["must_not_change"]).split())
+        if w == "immediate":
+            # 직후 흔적·금지는 **사실 카드**에서 온다(시술마다 무엇이 어디에 남는지가 다르다).
+            # 두 모드 공통 자리다 — 임상 프롬프트엔 after_day/skin_state 가 아예 안 붙어서,
+            # 여기 말고 mode_extra 쪽에 넣으면 임상 직후 컷만 조용히 사실 카드를 못 받는다.
+            for k in ("immediate_marks", "immediate_avoid"):
+                v = (t.get("facts") or {}).get(k)
+                if v:
+                    c += " " + " ".join(str(v).split())
         if mode == "selfie":
             c += f' {eff["timeline"][w].capitalize()}.'
         return c, lv, lowered
@@ -363,13 +409,20 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                  "timeline": {"key": when, "text": eff["timeline"][when]}}
     mx = load("prompts/mode_extra.yaml")
 
+    def fact_spans(w):
+        """직후 컷에 실린 사실 카드 문장 — 화면에서 '이 문장 어디서 왔나'가 template 로 뭉개지지 않게 칸을 준다."""
+        if w != "immediate":
+            return []
+        f = t.get("facts") or {}
+        return [("facts", " ".join(str(f[k]).split())) for k in FACT_KEYS_PROMPT if f.get(k)]
+
     def build_after(w, chg, lv, lowered):
         """시점 하나의 After. 시리즈든 아니든 같은 길 — 동일인 기준은 항상 Before 사진이다(After 를 다음 After 의 기준으로 쓰면 얼굴이 흘러간다)."""
         if mode == "clinical":
             a_var = variation
             txt = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=chg, avoid=avoid_after)
             spans = [("identity", identity), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
-                     ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after)]
+                     ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after)]
         else:
             a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment)
             a = {k: val["text"] for k, val in a_var.items()}
@@ -400,7 +453,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 expression_line=expression_line, mode_extra=str(mx.get("selfie_after", "")).strip(),
                 after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
             spans = [("identity", ident), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
-                     ("must_not", t.get("must_not_change") or ""), ("avoid", avoid_after),
+                     ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after),
                      ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
                      ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
         return {"when": w, "effect_level": lv, "effect_lowered": lowered,

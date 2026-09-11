@@ -21,6 +21,13 @@ selfie_after: >
   not visible in the picture.
 
 # After 셀카: 같은 날 vs 다른 날 (경과 시점에 따라 spec.build_prompts 가 선택)
+# ⚠ `same` 의 피부 문장은 2026-09-11 에 **좁혔다**. 종전 "피부에 아무것도 얹혀 있지 않다"는
+#   마취크림이 얼굴에 발린 채 나온 사고를 막으려고 아침에 넣은 문장인데, 필러에는 정반대다 —
+#   팔자 필러는 입가 옆 재생테이프 + 살짝 붓기가 정상이라, 이 문장이 있으면 사실과 어긋난 컷이 나온다.
+#   그래서 "아무것도 없다"를 **"시술 설명이 말하는 것만 있다"** 로 바꿨다 — 카드가 없는 시술에선 뒤에
+#   아무 흔적도 안 오니 결과가 종전과 같고, 카드가 있으면 그 흔적만 허용된다.
+#   ⚠ 문장을 긍정형으로 유지해라(금지어 나열 금지) — 2026-09-10 실측에서 금지 품목을 적으면 모델이 그걸 그렸다.
+#     그 회귀(⑥-2)는 프롬프트에 'cotton pad'·'ointment' 라는 낱말이 보이면 터진다.
 after_day:
   same: >
     This photo is taken later the same day, right after the procedure, at the clinic or on the way
@@ -29,8 +36,9 @@ after_day:
     from the procedure, and the loose strands do not match the reference. The camera angle is only
     roughly similar: the head is turned a few degrees more or less, the phone is a little higher or
     lower and slightly tilted, the crop is looser or tighter, so it is clearly a separate snapshot.
-    The skin itself is clean and dry and nothing is resting on it: the only traces of the clinic are in
-    the background and in the hair. The face looks as it normally does, just photographed later that day.
+    The skin itself is clean and dry and carries only what the treatment description below says is
+    on it; the rest of the traces of the clinic are in the background and in the hair.
+    The face looks as it normally does, just photographed later that day.
   different: >
     This photo is taken on a different day, about one to two weeks later. Everything about the
     situation is different from the reference: different clothes, different room and background,

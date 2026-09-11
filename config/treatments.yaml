@@ -14,6 +14,18 @@
 #   identity_note     : 그 자리에 대신 넣는 문장 — 시술 부위는 아래 지시대로만 바뀌고 나머지는 그대로
 #   axis_ban          : 축별 금지값. 뿔테 안경은 콧대를 가린다 (extras), 목걸이는 목주름을 가린다 (context)
 #   mask_region       : qa/landmarks.py 폴리곤 키 (임상 마스크 합성). neck 은 턱선에서 아래로 내린 파생 영역
+#   immediate_level   : 직후 컷의 강도. final = 직후가 곧 결과(필러) / early = 아직 거의 안 보임(에너지).
+#                       생략하면 effects.yaml 의 series_levels.immediate (= early). timeline 에 immediate 가
+#                       없는 시술에 적으면 죽은 설정이라 loader 가 막는다.
+#   facts             : 시술 사실 카드 (2026-09-11 성연서님 지적 "프롬프트가 시술 자체를 몰라서 계속 어긋난다").
+#                       5칸 = onset(효과 시점) / extent(부위 범위) / immediate_marks(직후 흔적: 무엇·어디) /
+#                       immediate_avoid(직후 금지) / later(며칠 뒤 상태).
+#                       ⚠ **칸마다 읽는 자리가 다르다** — 읽는 코드가 없는 칸은 죽은 설정이 되므로 여기 못 박는다:
+#                         · immediate_marks / immediate_avoid → **영어. 직후 After 프롬프트에 그대로 들어간다**
+#                           (spec.change_for). 있으면 mode_extra 의 기본 '피부에 아무것도 없음'을 대신한다.
+#                         · onset / extent / later → **사람이 읽는 근거 칸**(한국어 가능). 프롬프트 축은 각각
+#                           immediate_level · after_change · timeline 이고, 카드는 그 값이 왜 그런지의 출처다.
+#                       ⚠ 전부 의료진 검토 전 초안이다. 초안은 성연서님·빌디가 적고 티모가 연결한다.
 #
 # ※ 문장은 전부 의료진 검토 전 초안 (2026-09-09). before_condition 9종 전부 (티모 0907 초안 기반, 2단계 dry-run 으로 다듬음).
 # ※ 필러는 부위마다 Before 가 완전히 달라 한 칸으로 못 쓴다 → 코필러·목주름필러 2종으로 분할 (2026-09-09 성연서님 확정).
@@ -25,6 +37,8 @@ nasolabial:
   angles_clinical: [front, three_quarter]
   mask_region: nasolabial
   timeline: [immediate, 1w, 2w]
+  immediate_level: final          # 필러 = 직후가 곧 결과 (2026-09-11 성연서님 "필러는 시술 직후 즉각
+                                  # 나타나는 게 장점인 시술"). 붓기·발적은 facts.immediate_marks 가 얹는다.
   effect_levels: [subtle, moderate]
   before_severity: [mild, moderate, marked]
   severity_min_age: {mild: late_20s, moderate: 30s, marked: 40s}
@@ -43,12 +57,29 @@ nasolabial:
       This person has never had any aesthetic treatment. Pronounced, deep nasolabial folds casting
       a clear shadow, a slightly sagging front cheek, faint marionette lines and a tired under-eye
       area. Do not make the face look younger, rested or more attractive than described.
+  # 범위 문장 추가(2026-09-11 빌디/성연서님 검수): 종전엔 "softer and shallower" 까지만 말해 **범위를 안 정했고**,
+  #   09:49 배치에서 주름 중앙만 지워지고 콧볼 쪽·입꼬리 쪽은 그대로 남았다. 09-10 메모 "시술 부위 중앙이
+  #   잘려서"도 같은 현상이다(그땐 프레이밍 문제로 읽었다). 한 토막만 지워진 주름은 시술이 아니라 지우개로 보인다.
   after_change: >
     the nasolabial folds are softer and shallower than in the reference, the shadow inside the
-    crease is lighter, the skin beside the mouth sits a little smoother; same facial structure.
+    crease is lighter, the skin beside the mouth sits a little smoother; the softening runs along
+    the entire length of the fold, from beside the nostril down to the corner of the mouth, evenly
+    on both sides, with no single segment left unchanged and no segment erased more than the rest;
+    same facial structure.
   must_not_change: >
     Do not change lip shape, lip volume, mouth width, nose, or jawline width. Do not smooth,
     brighten or tighten any other part of the face.
+  # facts 카드 자리 — 빌디 초안 + 의료진 확인 뒤 주석을 푼다 (2026-09-11).
+  #   ⚠ 푸는 순간 immediate_marks 가 mode_extra 의 기본 '피부에 아무것도 없음'을 대신하므로,
+  #     "무엇이·어디에" 를 반드시 적어라(예: 입가 옆 재생테이프). 자리만 비워 두면 안 붙는다.
+  # facts:
+  #   onset: 주입 직후부터 볼륨이 차 결과가 보인다 — 그래서 immediate_level: final
+  #   extent: 콧볼 옆에서 입꼬리까지 주름 전 구간, 양쪽
+  #   immediate_marks: >
+  #     (영어로. 예: small skin-coloured dressing patches beside each corner of the mouth,
+  #      slight puffiness along the injected fold)
+  #   immediate_avoid: (영어로. 직후에 하면 안 되는 것)
+  #   later: 며칠 뒤 상태
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
   drift_lock: [expression, angle]
@@ -149,6 +180,10 @@ philtrum:
   angles_clinical: [front, side]
   mask_region: philtrum
   timeline: [immediate, 2w]
+  # ⚠ 이 키(`philtrum`)와 `nasolabial` 은 이름에 filler 가 안 붙어 있지만 2026-09-11 빌디/성연서님이
+  #   필러 계열로 지정했다. 인중이 필러가 아닌 술식(거상·리프팅)으로 운영되면 여기를 early 로 되돌려야 한다 —
+  #   **의료진 확인 대기 1건**. 되돌릴 땐 이 두 줄만 지우면 effects.yaml 기본값(early)으로 돌아간다.
+  immediate_level: final
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   before_condition:
@@ -291,6 +326,8 @@ filler_nose:
   angles_clinical: [three_quarter, side]
   mask_region: nose
   timeline: [immediate, 2w]
+  immediate_level: final          # 필러 = 직후가 곧 결과 (2026-09-11 성연서님 "필러는 시술 직후 즉각
+                                  # 나타나는 게 장점인 시술"). 붓기·발적은 facts.immediate_marks 가 얹는다.
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   before_condition:
@@ -329,6 +366,8 @@ filler_neck:
   angles_clinical: [front, three_quarter, side]
   mask_region: neck                          # 얼굴 랜드마크에 목이 없다 — 턱선에서 아래로 내린 파생 영역 (landmarks.py)
   timeline: [immediate, 2w]
+  immediate_level: final          # 필러 = 직후가 곧 결과 (2026-09-11 성연서님 "필러는 시술 직후 즉각
+                                  # 나타나는 게 장점인 시술"). 붓기·발적은 facts.immediate_marks 가 얹는다.
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   severity_min_age: {mild: late_20s, marked: 40s}

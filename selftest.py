@@ -496,7 +496,11 @@ _v = sample_variation("selfie", 5, treatment="nasolabial")
 _pl = build_prompts("nasolabial", "selfie", _v, 5); _sr = build_prompts("nasolabial", "selfie", _v, 5, series=["2w", "immediate"])
 ok(_pl["series"] is None and len(_pl["afters"]) == 1, "시리즈가 아니면 After 하나(종전과 같다)")
 ok(_sr["series"] == ["immediate", "2w"] and [a["when"] for a in _sr["afters"]] == ["immediate", "2w"], "시점은 시간순으로 정렬된다")
-ok(_sr["afters"][0]["effect_level"] == "early" and "barely visible yet" in _sr["afters"][0]["after_prompt"], "직후 컷은 변화가 거의 없고 붓기만")
+ok(_sr["afters"][0]["effect_level"] in ("subtle", "moderate") and "barely visible yet" not in _sr["afters"][0]["after_prompt"],
+   "필러(팔자)의 직후 컷은 최종 강도다 — immediate_level: final (2026-09-11)")
+_sr3 = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "1w", "2w"])
+ok([a["effect_level"] for a in _sr3["afters"]][1] == "subtle" and _sr3["afters"][1]["effect_lowered"] is True,
+   "중간 시점(1주)은 종전대로 강도를 낮춘다 — 낮추는 길 자체가 죽으면 안 된다")
 ok(_sr["afters"][1]["effect_level"] in ("subtle", "moderate") and _sr["after_prompt"] == _sr["afters"][-1]["after_prompt"], "마지막 시점이 최종 강도이고 after_prompt 대표")
 ok(len({a["after_prompt"] for a in _sr["afters"]}) == 2, "시점마다 프롬프트가 다르다")
 ok("right after the procedure" in _sr["afters"][0]["after_prompt"] and "two weeks" in _sr["afters"][1]["after_prompt"], "시점 문구가 각자 붙는다")
@@ -513,8 +517,9 @@ ok(_e2["afters"] == 2 and _e2["expected_cost_usd"] > _e1["expected_cost_usd"], "
 #      프롬프트는 직후 컷에 "변화가 거의 안 보여야 하고 최종 결과를 보여주지 마라"(early)라고 시키는데
 #      검수는 같은 컷에 "눈에 띄어야 한다 6점 이상"을 요구했다 = 지시대로 그릴수록 떨어지는 구조.
 #      실생성 회차에 시리즈가 0건이라 아직 안 터졌을 뿐이고, 켜는 순간 직후 컷이 전멸한다.
-ok(_sr["afters"][0]["effect_lowered"] is True and _sr["afters"][1]["effect_lowered"] is False,
-   "강도를 낮춘 시점만 effect_lowered 로 표시된다(마지막 시점은 최종 강도라 아니다)")
+ok(_sr3["afters"][1]["effect_lowered"] is True and _sr3["afters"][0]["effect_lowered"] is False
+   and _sr3["afters"][2]["effect_lowered"] is False,
+   "강도를 낮춘 시점만 effect_lowered 로 표시된다(직후는 필러라 최종 강도, 마지막도 최종 강도)")
 ok(_pl["afters"][0]["effect_lowered"] is False, "시리즈가 아니면 낮추지 않으므로 종전대로 effect_visible 을 건다")
 
 
@@ -535,6 +540,58 @@ ok(_vu["scores"]["effect_visible"]["score"] == 3.0,
 _batch_src2 = (_Path(__file__).resolve().parent / "src" / "bna" / "batch.py").read_text(encoding="utf-8")
 ok('af.get("effect_lowered")' in _batch_src2 and '"immediate"' not in _batch_src2,
    "배치는 시점 이름을 다시 보지 말고 spec 이 실어 보낸 effect_lowered 하나만 봐야 한다(규칙 두 벌 금지)")
+
+
+# ⑳-3 시술별 직후 강도 + 사실 카드 (2026-09-11 빌디 지적 3건)
+#     ① 필러는 직후가 곧 결과다 — 일괄 early 로 낮추면 "직후에 바로 보인다"는 판매 포인트를 우리가 지운다.
+#     ② 그 카드 칸의 실패 모드는 '틀린 값'이 아니라 **아무도 안 읽는 값**이라, 죽은 설정은 소리 내고 죽는다.
+from bna.spec import check_treatment_facts as _ctf, FACT_KEYS_PROMPT as _FKP
+import yaml as _yaml
+_tr_all = _yaml.safe_load((_P(__file__).parent / "config" / "treatments.yaml").read_text(encoding="utf-8"))
+_filler = [k for k, v in _tr_all.items() if v.get("immediate_level") == "final"]
+ok(sorted(_filler) == ["filler_neck", "filler_nose", "nasolabial", "philtrum"],
+   f"필러 4종만 직후=최종 강도 — 실제 {sorted(_filler)}")
+ok(all("immediate" in (v.get("timeline") or []) for v in _tr_all.values() if v.get("immediate_level")),
+   "immediate 시점이 없는 시술에 immediate_level 을 적으면 죽은 설정이다")
+for _k in _tr_all:
+    _ctf(_k)                                       # 전 시술 카드 검증 — 오타 칸·죽은 설정이면 여기서 터진다
+ok(True, "전 시술의 immediate_level·facts 카드가 검증을 통과한다")
+_bad = dict(_tr_all["lifting"]); _bad["immediate_level"] = "final"
+import bna.spec as _spec_mod
+_orig_load = _spec_mod.load
+_spec_mod.load = lambda n: {**_orig_load(n), "lifting": _bad} if n == "treatments.yaml" else _orig_load(n)
+try:
+    _ctf("lifting"); _raised = False
+except ValueError:
+    _raised = True
+finally:
+    _spec_mod.load = _orig_load
+ok(_raised, "직후 시점이 없는 시술(리프팅)에 immediate_level 을 달면 소리 내고 죽는다")
+ok(_FKP == ("immediate_marks", "immediate_avoid"), "프롬프트에 실리는 카드 칸은 직후 흔적·직후 금지 둘")
+_mx_src = (_P(__file__).parent / "config" / "prompts" / "mode_extra.yaml").read_text(encoding="utf-8")
+ok("nothing is resting on it" not in _mx_src and "the treatment description below says is" in _mx_src,
+   "'피부에 아무것도 없음'은 필러 직후(재생테이프·붓기)와 충돌한다 — '시술 설명이 말하는 것만'으로 바꿨다")
+_mk = "small skin-coloured dressing patches beside each corner of the mouth"
+import bna.spec as _sm
+_t2 = dict(_tr_all["nasolabial"]); _t2["facts"] = {"immediate_marks": _mk}
+_ol = _sm.load
+_sm.load = lambda n: {**_ol(n), "nasolabial": _t2} if n == "treatments.yaml" else _ol(n)
+try:
+    _pf = _sm.build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
+    _pfc = _sm.build_prompts("nasolabial", "clinical", _sm.sample_variation("clinical", 5, treatment="nasolabial"), 5, series=["immediate", "2w"])
+finally:
+    _sm.load = _ol
+ok(_mk in _pf["afters"][0]["after_prompt"] and _mk not in _pf["afters"][1]["after_prompt"],
+   "사실 카드의 직후 흔적은 직후 컷에만 실린다(2주 컷에 테이프가 붙으면 그게 더 큰 사고)")
+ok(_mk in _pfc["afters"][0]["after_prompt"],
+   "임상 모드 직후 컷도 사실 카드를 받는다(임상엔 after_day 가 없어 mode_extra 쪽에 넣으면 조용히 빠진다)")
+ok(any(sp["k"] == "facts" for sp in _pf["afters"][0]["after_parts"]),
+   "화면에서 그 문장의 출처가 'facts' 로 보여야 한다(template 로 뭉개면 어디서 왔는지 못 읽는다)")
+_qa_src = (_P(__file__).parent / "config" / "qa_checklist.yaml").read_text(encoding="utf-8")
+ok("only part of the treated line or fold changed" in _qa_src,
+   "검수 effect_visible 은 일부 구간만 바뀐 컷을 감점해야 한다(부분 소거는 시술이 아니라 지우개)")
+ok("entire length of the fold" in _tr_all["nasolabial"]["after_change"],
+   "팔자 시술 문장이 콧볼~입꼬리 전 구간을 못 박는다")
 
 
 # ㉑ 내보내기 zip 에 사용 범위 안내가 들어간다 (2026-09-10 파트장 "내부만" 확정, 정본 docs/usage-policy.md).
