@@ -847,8 +847,9 @@ let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = 
 function selTreatments() { return $$('#q-treatments button.on').map(b => b.dataset.v); }
 function selModes() { return $$('#q-modes button.on').map(b => b.dataset.v); }
 function renderTreatmentChips() {
-  // 시술 9종은 한 줄에 안 들어간다 — 아무 데서나 감기게 두지 않고 부위별 2줄로 나눈다(윤곽 / 피부). 새 시술은 이름으로 분류, 모르면 윤곽 줄.
-  const GROUPS = [['주름·윤곽', ['nasolabial', 'lifting', 'philtrum']], ['코·목', ['nose_lifting', 'filler_nose', 'filler_neck']], ['피부', ['skinbooster_embo', 'skin_pores', 'skin_redness']]];
+  // 시술이 한 줄에 안 들어간다 — 아무 데서나 감기게 두지 않고 부위별로 나눈다. 모르는 시술은 '기타' 줄로 떨어진다.
+  // ⚠ 새 시술을 만들면 여기 한 줄도 같은 커밋이다 — '기타'로 떨어져도 보이긴 하지만 부위가 안 맞는다(회귀가 잡는다).
+  const GROUPS = [['주름·윤곽', ['nasolabial', 'lifting', 'philtrum']], ['눈·코·목', ['filler_eyelid', 'nose_lifting', 'filler_nose', 'filler_neck']], ['피부', ['skinbooster_embo', 'skin_pores', 'skin_redness']]];
   const known = new Set(GROUPS.flatMap(([, ks]) => ks));
   const grp = (label, ks) => ks.length ? `<div class="tgrp"><span class="tl">${label}</span>${ks.map(k => [k, CFG.treatments[k]]).filter(([, t]) => t).map(([k, t]) => `<button data-v="${k}" data-modes="${t.modes.join(',')}" class="${k==='nasolabial'?'on':''}">${t.name_ko}</button>`).join('')}</div>` : '';
   $('#q-treatments').innerHTML = GROUPS.map(([l, ks]) => grp(l, ks)).join('') + grp('기타', Object.keys(CFG.treatments).filter(k => !known.has(k)));

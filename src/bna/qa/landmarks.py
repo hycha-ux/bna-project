@@ -29,6 +29,13 @@ REGIONS = {
     "cheeks_nose":    "cheeks+nose",
     "nose":           [168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 326, 327, 294, 278, 344, 440, 275, 4, 45, 220, 115, 48, 64, 98, 97],
     "philtrum":       [2, 97, 98, 164, 167, 165, 92, 186, 57, 0, 267, 393, 391, 322, 410, 287, 326, 327],
+    # 눈꺼풀·눈가 필러 (2026-09-11). 눈 주위 한 바퀴 = 눈썹 아래 ~ 눈밑 고랑(애교살 아래)까지.
+    # 좌우가 따로 있어야 한다 — 한 폴리곤으로 이으면 미간이 통째로 편집 허용이 된다.
+    # ⚠ 초안이다(다른 부위와 같다). 마스크는 임상 모드 합성·구조 검수에 쓰이므로
+    #   좁으면 효과가 잘리고 넓으면 눈 자체가 바뀐다 — 첫 실회차 컷으로 눈 확인이 필요하다.
+    "periorbital_l":  [70, 63, 105, 66, 107, 55, 193, 245, 128, 121, 120, 119, 118, 117, 111, 143, 156],
+    "periorbital_r":  [300, 293, 334, 296, 336, 285, 417, 465, 357, 350, 349, 348, 347, 346, 340, 372, 383],
+    "eye_area":       "periorbital_l+periorbital_r",
     "jawline_midface":[234, 93, 132, 58, 172, 136, 150, 149, 176, 148, 152, 377, 400, 378, 379, 365, 397, 288, 361, 323, 454, 356, 389, 251, 284, 332, 297, 338, 10, 109, 67, 103, 54, 21, 162, 127],
     "full_face_skin": [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109],
     # 목: 얼굴 랜드마크에 목이 없다. 턱선(왼→오른)을 얼굴 높이의 NECK_DROP 만큼 아래로 내린 사다리꼴 (목주름 필러용, 2026-09-09)
@@ -105,7 +112,10 @@ def region_mask(img: Image.Image, pts: np.ndarray, region: str, feather: int = 1
     from PIL import ImageFilter
     mask = Image.new("L", img.size, 0)
     d = ImageDraw.Draw(mask)
-    keys = ["cheeks", "nose"] if region == "cheeks_nose" else [region]
+    # 합성 부위("a+b")는 표에서 읽는다 — 여기에 시술 이름을 하드코딩하면 부위를 하나 늘릴 때마다
+    # 이 줄을 같이 고쳐야 하고, 안 고치면 KeyError 가 아니라 **엉뚱한 한 부위만** 칠해진다.
+    spec = REGIONS[region]
+    keys = spec.split("+") if isinstance(spec, str) and "+" in spec else [region]
     for k in keys:
         poly = neck_polygon(pts) if k == "neck" else [tuple(pts[i]) for i in REGIONS[k]]
         d.polygon(poly, fill=255)

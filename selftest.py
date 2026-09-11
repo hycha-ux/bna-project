@@ -321,7 +321,14 @@ for _t in _T:
             if "same eyes" in _ap or "Identity is carried by the lower face" not in _ap: _bad[f"{_t} lower잠금"] = 1
             _seen.add("lower")
         else:
-            if "same eyes" not in _ap: _bad[f"{_t} full잠금"] = 1
+            # 2026-09-11: 눈꺼풀 필러는 눈을 일부러 잠금에서 뺀다(그 눈을 바꾸는 시술이다).
+            #   그래서 규칙은 "same eyes 가 있어야 한다"가 아니라 **"빼면 대신 박아야 한다"** 다 —
+            #   빼기만 하고 대체 문장이 없으면 모델이 눈을 자유롭게 바꿔 다른 사람이 된다.
+            if "eyes" in [str(k).lower() for k in (_T[_t].get("identity_exempt") or [])]:
+                _note = " ".join(str(_T[_t].get("identity_note") or "").split())
+                if not _note or _note not in _ap: _bad[f"{_t} 눈면제인데 대체 문장 없음"] = 1
+            elif "same eyes" not in _ap:
+                _bad[f"{_t} full잠금"] = 1
             _seen.add("full")
         # ② 생성할 사진(After)이 넓으면 크롭 지시가 붙으면 안 된다 — 장면문이 "얼굴 전체"라고 말한다
         if (_af in _WIDE) == ("keep the crop as specified" in _ap): _bad[f"{_t} 크롭지시 {_bf}->{_af}"] = 1
@@ -498,9 +505,11 @@ ok(_pl["series"] is None and len(_pl["afters"]) == 1, "시리즈가 아니면 Af
 ok(_sr["series"] == ["immediate", "2w"] and [a["when"] for a in _sr["afters"]] == ["immediate", "2w"], "시점은 시간순으로 정렬된다")
 ok(_sr["afters"][0]["effect_level"] in ("subtle", "moderate") and "barely visible yet" not in _sr["afters"][0]["after_prompt"],
    "필러(팔자)의 직후 컷은 최종 강도다 — immediate_level: final (2026-09-11)")
-_sr3 = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "1w", "2w"])
-ok([a["effect_level"] for a in _sr3["afters"]][1] == "subtle" and _sr3["afters"][1]["effect_lowered"] is True,
-   "중간 시점(1주)은 종전대로 강도를 낮춘다 — 낮추는 길 자체가 죽으면 안 된다")
+# 낮추는 길은 **필러가 아닌 시술**로 잰다 — 필러는 B안 이후 어느 시점도 안 낮춘다.
+_vn = sample_variation("selfie", 5, treatment="nose_lifting")
+_sr3 = build_prompts("nose_lifting", "selfie", _vn, 5, series=["1w", "2w"])
+ok(_sr3["afters"][0]["effect_level"] == "subtle" and _sr3["afters"][0]["effect_lowered"] is True,
+   "에너지 시술의 중간 시점(1주)은 종전대로 강도를 낮춘다 — 낮추는 길 자체가 죽으면 안 된다")
 ok(_sr["afters"][1]["effect_level"] in ("subtle", "moderate") and _sr["after_prompt"] == _sr["afters"][-1]["after_prompt"], "마지막 시점이 최종 강도이고 after_prompt 대표")
 ok(len({a["after_prompt"] for a in _sr["afters"]}) == 2, "시점마다 프롬프트가 다르다")
 ok("right after the procedure" in _sr["afters"][0]["after_prompt"] and "two weeks" in _sr["afters"][1]["after_prompt"], "시점 문구가 각자 붙는다")
@@ -517,9 +526,10 @@ ok(_e2["afters"] == 2 and _e2["expected_cost_usd"] > _e1["expected_cost_usd"], "
 #      프롬프트는 직후 컷에 "변화가 거의 안 보여야 하고 최종 결과를 보여주지 마라"(early)라고 시키는데
 #      검수는 같은 컷에 "눈에 띄어야 한다 6점 이상"을 요구했다 = 지시대로 그릴수록 떨어지는 구조.
 #      실생성 회차에 시리즈가 0건이라 아직 안 터졌을 뿐이고, 켜는 순간 직후 컷이 전멸한다.
-ok(_sr3["afters"][1]["effect_lowered"] is True and _sr3["afters"][0]["effect_lowered"] is False
-   and _sr3["afters"][2]["effect_lowered"] is False,
-   "강도를 낮춘 시점만 effect_lowered 로 표시된다(직후는 필러라 최종 강도, 마지막도 최종 강도)")
+ok(_sr3["afters"][0]["effect_lowered"] is True and _sr3["afters"][1]["effect_lowered"] is False,
+   "강도를 낮춘 시점만 effect_lowered 로 표시된다(마지막 시점은 최종 강도라 아니다)")
+ok(all(a["effect_lowered"] is False for a in _sr["afters"]),
+   "필러(팔자)는 직후부터 최종 강도라 낮춘 시점이 하나도 없다")
 ok(_pl["afters"][0]["effect_lowered"] is False, "시리즈가 아니면 낮추지 않으므로 종전대로 effect_visible 을 건다")
 
 
@@ -548,26 +558,63 @@ ok('af.get("effect_lowered")' in _batch_src2 and '"immediate"' not in _batch_src
 from bna.spec import check_treatment_facts as _ctf, FACT_KEYS_PROMPT as _FKP
 import yaml as _yaml
 _tr_all = _yaml.safe_load((_P(__file__).parent / "config" / "treatments.yaml").read_text(encoding="utf-8"))
-_filler = [k for k, v in _tr_all.items() if v.get("immediate_level") == "final"]
-ok(sorted(_filler) == ["filler_neck", "filler_nose", "nasolabial", "philtrum"],
-   f"필러 4종만 직후=최종 강도 — 실제 {sorted(_filler)}")
-ok(all("immediate" in (v.get("timeline") or []) for v in _tr_all.values() if v.get("immediate_level")),
-   "immediate 시점이 없는 시술에 immediate_level 을 적으면 죽은 설정이다")
+_filler = [k for k, v in _tr_all.items() if (v.get("series_levels") or {}).get("immediate") == "final"]
+ok(sorted(_filler) == ["filler_eyelid", "filler_neck", "filler_nose", "nasolabial", "philtrum"],
+   f"필러 5종만 직후=최종 강도 — 실제 {sorted(_filler)}")
+ok(not [k for k, v in _tr_all.items() if v.get("immediate_level") is not None],
+   "폐기된 immediate_level 이 설정에 남아 있으면 안 된다(승격 = series_levels)")
+# ⑳-3b B안: 필러는 1주도 최종 강도다 — 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다
+for _k in _filler:
+    _sl = _tr_all[_k]["series_levels"]
+    ok("1w" in (_tr_all[_k].get("timeline") or []) and _sl.get("1w") == "final",
+       f"{_k}: 1주 컷이 있고 그것도 최종 강도다 (여신티켓 '효과 약 3일 후')")
+_lv = [a["effect_level"] for a in build_prompts("nasolabial", "selfie", _v, 5,
+                                                series=["immediate", "1w", "2w"])["afters"]]
+ok(len(set(_lv)) == 1, f"필러 시리즈는 시점이 지나며 약해지지 않는다 — 실제 {_lv}")
 for _k in _tr_all:
     _ctf(_k)                                       # 전 시술 카드 검증 — 오타 칸·죽은 설정이면 여기서 터진다
 ok(True, "전 시술의 immediate_level·facts 카드가 검증을 통과한다")
-_bad = dict(_tr_all["lifting"]); _bad["immediate_level"] = "final"
 import bna.spec as _spec_mod
 _orig_load = _spec_mod.load
-_spec_mod.load = lambda n: {**_orig_load(n), "lifting": _bad} if n == "treatments.yaml" else _orig_load(n)
-try:
-    _ctf("lifting"); _raised = False
-except ValueError:
-    _raised = True
-finally:
-    _spec_mod.load = _orig_load
-ok(_raised, "직후 시점이 없는 시술(리프팅)에 immediate_level 을 달면 소리 내고 죽는다")
+def _raises(patch):
+    _spec_mod.load = lambda n: {**_orig_load(n), "lifting": patch} if n == "treatments.yaml" else _orig_load(n)
+    try:
+        _ctf("lifting"); return False
+    except ValueError:
+        return True
+    finally:
+        _spec_mod.load = _orig_load
+ok(_raises({**_tr_all["lifting"], "series_levels": {"immediate": "final"}}),
+   "timeline 에 없는 시점(리프팅의 immediate)을 series_levels 에 달면 소리 내고 죽는다")
+ok(_raises({**_tr_all["lifting"], "series_levels": {"2w": "nope"}}), "없는 강도 이름도 막는다")
+ok(_raises({**_tr_all["lifting"], "immediate_level": "final"}),
+   "폐기된 immediate_level 은 조용히 무시하지 말고 '승격됐다'고 알리며 죽는다")
 ok(_FKP == ("immediate_marks", "immediate_avoid"), "프롬프트에 실리는 카드 칸은 직후 흔적·직후 금지 둘")
+# ⑳-4 괄호 안 쉼표는 항목 구분자가 아니다 (2026-09-11 눈꺼풀 필러에서 실제로 터진 자리)
+from bna.spec import _split_items as _si, _drop_identity_items as _dii
+ok(_si("same eyes (shape, size, spacing, eyelid type), same eyebrows, same nose") ==
+   ["same eyes (shape, size, spacing, eyelid type)", "same eyebrows", "same nose"],
+   "괄호 안 쉼표로 항목이 갈라지면 안 된다")
+_txt, _n = _dii("Identity must be preserved precisely: same eyes (shape, size, spacing, eyelid type), "
+                "same eyebrows, same nose shape. Anyone comparing.", ["eyes"])
+ok(_n == 1 and "eyelid type)" not in _txt and "same eyebrows, same nose shape" in _txt,
+   f"눈 항목만 통째로 빠지고 괄호 잔재가 안 남아야 한다 — 실제 {_txt!r}")
+_pe = build_prompts("filler_eyelid", "selfie", sample_variation("selfie", 3, treatment="filler_eyelid"), 3)
+ok("size, spacing, eyelid type)" not in _pe["after_prompt"] and "same eyes" not in _pe["after_prompt"],
+   "눈꺼풀 필러 실프롬프트에 깨진 잠금 잔재가 없어야 한다")
+ok("eye_area" == _tr_all["filler_eyelid"]["mask_region"] and
+   set(_tr_all["filler_eyelid"]["framing_allow"]) == {"full_face", "forehead_cut"},
+   "눈꺼풀 필러는 눈이 프레임에 남는 프레이밍만 쓴다(lower 계열엔 eyes 항목이 없어 면제가 터진다)")
+from bna.qa.landmarks import REGIONS as _RG
+ok(_RG["eye_area"] == "periorbital_l+periorbital_r" and not (set(_RG["periorbital_l"]) & set(_RG["periorbital_r"])),
+   "눈 마스크는 좌우 따로다 — 한 폴리곤으로 이으면 미간이 통째로 편집 허용이 된다")
+ok(all(0 <= i <= 467 for k in ("periorbital_l", "periorbital_r") for i in _RG[k]),
+   "랜드마크 인덱스가 범위 안이어야 한다")
+# 새 시술은 화면에도 있어야 한다 — '기타' 폴백이 있어 안 보이진 않지만 부위 줄이 틀린다("띄울 길까지가 기능")
+_web = (_P(__file__).parent / "web" / "index.html").read_text(encoding="utf-8")
+_grp = _web.split("const GROUPS = [")[1].split("];")[0]
+_missing = [k for k in _tr_all if f"'{k}'" not in _grp]
+ok(not _missing, f"treatments.yaml 의 시술이 전부 화면 GROUPS 에 있어야 한다 — 빠진 것 {_missing}")
 _mx_src = (_P(__file__).parent / "config" / "prompts" / "mode_extra.yaml").read_text(encoding="utf-8")
 ok("nothing is resting on it" not in _mx_src and "the treatment description below says is" in _mx_src,
    "'피부에 아무것도 없음'은 필러 직후(재생테이프·붓기)와 충돌한다 — '시술 설명이 말하는 것만'으로 바꿨다")

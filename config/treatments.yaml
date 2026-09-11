@@ -14,9 +14,12 @@
 #   identity_note     : 그 자리에 대신 넣는 문장 — 시술 부위는 아래 지시대로만 바뀌고 나머지는 그대로
 #   axis_ban          : 축별 금지값. 뿔테 안경은 콧대를 가린다 (extras), 목걸이는 목주름을 가린다 (context)
 #   mask_region       : qa/landmarks.py 폴리곤 키 (임상 마스크 합성). neck 은 턱선에서 아래로 내린 파생 영역
-#   immediate_level   : 직후 컷의 강도. final = 직후가 곧 결과(필러) / early = 아직 거의 안 보임(에너지).
-#                       생략하면 effects.yaml 의 series_levels.immediate (= early). timeline 에 immediate 가
-#                       없는 시술에 적으면 죽은 설정이라 loader 가 막는다.
+#   series_levels     : 경과 시점별 효과 강도의 **시술별 재정의**. effects.yaml 의 같은 이름 표를 덮는다.
+#                       예) 필러 = {immediate: final, 1w: final} — 여신티켓 3건 실측 "시술효과 약 3일 후"라
+#                       직후·1주가 둘 다 결과다. 에너지 시술은 생략(기본값 = 직후 early · 1주 subtle).
+#                       ⚠ 한 칸만 올리지 마라 — 직후만 final 이면 1주가 직후보다 약해지는 역전이 생긴다.
+#                       ⚠ timeline 에 없는 시점을 적으면 죽은 설정이라 loader 가 막는다.
+#                       (2026-09-11 아침의 `immediate_level` 은 같은 날 이 칸으로 승격·폐기됐다)
 #   facts             : 시술 사실 카드 (2026-09-11 성연서님 지적 "프롬프트가 시술 자체를 몰라서 계속 어긋난다").
 #                       5칸 = onset(효과 시점) / extent(부위 범위) / immediate_marks(직후 흔적: 무엇·어디) /
 #                       immediate_avoid(직후 금지) / later(며칠 뒤 상태).
@@ -37,8 +40,10 @@ nasolabial:
   angles_clinical: [front, three_quarter]
   mask_region: nasolabial
   timeline: [immediate, 1w, 2w]
-  immediate_level: final          # 필러 = 직후가 곧 결과 (2026-09-11 성연서님 "필러는 시술 직후 즉각
-                                  # 나타나는 게 장점인 시술"). 붓기·발적은 facts.immediate_marks 가 얹는다.
+  # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
+  #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
+  #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.
+  series_levels: {immediate: final, 1w: final}
   effect_levels: [subtle, moderate]
   before_severity: [mild, moderate, marked]
   severity_min_age: {mild: late_20s, moderate: 30s, marked: 40s}
@@ -183,13 +188,16 @@ philtrum:
   modes: [clinical, selfie]
   angles_clinical: [front, side]
   mask_region: philtrum
-  timeline: [immediate, 2w]
+  timeline: [immediate, 1w, 2w]
   # ⚠ 이 키(`philtrum`)와 `nasolabial` 은 이름에 filler 가 안 붙어 있지만 2026-09-11 빌디/성연서님이
-  #   필러 계열로 지정했다. 인중이 필러가 아닌 술식(거상·리프팅)으로 운영되면 여기를 early 로 되돌려야 한다 —
-  #   **의료진 확인 대기 1건** — 추적 자리는 `docs/treatment-facts-0911-buildy.md`(성연서님 09-11
-  #   "확인해봐야 할 것 같다"). 확인 전까지는 final 유지가 합의된 상태다. 아니라고 나오면
-  #   되돌릴 땐 이 주석과 아래 한 줄만 지우면 effects.yaml 기본값(early)으로 돌아간다.
-  immediate_level: final
+  #   필러 계열로 지정했다. **의료진 확인 대기 1건** — 추적 자리는 `docs/treatment-facts-0911-buildy.md`
+  #   (성연서님 09-11 "확인해봐야 할 것 같다"). 09-11 여신티켓 3건 실측에도 인중은 없었다
+  #   (`docs/yeoshin-filler-0911.md`). 필러가 아니라고 나오면 아래 series_levels 한 줄만 지우면
+  #   effects.yaml 기본값(직후 early · 1주 subtle)으로 돌아간다.
+  # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
+  #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
+  #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.
+  series_levels: {immediate: final, 1w: final}
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   before_condition:
@@ -331,9 +339,11 @@ filler_nose:
   modes: [clinical, selfie]
   angles_clinical: [three_quarter, side]
   mask_region: nose
-  timeline: [immediate, 2w]
-  immediate_level: final          # 필러 = 직후가 곧 결과 (2026-09-11 성연서님 "필러는 시술 직후 즉각
-                                  # 나타나는 게 장점인 시술"). 붓기·발적은 facts.immediate_marks 가 얹는다.
+  timeline: [immediate, 1w, 2w]
+  # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
+  #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
+  #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.
+  series_levels: {immediate: final, 1w: final}
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   before_condition:
@@ -371,9 +381,11 @@ filler_neck:
   modes: [clinical, selfie]
   angles_clinical: [front, three_quarter, side]
   mask_region: neck                          # 얼굴 랜드마크에 목이 없다 — 턱선에서 아래로 내린 파생 영역 (landmarks.py)
-  timeline: [immediate, 2w]
-  immediate_level: final          # 필러 = 직후가 곧 결과 (2026-09-11 성연서님 "필러는 시술 직후 즉각
-                                  # 나타나는 게 장점인 시술"). 붓기·발적은 facts.immediate_marks 가 얹는다.
+  timeline: [immediate, 1w, 2w]
+  # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
+  #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
+  #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.
+  series_levels: {immediate: final, 1w: final}
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   severity_min_age: {mild: late_20s, marked: 40s}
@@ -410,3 +422,62 @@ filler_neck:
   #   검수 화면이 identity.gate=="n/a" 로 그 컷을 갈라 준다.
   framing_weights: {neck_only: 2}            # 전역 0.25 × 2 = 0.5 (≈ 25% 등장, 예상 못 잼 ≈ 28%)
   age_weights: {late_teens: 0, early_20s: 0, late_20s: 1, "30s": 3, "40s": 3, "50s": 3, "60s": 2}
+
+filler_eyelid:
+  name_ko: 눈꺼풀·눈가 필러
+  # 2026-09-11 성연서님 지시로 신설. 원천 = 여신티켓 26126 "당일 만족 눈꺼풀필러, 눈가주사 볼륨필러"
+  #   (부위 "눈꺼풀, 눈가" · 크림마취 · 10~20분 · 회복 약 1주 · 시술효과 약 3일 후).
+  #   실측 원문 = `docs/yeoshin-filler-0911.md`. 효과·범위 문장은 **의료진 검토 전 초안**이다.
+  region: hollow upper eyelids and the hollows under the eyes (both sides)
+  modes: [clinical, selfie]
+  angles_clinical: [front, three_quarter]
+  mask_region: eye_area
+  timeline: [immediate, 1w, 2w]
+  series_levels: {immediate: final, 1w: final}   # 필러 — 직후·1주 둘 다 결과 (B안)
+  effect_levels: [subtle, moderate]
+  before_severity: [mild, marked]
+  severity_min_age: {mild: late_20s, marked: 40s}
+  before_condition:
+    mild: >
+      This person has never had any aesthetic treatment. The upper eyelids look a little hollow,
+      with a slight sunken groove under the brow bone, and there is a faint shadowed hollow under
+      each eye that makes the person look tired even at rest. Otherwise an ordinary face. Do not
+      make the eyes look brighter, larger or more rested than described.
+    marked: >
+      This person has never had any aesthetic treatment. The upper eyelids are clearly hollow: a
+      deep groove under the brow bone so the eyelid skin folds inward, and under each eye a
+      pronounced hollow with a dark shadow running from the inner corner toward the cheek. The
+      whole eye area looks sunken and tired. Do not make the eyes look brighter, larger, younger
+      or more rested than described.
+  # 범위를 못 박는 이유 = 09-11 팔자 사고와 같다(중앙만 지워지고 양끝이 남았다).
+  after_change: >
+    the hollow under the brow bone and the hollow under each eye are filled out and smoother than
+    in the reference, so the eye area sits level with the skin around it and the shadow inside the
+    hollow is lighter; the filling runs along the whole hollow, from the inner corner beside the
+    nose out to the outer corner, evenly on both eyes, with no single segment left unchanged;
+    the eye opening, the eyelid line and the eyebrow position are unchanged.
+  # ⚠ 다크서클은 두 가지다 — 꺼짐이 만드는 **그림자**와 피부 **색소**. 필러는 앞의 것만 고친다.
+  #   색소까지 지우면 이 시술이 못 하는 일을 광고하는 그림이 된다.
+  must_not_change: >
+    Do not change the shape, size, spacing or opening of the eyes, the double-eyelid line, the
+    eyelashes, or the position and shape of the eyebrows. Do not lighten dark pigmentation of the
+    skin, whiten the under-eye area, or smooth wrinkles elsewhere on the face; only the hollow is
+    filled in. Do not change the nose, cheeks, or face shape.
+  effect_by_severity: {mild: [subtle], marked: [moderate]}
+  expression_policy: lock        # 웃으면 눈이 접히고 애교살이 생겨 시술 없이도 눈밑이 달라진다
+  identity_exempt: [eyes]        # 낱말이다 — "same eyes (shape, size, spacing, eyelid type)" 항목을 뺀다
+  identity_note: >
+    The eye shape, size, spacing and eyelid line stay exactly as in the reference and the eyes are
+    open the same amount; only the hollowness around them fills out, as described below.
+  # ⚠ tired 는 "faint dark circles" 라 After 의 소품 줄에 붙으면 방금 채운 눈밑을 도로 어둡게 만든다.
+  #   makeup_light(컨실러)·안경은 눈가를 가린다.
+  axis_ban: {extras: [glasses, glasses_thick, makeup_light, tired]}
+  drift_lock: [expression, angle, lighting]   # 눈밑 그림자는 빛이 만든다 — 조명이 바뀌면 그게 효과로 둔갑
+  scene_allow:
+    expression: [neutral_closed, relaxed_open]
+    lighting: [window, fluorescent, ceiling_harsh, mixed]   # 역광·야간은 눈가가 통째로 어두워 판정 불가
+    angle: [front, selfie_3q, tilted]                       # chin_up 은 눈밑이 가려지고 selfie_low 는 꺼짐을 과장
+  # ⚠ 눈이 프레임에 있어야 한다. lower_face 계열은 잠금 파일이 다르고(identity_lock_lower) 거기엔
+  #   "eyes" 항목 자체가 없어 identity_exempt 가 아무것도 못 지우고 터진다 — 막는 게 아니라 설계다.
+  framing_allow: [full_face, forehead_cut]
+  age_weights: {late_teens: 0, early_20s: 1, late_20s: 2, "30s": 3, "40s": 3, "50s": 2, "60s": 1}

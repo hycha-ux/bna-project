@@ -111,6 +111,30 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     return allowed
 
 
+def _split_items(s: str) -> list:
+    """열거를 항목으로 쪼갠다 — **괄호 안 쉼표는 구분자가 아니다**.
+
+    2026-09-11 실사고: `same eyes (shape, size, spacing, eyelid type)` 를 통짜 `split(", ")` 로
+    쪼개니 항목이 4개로 갈라졌고, `identity_exempt: [eyes]` 가 그중 `same eyes (shape` 하나만
+    지워 잠금문이 `Identity must be preserved precisely: size, spacing, eyelid type), same eyebrows…`
+    라는 **말이 안 되는 문장**으로 나갔다. 오류도 안 났다(지운 항목이 1개라 '조용한 무효화' 검사도 통과).
+    눈꺼풀 필러를 만들다 걸렸을 뿐, 괄호를 쓰는 항목이면 어느 시술에서든 같은 일이 난다.
+    """
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            out.append(cur.strip()); cur = ""
+            continue
+        cur += ch
+    if cur.strip():
+        out.append(cur.strip())
+    return out
+
+
 def _drop_identity_items(text: str, keywords: list) -> tuple:
     """잠금 문장의 열거 부분(": " 뒤 ~ 첫 ". " 앞)에서 낱말이 든 항목만 뺀다.
     열거 밖 문장(크롭 지시·과장 금지·동일인 확인)은 건드리지 않는다."""
@@ -119,7 +143,7 @@ def _drop_identity_items(text: str, keywords: list) -> tuple:
         return text, 0
     j = text.find(". ", i)
     j = len(text) if j < 0 else j
-    items = text[i + 2:j].split(", ")
+    items = _split_items(text[i + 2:j])
     kept = [it for it in items if not any(k in it.lower() for k in keywords)]
     if not kept or len(kept) == len(items):
         return text, len(items) - len(kept)
@@ -274,14 +298,18 @@ def check_treatment_facts(treatment: str) -> None:
     그래서 ①오타 칸 ②직후 시점이 없는 시술의 직후 설정 ③읽는 자리가 없는 값을 전부 여기서 세운다.
     """
     t = load("treatments.yaml")[treatment]
-    has_imm = "immediate" in (t.get("timeline") or [])
-    lvl = t.get("immediate_level")
-    if lvl is not None:
-        ok = ("final",) + tuple(load("effects.yaml")["effect_levels"])
+    tl = list(t.get("timeline") or [])
+    has_imm = "immediate" in tl
+    if t.get("immediate_level") is not None:
+        # 2026-09-11 아침의 한 칸짜리 재정의는 같은 날 `series_levels` 로 승격했다(B안).
+        # 남겨 두고 무시하면 적은 사람은 반영된 줄 안다 — 규칙 두 벌 대신 소리 내고 죽는다.
+        raise ValueError(f"{treatment}.immediate_level 은 폐기됐다 — `series_levels: {{immediate: final}}` 로 적어라")
+    ok = ("final",) + tuple(load("effects.yaml")["effect_levels"])
+    for w, lvl in (t.get("series_levels") or {}).items():
         if str(lvl) not in ok:
-            raise ValueError(f"{treatment}.immediate_level={lvl!r} 은 없는 강도다 (가능: {ok})")
-        if not has_imm:
-            raise ValueError(f"{treatment}.immediate_level 을 적었는데 timeline 에 immediate 가 없다 — 죽은 설정")
+            raise ValueError(f"{treatment}.series_levels[{w}]={lvl!r} 은 없는 강도다 (가능: {ok})")
+        if w not in tl:
+            raise ValueError(f"{treatment}.series_levels 에 {w} 를 적었는데 timeline 에 없다 — 죽은 설정")
     facts = t.get("facts")
     if facts is None:
         return
@@ -381,11 +409,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         lv = final_level
         lowered = False
         if pts:
-            sl = (eff.get("series_levels") or {}).get(w, "final")
-            if w == "immediate" and t.get("immediate_level"):
-                # 시술별 재정의(2026-09-11). 필러는 직후가 곧 결과라 최종 강도로 그리고 붓기·발적만 얹는다 —
-                # 여기서 일괄 early 로 낮추면 "직후에 바로 보인다"는 필러의 판매 포인트를 우리가 지운다.
-                sl = str(t["immediate_level"])
+            # 시점별 강도 = 전역 표(effects.yaml) → 시술별 재정의(treatments.yaml `series_levels`) 순.
+            # 2026-09-11 B안: 필러는 "효과 약 3일 후"(여신티켓 3건 실측)라 1주 컷도 최종 강도다.
+            #   ⚠ 재정의를 직후 한 칸만 두면 **1주가 직후보다 약해지는 역전**이 생긴다
+            #     (직후=final · 1주=subtle · 2주=final — 중간이 꺼진다). 그래서 칸이 아니라 표를 덮는다.
+            sl = str(((t.get("series_levels") or {}).get(w)) or (eff.get("series_levels") or {}).get(w, "final"))
             lowered = sl != "final"
             lv = final_level if sl == "final" else sl
         c = f'{t["after_change"].strip()} {eff["effect_levels"][lv]}.'
@@ -395,8 +423,12 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             # 직후 흔적·금지는 **사실 카드**에서 온다(시술마다 무엇이 어디에 남는지가 다르다).
             # 두 모드 공통 자리다 — 임상 프롬프트엔 after_day/skin_state 가 아예 안 붙어서,
             # 여기 말고 mode_extra 쪽에 넣으면 임상 직후 컷만 조용히 사실 카드를 못 받는다.
-            for k in ("immediate_marks", "immediate_avoid"):
-                v = (t.get("facts") or {}).get(k)
+            marks = [(t.get("facts") or {}).get(k) for k in FACT_KEYS_PROMPT]
+            if not any(marks) and not lowered:
+                # 카드가 아직 없는 필러 — 최종 강도로 그리면서 직후 티가 하나도 없으면 "2주 컷"과 구별이 안 된다.
+                # 시술별 흔적은 추정할 수 없으니(테이프 자리는 시술마다 다르다) 주사 공통인 붓기·발적만 얹는다.
+                marks = [eff.get("immediate_final_note")]
+            for v in marks:
                 if v:
                     c += " " + " ".join(str(v).split())
         if mode == "selfie":

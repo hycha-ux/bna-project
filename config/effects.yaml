@@ -1,12 +1,14 @@
 # 효과 강도·경과 시점 문구
 # 경과 시리즈(2026-09-09 성연서님: 기본 직후·2주, 세트 단위 채택): 최종 강도는 강도 짝 표로 정하고, 시점마다 이렇게 낮춘다.
 #   early = 변화가 거의 안 보이고 붓기·발적만 / subtle = 은은 / final = 정해진 최종 강도
-# ⚠ `immediate` 은 시술별로 재정의된다 — treatments.yaml 의 `immediate_level: final|early` (여기가 기본값).
+# ⚠ 이 표는 **기본값**이고 시술별로 덮인다 — treatments.yaml 의 `series_levels` (2026-09-11 B안).
 #   2026-09-11 빌디/성연서님 지적: 필러는 "직후 즉각 나타나는 게 장점인 시술"이라 직후 컷이 곧 최종 강도이고,
 #   거기에 붓기·발적만 얹는 게 맞다. 여기서 일괄 early 로 낮추면 필러의 판매 포인트를 우리 손으로 지운다.
 #   에너지 시술(리프팅·스킨부스터)은 정말로 직후엔 변화가 없으므로 기본값 early 그대로.
+#   ⚠ 재정의는 반드시 **시점 전체를 보고** 적어라. 직후 한 칸만 final 로 올리면 1주가 직후보다
+#     약해지는 역전이 생긴다(직후=final · 1주=subtle · 2주=final — 중간이 움푹 꺼진다).
 series_levels:
-  immediate: early          # 기본값. 시술별 재정의 = treatments.yaml 의 immediate_level
+  immediate: early          # 기본값. 시술별 재정의 = treatments.yaml 의 series_levels
   1w: subtle
   2w: final
   4w: final
@@ -14,6 +16,13 @@ effect_levels:
   early: "The treatment change is barely visible yet: the treated area looks almost the same as in the reference, slightly puffy or pink from the procedure; do not show the final result"
   subtle: "The change is mild: the treated area is better than in the reference but the concern is still present, noticeable mainly when the two photos are compared side by side"
   moderate: "The change is clear when the two photos are compared, but still within what a single treatment realistically does; nothing looks perfect or erased"
+# 직후 컷을 **최종 강도로** 그리는 시술(필러)에 붙는 문장. 사실 카드(facts.immediate_marks)가 있으면
+# 그쪽이 이긴다 — 카드가 "무엇이 어디에" 까지 말하므로 더 구체적이다.
+# ⚠ 여기 적을 수 있는 건 주사 시술 공통인 붓기·발적까지다. 테이프 자리는 시술마다 달라 추정하면 안 된다.
+#   최종 강도인데 직후 티가 하나도 없으면 그 컷은 2주 컷과 구별되지 않는다(그래서 빈칸으로 두지 않는다).
+immediate_final_note: >
+  Because the photo is taken right after the injections, the treated area is a little swollen and
+  slightly pink around the injection points, the way it normally looks on the day of the procedure.
 timeline:
   immediate: "photographed right after the procedure; faint redness or slight swelling in the treated area is acceptable"
   1w: "photographed about one week after the procedure; treated area fully settled, very faint residual redness possible"
