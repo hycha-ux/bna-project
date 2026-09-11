@@ -232,6 +232,15 @@ expression:
   brow_up: "mouth closed and relaxed, eyebrows lifted a little, the way people look when checking their own face"
   eyes_narrow: "mouth closed, eyes narrowed a little against the light, no smile"
   blink_soft: "caught half a second late: eyelids lowered as if mid-blink, mouth unchanged and relaxed"
+  # ── 입 모양 변주 (2026-09-11 성연서님 "입모양이 너무 똑같은 모양이야 로봇처럼") ──
+  # 09-11 오전에 표정 칸을 3→8종으로 늘렸는데 **늘린 5칸이 전부 눈·눈썹만 바꿨다** — 실측 400표본에서
+  # 입 상태는 여전히 2종이고 74%가 같은 '다문 채'였다. 축 이름이 expression 이라 늘린 줄 알았지, 정작
+  # 사람 눈에 제일 먼저 띄는 입은 한 칸도 안 늘었다. 아래 3칸은 *입이 실제로 다른* 칸이다.
+  # ⚠ 웃음은 여전히 금지다 — 웃으면 팔자가 저절로 깊어져 시술 효과로 둔갑한다. 여기 있는 건
+  #   '웃지 않으면서 입이 다른' 모양뿐이고, 입꼬리를 *올리는* 방향은 하나도 없다.
+  jaw_loose: "not smiling: the lips stay together but the jaw hangs loose, so the chin sits a little lower and the mouth line is longer than in a held pose"
+  lips_speak: "caught mid-word: the mouth is open a little with the lower lip dropped and the upper teeth just visible, not a smile"
+  lip_asym: "resting face, lips closed but not symmetric - one corner sits a touch lower than the other, no smile"
 
 # 모드별 사용 제약
 mode_rules:
@@ -262,7 +271,8 @@ mode_rules:
     # ⚠ 이 줄은 화이트리스트다 — expression 축에 칸을 만들어도 여기 안 적으면 **한 번도 안 뽑힌다**
     #   (2026-09-11 실측: 새 칸 5개를 넣고 300 표본을 돌렸더니 분포가 종전 2종 그대로였다).
     expression: [neutral_closed, slight_smile, relaxed_open,
-                 gaze_off, gaze_screen, brow_up, eyes_narrow, blink_soft]
+                 gaze_off, gaze_screen, brow_up, eyes_narrow, blink_soft,
+                 jaw_loose, lips_speak, lip_asym]
   # 임상: 프레이밍·맥락은 고정
 
 # 배경별 호환 조명 (셀카 모드). 배경을 먼저 뽑고 조명은 이 목록 안에서만 선택.
@@ -357,9 +367,13 @@ weights:
   # 재계산·검증 = tools/framing_na_forecast.py (실측률을 원장에서 다시 읽어 예상 못 잼을 낸다)
   framing: {full_face: 3, forehead_cut: 6, lower_face: 0.5, one_cheek: 0.25, nose_to_neck: 1.5, neck_only: 0.25}
   # 상담용 사진은 대부분 무표정이다 — 무표정을 줄이는 게 아니라 **무표정의 결을 늘린다**(2026-09-11).
-  # 합이 무표정 계열 13 : 미소 1 이라 "상담 사진 같음"은 그대로고, 같은 얼굴이 반복되는 느낌만 흩어진다.
-  expression: {neutral_closed: 3, slight_smile: 1, relaxed_open: 2,
-               gaze_off: 2, gaze_screen: 2, brow_up: 1.5, eyes_narrow: 1.5, blink_soft: 1}
+  # 합이 무표정 계열 : 미소 1 이라 "상담 사진 같음"은 그대로고, 같은 얼굴이 반복되는 느낌만 흩어진다.
+  # ⚠ 이 표는 '표정 이름'이 아니라 **입 상태**로 읽어라 (2026-09-11 오후) — 이름을 8종으로 늘려도
+  #   입이 2종이면 사람 눈엔 똑같다. 지금 입 상태 비중은 다문(힘) 9 : 다문(이완) 3 : 살짝 벌림 4 : 벌림 1.5.
+  #   `neutral_closed` 를 3으로 크게 둔 채 새 칸을 넣으면 최빈 입 상태가 안 내려가서 2.5 로 낮췄다.
+  expression: {neutral_closed: 2.5, slight_smile: 1, relaxed_open: 2,
+               gaze_off: 2, gaze_screen: 2, brow_up: 1.5, eyes_narrow: 1.5, blink_soft: 1,
+               jaw_loose: 1.5, lips_speak: 1.5, lip_asym: 1.5}
 
 output:
   aspect: "4:5"

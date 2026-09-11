@@ -515,14 +515,21 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 #   손으로 다시 찍었을 때 반드시 생기는 미세 차이는 **명시적으로 요구**한다.
                 #   이 문장은 drift_lock 에 angle 이 들어간 시술(팔자·리프팅)에서 특히 중요하다 —
                 #   각도 축이 잠기면 각도 문장까지 같아져 "같은 사진 복사"로 떨어진다.
+                #   2026-09-11 오후 성연서님 "카메라 각도나 얼굴 각도도 너무 다 똑같아, 로봇이야" →
+                #   문장을 **팔을 다시 들었다는 사실**부터 말하게 고쳤다. 종전은 '몇 도 다르게'라는
+                #   *정도* 만 말해서, 각도 축이 잠긴 시술에선 모델이 같은 프레임을 그대로 복사했다.
+                #   ⚠ 각도 축 자체는 여전히 잠근다 — 각도가 바뀌면 주름 그림자가 달라져 촬영 차이가
+                #     시술 효과로 둔갑한다. 푸는 건 '몇 도'이지 '어느 각도'가 아니다.
                 expression_line = (
                     f'The expression is the same as in the reference: {variation["expression"]["text"]}. '
                     'Do not smile and do not tense the mouth or cheeks, since that alone would change the '
-                    'folds being treated. Everything else is a separate handheld photo and must show the small '
-                    'differences that always occur: the head tilts a degree or two differently, the eyes are '
-                    'open a little more or a little less, the lips rest with slightly different tension, and the '
-                    'face sits in a slightly different place in the frame. This is a second photo of the same '
-                    'person, not the reference photo edited.')
+                    'folds being treated. Everything else about the shot is new: the phone was put down and '
+                    'picked up again, so the arm is at a slightly different distance and height, the head sits '
+                    'at a slightly different tilt and rotation within the same general pose, the face is not in '
+                    'exactly the same spot in the frame, and the eyes are open a little more or a little less. '
+                    'These differences must be visible at a glance when the two photos sit side by side, while '
+                    'still reading as the same pose. This is a second photo of the same person, not the '
+                    'reference photo edited.')
             else:
                 expression_line = f'Expression: {a["expression"]}; it may differ slightly from the reference.'
             which = "same" if w == "immediate" else "different"

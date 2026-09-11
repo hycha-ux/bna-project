@@ -77,8 +77,10 @@ _lock = build_prompts("nasolabial", "selfie", sample_variation("selfie", 5), 5)[
 ok("must not change at all" not in _lock,
    "표정 잠금에 '전혀 바뀌면 안 된다'는 절대 문구가 남아 있으면 안 된다(얼굴 전체를 복사시킨다)")
 ok("Do not smile" in _lock, "표정 잠금은 '웃지 마라'로 좁혀져야 한다")
-for _frag in ("tilts a degree or two", "open a little more", "slightly different place in the frame",
-              "not the reference photo edited"):
+# 2026-09-11 오후 성연서님 "카메라 각도도 얼굴 각도도 다 똑같아, 로봇이야" → '몇 도 다르게'라는 *정도*
+# 대신 **팔을 다시 들었다는 사실**부터 말하게 바꿨다. 각도 축 자체는 여전히 잠근다(그림자가 효과로 둔갑).
+for _frag in ("picked up again", "open a little more", "not in exactly the same spot in the frame",
+              "visible at a glance", "not the reference photo edited"):
     ok(_frag in _lock, f"표정 잠금이 미세 차이를 명시적으로 요구해야 한다 — '{_frag}'")
 # 잠금 없는 시술(free)은 종전대로 표정이 달라도 된다
 ok("may differ slightly" in build_prompts("nose_lifting", "selfie", sample_variation("selfie", 5), 5)["after_prompt"],
@@ -639,10 +641,18 @@ ok("only part of the treated line or fold changed" in _qa_src,
    "검수 effect_visible 은 일부 구간만 바뀐 컷을 감점해야 한다(부분 소거는 시술이 아니라 지우개)")
 ok("entire length of the fold" in _tr_all["nasolabial"]["after_change"],
    "팔자 시술 문장이 콧볼~입꼬리 전 구간을 못 박는다")
-# 살아 있는 카드(팔자 필러, 빌디 초안 docs/treatment-facts-0911-buildy.md)가 실제 프롬프트에 실리는가
+# 살아 있는 카드(팔자 필러)가 실제 프롬프트에 실리는가
 _pn = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
-ok("dressing patch" in _pn["afters"][0]["after_prompt"] and "dressing patch" not in _pn["afters"][1]["after_prompt"],
-   "팔자 직후 컷에만 입가 옆 재생테이프가 실린다(2주 컷에 테이프가 남으면 그게 더 큰 사고)")
+ok("broadly flushed pink" in _pn["afters"][0]["after_prompt"]
+   and "broadly flushed pink" not in _pn["afters"][1]["after_prompt"],
+   "팔자 직후 컷에만 홍조·주사자국이 실린다(2주 컷에 남으면 그게 더 큰 사고)")
+# 2026-09-11 저녁 성연서님 "패치가 너무 티나게 붙어 있어서 더 AI 같다 — 아예 없거나 거의 안 보이게".
+#   *약하게 적기*로는 안 된다 — 모델은 적으면 그린다(0910 마취크림 5/5). 그래서 **말을 안 한다**.
+#   금지문으로 적는 것도 같은 이유로 금지다. 어느 컷에도 이 단어들이 없어야 한다.
+#   ⚠ 'patch' 단독으로 재지 마라 — 피부 연속성 문장이 잡티를 셀 때 'dry patch'(각질)를 쓴다.
+for _w in ("dressing", "hydrocolloid", "tape", "sticker"):
+    ok(not any(_w in _a["after_prompt"] for _a in _pn["afters"]),
+       f"팔자 프롬프트 어느 컷에도 '{_w}' 가 없어야 한다 — 적으면 그려지고, 그리면 AI 티가 난다")
 ok(not any(w in _pn["afters"][0]["after_prompt"] for w in ("cotton pad", "ointment", "bandage", "gauze")),
    "직후 금지는 품목을 나열하지 않는다 — 적으면 모델이 그린다(0910 마취크림 5/5)")
 
@@ -663,12 +673,18 @@ _pni = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate"],
                      avoid={"before": [], "after": [_ban]}, avoid_not_at={_ban: ["immediate"]})
 ok(_pni["avoid_applied"].get("after") in (None, []),
    "직후 컷 하나만 만든 회차엔 그 금지문이 '붙였다'로 기록되면 안 된다(안 붙인 규칙을 붙였다고 적으면 또 승격시킨다)")
+# ⚠ 이 가드는 **합성 카드**로 잰다 (2026-09-11 저녁) — 살아 있는 팔자 카드에서 패치 문장을 빼는 순간
+#   충돌할 거리가 없어져 가드가 조용해졌다. 가드가 죽은 게 아니라 시료가 사라진 것이라, 시료를 만든다.
+#   (살아 있는 설정에 기대는 회귀는 그 설정이 바뀌면 검사 자체가 증발한다.)
+_sm.load = lambda n: {**_ol(n), "nasolabial": _t2} if n == "treatments.yaml" else _ol(n)
 try:
-    build_prompts("nasolabial", "selfie", _v, 5, series=["immediate"],
-                  avoid={"before": [], "after": [_ban]})     # not_at 없이 = 예외를 잊은 상태
+    _sm.build_prompts("nasolabial", "selfie", _v, 5, series=["immediate"],
+                      avoid={"before": [], "after": [_ban]})     # not_at 없이 = 예외를 잊은 상태
     _clash = None
 except ValueError as _e:
     _clash = str(_e)
+finally:
+    _sm.load = _ol
 ok(_clash and "not_at" in _clash,
    f"예외를 안 적은 채 카드와 금지문이 같은 컷에 붙으면 소리 내고 멈춰야 한다 — {_clash}")
 _act = _les.active(_P(__file__).parent / "outputs", "nasolabial", "selfie")
@@ -1169,6 +1185,33 @@ _wl = set(_vy2["mode_rules"]["selfie"]["expression"]) | set(_vy2["mode_rules"]["
 ok(set(_vy2["expression"]) <= _wl,
    f"어느 모드에서도 안 뽑히는 유령 표정이 있으면 안 된다 — 실제 {sorted(set(_vy2['expression']) - _wl)}")
 
+# ㉔ 표정 *이름*이 아니라 **입 상태**로 세라 (2026-09-11 오후 성연서님 "입모양이 너무 똑같은 모양이야 로봇처럼")
+#    오전엔 이름을 3→8종으로 늘리고 "흩어졌다"고 봤는데, 늘린 5칸이 전부 눈·눈썹만 바꿔서
+#    실측 입 상태는 여전히 2종·74%가 같은 모양이었다. 축 이름이 통과해도 사람 눈은 입을 먼저 본다.
+#    ⚠ 'no smile' 이 들어간 문구를 미소로 세지 마라 — 첫 계측이 그렇게 세서 13.8%를 미소로 오분류했다.
+def _mouth_of(text):
+    t = text.lower()
+    if "parted" in t or "barely apart" in t or "mouth is open" in t:
+        return "open"
+    if "smile" in t and "no smile" not in t and "not a smile" not in t and "not smiling" not in t:
+        return "smile"
+    if "jaw hangs loose" in t or "not symmetric" in t:
+        return "closed_loose"
+    return "closed"
+_exprs_cfg = _vy2["expression"]
+_md = _co.Counter()
+for _k, _n in _ed.items():
+    _md[_mouth_of(_exprs_cfg[_k])] += _n
+_mtop = max(_md.values()) / sum(_md.values())
+ok(len(_md) >= 3, f"팔자 입 상태가 최소 3종은 나와야 한다 — 실제 {len(_md)}종 {_md.most_common()}")
+ok(_mtop <= 0.60, f"한 입 모양이 60% 넘게 쏠리면 로봇처럼 보인다 — 실제 {_mtop:.0%} {_md.most_common()}")
+ok("smile" not in _md, "팔자 입 변주에 웃음이 섞이면 안 된다(웃으면 주름이 저절로 깊어진다)")
+# 같은 축이라도 시술마다 넓힐 수 있는 방향이 다르다 — 입이 판정 부위인 시술엔 이 칸을 주지 않는다
+_MOUTH_MOVING = {"jaw_loose", "lips_speak", "lip_asym"}
+for _t in ("philtrum", "filler_eyelid"):
+    ok(not (_MOUTH_MOVING & set(_expr_dist(_t))),
+       f"{_t}: 입·눈이 판정 부위인 시술에 입 변주가 들어가면 안 된다 — 실제 {sorted(_MOUTH_MOVING & set(_expr_dist(_t)))}")
+
 # ㉒ 팔자 직후 패치 자리·재질 (2026-09-11 오후, 온리프 실제 촬영본으로 확정)
 #    같은 날 오전엔 정반대('콧볼 옆')를 여기서 지키고 있었다 — 둘 다 사진 없이 한 추정이었다.
 #    이제 기준은 실사진 하나다: 패치는 **아래쪽**(입꼬리 바깥 볼·마리오네트)이고 **투명**이다.
@@ -1178,12 +1221,12 @@ _im = _immediate_after("nasolabial", 7)
 ok("patch sitting high" not in _im and "patches sitting high" not in _im,
    "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 실사진은 아래쪽")
 ok("The injections go in low" in _im, "주입점이 아래쪽이라고 말해야 한다(실사진)")
-ok("skin-coloured dressing patch" not in _im,
-   "직후 패치를 살색으로 그리면 안 된다 — 실물은 투명 하이드로콜로이드다")
-for _frag in ("transparent", "hydrocolloid", "corner of the mouth", "marionette"):
-    ok(_frag in _im, f"직후 흔적 문장에 '{_frag}' 가 있어야 한다(실사진 기준)")
 ok("faint pink dot" not in _im and "flushed pink" in _im,
    "홍조는 '점 하나'가 아니라 볼 전체로 넓어야 한다(실사진)")
+ok("scattered across it" in _im,
+   "주사 자국도 주름 둘레가 아니라 볼 전체에 흩어져야 한다(실사진)")
+# 패치는 2026-09-11 저녁에 통째로 뺐다(성연서님). 실사엔 있지만 그리면 가짜로 보인다 — 위 ㉑ 블록이
+# 어느 컷에도 patch·tape 단어가 없는지 본다. 여기선 '직후 신호'가 남아 있는지만 확인한다.
 
 # ㉓ 참조 사진(A1)이 시술·시점을 거르는가 (2026-09-11 빌디 "refs.pick 이 거르는지 확인")
 #    종전엔 **안 걸렀다** — 모드와 조명·화질·배경만 봤다. 그래서 '팔자 직후' 실사진을 색인에 넣으면
