@@ -512,6 +512,24 @@ def aliases(rows: list, current=None) -> dict:
     return out
 
 
+def _note_by_config(names: dict, version: str) -> dict:
+    """이름표를 **설정 해시**로도 찾는다.
+
+    prompt_version 은 `git짧은sha-설정해시` 라 **커밋만 해도 바뀐다** — 문서 한 줄을 고쳐도,
+    리베이스로 sha 가 변해도 새 버전이 된다. 그래서 배치 전에 붙여 둔 이름표가 아무 배치도
+    안 가리키는 유령이 되는 일이 2026-09-11 하루에 두 번 있었다.
+    설정 해시가 같으면 프롬프트가 같으므로, 뒷자리가 같은 이름표를 물려받는다.
+    ⚠ 정확히 일치하는 이름표가 우선이다(같은 설정에 다른 이름을 붙였으면 그 뜻을 존중한다).
+    """
+    tail = version.rsplit("-", 1)[-1]
+    if len(tail) < 6:                                   # 'sim'·'demo'·'?' 같은 가짜 버전은 뒷자리가 없다
+        return {}
+    for k, v in names.items():
+        if k != version and k.rsplit("-", 1)[-1] == tail:
+            return v
+    return {}
+
+
 def by_version(out_dir: Path) -> list:
     """프롬프트 버전별 성적 — 고도화의 기준선. 버전(config 해시)마다 AI 통과율·사람 제외율·상위 제외 사유를 낸다.
     dry-run 은 사진이 없으니 뺀다. sim/demo 는 실제 프롬프트가 아니라 따로 표시만 한다."""
@@ -595,6 +613,6 @@ def by_version(out_dir: Path) -> list:
     for r in rows:
         r["alias"] = al.get(r["version"])
         r["title"] = ti.get(r["version"], "")
-        r["note"] = (nm.get(r["version"]) or {}).get("note", "")
+        r["note"] = (nm.get(r["version"]) or _note_by_config(nm, r["version"])).get("note", "")
     rows.sort(key=lambda r: (r["real"], r["last"]), reverse=True)
     return rows

@@ -911,6 +911,28 @@ ok(_row18["id_na"] == 2 and _row18["id_na_rate"] == 0.5,
    f"못 잼 비율의 분모는 그 버전의 전체 장수다 — 실제 {_row18['id_na']}/{_row18['n']} = {_row18['id_na_rate']}")
 
 
+# ⑱-7 버전 이름표는 '설정 해시'로도 찾아야 한다 (2026-09-11, 하루에 두 번 유령이 됐다)
+#      prompt_version = git짧은sha-설정해시 라 **문서 한 줄만 커밋해도** 새 버전이 된다.
+#      배치 전에 붙여 둔 이름표가 아무 배치도 안 가리키게 되는 게 그 결과다.
+_d18n2 = _P(_tf.mkdtemp())
+for _i, _v in enumerate(["aaaaaaa-2fb1005f", "bbbbbbb-2fb1005f"]):
+    _it = _d18n2 / f"b{_i}" / "0000"
+    _it.mkdir(parents=True)
+    (_it / "meta.json").write_text(_j.dumps({"prompt_version": _v, "treatment": "nasolabial",
+                                             "passed": True, "identity": {"gate": "ok", "measured": True}}),
+                                   encoding="utf-8")
+_L.names_set(_d18n2, "aaaaaaa-2fb1005f", "프레이밍 비중 조정")
+_rows18 = {r["version"]: r["note"] for r in _L.by_version(_d18n2)}
+ok(_rows18.get("bbbbbbb-2fb1005f") == "프레이밍 비중 조정",
+   f"커밋만 바뀐 같은 설정은 이름표를 물려받아야 한다 — 실제 {_rows18}")
+# 다른 설정까지 물려받으면 안 된다 — 그러면 이름이 아니라 낙서가 된다
+_it2 = _d18n2 / "b9" / "0000"; _it2.mkdir(parents=True)
+(_it2 / "meta.json").write_text(_j.dumps({"prompt_version": "ccccccc-99999999", "treatment": "nasolabial",
+                                          "passed": True, "identity": {"gate": "ok", "measured": True}}),
+                                encoding="utf-8")
+ok({r["version"]: r["note"] for r in _L.by_version(_d18n2)}.get("ccccccc-99999999") == "",
+   "설정 해시가 다르면 이름표를 물려받지 않아야 한다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
