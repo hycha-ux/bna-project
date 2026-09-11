@@ -186,7 +186,9 @@ philtrum:
   timeline: [immediate, 2w]
   # ⚠ 이 키(`philtrum`)와 `nasolabial` 은 이름에 filler 가 안 붙어 있지만 2026-09-11 빌디/성연서님이
   #   필러 계열로 지정했다. 인중이 필러가 아닌 술식(거상·리프팅)으로 운영되면 여기를 early 로 되돌려야 한다 —
-  #   **의료진 확인 대기 1건**. 되돌릴 땐 이 두 줄만 지우면 effects.yaml 기본값(early)으로 돌아간다.
+  #   **의료진 확인 대기 1건** — 추적 자리는 `docs/treatment-facts-0911-buildy.md`(성연서님 09-11
+  #   "확인해봐야 할 것 같다"). 확인 전까지는 final 유지가 합의된 상태다. 아니라고 나오면
+  #   되돌릴 땐 이 주석과 아래 한 줄만 지우면 effects.yaml 기본값(early)으로 돌아간다.
   immediate_level: final
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
