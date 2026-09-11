@@ -1120,6 +1120,30 @@ _it2 = _d18n2 / "b9" / "0000"; _it2.mkdir(parents=True)
 ok({r["version"]: r["note"] for r in _L.by_version(_d18n2)}.get("ccccccc-99999999") == "",
    "설정 해시가 다르면 이름표를 물려받지 않아야 한다")
 
+# ⑲-시리즈 구도 잠금 (2026-09-11 실측, 배치 20260911-124645-5cce)
+#   시점 컷마다 framing 이 다시 뽑혀 1주 컷에서 팔자 주름이 화면 밖으로 밀려났고, 심사는 그 컷에
+#   '턱선이 정리됐다'며 8점을 줬다 — 시술 부위가 아닌 곳을 보고 준 점수다.
+#   시리즈에서는 구도와 얼굴에 얹히는 소품(안경·모자·마스크)을 컷 전체에서 고정한다.
+_SER = ["immediate", "1w", "2w"]
+_drift_axes = {"framing": 0, "extras": 0, "background": 0, "lighting": 0}
+for _s in range(60):
+    _v = sample_variation("selfie", _s)
+    _p = build_prompts("nasolabial", "selfie", _v, _s, series=_SER)
+    for _a in _p["afters"]:
+        for _ax in _drift_axes:
+            if _a["after_variation"][_ax]["key"] != _v[_ax]["key"]:
+                _drift_axes[_ax] += 1
+ok(_drift_axes["framing"] == 0, f"시리즈 컷은 Before 의 구도를 그대로 써야 한다 — 실제 {_drift_axes['framing']}건 어긋남")
+ok(_drift_axes["extras"] == 0, f"시리즈 컷에서 안경·모자가 붙었다 떨어지면 안 된다 — 실제 {_drift_axes['extras']}건")
+# ⚠ 잠근 건 둘뿐이다. 배경·조명까지 굳으면 '같은 사진을 복사한 티'가 나서 시리즈의 목적이 뒤집힌다.
+ok(_drift_axes["background"] > 0 and _drift_axes["lighting"] > 0,
+   f"배경·조명은 시리즈에서도 계속 달라져야 한다 — 실제 배경 {_drift_axes['background']}건·조명 {_drift_axes['lighting']}건")
+# 시리즈가 아닌 한 장짜리는 종전대로 구도가 흔들릴 수 있다 (잠금이 전역으로 새지 않았는가)
+_solo = sum(1 for _s in range(60)
+            if build_prompts("nasolabial", "selfie", sample_variation("selfie", _s), _s)["after_variation"]["framing"]["key"]
+            != sample_variation("selfie", _s)["framing"]["key"])
+ok(_solo > 0, f"한 장짜리 After 의 구도 변주까지 잠기면 안 된다 — 실제 {_solo}건")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

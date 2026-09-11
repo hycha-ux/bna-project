@@ -199,13 +199,24 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
     return picked
 
 
-def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None) -> dict:
+# 시리즈(한 사람의 여러 시점) 컷에서 추가로 잠그는 축. 상세 근거는 drift_after 머리말.
+SERIES_LOCK = {"framing", "extras"}
+
+
+def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False) -> dict:
     """셀카 모드: After 촬영 상황을 확률적으로 바꾼다 (이목구비 축은 절대 건드리지 않음).
     timeline 이 immediate 면 같은 날(옷·머리 고정), 그 외는 다른 날(옷·머리·배경 대부분 교체).
-    treatment 의 drift_lock 축(표정·각도·화질…)은 건너뛴다 — 그 축이 바뀌면 시술이 아니라 촬영 차이가 B&A 로 둔갑한다."""
+    treatment 의 drift_lock 축(표정·각도·화질…)은 건너뛴다 — 그 축이 바뀌면 시술이 아니라 촬영 차이가 B&A 로 둔갑한다.
+
+    series=True 면 **구도(framing)와 얼굴에 얹히는 소품(extras)을 추가로 잠근다**.
+    2026-09-11 실측(팔자 3시점, 배치 20260911-124645-5cce): 컷마다 framing 이 0.6 확률로 다시 뽑혀
+      직후=전체얼굴 · 1주=하관만 · 2주=전체얼굴+안경 으로 갈렸고, 1주 컷은 팔자 주름이 사실상 화면
+      가장자리로 밀려났다. 심사가 그 컷을 보고 '턱선·목이 정리됐다'고 8점을 줬다 — 시술 부위가 아닌
+      곳을 보고 준 점수다. 시점 비교는 '같은 구도로 다시 찍은 사진'일 때만 성립한다.
+      옷·배경·조명·머리는 그대로 계속 바뀐다(다른 날에 찍은 티는 거기서 난다)."""
     v = load("variations.yaml")
     tr = treatment_rules(treatment, mode)
-    lock = set(tr.get("drift_lock") or [])
+    lock = set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())
     probs = v.get("after_drift", {}).get(mode, {})
     if "immediate" in probs or "later" in probs:
         probs = probs.get("immediate" if timeline == "immediate" else "later", {})
@@ -491,7 +502,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             spans = [("identity", identity), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
                      ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after)]
         else:
-            a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment)
+            a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment, series=bool(pts))
             a = {k: val["text"] for k, val in a_var.items()}
             ident = identity_for(variation["framing"]["key"], a_var["framing"]["key"])
             a_scene = dict(a); a_scene.pop("expression", None)          # 표정은 아래 expression_line 이 맡는다
