@@ -11,6 +11,7 @@ param(
   [int]$Seed = 0,
   [string]$Fix = 'country=korea',
   [double]$CostCap = 10.0,
+  [string]$Series = '',
   [string]$LogFile = 'C:\Users\medib\teemo\out\paid-run.log',
   [switch]$NoStart
 )
@@ -21,6 +22,7 @@ if (-not (Test-Path $runner)) { throw "runner not found: $runner" }
 
 $args = "-ExecutionPolicy Bypass -File `"$runner`" -Treatments $Treatment -Count $Count " +
         "-Seed $Seed -Fix $Fix -CostCap $CostCap -LogFile `"$LogFile`""
+if ($Series -ne '') { $args += " -Series $Series" }
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $args -WorkingDirectory $root
 # One-shot far in the future; we start it by hand right away. The trigger only exists because
 # a task needs one - the run happens via Start-ScheduledTask below.

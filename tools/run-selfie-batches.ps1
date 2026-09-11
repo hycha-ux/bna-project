@@ -27,6 +27,10 @@ param(
   # Stop a batch once it has burned this much (USD). 2026-09-10: bna.cli has no cap, so a run
   # that went wrong could only be stopped by hand. tools/run_paid.py takes the cap.
   [double]$CostCap = 10.0,
+  # Timeline series, comma separated (e.g. -Series immediate,2w). Empty = single After cut.
+  # 2026-09-11: first series run. run_paid.py gained --series the same day; without it there was
+  # no way to launch a series batch from a task at all.
+  [string]$Series = '',
   [string]$KeysFile = 'C:\Users\medib\teemo\keys.env',
   [string]$LogFile = 'C:\Users\medib\teemo\out\run-selfie-batches.log'
 )
@@ -69,6 +73,7 @@ foreach ($t in $Treatments) {
   $se = "$LogFile.$t.err"
   $argv = @('tools\run_paid.py', '--treatment', $t, '--mode', 'selfie',
             '--count', "$Count", '--seed', "$Seed", '--cost-cap', "$CostCap")
+  if ($Series -ne '') { $argv += @('--series', $Series) }
   foreach ($f in $Fix) { $argv += @('--fix', $f) }
   $p = Start-Process -FilePath $py -WorkingDirectory $root -NoNewWindow -Wait -PassThru `
     -ArgumentList $argv `
