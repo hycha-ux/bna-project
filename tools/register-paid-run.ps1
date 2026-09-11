@@ -20,13 +20,20 @@ $root = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $root 'tools\run-selfie-batches.ps1'
 if (-not (Test-Path $runner)) { throw "runner not found: $runner" }
 
-$args = "-ExecutionPolicy Bypass -File `"$runner`" -Treatments $Treatment -Count $Count " +
-        "-Seed $Seed -CostCap $CostCap -LogFile `"$LogFile`""
+# -Command, not -File. With -File every argument is handed over as a literal string, so
+# "-Treatments nasolabial,filler_eyelid" arrived as ONE treatment named "nasolabial,filler_eyelid"
+# and the run died on KeyError (2026-09-11). -Command parses the comma list into a real array.
+$inner = "& '$runner' -Treatments $Treatment -Count $Count " +
+         "-Seed $Seed -CostCap $CostCap -LogFile '$LogFile'"
 # -Fix is appended only when it has a value. With an empty string the line used to read
 # "-Fix  -CostCap 4", and PowerShell then bound "-CostCap" as the value of -Fix: the cost cap
 # silently reverted to the 10.0 default. An axis you did not ask to fix must stay unfixed.
-if ($Fix -ne '') { $args += " -Fix $Fix" }
-if ($Series -ne '') { $args += " -Series $Series" }
+if ($Fix -ne '') { $inner += " -Fix $Fix" }
+# Series stays quoted: the runner takes it as ONE [string] and passes it to --series as one
+# argument. Unquoted, -Command parsed "immediate,1w,2w" into an array, PowerShell flattened it
+# back to "immediate 1w 2w", and run_paid.py saw three arguments (2026-09-11).
+if ($Series -ne '') { $inner += " -Series '$Series'" }
+$args = "-ExecutionPolicy Bypass -Command `"$inner`""
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $args -WorkingDirectory $root
 # One-shot far in the future; we start it by hand right away. The trigger only exists because
 # a task needs one - the run happens via Start-ScheduledTask below.
