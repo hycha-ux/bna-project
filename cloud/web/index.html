@@ -1698,7 +1698,8 @@ async function loadLessons() {
       // 장당 시도 = 재시도 비용. 괄호는 '같은 사람인지 애매해 다시 그린' 비율(잰 것 중에서만 — 못 잰 건 분모 밖).
       `<td>${r.attempts_per_item == null ? '—' : `${r.attempts_per_item}회${r.id_review_rate ? ` <span class="muted" title="동일인 확인 구간(0.35~0.45)이라 다시 그린 비율">(닮음 재확인 ${pct(r.id_review_rate)})</span>` : ''}`}</td>` +
       // 못 잼 = 기계가 동일인을 못 잰 비율(분모는 전체 장수). 통과율에도 제외율에도 안 나타나는 값이라 전용 칸 (2026-09-11 티모 a269b50)
-      `<td>${r.id_na_rate == null ? '—' : `<span class="chip ${r.id_na_rate >= .3 ? 'bad' : r.id_na_rate > .1 ? 'warn' : 'ok'}">${pct(r.id_na_rate)}</span>`}</td>` +
+      // ⚠ 8장 배치는 사진 한 장이 12.5%p 다 — 한 회차로 "예상 8.1%가 맞았다/틀렸다"를 판정하지 마라 (티모 00bab7e: 지난 버전 예상↔실측 차이 중앙값 7.4%p·최대 30.1%p). 3회차(24장)부터 읽는다.
+      `<td>${r.id_na_rate == null ? '—' : `<span class="chip ${r.id_na_rate >= .3 ? 'bad' : r.id_na_rate > .1 ? 'warn' : 'ok'}" title="${r.n < 24 ? `표본 ${r.n}장 — 사진 한 장이 ${(100 / r.n).toFixed(1)}%p라 아직 판정 못 합니다. 24장(3회차)부터 읽어 주세요` : '동일인 검사를 기계가 못 잰 비율(전체 장수 기준)'}">${pct(r.id_na_rate)}</span>${r.n < 24 ? `<span class="muted" style="font-size:var(--fs-xs)"> 표본 부족</span>` : ''}`}</td>` +
       `<td>${r.reviewed}</td>` +
       `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
       `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
