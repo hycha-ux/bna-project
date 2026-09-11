@@ -30,6 +30,9 @@
 - 직후 설정 문장 "skin clean and dry, nothing on it" → "except the small regeneration tape beside each mouth corner" 로 시술별 분기
 - 검수 `effect_visible` → "주름 일부 구간만 바뀌면 감점" 검토
 
+## 확인 대기
+- **인중이 필러 시술인지** — 티모가 필러로 분류해 `immediate_level: final`로 잡음(24d82f2). 연서님 09-11 "확인해봐야 할 것 같다". 아니면 treatments.yaml 인중의 두 줄 삭제로 원복.
+
 ## 나머지 8종 — 빈 카드 (연서님이 채움)
 코 필러 · 목주름 필러 · 인중 · 리프팅 · 코 리프팅 · 스킨부스터 엠보 · 스킨부스터 모공 · 스킨부스터 홍조
 (필러 계열은 "즉시"일 가능성, 에너지·스킨부스터는 1~4주. 직후 흔적은 시술마다 다름 — 추정으로 채우지 않는다)
