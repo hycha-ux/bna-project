@@ -123,6 +123,40 @@ function blobToken() {
   return null;
 }
 
+/**
+ * 생성 키를 자식(로컬 API)에게 물려준다 — **파일이 유일한 원천이다**(`C:\Users\medib\teemo\keys.env`).
+ *
+ * 왜 있는가(2026-09-11 사고): 폴러는 예약작업(`TeemoBnaGenPoller`)이 띄운다. 예약작업 환경엔
+ * `OPENAI_API_KEY` 가 없고(사용자·시스템 환경변수 어디에도 없다 — 실측), `spawnApi` 는
+ * `{...process.env}` 를 그대로 물려주므로 **키 없는 서버**가 조용히 떴다. 종전엔 사람이
+ * `run-selfie-batches.ps1`(이 파일을 읽어 주입한다)로 띄워 둔 서버가 살아 있어 안 드러났고,
+ * 09-09 의 폴러 성공 8건은 전부 *시뮬*(프로바이더를 안 만든다)이라 키를 안 탔다. 그래서 이 경로로
+ * 들어온 **첫 실모드 요청**이 `NotConfigured('openai: OPENAI_API_KEY not set in .env')` 로 죽었다.
+ *
+ * ⚠ 이름 목록은 `tools/run-selfie-batches.ps1` 의 화이트리스트와 **같은 한 벌이다** — 한쪽만 늘리면
+ *   손으로 돌릴 때와 폴러가 돌릴 때 서버의 능력이 갈린다(오류 없이 갈린다).
+ * ⚠ 값은 절대 찍지 않는다. 로그·예외 문안에도 이름만 남긴다.
+ */
+export const PROVIDER_KEYS = ['OPENAI_API_KEY', 'GEMINI_API_KEY', 'HIGGSFIELD_API_KEY', 'HIGGSFIELD_SECRET'];
+const KEYS_FILE = process.env.BNA_KEYS_FILE || path.join('C:', 'Users', 'medib', 'teemo', 'keys.env');
+
+/** 순수 함수 — 이미 환경에 있는 값이 이긴다(손으로 띄운 셸이 일부러 넣은 값을 파일이 덮지 않는다). */
+export function mergeKeys(base, fileText) {
+  const out = { ...base };
+  for (const line of String(fileText || '').split(/\r?\n/)) {
+    const m = /^\s*([A-Z0-9_]+)\s*=\s*"?([^"\r\n]*)"?\s*$/.exec(line);
+    if (!m || !PROVIDER_KEYS.includes(m[1])) continue;
+    if (!out[m[1]] && m[2]) out[m[1]] = m[2];
+  }
+  return out;
+}
+
+function providerEnv() {
+  let text = '';
+  try { if (existsSync(KEYS_FILE)) text = readFileSync(KEYS_FILE, 'utf8'); } catch { /* 못 읽으면 아래 가드가 세운다 */ }
+  return mergeKeys(process.env, text);
+}
+
 export function readJson(file) {
   try { return JSON.parse(readFileSync(file, 'utf8')); } catch { return null; }
 }
@@ -204,8 +238,11 @@ async function ensureApi({ idle }) {
 
 /** 서버를 새로 띄우고 pid·소스 시각을 적는다. **죽이는 판단은 부르는 쪽 몫이다**(돈이 걸린 판단이라 여기 두지 않는다). */
 async function spawnApi() {
+  // 키 없는 서버는 띄우지 않는다 — 마지막 방어선이다(앞단 `needsKey` 가 먼저 막는다).
+  const env = { ...providerEnv(), PYTHONPATH: 'src' };
+  if (!env.OPENAI_API_KEY) throw new Error(`생성 키가 없다 — ${KEYS_FILE} 의 OPENAI_API_KEY 를 확인해라(node C:/Users/medib/teemo/tools/verify-keys.mjs)`);
   const p = spawn(python(), ['-m', 'bna.api', '--port', String(PORT), '--no-open'], {
-    cwd: ROOT, env: { ...process.env, PYTHONPATH: 'src' },
+    cwd: ROOT, env,
     detached: true, stdio: 'ignore', windowsHide: true,
   });
   p.unref();
@@ -239,6 +276,12 @@ async function addToQueue(job) {
  *   (경과 시리즈 시점)를 빠뜨리면 시점별 사진을 시켰는데 전·후 2장이 조용히 나온다.
  *   `genreq.mjs` 의 `validate` 가 통과시키는 칸과 `queue.py` 의 `add` 가 받는 칸이 짝이다.
  */
+/**
+ * 이 요청이 생성 키를 타는가 — 시뮬(`simulate`)은 프로바이더를 안 만들어 키 없이도 돈다.
+ * 그래서 키가 없는 회차라도 시뮬 요청까지 세우지는 않는다(09-09 의 성공 8건이 그 모양이었다).
+ */
+export const needsKey = (req) => !req?.simulate;
+
 export function jobSpec(req) {
   return {
     treatment: req.treatment, mode: req.mode, count: req.count,
@@ -292,6 +335,13 @@ async function main() {
       if (a.kind === 'accept' || a.kind === 'add') {
         // 받음을 먼저 적고 나서 큐에 넣는다. 반대로 하면 화면이 '요청됨'인 채로 생성이 돈다.
         let req = known.get(a.id);
+        // 키가 없으면 **받기 전에** 세운다. 받아 버리면 생성에서 죽어 요청이 '실패'로 소모되고
+        // 사람이 다시 보내야 한다(2026-09-11 실사고). 여기서 멈추면 '요청됨'인 채 남아,
+        // 키를 채운 다음 회차가 재전송 없이 그대로 집어 간다.
+        if (needsKey(req) && !providerEnv().OPENAI_API_KEY) {
+          log(`대기 ${a.id} — 생성 키가 없어 받지 않는다(${KEYS_FILE} 의 OPENAI_API_KEY). 요청은 그대로 둔다`);
+          continue;
+        }
         if (a.kind === 'accept') {
           const r = await GR.advance(token, a.id, 'accepted', { accepted_at: new Date().toISOString(), host: os.hostname() });
           if (r.error) { log(`건너뜀 ${a.id} — ${r.error}`); continue; }   // 그 사이 취소됐다

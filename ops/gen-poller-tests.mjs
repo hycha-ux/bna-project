@@ -1,7 +1,7 @@
 // 생성 요청 폴러 순수 함수 회귀 — 네트워크 0·생성 0. `node ops/gen-poller-tests.mjs`
 // 여기서 보는 것은 "이번 회차에 무엇을 할지"(plan) 하나다. 돈이 나가는 판단이라 이중 등록·
 // 취소 무시·유령 완료 같은 실패 모양을 시료로 박아 둔다.
-import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers } from './gen-poller.mjs';
+import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers, mergeKeys, needsKey, PROVIDER_KEYS } from './gen-poller.mjs';
 
 const fails = [];
 const ok = (c, label) => { console.log((c ? 'PASS  ' : 'FAIL  ') + label); if (!c) fails.push(label); };
@@ -60,6 +60,21 @@ ok(restartBlockers([JOB({ status: 'running' })]).length === 1 && restartBlockers
 ok(restartBlockers([JOB({ status: 'done' }), JOB({ status: 'error' }), JOB({ status: 'cancelled' })]).length === 0,
    '끝난 작업은 재시작을 막지 않는다');
 ok(restartBlockers(null).length === 0 && restartBlockers([]).length === 0, '큐를 못 읽어도 터지지 않는다');
+
+// ⑥ 생성 키 물려주기 — 2026-09-11 사고(예약작업 환경엔 키가 없어 키 없는 서버가 조용히 떴다).
+//    ⚠ 시료에 진짜 키 모양을 쓰지 않는다. 값이 아니라 '빈칸이 채워졌는가'만 본다.
+const FILE = ['# 주석', 'OPENAI_API_KEY=sk-test-not-real', 'GEMINI_API_KEY="g-test"', 'KOS_LOGIN_PW=pw', ''].join('\n');
+ok(mergeKeys({}, FILE).OPENAI_API_KEY === 'sk-test-not-real', '파일의 생성 키를 자식 환경에 채운다');
+ok(mergeKeys({}, FILE).GEMINI_API_KEY === 'g-test', '따옴표는 벗겨서 채운다');
+ok(mergeKeys({}, FILE).KOS_LOGIN_PW === undefined, '화이트리스트 밖 이름은 물려주지 않는다(진료 계정이 생성 서버로 새면 안 된다)');
+ok(mergeKeys({ OPENAI_API_KEY: 'from-shell' }, FILE).OPENAI_API_KEY === 'from-shell', '이미 환경에 있는 값을 파일이 덮지 않는다');
+ok(mergeKeys({ PATH: 'x' }, FILE).PATH === 'x', '나머지 환경은 그대로 물려준다');
+ok(!mergeKeys({}, '').OPENAI_API_KEY && !mergeKeys({}, null).OPENAI_API_KEY, '파일이 없거나 비어도 터지지 않는다(부르는 쪽이 세운다)');
+ok(mergeKeys({}, 'OPENAI_API_KEY=').OPENAI_API_KEY === undefined, '빈 값은 채운 것으로 치지 않는다');
+ok(PROVIDER_KEYS.includes('OPENAI_API_KEY') && !PROVIDER_KEYS.some((k) => k.startsWith('KOS_')),
+   '물려줄 이름은 생성용 4개뿐이다(run-selfie-batches.ps1 화이트리스트와 한 벌)');
+ok(needsKey(REQ()) === true && needsKey(REQ({ simulate: true })) === false,
+   '시뮬 요청은 키 없이도 돈다 — 키 없는 회차라도 시뮬까지 세우지 않는다');
 
 console.log(fails.length ? `실패 ${fails.length}건` : '전부 통과');
 process.exit(fails.length ? 1 : 0);
