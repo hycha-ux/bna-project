@@ -135,6 +135,7 @@ export function plan(root = ROOT, manifest = {}) {
 // 드라이브 안에서 두 레인으로 갈린다. 목적이 달라서 합치지 않는다:
 //   채택본/       — 사람이 **채택**한 사진만. 이게 실제로 쓰는 창고다.
 //                   제외·미검수는 여기 절대 안 들어온다(지시 그대로).
+//                   안은 `팔자주름_셀카/0003_한국_30대_남/전.jpg·후.jpg` — 한 사람 = 한 폴더, 마스크 없음 (2026-09-14).
 //   _원본안전망/  — 전량 사본. PC 가 죽었을 때를 위한 것이지 창고가 아니다
 //                   (2026-09-08 어제 지시로 만든 레인 — `--no-full` 로 끌 수 있다).
 //   _제외됨/      — 채택했다가 나중에 제외한 사진이 **여기로 옮겨진다**.
@@ -167,20 +168,64 @@ export function reviews(root = ROOT) {
       let rv = {}, meta = {};
       try { rv = JSON.parse(readFileSync(rf, 'utf8')); } catch { continue; }
       try { meta = JSON.parse(readFileSync(path.join(d, 'meta.json'), 'utf8')); } catch { /* 메타 없으면 unknown */ }
-      out[`${b.name}/${it.name}`] = { pick: rv.pick || null, treatment: meta.treatment || 'unknown', mode: meta.mode || 'unknown' };
+      const v = meta.variation || {};
+      out[`${b.name}/${it.name}`] = { pick: rv.pick || null, treatment: meta.treatment || 'unknown', mode: meta.mode || 'unknown',
+        country: v.country?.key || null, age: v.age?.key || null, gender: v.gender?.key || null };
     }
   }
   return out;
 }
 
+// ── 채택본 이름 (2026-09-14 성연서님 "알아보기가 너무 힘들고 중복 사진들") ────────
+// 전에는 `채택본/nasolabial_selfie/20260911-094915-xxxx_0003_nasolabial_selfie_korea30sm_0003_after.jpg` 였다.
+// 드라이브 카드는 앞 20자만 보여 줘서 전부 배치 시각으로 보였고, 전·후·마스크가 한 폴더에 흩어져
+// 같은 사람이 서너 번 나왔다. 지금은 **한 사람 = 한 폴더**, 안에 전.jpg·후.jpg 만. 마스크(검수용)는 안 올린다.
+//   채택본/팔자주름_셀카/0003_한국_30대_남/전.jpg
+const MODE_KO = { selfie: '셀카', clinical: '후기' };
+const COUNTRY_KO = { korea: '한국', japan: '일본', china: '중국', sea: '동남아', west: '서양' };
+const AGE_KO = { late_teens: '10대후반', early_20s: '20대초반', late_20s: '20대후반', '30s': '30대', '40s': '40대', '50s': '50대', '60s': '60대' };
+const GENDER_KO = { female: '여', male: '남' };
+const WHEN_KO = { immediate: '직후', '1w': '1주', '2w': '2주', '4w': '4주', '8w': '8주', '12w': '12주' };
+const MASK_RE = /(^|\/)mask\.png$/i;
+let TREAT_KO = null;
+/** config/treatments.yaml 의 name_ko — yaml 의존성 없이 두 줄 패턴만 읽는다(키 줄 + name_ko 줄). */
+export function treatNames(root = ROOT) {
+  if (TREAT_KO && root === ROOT) return TREAT_KO;
+  const out = {};
+  try {
+    let cur = null;
+    for (const line of readFileSync(path.join(root, 'config', 'treatments.yaml'), 'utf8').split(/\r?\n/)) {
+      const k = /^([a-z_][a-z0-9_]*):\s*$/.exec(line);
+      if (k) { cur = k[1]; continue; }
+      const n = /^\s+name_ko:\s*(.+?)\s*$/.exec(line);
+      if (n && cur) out[cur] = n[1].replace(/^['"]|['"]$/g, '');
+    }
+  } catch { /* 설정이 없으면 영문 키 그대로 */ }
+  if (root === ROOT) TREAT_KO = out;
+  return out;
+}
+/** 사람이 읽는 채택본 자리. 마스크·기타 파일이면 null. */
+export function pickedDest(rel, r, key, names = treatNames()) {
+  if (!IMG_RE.test(rel) || MASK_RE.test(rel)) return null;
+  const base = path.posix.basename(rel);
+  const m = /_(before|after)(?:_([a-z0-9]+))?\.(jpe?g|png|webp)$/i.exec(base);
+  if (!m) return null;                                   // 전·후가 아닌 그림(있다면)은 채택본에 안 넣는다
+  const file = m[1] === 'before' ? '전' : m[2] ? `후_${WHEN_KO[m[2]] || m[2]}` : '후';
+  const item = key.split('/')[1];
+  const who = [item, COUNTRY_KO[r.country] || r.country, AGE_KO[r.age] || r.age, GENDER_KO[r.gender] || r.gender].filter(Boolean).join('_');
+  return `${LANE_PICKED}/${names[r.treatment] || r.treatment}_${MODE_KO[r.mode] || r.mode}/${who}/${file}.${m[3].toLowerCase()}`;
+}
+
 /** 파일 하나가 드라이브 어느 자리로 갈지. 여러 자리일 수 있다(창고 + 안전망). */
-export function targetsFor(rel, rv, { full = true } = {}) {
+export function targetsFor(rel, rv, { full = true, names } = {}) {
   const out = [];
   if (full) out.push({ dest: `${LANE_FULL}/${rel}`, key: null });
   const key = itemKeyOf(rel);
   const r = key && rv[key];
-  if (r && r.pick === 'pick' && IMG_RE.test(rel))
-    out.push({ dest: `${LANE_PICKED}/${r.treatment}_${r.mode}/${key.replace('/', '_')}_${path.posix.basename(rel)}`, key });
+  if (r && r.pick === 'pick') {
+    const dest = pickedDest(rel, r, key, names);
+    if (dest) out.push({ dest, key });
+  }
   return out;
 }
 
@@ -189,18 +234,27 @@ export function planLanes(root = ROOT, manifest = {}, opts = {}) {
   const rv = opts.reviews || reviews(root);
   const files = [];
   for (const t of TARGETS) for (const f of walk(path.join(root, t), root)) files.push(f);
+  const names = opts.names || treatNames(root);
   const todo = [];
+  const moves = [];                                      // 이름 규칙이 바뀐 것: 드라이브 안에서 이름·폴더만 바꾼다(재업로드 0)
   const wanted = new Set();
+  const taken = new Set();                               // 옮기기로 잡힌 옛 자리 — 내리기 대상에서 뺀다
   for (const f of files)
-    for (const t of targetsFor(f.rel, rv, opts)) {
+    for (const t of targetsFor(f.rel, rv, { ...opts, names })) {
       wanted.add(t.dest);
-      if (manifest[t.dest]?.sig !== f.sig) todo.push({ ...f, dest: t.dest, key: t.key });
+      if (manifest[t.dest]?.sig === f.sig) continue;
+      // 옛 규칙의 자리는 `채택본/<시술_모드>/<배치_아이템>_<원본 파일명>` 이었다 — 같은 아이템·같은 원본 이름·같은 서명이어야 옮긴다
+      //   (서명은 크기:수정시각이라 전·후가 같은 순간에 같은 크기로 써지면 겹칠 수 있다 → 이름까지 본다)
+      const oldName = t.key ? `${t.key.replace('/', '_')}_${path.posix.basename(f.rel)}` : null;
+      const old = oldName && Object.entries(manifest).find(([d, m]) => d !== t.dest && d.startsWith(LANE_PICKED + '/') && path.posix.basename(d) === oldName && m.id && m.key === t.key && m.sig === f.sig && !taken.has(d));
+      if (old) { taken.add(old[0]); moves.push({ from: old[0], dest: t.dest, id: old[1].id, sig: f.sig, key: t.key }); }
+      else todo.push({ ...f, dest: t.dest, key: t.key });
     }
-  // 채택본 레인에 있는데 더 이상 채택이 아닌 것 → 내린다(지우지 않고 _제외됨/ 으로 옮긴다)
+  // 채택본 레인에 있는데 더 이상 채택이 아닌 것(마스크 포함) → 내린다(지우지 않고 _제외됨/ 으로 옮긴다)
   const evict = Object.entries(manifest)
-    .filter(([dest, m]) => dest.startsWith(LANE_PICKED + '/') && m.id && !wanted.has(dest))
+    .filter(([dest, m]) => dest.startsWith(LANE_PICKED + '/') && m.id && !wanted.has(dest) && !taken.has(dest))
     .map(([dest, m]) => ({ dest, id: m.id, key: m.key || null }));
-  return { files, todo, evict, reviews: rv };
+  return { files, todo, moves, evict, reviews: rv };
 }
 
 /** 아이템 하나의 현재 드라이브 상태 — 화면 배지가 이걸 쓴다. */
@@ -293,11 +347,22 @@ async function upload(file, tok, rootId, cache, prevId) {
  * 이 백업은 삭제 권한을 쓰지 않는다(단방향 원칙). 오판이면 드라이브에서 도로 끌어오면 된다.
  */
 async function moveOut(e, tok, rootId, cache) {
-  const dest = `${LANE_OUT}/${e.dest.split('/').slice(1, -1).join('/')}`;
+  const dest = MASK_RE.test(e.dest) ? `${LANE_OUT}/_마스크` : `${LANE_OUT}/${e.dest.split('/').slice(1, -1).join('/')}`;
   const to = await folderFor(dest.replace(/\/$/, ''), tok, rootId, cache);
   const cur = await gj(`${API}/files/${e.id}?fields=parents&${COMMON}`, tok);
   const from = (cur.parents || []).join(',');
   await gj(`${API}/files/${e.id}?addParents=${to}${from ? `&removeParents=${from}` : ''}&fields=id&${COMMON}`, tok, { method: 'PATCH' });
+}
+
+/** 드라이브 안에서 이름·폴더만 바꾼다 — 같은 파일을 두 번 올리지 않는다. */
+async function moveTo(mv, tok, rootId, cache) {
+  const dir = path.posix.dirname(mv.dest);
+  const to = await folderFor(dir === '.' ? '' : dir, tok, rootId, cache);
+  const cur = await gj(`${API}/files/${mv.id}?fields=parents&${COMMON}`, tok);
+  const from = (cur.parents || []).filter((p) => p !== to).join(',');
+  await gj(`${API}/files/${mv.id}?addParents=${to}${from ? `&removeParents=${from}` : ''}&fields=id&${COMMON}`, tok, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: path.posix.basename(mv.dest) }),
+  });
 }
 
 function log(line) {
@@ -312,9 +377,10 @@ function log(line) {
 async function main() {
   const man = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, 'utf8')) : {};
   const only = argVal('--item');                       // "<배치>/<아이템>" — 검수 직후 그 한 장만 (즉시 반영)
-  let { files, todo, evict } = planLanes(ROOT, man, { full: FULL });
+  let { files, todo, moves, evict } = planLanes(ROOT, man, { full: FULL });
   if (only) {
     todo = todo.filter((f) => f.key === only);
+    moves = moves.filter((m) => m.key === only);
     evict = evict.filter((e) => e.key === only);
   }
   const mb = (n) => (n / 1024 / 1024).toFixed(1);
@@ -322,9 +388,11 @@ async function main() {
   const lane = (d) => d.split('/')[0];
 
   if (DRY) {
-    console.log(`[dry] 대상 ${files.length}개 · 올릴 것 ${todo.length}개(${mb(bytes)}MB) · 내릴 것 ${evict.length}개 · 업로드 0`);
+    console.log(`[dry] 대상 ${files.length}개 · 올릴 것 ${todo.length}개(${mb(bytes)}MB) · 이름 바꿀 것 ${moves.length}개 · 내릴 것 ${evict.length}개 · 업로드 0`);
     for (const f of todo.slice(0, 10)) console.log(`  + [${lane(f.dest)}] ${f.dest}`);
     if (todo.length > 10) console.log(`  … 외 ${todo.length - 10}개`);
+    for (const m of moves.slice(0, 10)) console.log(`  ~ ${m.from} → ${m.dest}`);
+    if (moves.length > 10) console.log(`  … 외 ${moves.length - 10}개`);
     for (const e of evict.slice(0, 10)) console.log(`  - [제외] ${e.dest}`);
     return;
   }
@@ -338,7 +406,7 @@ async function main() {
     process.exit(3); // 고장이 아니라 '아직'이다. 감시가 이 코드를 빨간불로 세지 않게 한다.
   }
 
-  if (!todo.length && !evict.length) {
+  if (!todo.length && !moves.length && !evict.length) {
     console.log(`올리거나 내릴 것 없음 (대상 ${files.length}개 전부 최신)`);
     return;
   }
@@ -360,6 +428,20 @@ async function main() {
     }
     if (done % 25 === 0) writeFileSync(MANIFEST, JSON.stringify(man)); // 중간에 죽어도 한 일은 남긴다
   }
+  // 이름 규칙이 바뀐 것 — 드라이브 안에서 옮기기만 (올리기 전에 하면 안 된다: 폴더 캐시를 같이 쓴다)
+  let renamed = 0;
+  for (const mv of moves) {
+    try {
+      await moveTo(mv, tok, keys.GDRIVE_BACKUP_FOLDER_ID, cache);
+      man[mv.dest] = { sig: mv.sig, id: mv.id, at: Date.now(), key: mv.key };
+      delete man[mv.from];
+      renamed++;
+    } catch (err) {
+      failed++;
+      log(`이름 바꾸기 실패 ${mv.from} → ${mv.dest} — ${err.message}`);
+    }
+    if (renamed % 25 === 0) writeFileSync(MANIFEST, JSON.stringify(man));
+  }
   // 제외로 바뀐 것 내리기 — 삭제가 아니라 `_제외됨/` 으로 이동이다(오판을 되돌릴 수 있게)
   for (const e of evict) {
     try {
@@ -372,7 +454,7 @@ async function main() {
     }
   }
   writeFileSync(MANIFEST, JSON.stringify(man));
-  const line = `백업 ${done}개 올림(${mb(bytes)}MB)${moved ? ` · 제외로 ${moved}개 내림` : ''}${failed ? ` · 실패 ${failed}` : ''} · 누적 ${Object.keys(man).length}개 · 방식 ${mode}`;
+  const line = `백업 ${done}개 올림(${mb(bytes)}MB)${renamed ? ` · 이름 ${renamed}개 바꿈` : ''}${moved ? ` · 제외로 ${moved}개 내림` : ''}${failed ? ` · 실패 ${failed}` : ''} · 누적 ${Object.keys(man).length}개 · 방식 ${mode}`;
   console.log(line);
   log(line);
   if (failed) process.exit(1);

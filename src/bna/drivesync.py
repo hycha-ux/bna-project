@@ -73,7 +73,7 @@ def links_of(batch: str, item: str) -> list:
     out = []
     for dest, m in man.items():
         if dest.startswith(LANE_PICKED) and m.get("key") == key and m.get("id"):
-            out.append({"name": dest.rsplit("/", 1)[-1], "id": m["id"], "url": f"https://drive.google.com/file/d/{m['id']}/view"})
+            out.append({"name": "/".join(dest.split("/")[-2:]), "id": m["id"], "url": f"https://drive.google.com/file/d/{m['id']}/view"})   # 폴더/파일 — 전.jpg 만으로는 누구 것인지 모른다
     return sorted(out, key=lambda f: f["name"])
 
 

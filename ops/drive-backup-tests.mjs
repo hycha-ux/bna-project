@@ -9,7 +9,7 @@ import { generateKeyPairSync, createVerify } from 'node:crypto';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { plan, walk, authMode, readKeys, signJwt, SKIP_DIRS, SKIP_EXT } from './drive-backup.mjs';
+import { plan, walk, authMode, readKeys, signJwt, SKIP_DIRS, SKIP_EXT, planLanes, pickedDest, LANE_PICKED, LANE_OUT } from './drive-backup.mjs';
 
 let fails = 0;
 const ok = (cond, msg) => {
@@ -105,6 +105,46 @@ ok(!/(?<!\\)\\Users\\/.test(codeOnly),
 const rawPath = /String\.raw`([^`]*install-keys[^`]*)`/.exec(oauthSrc)?.[1];
 ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
    '금고 이관 대상(install-keys.mjs) 경로가 실제로 존재해야 한다');
+
+// ⑥ 채택본 이름 — 한 사람 = 한 폴더, 전·후만, 마스크 제외 (2026-09-14 성연서님 "알아보기가 너무 힘들고 중복 사진들")
+{
+  const r2 = mkdtempSync(path.join(tmpdir(), 'bna-lanes-'));
+  const it = path.join(r2, 'outputs', '20260911-094915-ab12', '0003');
+  mkdirSync(it, { recursive: true });
+  const stem = 'nasolabial_selfie_korea30sm_0003';
+  writeFileSync(path.join(it, `${stem}_before.jpg`), 'B');
+  writeFileSync(path.join(it, `${stem}_after.jpg`), 'A');
+  writeFileSync(path.join(it, `${stem}_after_1w.jpg`), 'A1');
+  writeFileSync(path.join(it, 'mask.png'), 'M');
+  writeFileSync(path.join(it, 'meta.json'), JSON.stringify({ treatment: 'nasolabial', mode: 'selfie',
+    variation: { country: { key: 'korea' }, age: { key: '30s' }, gender: { key: 'male' } } }));
+  writeFileSync(path.join(it, 'review.json'), JSON.stringify({ pick: 'pick' }));
+  const names = { nasolabial: '팔자주름' };
+  const L = planLanes(r2, {}, { full: false, names });
+  const dests = L.todo.map((f) => f.dest).sort();
+  ok(dests.join(' | ') === [
+    `${LANE_PICKED}/팔자주름_셀카/0003_한국_30대_남/전.jpg`,
+    `${LANE_PICKED}/팔자주름_셀카/0003_한국_30대_남/후.jpg`,
+    `${LANE_PICKED}/팔자주름_셀카/0003_한국_30대_남/후_1주.jpg`].sort().join(' | '),
+    `채택본은 사람 폴더 안에 전·후(시점)만 — 실제 ${dests.join(', ')}`);
+  ok(!dests.some((d) => /mask/i.test(d)), '마스크는 채택본에 올리지 않는다');
+  ok(pickedDest('outputs/b/0001/meta.json', { treatment: 'x', mode: 'selfie' }, 'b/0001', names) === null, '그림이 아니면 채택본 자리가 없다');
+
+  // 옛 이름으로 이미 올라간 것은 다시 올리지 않고 드라이브 안에서 옮긴다. 옛 마스크는 _제외됨/ 으로 내린다.
+  const key = '20260911-094915-ab12/0003';
+  const sigOf = (n) => L.files.find((f) => f.rel.endsWith(n)).sig;
+  const oldMan = {
+    [`${LANE_PICKED}/nasolabial_selfie/${key.replace('/', '_')}_${stem}_before.jpg`]: { sig: sigOf('_before.jpg'), id: 'idB', key },
+    [`${LANE_PICKED}/nasolabial_selfie/${key.replace('/', '_')}_mask.png`]: { sig: sigOf('mask.png'), id: 'idM', key },
+  };
+  const M = planLanes(r2, oldMan, { full: false, names });
+  ok(M.moves.length === 1 && M.moves[0].id === 'idB' && M.moves[0].dest.endsWith('/0003_한국_30대_남/전.jpg'),
+    `옛 자리의 같은 파일은 이름만 바꾼다(재업로드 0) — 실제 ${JSON.stringify(M.moves)}`);
+  ok(!M.todo.some((f) => f.dest.endsWith('/전.jpg')) && M.todo.length === 2, `옮기는 파일은 올릴 목록에서 빠진다 — 올릴 것 ${M.todo.length}`);
+  ok(M.evict.length === 1 && M.evict[0].id === 'idM', '옛 마스크는 내리기 대상이다(지우지 않는다)');
+  ok(!M.evict.some((e) => e.id === 'idB'), '옮기는 파일을 내리기로 잡지 않는다');
+  rmSync(r2, { recursive: true, force: true });
+}
 
 rmSync(root, { recursive: true, force: true });
 console.log();
