@@ -511,7 +511,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
           <div class="card prog" id="prog-create" hidden></div>
           <div class="card" style="margin-top:0">
             <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
-            <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th class="num" title="이 금액에 닿으면 배치가 멈춥니다(세트를 끝낸 뒤 재서 한 세트만큼 넘칠 수 있음)">상한</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
           <div id="plan-out" hidden style="margin-top:var(--gap)">
@@ -1042,7 +1042,7 @@ async function loadGenRequests() {
     const res = j.status === 'done' && j.result ? `${j.result.passed ?? '?'}/${j.result.total ?? '?'}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error || '')}">${esc((j.error || '').slice(0, 60))}</span>` : '';
     const prog = j.status === 'running' && j.progress ? `<span class="muted"> ${j.progress.done ?? 0}/${j.progress.planned ?? j.count}</span>` : j.status === 'requested' && j.requested_by ? `<span class="muted" style="font-size:var(--fs-xs)"> ${esc(j.requested_by)}</span>` : '';
     return `<tr><td class="muted">${i + 1}</td><td class="muted" style="white-space:nowrap" title="요청 ${esc(j.requested_at || '')}${j.accepted_at ? ' · 받음 ' + esc(j.accepted_at) : ''}${j.done_at ? ' · 끝 ' + esc(j.done_at) : ''}">${fmtWhen(j.requested_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode] || j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td>
-      <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">—</td>
+      <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num">—</td><td class="num">${j.cost_cap != null ? '$' + j.cost_cap : '<span class="muted">없음</span>'}</td>
       <td style="white-space:nowrap"><span class="chip ${cls[j.status] || ''}">${KO[j.status] || j.status}</span>${prog}</td><td style="white-space:nowrap">${res}</td>
       <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-gq=cancel]').forEach(b => b.onclick = async () => { try { await api('/api/gen_requests/cancel', {id: b.dataset.id}); loadGenRequests(); } catch (e) { msg('#req-msg', e.message, 'err'); } });
@@ -1065,7 +1065,7 @@ async function loadQueue() {
     const prog = j.status === 'running' && p ? `<span class="muted"> ${p.done}/${p.planned}</span>` : '';
     const res = j.status === 'done' ? `${r.passed ?? '?'}/${r.total ?? '?'} · $${(p?.cost ?? 0).toFixed(2)}${r.stopped ? ` <span class="chip acc" title="${esc(STOP_KO(r.stopped))}">${r.stopped.startsWith('target_pass') ? '목표 도달' : '상한 도달'}</span>` : ''}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error)}">${esc((j.error || '').slice(0, 24))}</span>` : '';
     return `<tr><td class="muted">${i+1}</td><td class="muted" style="white-space:nowrap">${fmtWhen(j.created_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td>
-      <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num" title="${j.cost_cap != null ? '상한 $' + j.cost_cap : ''}">$${j.est_cost}</td>
+      <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num">$${j.est_cost}</td><td class="num">${j.cost_cap != null ? '$' + j.cost_cap : '<span class="muted">없음</span>'}</td>
       <td style="white-space:nowrap">${stKo[j.status]}${prog}</td><td style="white-space:nowrap">${res}</td>
       <td style="white-space:nowrap;text-align:right">${j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; }).join('');
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
