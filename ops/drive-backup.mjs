@@ -210,10 +210,23 @@ export function pickedDest(rel, r, key, names = treatNames()) {
   const base = path.posix.basename(rel);
   const m = /_(before|after)(?:_([a-z0-9]+))?\.(jpe?g|png|webp)$/i.exec(base);
   if (!m) return null;                                   // 전·후가 아닌 그림(있다면)은 채택본에 안 넣는다
-  const file = m[1] === 'before' ? '전' : m[2] ? `후_${WHEN_KO[m[2]] || m[2]}` : '후';
   const item = key.split('/')[1];
+  // 같은 아이템을 다른 인물로 다시 뽑으면 옛 그림이 폴더에 남는다(2026-09-14 티모 --dry, 11자리 충돌). 검수한 건 meta 의
+  //   최신 인물뿐이라, 파일 이름의 인물 꼬리표(batch.py _save 의 stem: <시술>_<모드>_<국가><나이><성별머리글자>_<아이템>)가
+  //   meta 와 다르면 채택본에 넣지 않는다 — 옛 그림이 남의 이름표를 다는 일이 없게.
+  if (r.country && r.age && r.gender) {
+    const stem = `${r.treatment}_${r.mode}_${r.country}${r.age}${String(r.gender)[0]}_${item}_`;
+    if (!base.startsWith(stem)) return null;
+  }
+  const file = m[1] === 'before' ? '전' : m[2] ? `후_${WHEN_KO[m[2]] || m[2]}` : '후';
   const who = [item, COUNTRY_KO[r.country] || r.country, AGE_KO[r.age] || r.age, GENDER_KO[r.gender] || r.gender].filter(Boolean).join('_');
   return `${LANE_PICKED}/${names[r.treatment] || r.treatment}_${MODE_KO[r.mode] || r.mode}/${who}/${file}.${m[3].toLowerCase()}`;
+}
+
+/** 배치 id(20260911-094915-ab12) → 월일-시분(0911-0949). 사람 폴더가 겹칠 때만 꼬리로 붙인다. */
+export function batchTag(key) {
+  const m = /^\d{4}(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(key);
+  return m ? `${m[1]}${m[2]}-${m[3]}${m[4]}` : key.split('/')[0];
 }
 
 /** 파일 하나가 드라이브 어느 자리로 갈지. 여러 자리일 수 있다(창고 + 안전망). */
@@ -239,8 +252,21 @@ export function planLanes(root = ROOT, manifest = {}, opts = {}) {
   let moves = [];                                        // 이름 규칙이 바뀐 것: 드라이브 안에서 이름·폴더만 바꾼다(재업로드 0)
   const wanted = new Set();
   const taken = new Set();                               // 옮기기로 잡힌 옛 자리 — 내리기 대상에서 뺀다
-  for (const f of files)
-    for (const t of targetsFor(f.rel, rv, { ...opts, names })) {
+  // 자리를 먼저 다 모은다 — 배치가 달라도 아이템 번호·인적사항이 같으면 사람 폴더가 겹친다(2026-09-14 티모 --dry, 1자리).
+  //   그때만 폴더 이름 끝에 배치 꼬리(월일-시분)를 붙인다. 평소엔 안 붙인다(붙이면 다시 알아보기 힘들어진다).
+  const cands = [];
+  for (const f of files) for (const t of targetsFor(f.rel, rv, { ...opts, names })) cands.push({ f, t });
+  const folderKeys = new Map();                          // 사람 폴더 → 그 폴더를 쓰는 아이템(배치/번호)들
+  for (const { t } of cands) if (t.key) {
+    const dir = path.posix.dirname(t.dest);
+    if (!folderKeys.has(dir)) folderKeys.set(dir, new Set());
+    folderKeys.get(dir).add(t.key);
+  }
+  for (const { t } of cands) if (t.key) {
+    const dir = path.posix.dirname(t.dest);
+    if ((folderKeys.get(dir)?.size || 0) > 1) t.dest = `${dir}_${batchTag(t.key)}/${path.posix.basename(t.dest)}`;
+  }
+  for (const { f, t } of cands) {
       wanted.add(t.dest);
       if (manifest[t.dest]?.sig === f.sig) continue;
       // 옛 규칙의 자리는 `채택본/<시술_모드>/<배치_아이템>_<원본 파일명>` 이었다 — 같은 아이템·같은 원본 이름·같은 서명이어야 옮긴다

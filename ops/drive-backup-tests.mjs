@@ -143,6 +143,27 @@ ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
   ok(!M.todo.some((f) => f.dest.endsWith('/전.jpg')) && M.todo.length === 2, `옮기는 파일은 올릴 목록에서 빠진다 — 올릴 것 ${M.todo.length}`);
   ok(M.evict.length === 1 && M.evict[0].id === 'idM', '옛 마스크는 내리기 대상이다(지우지 않는다)');
   ok(!M.evict.some((e) => e.id === 'idB'), '옮기는 파일을 내리기로 잡지 않는다');
+
+  // 같은 아이템을 다른 인물로 다시 뽑아 남은 옛 그림은 채택본에 안 들어간다 (2026-09-14 티모 --dry 11자리 충돌)
+  writeFileSync(path.join(it, 'nasolabial_selfie_korealate_20sf_0003_before.jpg'), 'OLD-B');
+  writeFileSync(path.join(it, 'nasolabial_selfie_korealate_20sf_0003_after.jpg'), 'OLD-A');
+  const L2 = planLanes(r2, {}, { full: false, names });
+  ok(L2.todo.length === 3 && !L2.todo.some((f) => /korealate_20sf/.test(f.rel)), `옛 인물의 그림은 채택본 자리가 없다 — 올릴 것 ${L2.todo.length}`);
+  ok(L2.conflicts.length === 0, '옛 그림을 걸러내면 자리 다툼이 없다');
+
+  // 배치가 달라도 번호·인적사항이 같으면 그때만 폴더 끝에 배치 꼬리(월일-시분)가 붙는다 (1자리 충돌)
+  const it2 = path.join(r2, 'outputs', '20260912-101500-zz99', '0003');
+  mkdirSync(it2, { recursive: true });
+  writeFileSync(path.join(it2, `${stem}_before.jpg`), 'B2');
+  writeFileSync(path.join(it2, `${stem}_after.jpg`), 'A2');
+  writeFileSync(path.join(it2, 'meta.json'), JSON.stringify({ treatment: 'nasolabial', mode: 'selfie',
+    variation: { country: { key: 'korea' }, age: { key: '30s' }, gender: { key: 'male' } } }));
+  writeFileSync(path.join(it2, 'review.json'), JSON.stringify({ pick: 'pick' }));
+  const L3 = planLanes(r2, {}, { full: false, names });
+  const dirs = [...new Set(L3.todo.map((f) => path.posix.dirname(f.dest)))].sort();
+  ok(dirs.length === 2 && dirs.every((d) => /0003_한국_30대_남_(0911-0949|0912-1015)$/.test(d)),
+    `겹칠 때만 배치 꼬리가 붙어 두 사람이 갈린다 — 실제 ${dirs.join(', ')}`);
+  ok(L3.conflicts.length === 0 && L3.todo.length === 5, `꼬리를 붙이면 자리 다툼이 없다 — 올릴 것 ${L3.todo.length}`);
   rmSync(r2, { recursive: true, force: true });
 }
 
@@ -160,12 +181,13 @@ ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
     variation: { country: { key: 'korea' }, age: { key: '30s' }, gender: { key: 'male' } } }));
   writeFileSync(path.join(it, 'review.json'), JSON.stringify({ pick: 'pick' }));
   const names = { nasolabial: '팔자주름' };
+  // (2026-09-14 빌디) 원인을 위에서 막았다 — 옛 인물(korea30sf)의 그림은 채택본 자리를 안 받는다.
+  //   그래서 다툼 자체가 없고, 아래 fail-closed 가드는 안전망으로만 남는다.
   const C = planLanes(r3, {}, { full: false, names });
-  ok(C.todo.length === 0, `다투는 자리는 올리지 않는다 — 올릴 것 ${C.todo.length}`);
-  ok(C.conflicts.length === 4, `충돌은 건건이 보고된다 — ${C.conflicts.length}`);
-  ok(new Set(C.conflicts.map((c) => c.dest)).size === 2, '전·후 두 자리가 다툰다');
+  ok(C.todo.length === 2 && C.todo.every((f) => /korea30sm/.test(f.rel)), `최신 인물의 전·후만 올린다 — 올릴 것 ${C.todo.length}`);
+  ok(C.conflicts.length === 0, `옛 인물을 걸러내면 다툼이 없다 — ${C.conflicts.length}`);
 
-  // 이미 올라간 옛 이름은 건드리지 않고(덮어쓰면 id 가 사라진다) 내리지도 않는다
+  // 이미 올라간 옛 이름: 최신 인물 것은 옮기고, 옛 인물 것은 채택본에서 내린다(검수한 그림이 아니다). 덮어쓰기는 없다.
   const key = '20260910-153348-63cb/0001';
   const sigOf = (n) => C.files.find((f) => f.rel.endsWith(n)).sig;
   const pre = `${LANE_PICKED}/nasolabial_selfie/${key.replace('/', '_')}`;
@@ -174,8 +196,9 @@ ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
     [`${pre}_nasolabial_selfie_korea30sm_0001_before.jpg`]: { sig: sigOf('korea30sm_0001_before.jpg'), id: 'idM', key },
   };
   const D = planLanes(r3, oldMan, { full: false, names });
-  ok(D.moves.length === 0, `다투는 자리는 이름도 안 바꿈 — ${JSON.stringify(D.moves)}`);
-  ok(!D.evict.some((e) => e.id === 'idF' || e.id === 'idM'), '건너뛴 파일을 내리기로 잡지 않는다(옛 자리 그대로 둔다)');
+  ok(D.moves.length === 1 && D.moves[0].id === 'idM' && D.moves[0].dest.endsWith('/0001_한국_30대_남/전.jpg'), `최신 인물의 옛 이름은 옮긴다 — ${JSON.stringify(D.moves)}`);
+  ok(D.evict.length === 1 && D.evict[0].id === 'idF', '옛 인물의 그림은 채택본에서 내린다(지우지 않는다)');
+  ok(D.conflicts.length === 0, '가드는 안전망으로만 남는다(잡힌 것 0)');
   rmSync(r3, { recursive: true, force: true });
 }
 
