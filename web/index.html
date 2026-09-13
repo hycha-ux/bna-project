@@ -354,6 +354,7 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .report-row .v.ok { color:var(--ok) } .report-row .v.plain { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) }
 .hbar { display:grid; grid-template-columns:110px 1fr 70px; gap:var(--sp-2); align-items:center; font-size:var(--fs-sm); margin:var(--sp-1) 0 } .hbar .t { height:14px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .hbar .t i { display:block; height:100%; background:var(--primary); border-radius:inherit } .hbar .n { text-align:right; color:var(--ui-md); font-weight:var(--fw-m); white-space:nowrap; letter-spacing:-.02em; font-variant-numeric:tabular-nums }
 .hbar .t i.ok { background:var(--ok) }
+.range-custom { display:inline-flex; align-items:center; gap:4px; margin-left:var(--sp-2) } .range-custom input[type=date] { height:30px; padding:0 8px; border:1px solid var(--ui-border); border-radius:999px; background:#fff; color:var(--ui-md); font-size:var(--fs-xs); font-family:inherit; outline:none } .range-custom input[type=date]:focus { border-color:var(--primary) } .range-custom input.on { border-color:var(--primary); color:var(--primary); font-weight:var(--fw-m) } .range-custom .sep { color:var(--ui-lo); font-size:var(--fs-xs) }
 .pill { display:inline-flex; gap:4px } .pill button { border:1px solid var(--ui-border); background:#fff; font-size:var(--fs-xs); font-weight:var(--fw-m); padding:5px 12px; border-radius:999px; color:var(--ui-md); cursor:pointer } .pill button.on { background:var(--primary); border-color:var(--primary); color:#fff }
 /* 차트 (SVG) */
 .chart { display:block; max-width:100%; overflow:visible } 
@@ -432,7 +433,8 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <!-- 홈 (2026-09-09 재구성): 첫 화면 = "쌓인 결과"와 "오늘 할 일". 시뮬레이션·샘플은 기본 제외 -->
       <div class="card-head" style="margin-bottom:var(--sp-2)"><h3>채택 현황</h3><span class="muted" id="home-window"></span><div class="tb-space"></div>
         <label class="sim-toggle" title="시뮬레이션·샘플 배치는 가짜 숫자입니다. 화면 확인용으로만 켜세요"><input type="checkbox" id="home-sim"> 시뮬레이션·샘플 포함</label>
-        <div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div></div>
+        <div class="pill" id="home-range"><button data-d="7">1주</button><button data-d="14" class="on">2주</button><button data-d="30">1개월</button><button data-d="90">3개월</button></div>
+        <div class="range-custom" title="기간을 직접 정합니다. 날짜를 고르면 바로 반영되고, 위 버튼을 누르면 풀립니다"><input type="date" id="home-from" aria-label="시작일"><span class="sep">~</span><input type="date" id="home-to" aria-label="종료일"></div></div>
       <div class="grid g-kpi" id="home-kpis"></div>
       <div class="grid g-dash" style="margin-top:var(--gap)">
         <div class="col">
@@ -755,21 +757,28 @@ $('#search').oninput = () => { const q = $('#search').value.trim(); if (q) { SEA
 let SEARCH = '', OUT_DIR = '';
 
 // ---------- 대시보드 ----------
-let OV = null, HOME_DAYS = 14, AXIS_A = 'angle';
+let OV = null, HOME_DAYS = 14, HOME_RANGE = null, AXIS_A = 'angle';   // HOME_RANGE: {from, to} 직접 입력 기간(YYYY-MM-DD). null 이면 프리셋(HOME_DAYS)
 const trend = (cur, prev, inv) => prev ? `<span class="${(cur >= prev) !== !!inv ? 'up' : 'down'}">${cur >= prev ? '▲' : '▼'} ${Math.abs((cur - prev) / prev * 100).toFixed(0)}%</span> vs 이전` : '이전 기간 없음';
 const LEGACY_KO = {filler: '필러(분할 전)'};   // 시술 정의에서 빠진 옛 이름
 const tname = t => CFG.treatments[t]?.name_ko || LEGACY_KO[t] || t || '';
 let HOME_SIM = false; try { HOME_SIM = localStorage.getItem('bna.homesim') === '1'; } catch {}
 async function loadHome() {
-  const [ov, batches] = await Promise.all([api(`/api/overview?days=${HOME_DAYS}&sim=${HOME_SIM ? 1 : 0}`), api('/api/batches')]);
+  // 직접 입력 기간: 서버는 '오늘부터 N일' 창만 안다(클라우드는 7·14·30·90 스냅샷뿐). 시작일을 덮는 창을 받아
+  //   일별 집계를 잘라 다시 더한다 — 그래서 일별에 reviewed 가 실려 있어야 채택률이 나온다 (2026-09-14 성연서님).
+  const days = HOME_RANGE ? Math.max(1, Math.round((Date.parse(todayKey()) - Date.parse(HOME_RANGE.from)) / 86400000) + 1) : HOME_DAYS;
+  const [ov0, batches] = await Promise.all([api(`/api/overview?days=${days}&sim=${HOME_SIM ? 1 : 0}`), api('/api/batches')]);
+  const ov = HOME_RANGE ? clipOverview(ov0, HOME_RANGE) : ov0;
   OV = ov; BATCHES = batches; const w = ov.window, p = ov.prev;
   $('#home-sim').checked = HOME_SIM;
-  $('#home-window').textContent = `${ov.day_keys[0].slice(5).replace('-', '/')} ~ ${ov.day_keys.at(-1).slice(5).replace('-', '/')}`;
+  const fmtK = k => k.slice(5).replace('-', '/');
+  $('#home-window').textContent = ov.day_keys.length ? `${fmtK(ov.day_keys[0])} ~ ${fmtK(ov.day_keys.at(-1))}${ov.clipped_note ? ' · ' + ov.clipped_note : ''}` : '이 기간의 집계가 없습니다';
   const pickRate = w.reviewed ? w.picked / w.reviewed : null;
   $('#home-kpis').innerHTML = [
-    ['hero', '채택한 사진', ov.picked_total, '장', '누적 · 사람이 골라 드라이브에 올린 것'],
+    // 큰 숫자는 '이 기간에 채택된 것' — 누적만 보이면 기간을 바꿔도 안 변해 고장처럼 보인다 (2026-09-14 성연서님). 누적은 아래 줄에.
+    ['hero', '채택한 사진', w.picked ?? 0, '장', `이 기간 · 누적 ${ov.picked_total}장 · 사람이 골라 드라이브에 올린 것`],
     // 채택률 = 사람 기준 품질. 목표선(기본 90%)에 닿으면 사람 검수를 줄이는 근거가 된다. AI 통과율은 비용 쪽 참고치라 비용 카드에 둔다.
     ['', '채택률', pickRate == null ? '—' : pct(pickRate), '', (() => { const g = (ov.goals || {}).pick_rate ?? 0.9, gt = `목표 ${Math.round(g * 100)}%`;
+        if (w.reviewed == null) return `${gt} · 사무실 PC 집계가 갱신되면 표시됩니다`;   // 옛 스냅샷: 일별 reviewed 없음
         if (!w.reviewed) return `${gt} · 이 기간에 검수한 사진이 없습니다`;
         const gap = pickRate - g; return `${gt} · 검수 ${w.reviewed}장 중 ${w.picked}장 <b class="${gap >= 0 ? '' : 'down'}">${gap >= 0 ? '달성' : `${Math.round(-gap * 100)}%p 부족`}</b>`; })()],
     ['', '검수 대기', ov.pending_total, '장', ov.pending_total ? 'AI 통과 · 사람이 아직 안 봄' : '밀린 검수가 없습니다'],
@@ -843,7 +852,32 @@ function chartAxis() {
   $('#chart-axis').innerHTML = rows.length ? rows.map(([l, r, n, cls]) => `<div class="hbar"><span title="${esc(l)}">${esc(l)}</span><span class="t"><i class="${cls || (r >= .6 ? 'ok' : '')}" style="width:${(r*100).toFixed(0)}%"></i></span><span class="n">${pct(r)} <span class="muted">${n}</span></span></div>`).join('') : '<div class="empty">기록이 없습니다</div>';
 }
 $$('#axis-pick button').forEach(b => b.onclick = () => { $$('#axis-pick button').forEach(x => x.classList.toggle('on', x === b)); AXIS_A = b.dataset.a; chartAxis(); });
-$$('#home-range button').forEach(b => b.onclick = () => { $$('#home-range button').forEach(x => x.classList.toggle('on', x === b)); HOME_DAYS = +b.dataset.d; loadHome(); });
+const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+// 서버 창(오늘부터 N일)을 [from, to] 로 잘라 window 를 다시 더한다. 이전 기간 비교는 없다(잘린 창엔 이전이 없다).
+function clipOverview(ov, r) {
+  const keys = ov.day_keys.filter(k => k >= r.from && k <= r.to);
+  const w = { total: 0, passed: 0, cost: 0, picked: 0, reviewed: 0 }; let hasRv = true;
+  for (const k of keys) { const d = ov.daily[k]; w.total += d.total; w.passed += d.passed; w.cost += d.cost; w.picked += d.picked || 0; if (d.reviewed == null) hasRv = false; else w.reviewed += d.reviewed; }
+  if (!hasRv) w.reviewed = null;
+  const note = ov.day_keys.length && r.from < ov.day_keys[0] ? `집계는 ${ov.day_keys[0].slice(5).replace('-', '/')}부터 있습니다` : '';
+  return { ...ov, day_keys: keys, window: w, prev: { total: 0, passed: 0, cost: 0 }, clipped_note: note };
+}
+function setRange(r) {
+  HOME_RANGE = r;
+  $$('#home-range button').forEach(x => x.classList.toggle('on', !r && +x.dataset.d === HOME_DAYS));
+  $$('.range-custom input').forEach(i => i.classList.toggle('on', !!r));
+  if (!r) { $('#home-from').value = ''; $('#home-to').value = ''; }
+  loadHome();
+}
+$$('#home-range button').forEach(b => b.onclick = () => { HOME_DAYS = +b.dataset.d; setRange(null); });
+$('#home-to').max = todayKey(); $('#home-from').max = todayKey();
+const onRange = () => {
+  let from = $('#home-from').value, to = $('#home-to').value || todayKey();
+  if (!from) return;                                   // 시작일만 있어도 오늘까지로 본다. 둘 다 없으면 프리셋 유지
+  if (to < from) { [from, to] = [to, from]; $('#home-from').value = from; $('#home-to').value = to; }
+  setRange({ from, to });
+};
+$('#home-from').onchange = onRange; $('#home-to').onchange = onRange;
 setInterval(() => { if ($('#tab-home').classList.contains('active') && OV?.queue?.running) loadHome(); }, 4000);
 let RS = null; window.addEventListener('resize', () => { clearTimeout(RS); RS = setTimeout(() => { if (OV && $('#tab-home').classList.contains('active')) { chartCombo(); } }, 150); });
 

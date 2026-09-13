@@ -159,6 +159,15 @@ try {
     ok(en && txt.includes(en), '안내에 실제 금지문(손가락)이 실린다');
   }
 
+  // ⑧ 홈 기간을 직접 입력하면 창·숫자가 그 기간으로 잘린다 (2026-09-14 성연서님 "기간을 변경해도 데이터가 안 바뀌고")
+  //    프리셋은 '오늘부터 N일'뿐이라 시작~끝을 고르면 일별 집계를 잘라 다시 더한다. 프리셋 강조는 풀려야 한다.
+  await goto('#home');
+  await ev("(function(){var f=document.querySelector('#home-from'),t=document.querySelector('#home-to'); f.value='2026-09-09'; t.value='2026-09-11'; t.dispatchEvent(new Event('change'));})()"); await sleep(1500);
+  const rangeTxt = await ev("document.querySelector('#home-window')?.textContent || ''");
+  ok(rangeTxt.startsWith('09/09 ~ 09/11'), '직접 입력한 기간이 창에 그대로 찍힌다', rangeTxt);
+  ok((await ev("document.querySelectorAll('#home-range button.on').length")) === 0, '직접 입력하면 프리셋 강조가 풀린다');
+  ok((await ev("document.querySelectorAll('#chart-combo rect.bar').length")) <= 3, '그래프도 그 기간(3일)만 그린다');
+
   ok(errs.length === 0, 'JS 오류가 없다', errs.join(' / ') || '없음');
 } finally {
   ws.close(); chrome.kill(); if (api) api.kill();

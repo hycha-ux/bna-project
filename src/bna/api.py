@@ -387,7 +387,7 @@ def overview_payload(days=14, include_sim=False):
     import datetime as dt
     now = time.time(); today = dt.date.today()
     day_keys = [(today - dt.timedelta(days=i)).isoformat() for i in range(days - 1, -1, -1)]
-    daily = {k: {"total": 0, "passed": 0, "picked": 0, "cost": 0.0, "fails": {}} for k in day_keys}
+    daily = {k: {"total": 0, "passed": 0, "picked": 0, "reviewed": 0, "cost": 0.0, "fails": {}} for k in day_keys}   # reviewed: 화면이 임의 기간 채택률을 일별 합으로 만든다 (2026-09-14 성연서님 직접 입력 기간)
     picked_all, pending_batches, win_rv = {}, {}, {"reviewed": 0, "picked": 0, "rejected": 0}
     gates = {"identity": {}, "structure": {"ok": 0, "fail": 0, "n/a": 0}}
     prev = {"total": 0, "passed": 0, "cost": 0.0}
@@ -427,7 +427,7 @@ def overview_payload(days=14, include_sim=False):
                 gates["structure"]["n/a" if sp is None else "ok" if sp else "fail"] += 1
                 if in_win:
                     dd = daily[key]; dd["total"] += 1; dd["passed"] += p; dd["cost"] += c
-                    dd["picked"] += pick == "pick"
+                    dd["picked"] += pick == "pick"; dd["reviewed"] += pick in ("pick", "reject")
                     win_rv["reviewed"] += pick in ("pick", "reject"); win_rv["picked"] += pick == "pick"; win_rv["rejected"] += pick == "reject"
                     for r in it.get("fail_reasons", []):
                         g = r.split(":")[0] if not r.startswith("vision") else r
