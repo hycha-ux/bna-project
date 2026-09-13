@@ -146,6 +146,39 @@ ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
   rmSync(r2, { recursive: true, force: true });
 }
 
+// ⑦ 한 자리를 둘 이상이 노리면 아무것도 안 한다 (2026-09-14 티모 — --dry 에서 63자리가 51자리로 접혔다)
+{
+  const r3 = mkdtempSync(path.join(tmpdir(), 'bna-clash-'));
+  const it = path.join(r3, 'outputs', '20260910-153348-63cb', '0001');
+  mkdirSync(it, { recursive: true });
+  // 한 아이템을 다른 변주로 다시 뽑아 옛 그림이 남았다 — meta 는 최신 변주 하나뿐이라 둘 다 같은 자리를 노린다
+  for (const stem of ['nasolabial_selfie_korea30sf_0001', 'nasolabial_selfie_korea30sm_0001']) {
+    writeFileSync(path.join(it, `${stem}_before.jpg`), `B-${stem}`);
+    writeFileSync(path.join(it, `${stem}_after.jpg`), `A-${stem}`);
+  }
+  writeFileSync(path.join(it, 'meta.json'), JSON.stringify({ treatment: 'nasolabial', mode: 'selfie',
+    variation: { country: { key: 'korea' }, age: { key: '30s' }, gender: { key: 'male' } } }));
+  writeFileSync(path.join(it, 'review.json'), JSON.stringify({ pick: 'pick' }));
+  const names = { nasolabial: '팔자주름' };
+  const C = planLanes(r3, {}, { full: false, names });
+  ok(C.todo.length === 0, `다투는 자리는 올리지 않는다 — 올릴 것 ${C.todo.length}`);
+  ok(C.conflicts.length === 4, `충돌은 건건이 보고된다 — ${C.conflicts.length}`);
+  ok(new Set(C.conflicts.map((c) => c.dest)).size === 2, '전·후 두 자리가 다툰다');
+
+  // 이미 올라간 옛 이름은 건드리지 않고(덮어쓰면 id 가 사라진다) 내리지도 않는다
+  const key = '20260910-153348-63cb/0001';
+  const sigOf = (n) => C.files.find((f) => f.rel.endsWith(n)).sig;
+  const pre = `${LANE_PICKED}/nasolabial_selfie/${key.replace('/', '_')}`;
+  const oldMan = {
+    [`${pre}_nasolabial_selfie_korea30sf_0001_before.jpg`]: { sig: sigOf('korea30sf_0001_before.jpg'), id: 'idF', key },
+    [`${pre}_nasolabial_selfie_korea30sm_0001_before.jpg`]: { sig: sigOf('korea30sm_0001_before.jpg'), id: 'idM', key },
+  };
+  const D = planLanes(r3, oldMan, { full: false, names });
+  ok(D.moves.length === 0, `다투는 자리는 이름도 안 바꿈 — ${JSON.stringify(D.moves)}`);
+  ok(!D.evict.some((e) => e.id === 'idF' || e.id === 'idM'), '건너뛴 파일을 내리기로 잡지 않는다(옛 자리 그대로 둔다)');
+  rmSync(r3, { recursive: true, force: true });
+}
+
 rmSync(root, { recursive: true, force: true });
 console.log();
 console.log(fails ? `실패 ${fails}건` : '전부 통과');

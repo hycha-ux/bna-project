@@ -235,8 +235,8 @@ export function planLanes(root = ROOT, manifest = {}, opts = {}) {
   const files = [];
   for (const t of TARGETS) for (const f of walk(path.join(root, t), root)) files.push(f);
   const names = opts.names || treatNames(root);
-  const todo = [];
-  const moves = [];                                      // 이름 규칙이 바뀐 것: 드라이브 안에서 이름·폴더만 바꾼다(재업로드 0)
+  let todo = [];
+  let moves = [];                                        // 이름 규칙이 바뀐 것: 드라이브 안에서 이름·폴더만 바꾼다(재업로드 0)
   const wanted = new Set();
   const taken = new Set();                               // 옮기기로 잡힌 옛 자리 — 내리기 대상에서 뺀다
   for (const f of files)
@@ -251,10 +251,26 @@ export function planLanes(root = ROOT, manifest = {}, opts = {}) {
       else todo.push({ ...f, dest: t.dest, key: t.key });
     }
   // 채택본 레인에 있는데 더 이상 채택이 아닌 것(마스크 포함) → 내린다(지우지 않고 _제외됨/ 으로 옮긴다)
+  // 한 자리를 둘 이상이 노리면 아무것도 하지 않는다(fail-closed).
+  //   드라이브는 같은 폴더에 같은 이름을 허용해서 오류 없이 `전.jpg` 가 둘이 되고, 매니페스트는 dest 가 키라
+  //   나중 것이 앞 것의 id 를 덮어써 앞 파일이 영영 추적 밖으로 나간다(내리지도 못한다).
+  //   원인 2종: ①한 아이템을 다른 변주로 다시 뽑아 옛 그림이 남음(meta 는 최신 변주 하나뿐이라 옛 것이 남의 이름표를 단다)
+  //            ②배치가 달라도 아이템 번호·인적사항이 같으면 같은 사람 폴더가 됨(이름에서 배치를 뺐으므로)
+  //   둘 다 '어느 이름이 옳은가'가 사람 결정이라, 여기서는 옛 이름 그대로 두고 충돌을 보고만 한다.
+  const claims = new Map();
+  for (const x of [...todo, ...moves]) claims.set(x.dest, (claims.get(x.dest) || 0) + 1);
+  const clash = new Set([...claims].filter(([, n]) => n > 1).map(([d]) => d));
+  const conflicts = [];
+  if (clash.size) {
+    for (const x of todo) if (clash.has(x.dest)) conflicts.push({ dest: x.dest, src: x.rel, key: x.key, lane: '올릴 것' });
+    for (const x of moves) if (clash.has(x.dest)) conflicts.push({ dest: x.dest, src: x.from, key: x.key, lane: '이름 바꿀 것' });
+    todo = todo.filter((x) => !clash.has(x.dest));       // 옛 자리는 `taken`·`wanted` 에 남아 있어 내려가지 않는다
+    moves = moves.filter((x) => !clash.has(x.dest));
+  }
   const evict = Object.entries(manifest)
     .filter(([dest, m]) => dest.startsWith(LANE_PICKED + '/') && m.id && !wanted.has(dest) && !taken.has(dest))
     .map(([dest, m]) => ({ dest, id: m.id, key: m.key || null }));
-  return { files, todo, moves, evict, reviews: rv };
+  return { files, todo, moves, evict, conflicts, reviews: rv };
 }
 
 /** 아이템 하나의 현재 드라이브 상태 — 화면 배지가 이걸 쓴다. */
@@ -377,12 +393,22 @@ function log(line) {
 async function main() {
   const man = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, 'utf8')) : {};
   const only = argVal('--item');                       // "<배치>/<아이템>" — 검수 직후 그 한 장만 (즉시 반영)
-  let { files, todo, moves, evict } = planLanes(ROOT, man, { full: FULL });
+  let { files, todo, moves, evict, conflicts } = planLanes(ROOT, man, { full: FULL });
   if (only) {
     todo = todo.filter((f) => f.key === only);
     moves = moves.filter((m) => m.key === only);
     evict = evict.filter((e) => e.key === only);
+    conflicts = conflicts.filter((c) => c.key === only);
   }
+  // 충돌은 접으면 안 되는 경고다 — 조용히 건너뛰면 '이름이 안 바뀐 이유'를 아무도 모른다.
+  const sayClash = () => {
+    if (!conflicts.length) return;
+    const dests = [...new Set(conflicts.map((c) => c.dest))];
+    const line = `⚠ 한 자리를 둘 이상이 노림 — ${dests.length}자리 · 파일 ${conflicts.length}개는 옛 이름 그대로 둔다(덮어쓰면 되돌릴 수 없어 건너뜀)`;
+    console.log(line);
+    for (const d of dests.slice(0, 10)) console.log(`  ! ${d} ← ${conflicts.filter((c) => c.dest === d).map((c) => c.src).join(' / ')}`);
+    if (dests.length > 10) console.log(`  … 외 ${dests.length - 10}자리`);
+  };
   const mb = (n) => (n / 1024 / 1024).toFixed(1);
   const bytes = todo.reduce((s, f) => s + Number(f.sig.split(':')[0]), 0);
   const lane = (d) => d.split('/')[0];
@@ -394,6 +420,7 @@ async function main() {
     for (const m of moves.slice(0, 10)) console.log(`  ~ ${m.from} → ${m.dest}`);
     if (moves.length > 10) console.log(`  … 외 ${moves.length - 10}개`);
     for (const e of evict.slice(0, 10)) console.log(`  - [제외] ${e.dest}`);
+    sayClash();
     return;
   }
 
@@ -408,8 +435,11 @@ async function main() {
 
   if (!todo.length && !moves.length && !evict.length) {
     console.log(`올리거나 내릴 것 없음 (대상 ${files.length}개 전부 최신)`);
+    sayClash();
+    if (conflicts.length) log(`충돌 ${conflicts.length}개 — 옛 이름 유지`);
     return;
   }
+  sayClash();
 
   const tok = await token(keys);
   const cache = new Map();
@@ -454,7 +484,7 @@ async function main() {
     }
   }
   writeFileSync(MANIFEST, JSON.stringify(man));
-  const line = `백업 ${done}개 올림(${mb(bytes)}MB)${renamed ? ` · 이름 ${renamed}개 바꿈` : ''}${moved ? ` · 제외로 ${moved}개 내림` : ''}${failed ? ` · 실패 ${failed}` : ''} · 누적 ${Object.keys(man).length}개 · 방식 ${mode}`;
+  const line = `백업 ${done}개 올림(${mb(bytes)}MB)${renamed ? ` · 이름 ${renamed}개 바꿈` : ''}${moved ? ` · 제외로 ${moved}개 내림` : ''}${conflicts.length ? ` · 충돌로 ${conflicts.length}개 건너뜀` : ''}${failed ? ` · 실패 ${failed}` : ''} · 누적 ${Object.keys(man).length}개 · 방식 ${mode}`;
   console.log(line);
   log(line);
   if (failed) process.exit(1);
