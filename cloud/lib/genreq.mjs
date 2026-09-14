@@ -143,9 +143,11 @@ export async function listAll(token, { keep = 50 } = {}) {
   return sortRequests(out).slice(0, keep);
 }
 
+/** 순서: 아직 안 끝난 것(생성 중·받음·요청됨)이 맨 위, 그 아래는 끝난 것을 **시간 역순**으로 한 줄에.
+ *  종전엔 실패·완료를 따로 묶어 실패가 전부 위로 몰렸다 — 9/9 실패가 9/14 완료보다 위에 와서 순서가 이상해 보였다 (2026-09-14 성연서님). */
 export function sortRequests(arr) {
-  const rank = { running: 0, accepted: 1, requested: 2, error: 3, done: 4, cancelled: 5 };
-  return [...arr].sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9) || String(b.requested_at).localeCompare(String(a.requested_at)));
+  const live = { running: 0, accepted: 0, requested: 0 };
+  return [...arr].sort((a, b) => ((live[a.status] ?? 1) - (live[b.status] ?? 1)) || String(b.requested_at).localeCompare(String(a.requested_at)));
 }
 
 export async function remove(token, id) {

@@ -21,7 +21,9 @@ ok(canTransition('running', 'done') && canTransition('running', 'error') && !can
 ok(canTransition('error', 'done') && canTransition('error', 'running') && !canTransition('error', 'accepted') && !canTransition('done', 'error'), '실패는 복구(생성 중·완료)로만 되돌아간다 — PC 재시작 뒤 같은 요청을 다시 돌린 경우');
 
 const s = sortRequests([{ status: 'done', requested_at: '2' }, { status: 'requested', requested_at: '1' }, { status: 'running', requested_at: '0' }]);
-ok(s.map((x) => x.status).join(',') === 'running,requested,done', '진행 중 → 요청됨 → 끝난 것 순');
+ok(s.map((x) => x.status).join(',') === 'requested,running,done', '안 끝난 것이 위(그 안에선 최신 먼저) → 끝난 것');
+const s2 = sortRequests([{ status: 'error', requested_at: '1' }, { status: 'done', requested_at: '3' }, { status: 'error', requested_at: '2' }, { status: 'done', requested_at: '0' }]);
+ok(s2.map((x) => x.requested_at).join(',') === '3,2,1,0', '끝난 것은 실패·완료 구분 없이 시간 역순 한 줄 (2026-09-14 성연서님 "상태순으로 나와서 이상함")');
 ok(blobName(newId()).startsWith(PREFIX) && /\d{8}-\d{6}-[a-z0-9]{4}\.json$/.test(blobName(newId())), '파일 이름은 gen-requests/날짜-시각-난수.json');
 
 console.log(fails.length ? `실패 ${fails.length}건` : '전부 통과');
