@@ -1894,6 +1894,40 @@ ok('"copy"' in _bt35 and 'st.get("copy")' in _bt35,
 ok('out["copy"] = copy_check' in Path("src/bna/qa/structure.py").read_text(encoding="utf-8"),
    "structure.check 가 복붙 판정을 함께 낸다(랜드마크 재검출 0)")
 
+# ㉞ 2026-09-15 07:55 엠보 배치 실사고 — Before 가 before/after 글자가 박힌 2단 콜라주로 나왔다.
+#    Before 프롬프트에 'after photo' 가 세 번 있었다(before.md 끝줄 · 팔자 승격 규칙이 전 시술 Before 에 붙음 · '후기 앱').
+_COL34 = []
+from bna import lessons as _ls34
+from bna.spec import ROOT as _ROOT34
+for _t34 in ("skinbooster_embo", "skin_pores", "nasolabial"):
+    _av34 = _ls34.active(_ROOT34 / "outputs", _t34, "selfie")           # 승격 규칙은 배치가 이 길로 넣는다(batch.py:67)
+    _sp34 = build_prompts(_t34, "selfie", _pb26("selfie", 1, seed=34, treatment=_t34)[0], 34001, series=["4w"] if _t34 != "nasolabial" else ["2w"],
+                          avoid=_av34["lines"], avoid_not_at=_av34["not_at"])
+    _bp34, _ap34 = _sp34["before_prompt"], _sp34["after_prompt"]
+    if "after photo" in _bp34: _COL34.append(f"{_t34}:Before에 after photo")
+    if "review app" in _bp34 or "review app" in _ap34: _COL34.append(f"{_t34}:후기앱")
+    if "One single snapshot" not in _bp34: _COL34.append(f"{_t34}:한장긍정문없음")
+    if _t34 != "nasolabial" and "nasolabial folds" in _ap34: _COL34.append(f"{_t34}:팔자규칙이 다른 시술 After에")
+    if _t34 == "nasolabial" and "nasolabial folds must be softened" not in _ap34: _COL34.append("nasolabial:팔자규칙 사라짐")
+ok(not _COL34, f"Before 프롬프트는 '후 사진'을 말하지 않고, 팔자 승격 규칙은 팔자 After 에만 붙는다 — {_COL34}")
+
+#    콜라주 게이트 — 큰 얼굴이 둘이면 잡고, 배경의 작은 얼굴은 무시한다(모델 없이 상자 계산만 검사)
+from bna.qa import identity as _idn34
+class _F34:
+    def __init__(s, w, h): s.bbox = (0, 0, w, h)
+ok(_idn34.count_big([_F34(100, 100), _F34(95, 100)]) == 2 and _idn34.count_big([_F34(100, 100), _F34(20, 20)]) == 1
+   and _idn34.count_big([]) == 0, "콜라주 게이트: 큰 얼굴 둘 = 콜라주, 배경의 작은 얼굴은 무시")
+ok('"collage"' in open("src/bna/batch.py", encoding="utf-8").read(), "배치가 콜라주를 탈락 사유로 센다")
+
+#    엠보 4주 컷 참조는 엠보 전용 사진이 공용(모공·홍조) 사진보다 먼저다 (1주 컷보다 4주가 나빠 보이던 원인)
+from bna import refs as _rf34
+_first34 = []
+for _s34 in range(10):
+    _v34 = build_prompts("skinbooster_embo", "selfie", _pb26("selfie", 1, seed=_s34, treatment="skinbooster_embo")[0], 34100 + _s34, series=["4w"])["after_variation"]
+    _first34.append(_rf34._rank(_rf34.candidates("selfie", "skinbooster_embo", "4w"), _v34, "4w", "skinbooster_embo")[0]["file"].split("/")[-1])
+ok(all(f.startswith("skinbooster_embo_") for f in _first34), f"엠보 4주 컷의 1순위 참조는 엠보 전용 사진이다 — {sorted(set(_first34))}")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

@@ -236,7 +236,7 @@ quality:
   mid: "mid-range phone camera, slight softness"
   old: "older smartphone, visible noise and lower dynamic range"
   front_cam: "low-resolution front camera, slight grain"
-  app_upload: "phone photo re-uploaded to a review app, jpeg compression artifacts, slightly soft"
+  app_upload: "phone photo re-uploaded through a chat app, jpeg compression artifacts, slightly soft"
 
 # 표정 축 (2026-09-09 신설). 팔자·리프팅·인중은 표정이 바뀌면 시술 없이도 B&A 가 된다 →
 # treatments.yaml 의 expression_policy: lock 이면 Before/After 같은 값 + After 에 "identical expression" 문장.

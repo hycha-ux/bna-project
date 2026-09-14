@@ -94,8 +94,11 @@ custom:
   from: 동일한 각도, 구도, 표정
   since: '2026-09-10'
 - en: In the after photo, the nasolabial folds must be softened realistically and evenly along their length without over-smoothing only the central area.
+  # ⚠ 2026-09-15: where 에서 before 를 뺐고 treatment 로 팔자에만 묶었다 — 이 문장이 엠보 Before 에 붙어
+  #   "after photo" 를 세 번 말하는 Before 프롬프트가 됐고, 결과가 before/after 2단 콜라주였다(0915 07:55 배치).
   where:
-  - before
   - after
+  treatment:
+  - nasolabial
   from: 시술 직후 - 듀오덤 패치 위치 이상, 2주 뒤 - 중앙만 보정이 들어가서 어색함
   since: '2026-09-14'

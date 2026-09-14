@@ -104,6 +104,7 @@ class Batch:
         before_b = before = pts = mask_img = None      # 재시도 때 Before 를 물려받는 자리
         prev_fail = []
         meta["redrawn"] = []                           # 조건을 다시 뽑은 회차 (통계가 계획과 갈리는 걸 드러낸다)
+        meta["attempts_log"] = []                      # 회차별 {attempt, fail_reasons, seconds} — "22분 중 어디서 샜나"의 근거 (2026-09-15)
         for attempt in range(1, MAX_ATTEMPTS + 1):
             meta["attempt"] = attempt; meta["fail_reasons"] = []
             loop = asyncio.get_event_loop()
@@ -199,6 +200,8 @@ class Batch:
                     r["fail_reasons"].append("identity_review")
                 if idn["hard_fail"]:
                     r["fail_reasons"].append("identity")
+                if idn.get("collage"):                          # 한 장에 큰 얼굴이 둘 = before/after 콜라주 (2026-09-15)
+                    r["fail_reasons"].append("collage")
                 if not r["fail_reasons"]:
                     vs = await loop.run_in_executor(None, vision.score, before_out, ab, self.mode, self.p_qa, ungate)
                     r["vision"] = vs; meta["cost"] += self.pricing[self.p_qa.name]["qa"]
@@ -223,6 +226,7 @@ class Batch:
             self._save(item_id, meta, before_out, after_out, mask_img, after_outs if self.series else None)
             if meta["passed"]:
                 self._p(item_id, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
+            meta["attempts_log"].append({"attempt": attempt, "fail_reasons": list(meta["fail_reasons"]), "at": time.time()})
             self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
             prev_fail = list(meta["fail_reasons"])      # 다음 회차가 "무엇을 다시 할지" 고르는 근거
         return meta

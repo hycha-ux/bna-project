@@ -280,6 +280,12 @@ def active(out_dir: Path, treatment=None, mode=None) -> dict:
             if c.get("en"):
                 lines[w].append(c["en"])
     for c in cfg.get("custom") or []:                   # 사람이 승격시킨 규칙은 항상 붙는다
+        # treatment: 그 시술에만 붙는 규칙 (2026-09-15 실사고: 팔자 승격 규칙 "In the after photo, the
+        # nasolabial folds…" 가 엠보 **Before** 프롬프트에까지 붙었고, 그 컷은 before/after 글자가 박힌
+        # 2단 콜라주로 나왔다 — Before 프롬프트에 'after photo' 가 세 번 있었다). 안 적으면 종전대로 전 시술.
+        scope = c.get("treatment")
+        if scope and treatment and treatment not in ([scope] if isinstance(scope, str) else list(scope)):
+            continue
         for w in c.get("where", ["after"]):
             if c.get("en") and c["en"] not in lines.get(w, []):
                 lines.setdefault(w, []).append(c["en"])

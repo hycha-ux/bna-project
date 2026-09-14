@@ -69,7 +69,7 @@ def candidates(mode: str, treatment: str = None, when: str = None) -> list:
     return picked
 
 
-def _rank(refs: list, variation: dict, when) -> list:
+def _rank(refs: list, variation: dict, when, treatment: str = None) -> list:
     """태그 점수 순. **동점은 컷마다 번갈아** 쓴다 (2026-09-14 실측).
 
     ⚠ 종전엔 동점이면 정렬이 안정적이라 **색인 앞 2장이 늘 뽑혔다**. 피부 3종 태그가
@@ -84,9 +84,14 @@ def _rank(refs: list, variation: dict, when) -> list:
     shuffled = list(refs)
     rng.shuffle(shuffled)                               # 동점 안의 순서 = 이 셔플 (sorted 가 안정적이라 보존된다)
     want = {a: variation[a]["key"] for a in ("lighting", "quality", "background") if a in variation}
-    return sorted(shuffled, key=lambda r: -sum(r.get("tags", {}).get(a) == v for a, v in want.items()))
+    # 그 시술 **전용** 참조(treatment 가 이 시술 하나)는 공용 참조보다 +2 (2026-09-15 실측: 엠보 4주 컷에
+    # 모공·홍조 4주 사진이 붙어 1주 컷(엠보 7일차 물광 사진)보다 나빠 보였다 — 태그 동점이라 셔플이 갈랐다).
+    def score(r):
+        dedicated = 2 if (treatment and _as_set(r.get("treatment")) == {treatment}) else 0
+        return -(dedicated + sum(r.get("tags", {}).get(a) == v for a, v in want.items()))
+    return sorted(shuffled, key=score)
 
 
 def pick(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
     return [(REF_DIR / r["file"]).read_bytes()
-            for r in _rank(candidates(mode, treatment, when), variation, when)[:k]]
+            for r in _rank(candidates(mode, treatment, when), variation, when, treatment)[:k]]

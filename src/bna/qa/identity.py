@@ -70,6 +70,22 @@ def _detect(app, img: Image.Image):
     return e / np.linalg.norm(e)
 
 
+def big_faces(img: Image.Image, ratio: float = 0.25):
+    """사진 안의 '큰 얼굴' 수. 가장 큰 얼굴의 ratio 배 이상인 얼굴만 센다(배경의 작은 얼굴은 무시).
+    2 이상이면 before/after 2단 콜라주다 (2026-09-15 07:55 배치 실사고 — Before 가 같은 얼굴 둘을 위아래로 붙여 나왔는데
+    구조·동일인·비전 어느 자도 안 걸렸다). 모델이 없으면 None(못 잼)."""
+    app = _model()
+    if app is None:
+        return None
+    faces = app.get(np.asarray(img.convert("RGB"))[:, :, ::-1])
+    return count_big(faces, ratio)
+
+
+def count_big(faces, ratio: float = 0.25) -> int:
+    areas = sorted(((f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]) for f in faces), reverse=True)
+    return sum(1 for a in areas if areas and a >= areas[0] * ratio)
+
+
 def embed(img: Image.Image):
     """임베딩. 원본에서 못 잡으면 레터박스로 1회 재시도한다(부분 크롭 구제)."""
     app = _model()
@@ -101,7 +117,10 @@ def check(before: Image.Image, after: Image.Image, threshold: float = THRESHOLD)
         gate = "fail"
     # passed 는 'ok' 일 때만 True 다. n/a·review 는 False 가 아니라 **미판정(None)** —
     # 이 둘을 False 로 접으면 "못 잰 것"이 "떨어진 것"으로 둔갑해 통계가 거짓말을 한다.
+    nb, na = big_faces(before), big_faces(after)
+    collage = (nb or 0) >= 2 or (na or 0) >= 2
     return {"similarity": s, "gate": gate,
             "passed": True if gate == "ok" else (False if gate == "fail" else None),
             "hard_fail": gate == "fail",
-            "measured": s is not None}
+            "measured": s is not None,
+            "faces": {"before": nb, "after": na}, "collage": collage}

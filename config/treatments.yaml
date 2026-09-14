@@ -331,14 +331,18 @@ skinbooster_embo:
   facts:
     onset: 물광·촉촉함은 볼록이 가라앉은 뒤(3일~)부터 보이고 7일차에 기준 상태가 된다. 직후는 효과가 아니라 흔적이 보이는 시점이라 강도 early
     extent: 볼 전체(광대 아래~턱선 위), 코 옆까지. 실사 8장 전부 한쪽 볼 확대 컷(이마 1장은 눈을 잘라낸 컷)
+    # ⚠ 2026-09-15 07:55 배치 실측: 볼록이 실사보다 3~4배 컸고(1.5~2cm) 볼 가운데 10여 개만 듬성듬성했다.
+    #   실사는 쌀알~완두콩 크기가 1cm 간격으로 **수십 개**, 눈 밑~턱선·코 옆~귀 앞까지 볼 전체다. 크기·개수·범위를 숫자로 박는다.
     immediate_marks: >
-      Right after the skin booster injections the treated cheek is covered in a regular grid of
-      small raised bumps: each bump is a pale, dome-shaped wheal about 3 to 5 mm across where the
-      product sits just under the skin, and the bumps are spaced roughly 1 cm apart in orderly rows
-      over the whole cheek, from below the cheekbone down toward the jawline. The skin between the
-      bumps is flushed pink, with a few tiny pinpoint blood dots at some injection points. The cheek
-      surface looks visibly lumpy and uneven, matte with no glow yet; the only things on the skin
-      are these bumps, the pink flush and the pinpoint dots.
+      Right after the skin booster injections the whole treated cheek is covered in a dense, regular
+      grid of small raised bumps. Each bump is tiny, the size of a grain of rice to a small pea (3 to
+      5 mm across, never larger), pale and dome-shaped where the product sits just under the skin.
+      The bumps sit close together, about 1 cm apart in neat rows and columns, so that dozens of
+      them (40 or more) are visible on the cheek, spread evenly from just below the eye down to the
+      jawline and from beside the nose out to in front of the ear. The skin between the bumps is
+      flushed pink, with a few tiny pinpoint blood dots at some injection points. The cheek surface
+      looks finely lumpy and uneven, matte with no glow yet; the only things on the skin are these
+      bumps, the pink flush and the pinpoint dots.
     # 2026-09-14 빌디 전달(연서님 기준). 종전 "1~2일"은 추정이었고, 실제 경과는 3일·7일 두 마디다.
     later: 볼록·붉은 점은 약 3일에 가라앉고, 7일차에 흔적 없이 촉촉한 물광이 된다. 그 뒤(2·4주)는 7일차 상태가 이어진다
     # ⚠ '후'의 기준은 7일차다(연서님 확정) — 엠보·붉은 점 없음, 모공·솜털은 **보이되** 촉촉한 물광.

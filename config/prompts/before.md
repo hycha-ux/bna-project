@@ -3,6 +3,7 @@ Realistic unedited photo of a {person}.
 {scene}
 Real skin with visible pores, faint peach fuzz, minor blemishes, slight redness and natural asymmetry; individual hair strands.
 {mode_extra}
-Skin reads matte and unflattering in this shot: no dewy sheen, no healthy glow, no highlighter-like radiance - any oiliness must look like dull, greasy T-zone shine, never like glass skin. This before photo must never look better-skinned than the after photo.
+Skin reads matte and unflattering in this shot: no dewy sheen, no healthy glow, no highlighter-like radiance - any oiliness must look like dull, greasy T-zone shine, never like glass skin. The skin here looks plainer and more tired than it would on a good day.
+One single snapshot: a single frame that fills the whole image, one moment, one view of the face, with no text anywhere in the picture.
 No beauty retouching, no skin smoothing, no CGI look, no perfect symmetry, no studio bokeh.
 {avoid}
