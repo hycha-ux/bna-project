@@ -1399,6 +1399,38 @@ _R26.check_index = _orig26
 ok(_bef26 == ["x.jpg", "z.jpg"] and _aft26 == ["y.jpg", "z.jpg"],
    f"timeline=before 참조는 Before 에만·시점 태그는 그 시점 After 에만 — 실제 {_bef26} / {_aft26}")
 
+# ㉗ 참조 사진이 **실제로 붙는가** (2026-09-14). 색인에 있는데 안 붙는 참조는 유령과 같다 —
+#    파일도 있고 태그도 있어 아무도 이상을 못 느끼는데, 그림엔 한 번도 안 들어간다.
+#    실사고: 태그에 셀카에 없는 값(quality: flagship · background: clinic)이 들어가 전부 0점 동점이 됐고,
+#    안정 정렬이 색인 앞 2장만 계속 골라 `skin_pores_*_03` 쌍이 120회 중 7회(6%)만 붙었다.
+_V27 = load("variations.yaml")
+_bad27 = []
+for _r27 in _R26.check_index():                       # ㉖ 에서 이미 import 한 bna.refs
+    for _ax27, _val27 in (_r27.get("tags") or {}).items():
+        if _ax27 in _V27 and _val27 not in _V27[_ax27]:
+            _bad27.append(f"{_r27['file']} {_ax27}={_val27}")
+ok(not _bad27, f"참조 태그는 그 축에 실재하는 값이어야 한다(오타는 영원히 0점이다) — {_bad27}")
+
+from collections import Counter as _C27
+_seen27 = _C27()
+for _t27 in ("skin_pores", "skinbooster_embo", "skin_redness"):
+    for _i27, _p27 in enumerate(_pb26("selfie", 60, seed=27, treatment=_t27)):
+        _sp27 = build_prompts(_t27, "selfie", _p27, 27000 + _i27)
+        _w27 = _sp27["afters"][0]["when"]
+        for _r27 in _R26._rank(_R26.candidates("selfie", _t27, None), _p27, None)[:2]:
+            _seen27[_r27["file"]] += 1
+        for _r27 in _R26._rank(_R26.candidates("selfie", _t27, _w27), _sp27["after_variation"], _w27)[:2]:
+            _seen27[_r27["file"]] += 1
+_skinrefs27 = [r["file"] for r in _R26.check_index() if "skin" in r["file"]]
+_never27 = [f for f in _skinrefs27 if _seen27[f] == 0]
+ok(not _never27, f"피부 3종 참조는 한 장도 빠짐없이 실제로 붙어야 한다 — 한 번도 안 붙은 것 {_never27}")
+
+# 같은 컷이면 늘 같은 참조여야 한다 (재시도·재현이 성립해야 하므로 셔플은 결정적이어야 한다)
+_p27a = _pb26("selfie", 1, seed=271, treatment="skin_pores")[0]
+ok(_R26._rank(_R26.candidates("selfie", "skin_pores", None), _p27a, None)
+   == _R26._rank(_R26.candidates("selfie", "skin_pores", None), _p27a, None),
+   "동점 섞기는 결정적이어야 한다 — 같은 컷은 늘 같은 참조")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

@@ -16,6 +16,15 @@
 #   ≈ $0.010/호출). 세트 하나(Before 1 + After 2)면 3콜이라 ≈$0.031. 근거=outputs/usage.jsonl.
 # ⚠ 얼굴이 나오는 참조는 동의·이용 범위를 note 에 적고, 원본은 이 리포 밖에 둔다.
 #
+# ⚠ **태그는 사진의 사실이지 바람이 아니다** (2026-09-14 티모가 10장을 직접 열어 교정).
+#   처음 태그엔 셀카에 **존재하지 않는 값**이 있었다 — `quality: flagship`(셀카는 mid/old/front_cam/app_upload)
+#   과 `background: clinic`(셀카 배경은 home/bathroom/cafe/car). 없는 값은 영원히 0점이라,
+#   `skin_pores_*_03` 쌍이 120회 중 7회(6%)만 붙었다. 점수를 못 받는 태그는 '틀린 태그'다.
+#   그리고 **배경 태그는 뺐다** — 열 장 전부 배경이 안 보이는 볼 확대 컷이라 적을 사실이 없다.
+#   ⚠ After 참조에 `flash` 가 있는 건 오타가 아니다(03 쌍은 전·후 둘 다 플래시 확대다).
+#     지금 설정의 After 조명은 부드러운 빛이라 그 태그는 0점이지만, 사실대로 두는 쪽이 맞다 —
+#     동점을 번갈아 쓰는 건 refs._rank 가 맡는다.
+#
 # 2026-09-11: 빌디가 `refs_pending` 에 대기시켜 둔 팔자 직후 실사를 **정식 색인으로 올렸다** —
 #   대기 사유였던 "pick 이 시술·시점을 안 거른다"가 같은 날 해소됐다(refs.py 의 treatment·timeline 축).
 #   ⚠ 이 사진은 회색 배경의 병원 촬영본인데 셀카 모드 참조로 들어간다. style_refs 는 *그림체*도 옮기므로
@@ -39,59 +48,59 @@ refs:
   mode: selfie
   treatment: [skin_pores, skinbooster_embo]
   timeline: before
-  tags: {lighting: window, quality: flagship, background: home}
+  tags: {lighting: ceiling_harsh, quality: mid}
   note: 포텐자 후기 전 컷 — 볼 한쪽 확대, 센 사광에 모공이 그림자로 파임, 피지 번들거림. 여신티켓 후기, 내부 참조 전용.
 - file: selfie/skin_pores_after4w_01.jpg
   mode: selfie
   treatment: [skin_pores, skinbooster_embo]
   timeline: [2w, 4w]
-  tags: {lighting: window, quality: flagship, background: home}
+  tags: {lighting: window, quality: mid}
   note: 같은 후기 후 컷 — 부드러운 빛, 모공 얕아짐, 하이라이트가 도는 물광. 2·4주(가라앉은 뒤) After 전용.
 - file: selfie/skin_pores_before_02.jpg
   mode: selfie
   treatment: skin_pores
   timeline: before
-  tags: {lighting: fluorescent, quality: mid, background: home}
+  tags: {lighting: fluorescent, quality: mid}
   note: 모공 매크로 전 컷 — 귤껍질 질감, 피부만 화면 가득. 블로그 후기, 내부 참조 전용.
 - file: selfie/skin_pores_after4w_02.jpg
   mode: selfie
   treatment: [skin_pores, skinbooster_embo]
   timeline: [2w, 4w]
-  tags: {lighting: fluorescent, quality: mid, background: home}
+  tags: {lighting: window_soft, quality: mid}
   note: 같은 후기 후 컷 — 코 옆 볼, 촉촉한 하이라이트(물광). 2·4주(가라앉은 뒤) After 전용.
 - file: selfie/skin_pores_before_03.jpg
   mode: selfie
   treatment: skin_pores
   timeline: before
-  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  tags: {lighting: flash, quality: mid}
   note: 플래시 확대 전 컷 — 코·볼 모공이 점점이 또렷, 붉은 자국. 블로그 후기, 내부 참조 전용.
 - file: selfie/skin_pores_after4w_03.jpg
   mode: selfie
   treatment: skin_pores
   timeline: [2w, 4w]
-  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  tags: {lighting: flash, quality: mid}
   note: 같은 후기 후 컷 — 같은 플래시인데 모공이 얕아짐. 2·4주(가라앉은 뒤) After 전용.
 - file: selfie/skinbooster_embo_before_01.jpg
   mode: selfie
   treatment: [skinbooster_embo, skin_pores]
   timeline: before
-  tags: {lighting: window, quality: flagship, background: home}
+  tags: {lighting: fluorescent, quality: mid}
   note: 물광 후기 전 컷 — 볼·코 옆 확대, 피지 번들거림과 모공. 블로그 후기, 내부 참조 전용.
 - file: selfie/skinbooster_embo_after4w_01.jpg
   mode: selfie
   treatment: skinbooster_embo
   timeline: [1w, 2w, 4w]
-  tags: {lighting: window, quality: flagship, background: home}
+  tags: {lighting: window_soft, quality: mid}
   note: 같은 후기 후 컷 — 촉촉한 광이 도는 물광 피부. 2·4주(가라앉은 뒤) After 전용. "후에 물광이 돌아야 한다"(성연서님)의 기준.
 - file: selfie/skin_redness_before_01.jpg
   mode: selfie
   treatment: [skin_redness, skinbooster_embo]
   timeline: before
-  tags: {lighting: window, quality: flagship, background: home}
+  tags: {lighting: fluorescent, quality: mid}
   note: 쥬베룩 볼륨 여드름 흉터 전 컷 — 볼 확대, 붉은 흉터 자국이 얼룩처럼. 블로그 후기, 내부 참조 전용.
 - file: selfie/skin_redness_after4w_01.jpg
   mode: selfie
   treatment: [skin_redness, skinbooster_embo]
   timeline: [2w, 4w]
-  tags: {lighting: window, quality: flagship, background: home}
+  tags: {lighting: window_soft, quality: mid}
   note: 같은 후기 후 컷 — 붉은기 옅어지고 광이 돎. 2·4주(가라앉은 뒤) After 전용.
