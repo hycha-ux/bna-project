@@ -284,6 +284,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .sync-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:var(--fs-sm); color:var(--ui-md); background:var(--ui-surface); border-radius:var(--r-md); padding:8px 14px; margin-bottom:var(--gap) }
 .sync-line b { color:var(--ui-hi) } .sync-line .cd { font-variant-numeric:tabular-nums; color:var(--primary) } .sync-line .sep { color:var(--ui-lo) } .sync-line .muted { font-size:var(--fs-xs) } .sync-line .b { margin-left:auto }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
+.pend { background:var(--ui-surface); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:6px; border-bottom:0; align-items:center } .pend .t { min-width:0 } .pend .t b { display:block; font-size:var(--fs-sm) } .pend .t .ell { display:block; font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px } .pend .chip { cursor:help } .pend .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:5px; animation:pulse 1.2s infinite; vertical-align:middle }
 .note-g .note-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap } .note-g .note-why { margin-top:4px; font-size:var(--fs-sm); color:var(--ui-hi); padding:6px 10px; background:var(--ui-surface); border-radius:var(--r-sm); border-left:3px solid var(--primary) } .note-g .note-why.muted { color:var(--ui-md); border-left-color:var(--ui-lo) } .note-g .note-in { margin-top:6px } .note-g .note-in input { width:100% } .note-g .note-in .hint { display:block; margin-top:3px; font-size:var(--fs-xs); color:var(--ui-lo) }
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
@@ -1616,7 +1617,7 @@ function renderLessonsFirst(L) {
     <div class="lf-steps">
       <div class="lf-step"><div class="k"><b>1</b>쌓기 <small>누르는 즉시</small></div>
         <div>사진마다 <span class="btn-look">채택</span> 또는 <span class="btn-look bad">제외</span>를 누르고, 제외면 사유 버튼을 고릅니다.</div>
-        <div class="ex">예) 3번 사진 <span class="btn-look bad">제외</span> + <b>${esc(tag)}</b><br>→ <code>outputs/lessons.jsonl</code> 에 한 줄 추가<br><span class="muted">인터넷 화면에서 눌러도 사무실 PC 가 10분 안에 같은 원장으로 가져옵니다. 판정을 바꿔도 지우지 않고 줄을 더 씁니다.</span></div></div>
+        <div class="ex">예) 3번 사진 <span class="btn-look bad">제외</span> + <b>${esc(tag)}</b><br>→ <code>outputs/lessons.jsonl</code> 에 한 줄 추가<br><span class="muted">인터넷 화면에서 눌러도 사무실 PC 가 10분 안에 같은 기록 파일로 가져옵니다. 판정을 바꿔도 지우지 않고 줄을 더 씁니다.</span></div></div>
       <div class="lf-step"><div class="k"><b>2</b>고르기 <small>자동</small></div>
         <div>최근 <b>${S.window_days ?? 14}일</b> 안에 같은 사유가 <b>${S.min_count ?? 2}회 이상</b> 쌓이면 규칙이 켜집니다. 많이 나온 순으로 최대 <b>${S.top_n ?? 3}개</b>만.</div>
         <div class="ex">예) ${esc(tag)} 1회 → 아직 안 붙음<br>${esc(tag)} ${S.min_count ?? 2}회 → <span class="chip bad">반영 중</span><br><span class="muted">1회는 우연일 수 있어 안 붙입니다. 같은 조건(예: 옆모습)에서 ${S.axis_min_count ?? 3}회 이상 몰리면 그 조건은 뽑힐 확률을 ${Math.round((S.axis_weight ?? 0.25) * 100)}% 로 낮춥니다.</span></div></div>
@@ -1694,12 +1695,13 @@ async function loadLessons() {
     </div>`; }).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
   // 인터넷 화면에서 보낸 요청(사무실 PC 반영 전) — 목록 위에 '대기'로
   const pp = L.pending_promotions || [], ph = L.pending_handoffs || [];
+  if ((pp.length || ph.length) && !(L.notes || []).length) $('#les-notes').innerHTML = '';   // 대기 줄이 있으면 '메모 없음' 상자는 군더더기
   if (pp.length || ph.length) $('#les-notes').insertAdjacentHTML('afterbegin',
-    pp.map(r => `<div class="list-row" style="cursor:default;background:var(--ui-surface)"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.en)}</span></div><span class="chip warn" title="사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 규칙이 되고 여기서 사라집니다">승격 대기</span></div>`).join('')
-    + ph.map(r => `<div class="list-row" style="cursor:default;background:var(--ui-surface)"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.why || r.en || '')}</span></div><span class="chip" title="사무실 PC 가 가져가면 티모 확인 목록에 들어갑니다">넘기기 대기</span></div>`).join(''));
-  // 티모 확인 목록 (PC 원장 outputs/handoffs.jsonl) — 목록 아래
+    pp.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.en)}">${esc(r.en)}</span></div><span class="chip warn" title="사무실 PC가 가져가면 규칙이 되고 여기서 사라집니다 (보통 15초, 늦어도 10분) · ${(r.where || []).length === 1 ? (r.where[0] === 'before' ? '시술 전 컷에만' : '시술 후 컷에만') : '전·후 컷 모두'} 붙습니다"><i class="dot"></i>승격 대기</span></div>`).join('')
+    + ph.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.why || r.en || '')}">${esc(r.why || r.en || '')}</span></div><span class="chip" title="프롬프트에는 안 붙습니다. 사무실 PC가 가져가면 아래 '티모 확인 대기'로 옮겨 갑니다"><i class="dot"></i>넘기기 대기</span></div>`).join(''));
+  // 티모 확인 목록 (PC 기록 파일 outputs/handoffs.jsonl) — 목록 아래
   const ho = L.handoffs || [];
-  if (ho.length) $('#les-notes').insertAdjacentHTML('beforeend', `<div class="rev-h" style="margin-top:12px">티모 확인 대기 ${ho.length}건 <span class="muted" style="font-weight:400">— 프롬프트·검수기·조건 쪽에서 고칠 것들 (outputs/handoffs.jsonl)</span></div>` +
+  if (ho.length) $('#les-notes').insertAdjacentHTML('beforeend', `<div class="rev-h" style="margin-top:12px">티모 확인 대기 ${ho.length}건 <span class="muted" style="font-weight:400">— 프롬프트·검수기·조건 쪽에서 고칠 것들</span></div>` +
     ho.map(r => { const k = r.kind ? KIND_KO[r.kind] : null; return `<div class="list-row" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.why || '')}${r.en ? ` · <i>${esc(r.en)}</i>` : ''}</span></div>${k ? `<span class="chip ${k[1]}">${k[0]}</span>` : ''}<span class="muted" style="font-size:var(--fs-xs)">${fmtDay(r.at)}</span></div>`; }).join(''));
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
