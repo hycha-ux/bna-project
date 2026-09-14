@@ -75,6 +75,10 @@ const lib4 = applyToLibrary(lib, {'b1/0002': {pick: 'pick', updated_at: 50}}, sn
 ok(lib4.total === 1, '스냅샷에 없는 사진은 라이브러리에 만들어 넣지 않는다');
 
 // ── 세는 규칙: 사유·메모만 있어도 '검수함'이다 ──────────────────────────────
+// 검수 대기도 다시 센다 — AI 통과 3장 중 2장을 판정했으면 1 (2026-09-14)
+const pd = recount({pending: 3}, [{pick: 'pick'}, {pick: 'reject'}, {}, {pick: 'pick'}], [{passed: true}, {passed: true}, {passed: true}, {passed: false}]);
+ok(pd.pending === 1, `검수 대기는 'AI 통과 · 판정 없음' 만 센다 — 실제 ${pd.pending}`);
+ok(recount({pending: 3}, [{}]).pending === 3, '사진 목록이 없으면 검수 대기는 건드리지 않는다');
 const c = recount({}, [{pick: null, tags: ['각도'], note: ''}, {pick: null, tags: [], note: '메모'}, {}]);
 ok(c.reviewed === 2 && c.picked === 0 && c.rejected === 0,
    `판정 없이 사유·메모만 있어도 검수한 것으로 센다 — 실제 ${c.reviewed}`);

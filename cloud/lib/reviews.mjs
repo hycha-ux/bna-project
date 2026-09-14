@@ -113,7 +113,7 @@ export function applyToBatch(batch, map) {
     const rv = newer(it.review, map[keyOf(batch.batch_id, it.item_id)]);
     return { ...it, review: rv };
   });
-  return { ...batch, items, stats: recount(batch.stats, items.map((i) => i.review || {})) };
+  return { ...batch, items, stats: recount(batch.stats, items.map((i) => i.review || {}), items) };
 }
 
 /**
@@ -127,13 +127,16 @@ export function applyToList(batches, map, snapItems) {
     const src = snapItems?.[b.batch_id]?.items;
     if (!Array.isArray(src)) return b;
     const reviews = src.map((it) => newer(it.review, map[keyOf(b.batch_id, it.item_id)]));
-    return { ...b, stats: recount(b.stats, reviews) };
+    return { ...b, stats: recount(b.stats, reviews, src) };
   });
 }
 
-export function recount(stats, reviews) {
+export function recount(stats, reviews, items) {
   const s = { ...(stats || {}) };
   s.reviewed = reviews.filter(isReviewed).length;
+  // 검수 대기 = AI 통과했는데 아직 채택/제외를 안 누른 사진. 이걸 안 다시 세면 검수를 다 해도
+  // PC 가 다음 스냅샷을 올릴 때까지 '검수 대기'에 남는다 (2026-09-14 성연서님 "검수 끝으로 안 가고 새로고침해도 반응 무").
+  if (Array.isArray(items)) s.pending = items.filter((it, i) => it && it.passed && !['pick', 'reject'].includes((reviews[i] || {}).pick)).length;
   s.picked = reviews.filter((r) => r && r.pick === 'pick').length;
   s.rejected = reviews.filter((r) => r && r.pick === 'reject').length;
   s.review_tags = {};
