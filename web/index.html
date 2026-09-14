@@ -146,7 +146,7 @@ tbody tr:last-child td { border-bottom:none }
 .pair img { width:100%; height:100%; object-fit:cover; display:block }
 .pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
 .item .body { padding:var(--sp-2) var(--sp-3) var(--sp-3) } .item .head { display:flex; align-items:center; gap:var(--sp-1); margin-bottom:2px } .item .id { font-weight:var(--fw-b); color:var(--ui-lo) }
-.item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
+.item .head .head-r { margin-left:auto; display:flex; gap:2px; flex-shrink:0 } .item .head .head-r .b { white-space:nowrap; padding:0 8px } .item .head .why { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .item .head .gate { white-space:nowrap; flex-shrink:0 } .b.ghost { --seed-color-stroke-neutral-muted:transparent; color:var(--ui-lo) }
 .act { display:grid; grid-template-columns:1fr 1fr; gap:8px } .act .b { height:40px; font-size:var(--fs-md) }
 .dd { position:relative; margin-bottom:8px }
 .item .pair { cursor:zoom-in; position:relative } .series-badge { position:absolute; right:8px; bottom:8px; background:rgba(25,31,40,.75); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; z-index:2 } .item, .rev { position:relative } .item:has(.dd[open]), .rev:has(.dd[open]) { z-index:30 } .dd summary { list-style:none } .dd summary::-webkit-details-marker { display:none }
