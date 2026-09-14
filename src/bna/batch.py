@@ -185,6 +185,10 @@ class Batch:
                 # passed 는 3값이다 — True(통과) / False(탈락) / None(못 잼). None 을 실패로 세면 같은 컷에 돈만 쓴다.
                 if st.get("passed") is False:
                     r["fail_reasons"].append("structure")
+                # 복붙 게이트 — 구조와 **따로** 센다(같은 칸에 넣으면 "왜 떨어졌나"가 뭉개진다).
+                # 3값이라 None(임상·미검출)은 실패가 아니다. 근거·컷은 structure.copy_check 머리말.
+                if (st.get("copy") or {}).get("passed") is False:
+                    r["fail_reasons"].append("copy")
                 idn = identity.check(before_pp, after_pp); r["identity"] = idn
                 # '사람 확인 구간'(0.45~0.60)도 재시도로 돌린다 — 2026-09-10 성연서님 지시.
                 # 종전엔 gate="review" 를 hard_fail=False 로 흘려보내 기계가 통과시켰고,

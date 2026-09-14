@@ -325,11 +325,12 @@ skinbooster_embo:
   #   ⚠ 직후엔 after_finish(물광)·조명 호(부드러운 빛)를 **붙이지 않는다**(spec.py 가 시점으로 거른다) —
   #     볼록이 곧 직후 신호이고, 여기 광이 돌면 4주 컷과 구별이 안 된다.
   #   ⚠ 금지 품목(크림·거즈)은 적지 않는다 — 적으면 그린다(0910 마취크림 5/5). 긍정문만.
-  #   ⚠ 사진 원본은 채팅으로만 받아 samples/reference 에 아직 없다 — 넣을 때 samples_index 에
-  #     timeline: immediate 로 달아야 직후 컷 참조로만 쓰인다(1주·4주 After 에 붙으면 볼록이 되살아난다).
+  #   ✅ 사진은 2026-09-14 `4ef8a0c` 로 들어왔다 — 직후 8장(볼 7·이마 1) + 7일차 1장.
+  #     `samples_index.yaml` 에 직후는 `timeline: immediate` 전용으로 달려 있다(1주·4주 After 에
+  #     붙으면 볼록이 되살아나고, Before 에 붙으면 시술 전 얼굴에 엠보가 그려진다).
   facts:
-    onset: 물광·촉촉함은 볼록이 가라앉은 뒤(1주~)부터 보인다. 직후는 효과가 아니라 흔적이 보이는 시점이라 강도 early
-    extent: 볼 전체(광대 아래~턱선 위), 코 옆까지. 실사 6장 전부 한쪽 볼 확대 컷
+    onset: 물광·촉촉함은 볼록이 가라앉은 뒤(3일~)부터 보이고 7일차에 기준 상태가 된다. 직후는 효과가 아니라 흔적이 보이는 시점이라 강도 early
+    extent: 볼 전체(광대 아래~턱선 위), 코 옆까지. 실사 8장 전부 한쪽 볼 확대 컷(이마 1장은 눈을 잘라낸 컷)
     immediate_marks: >
       Right after the skin booster injections the treated cheek is covered in a regular grid of
       small raised bumps: each bump is a pale, dome-shaped wheal about 3 to 5 mm across where the
@@ -338,7 +339,16 @@ skinbooster_embo:
       bumps is flushed pink, with a few tiny pinpoint blood dots at some injection points. The cheek
       surface looks visibly lumpy and uneven, matte with no glow yet; the only things on the skin
       are these bumps, the pink flush and the pinpoint dots.
-    later: 볼록은 1~2일 안에 가라앉고 1주 컷부터는 흔적 없이 물광. 홍조·핏자국이 며칠 가는지는 의료진 확인 대기
+    # 2026-09-14 빌디 전달(연서님 기준). 종전 "1~2일"은 추정이었고, 실제 경과는 3일·7일 두 마디다.
+    later: 볼록·붉은 점은 약 3일에 가라앉고, 7일차에 흔적 없이 촉촉한 물광이 된다. 그 뒤(2·4주)는 7일차 상태가 이어진다
+    # ⚠ '후'의 기준은 7일차다(연서님 확정) — 엠보·붉은 점 없음, 모공·솜털은 **보이되** 촉촉한 물광.
+    #   "모공이 사라진 후"는 이 기준이 아니다: 질감을 지우면 그 순간 리터칭으로 읽힌다.
+    #   1w·2w·4w After 가 이 한 기준을 공유한다(참조 `skinbooster_embo_after1w_01.jpg`).
+    after_reference: >
+      By day 7 the cheek is smooth and calm with no raised bumps, no pink flush and no pinpoint
+      dots left. The skin holds a soft dewy sheen as if freshly hydrated, but real texture is
+      still there: pores are visible across the cheek and fine peach fuzz catches the light.
+      It must read as the same skin resting and hydrated, never as retouched or blurred skin.
   # ⚠ 2026-09-14 오후 연서님 검수: 수염 2종을 더 뺀다. 0914 모공 배치에서 After 만 `beard_full` 로
   #   뽑혀 턱·볼 아래가 통째로 덮였다 — 시술 부위(볼·코)가 가려지면 전후 비교가 성립하지 않고,
   #   사람 눈에는 '2주 만에 다른 사람'으로 읽힌다. 전·후 양쪽에서 뺀다(한쪽만 빼면 그 차이가 곧 드리프트다).

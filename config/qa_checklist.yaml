@@ -37,3 +37,27 @@ items:
 #   ⚠ 문항 글이 바뀌었으므로 이 줄 앞뒤 회차의 effect_visible 점수는 **다른 자로 잰 값**이다(컷 6 은 그대로).
   effect_visible: "The treatment effect is noticeable but within natural, non-exaggerated range, and it covers the whole treated area: if only part of the treated line or fold changed while the rest of it is unchanged, or one side changed more than the other, score low even when the changed part looks good."
   ai_look: "Overall image does not look AI-generated (no over-symmetry, waxy glow, odd artifacts)"
+
+# 모드별 덮어쓰기 — 여기 적은 키만 `items` 를 이긴다(`vision.score` 가 합친다).
+# 2026-09-14 빌디 지적: `drift` 한 줄에 두 모드를 같이 적어 두니 심사가 임상 쪽 뜻으로 읽었다.
+#   실측(20260914-085009-06ac/0001): 배경이 차→거실로 바뀐 셀카에 "background and lighting differ"
+#   를 이유로 7.0(컷 7, 턱걸이). **다른 날 다시 찍었으니 달라야 정상인 것들에 벌점을 준 것**이라,
+#   표정을 31% 바꿔 뽑아도 이 자가 도로 걸러내 살아남는 건 복사본뿐이었다.
+#   → 셀카 문항은 "달라도 된다"가 아니라 **"그걸로 감점하지 마라"** 로 못박고, 무엇이 감점인지만 남긴다.
+#   ⚠ 문항 글이 바뀌었으므로 이 줄 앞뒤 회차의 셀카 drift 점수는 **다른 자로 잰 값**이다.
+#   ⚠ 이 완화만 하면 복사본이 더 쉽게 통과한다 — 반대 방향으로 재는 `structure.copy_check`
+#     (복붙 게이트)와 **한 벌이다. 둘 중 하나만 끄지 마라.**
+items_selfie:
+  drift: >
+    Grade only two things: (1) is it the same individual, and (2) is the treated-area effect
+    consistent with the before photo. This is a selfie taken on a different day, so a different
+    expression, head angle, gaze, hair, clothes, room, background, lighting and time of day are
+    all EXPECTED and must never lower the score. Score 10 when the person and the treated-area
+    story hold together, even if everything else about the scene changed. Score low only if the
+    facial features themselves changed (different bone structure, eye shape, nose, lips), or the
+    treated area contradicts the before photo.
+items_clinical:
+  drift: >
+    Nothing outside the treated area changed: expression, head angle, camera distance, lighting
+    and background must all match the before photo. Score low for any drift outside the treated
+    area, however small.

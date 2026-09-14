@@ -369,8 +369,13 @@ def series_points(treatment: str, series) -> list:
     return [w for w in TIMELINE_ORDER if w in series and w in allowed]
 
 
-FACT_KEYS_PROMPT = ("immediate_marks", "immediate_avoid")   # 프롬프트에 그대로 들어가는 칸 (영어)
+FACT_KEYS_PROMPT = ("immediate_marks", "immediate_avoid")   # 직후 컷에 그대로 들어가는 칸 (영어)
+# 2026-09-14 빌디·연서님: '후' 의 기준을 실사 한 장으로 못박았다(엠보 7일차). 직후가 **아닌** After 컷에 실린다.
+#   ⚠ 셀카 전용이다 — 임상 컷은 조명까지 동일하게 맞춘 편집이라 광 문장이 붙으면 그게 곧 리터칭으로 읽힌다
+#     (selftest ㉜ 가 "임상 After 에 광 문장 없음"을 이미 지키고 있다, 같은 이유).
+FACT_KEYS_AFTER = ("after_reference",)
 FACT_KEYS_HUMAN = ("onset", "extent", "later")              # 사람이 읽는 근거 칸 (한국어 가능)
+FACT_KEYS_ALL = FACT_KEYS_PROMPT + FACT_KEYS_AFTER + FACT_KEYS_HUMAN
 
 
 def check_treatment_facts(treatment: str) -> None:
@@ -398,12 +403,18 @@ def check_treatment_facts(treatment: str) -> None:
         return
     if not isinstance(facts, dict) or not facts:
         raise ValueError(f"{treatment}.facts 가 비었다 — 빈 카드는 적지 마라(주석으로 두고 채울 때 푼다)")
-    bad = [k for k in facts if k not in FACT_KEYS_PROMPT + FACT_KEYS_HUMAN]
+    bad = [k for k in facts if k not in FACT_KEYS_ALL]
     if bad:
-        raise ValueError(f"{treatment}.facts 에 모르는 칸 {bad} (가능: {FACT_KEYS_PROMPT + FACT_KEYS_HUMAN})")
+        raise ValueError(f"{treatment}.facts 에 모르는 칸 {bad} (가능: {FACT_KEYS_ALL})")
     for k in FACT_KEYS_PROMPT:
         if facts.get(k) and not has_imm:
             raise ValueError(f"{treatment}.facts.{k} 는 직후 컷에만 실리는데 timeline 에 immediate 가 없다 — 죽은 설정")
+    for k in FACT_KEYS_AFTER:
+        # 직후가 아닌 After 컷에만 실린다 — 시점이 직후뿐이면 아무 데도 안 붙는다(적은 사람은 붙은 줄 안다).
+        if facts.get(k) and not [w for w in tl if w != "immediate"]:
+            raise ValueError(f"{treatment}.facts.{k} 는 직후 아닌 After 컷에 실리는데 timeline 에 그런 시점이 없다 — 죽은 설정")
+        if facts.get(k) and "selfie" not in (t.get("modes") or []):
+            raise ValueError(f"{treatment}.facts.{k} 는 셀카 모드 전용인데 modes 에 selfie 가 없다 — 죽은 설정")
 
 
 DRESS_WORDS = ("tape", "patch", "gauze", "dressing", "numbing cream")
@@ -565,6 +576,12 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             for v in marks:
                 if v:
                     c += " " + " ".join(str(v).split())
+        elif mode == "selfie":
+            # 직후가 아닌 셀카 After — '후'의 기준을 실사 한 장으로 못박은 칸(엠보 7일차).
+            # after_change 가 *무엇이 좋아지나*를 말하면, 이 칸은 *그 피부가 어떻게 보이나*를 말한다.
+            for v in [(t.get("facts") or {}).get(k) for k in FACT_KEYS_AFTER]:
+                if v:
+                    c += " " + " ".join(str(v).split())
         if mode == "selfie":
             c += f' {eff["timeline"][w].capitalize()}.'
         return c, lv, lowered
@@ -576,11 +593,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     mx = load("prompts/mode_extra.yaml")
 
     def fact_spans(w):
-        """직후 컷에 실린 사실 카드 문장 — 화면에서 '이 문장 어디서 왔나'가 template 로 뭉개지지 않게 칸을 준다."""
-        if w != "immediate":
-            return []
+        """그 컷에 실린 사실 카드 문장 — 화면에서 '이 문장 어디서 왔나'가 template 로 뭉개지지 않게 칸을 준다."""
         f = t.get("facts") or {}
-        return [("facts", " ".join(str(f[k]).split())) for k in FACT_KEYS_PROMPT if f.get(k)]
+        keys = FACT_KEYS_PROMPT if w == "immediate" else (FACT_KEYS_AFTER if mode == "selfie" else ())
+        return [("facts", " ".join(str(f[k]).split())) for k in keys if f.get(k)]
 
     def build_after(w, chg, lv, lowered):
         """시점 하나의 After. 시리즈든 아니든 같은 길 — 동일인 기준은 항상 Before 사진이다(After 를 다음 After 의 기준으로 쓰면 얼굴이 흘러간다)."""

@@ -15,7 +15,12 @@ def score(before_bytes: bytes, after_bytes: bytes, mode: str, provider, ungate=(
     ⚠ `na_allowed` 는 이 목적에 못 쓴다 — 그 키를 읽는 코드가 없다(문서에만 있는 죽은 스위치).
     """
     cfg = load("qa_checklist.yaml")
-    raw = provider.qa(before_bytes, after_bytes, cfg["items"], mode)   # {item: {score, note}}
+    # 모드별 덮어쓰기 (2026-09-14 빌디 지적). 한 문장에 두 모드를 욱여넣으면 **한쪽은 반드시 틀린다** —
+    # `drift` 가 그랬다: 임상은 "아무것도 안 변해야" 고 셀카는 "장면·표정은 달라도 된다" 인데 한 줄이라,
+    # 심사가 임상 쪽 뜻으로 읽고 배경·조명이 다르다는 이유로 셀카 컷에 7점을 줬다(컷이 7이라 턱걸이).
+    # 결과가 뒤집혀 있었다 — **복사본일수록 이 항목이 만점**이다. 키만 덮으므로 나머지는 그대로다.
+    items = {**cfg["items"], **(cfg.get(f"items_{mode}") or {})}
+    raw = provider.qa(before_bytes, after_bytes, items, mode)          # {item: {score, note}}
     th = cfg["threshold"]
     ungate = set(ungate or ())
     # 항목별 합격선(없으면 공통 threshold). 한 항목의 점수 분포가 공통 컷과 안 맞으면

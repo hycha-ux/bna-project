@@ -1659,7 +1659,10 @@ for _s33 in range(20):
     if "grid of small raised bumps" not in _im: _EMBO33.append(f"seed{_s33}:직후에볼록없음")
     if "Skin finish:" in _im: _EMBO33.append(f"seed{_s33}:직후에광마감")
     if "natural glow" in _im: _EMBO33.append(f"seed{_s33}:직후에물광문장")   # 카드의 "no glow yet" 과 싸운다
-    if "raised bumps" in _w4 or "Skin finish:" not in _w4: _EMBO33.append(f"seed{_s33}:4주컷이상")
+    # ⚠ 낱말 `raised bumps` 로 보면 안 된다 — 09-14 에 붙인 7일차 기준 문장이 `no raised bumps`(금지문)라
+    #   이 자가 금지문을 요구문으로 읽고 20/20 을 실패로 냈다(같은 날 `dewy sheen` 과 똑같은 함정).
+    #   직후 컷이 볼록을 부르는 **그 문장**(facts.immediate_marks 의 시작 어구)이 없는지를 본다.
+    if "grid of small raised bumps" in _w4 or "Skin finish:" not in _w4: _EMBO33.append(f"seed{_s33}:4주컷이상")
     if _by33["immediate"]["effect_level"] != "early": _EMBO33.append(f"seed{_s33}:직후강도{_by33['immediate']['effect_level']}")
     if not any(p.get("k") == "facts" for p in _by33["immediate"]["after_parts"]): _EMBO33.append(f"seed{_s33}:화면칸없음")
     _n33 += 1; _soft33 += _by33["immediate"]["after_variation"]["lighting"]["key"] in _arc33
@@ -1786,6 +1789,110 @@ else:
 _r34g, _txt34g = _promote34(_HEAD34, "no git here")
 ok(_r34g.get("ok") and not (_r34g.get("commit") or {}).get("ok")
    and "no git here" in _txt34g, "깃 저장소가 아니어도 승격은 성공한다(커밋만 건너뜀)")
+
+
+# ㉟ 2026-09-14 빌디 지적 — 복붙 게이트(신설) + 셀카 drift 완화.
+#    둘은 **한 벌이다**: 완화만 하면 복사본이 더 쉽게 통과하고, 게이트만 넣으면 잘 그린 컷이 애꿎게 죽는다.
+from pathlib import Path as _P35
+
+import numpy as _np35
+import yaml as _yml35
+
+from bna.qa import structure as _ST35
+from bna.qa import vision as _VS35
+
+Path, yaml = _P35, _yml35                               # 이 절 안에서만 쓰는 짧은 이름
+
+# 실사 랜드마크로 자를 검증한다 — 지어낸 좌표는 "값이 흐르나"만 보고 **자가 맞나**를 못 본다.
+_PAIR35 = Path("outputs/20260914-085009-06ac/0001")     # 빌디가 든 증거(배경만 갈아 끼운 복사본)
+_OK35 = Path("outputs/20260910-153348-63cb/0002")       # 사람이 채택한 컷(가장 다른 자세)
+
+
+def _pts35(d: Path):
+    from PIL import Image as _I
+    from bna.qa import landmarks as _L
+    b = next(d.glob("*_before.jpg"), None); a = next(d.glob("*_after.jpg"), None)
+    if not (b and a):
+        return None, None
+    return _L.detect(_I.open(b)), _L.detect(_I.open(a))
+
+
+if not _PAIR35.exists():
+    print("SKIP  0914 엠보 시료가 없다 — 복붙 게이트 실사 검사 건너뜀")
+else:
+    _pb35, _pa35 = _pts35(_PAIR35)
+    _r35 = _ST35.copy_check(_pb35, _pa35, "selfie")
+    ok(_r35["passed"] is False, f"빌디가 든 복사본은 탈락한다 — {_r35}")
+    ok("표정" in _r35["reason"] and "고개" in _r35["reason"],
+       "탈락 사유에 무엇이 같았는지(표정·고개)를 적는다 — 사람이 재현할 수 있어야 한다")
+    # 임상은 닮은 게 정답이다 — 같은 시료라도 걸리면 안 된다
+    _c35 = _ST35.copy_check(_pb35, _pa35, "clinical")
+    ok(_c35["passed"] is None and not _c35["measured"],
+       f"임상 컷엔 이 자를 걸지 않는다(못 잼, 실패 아님) — {_c35['passed']}")
+    if _OK35.exists():
+        _ob35, _oa35 = _pts35(_OK35)
+        _o35 = _ST35.copy_check(_ob35, _oa35, "selfie")
+        ok(_o35["passed"] is True, f"사람이 채택한 컷은 통과한다 — {_o35}")
+
+# 얼굴 미검출은 실패가 아니라 '못 잼'이다(이 파일 다른 자들과 같은 3값 규칙)
+_n35 = _ST35.copy_check(None, None, "selfie")
+ok(_n35["passed"] is None and not _n35["measured"], "얼굴 미검출은 탈락이 아니라 못 잼이다")
+
+# 자가 크기·위치·기울기에 안 흔들려야 한다 — "확대해서 찍었다"가 복붙으로 둔갑하면 안 된다
+_base35 = _np35.array([[100.0 + i * 3, 200.0 + (i % 7) * 5] for i in range(478)])
+_scaled35 = _base35 * 2.3 + _np35.array([57.0, -31.0])
+_v1, _v2 = _ST35.pose_vector(_base35), _ST35.pose_vector(_scaled35)
+ok(float(_np35.abs(_v1 - _v2).max()) < 1e-6,
+   f"자세 값은 얼굴 크기·위치가 변해도 그대로다 — 최대차 {float(_np35.abs(_v1 - _v2).max()):.2e}")
+
+# 표정만 같고 고개가 다르면 복붙이 아니다(AND 규칙) — 하나만 같은 건 흔하다
+_moved35 = _base35.copy(); _moved35[152] = _moved35[152] + _np35.array([0.0, 400.0])   # 턱만 크게 이동
+_r2 = _ST35.copy_check(_base35, _moved35, "selfie")
+ok(_r2["passed"] is True and _r2["expr_diff"] <= _ST35.COPY_EXPR_CUT,
+   f"표정이 같아도 고개가 다르면 통과한다(AND 규칙) — 표정 {_r2['expr_diff']} 고개 {_r2['head_diff']}")
+ok(_ST35.copy_check(_base35, _base35.copy(), "selfie")["passed"] is False,
+   "완전히 같은 얼굴은 반드시 탈락한다")
+# 컷을 meta 에 남긴다 — 컷을 바꾸면 옛 회차와 다른 자다(무엇으로 잰 판정인지 추적 가능해야 한다)
+ok(_ST35.copy_check(_base35, _base35.copy(), "selfie")["cuts"] ==
+   {"expr": _ST35.COPY_EXPR_CUT, "head": _ST35.COPY_HEAD_CUT}, "어느 컷으로 잰 판정인지 남긴다")
+
+# ── 셀카 drift 완화 ──────────────────────────────────────────────────────────
+_QA35 = yaml.safe_load(Path("config/qa_checklist.yaml").read_text(encoding="utf-8"))
+_sel35 = {**_QA35["items"], **(_QA35.get("items_selfie") or {})}
+_cli35 = {**_QA35["items"], **(_QA35.get("items_clinical") or {})}
+ok(set(_sel35) == set(_QA35["items"]) and set(_cli35) == set(_QA35["items"]),
+   "모드별 덮어쓰기는 항목을 늘리거나 지우지 않는다(키만 덮는다)")
+ok(_sel35["drift"] != _cli35["drift"], "셀카·임상 drift 문항이 실제로 갈렸다")
+_low = _sel35["drift"].lower()
+ok("never lower the score" in _low and "expected" in _low,
+   "셀카 drift 는 장면·표정 차이에 **감점하지 말라**고 명시한다(빌디 0914)")
+for _w in ("background", "lighting", "expression", "head angle"):
+    ok(_w in _low, f"셀카 drift 가 '{_w}' 를 감점 대상에서 빼는 말을 담고 있다")
+ok("nothing outside the treated area" in _cli35["drift"].lower(),
+   "임상 drift 는 종전 뜻(부위 밖 변화 금지)을 그대로 지킨다")
+
+
+# 심사에 실제로 그 문항이 가는지 — 설정만 갈라 놓고 provider 에 옛 문항을 넘기면 아무것도 안 바뀐다
+class _Spy35:
+    name = "spy"
+
+    def qa(self, b, a, items, mode):
+        self.items, self.mode = items, mode
+        return {k: {"score": 9.0, "note": ""} for k in items}
+
+
+_spy35 = _Spy35()
+_VS35.score(b"x", b"y", "selfie", _spy35)
+ok(_spy35.items["drift"] == _sel35["drift"], "셀카 회차는 셀카 문항이 심사에 간다")
+_VS35.score(b"x", b"y", "clinical", _spy35)
+ok(_spy35.items["drift"] == _cli35["drift"], "임상 회차는 임상 문항이 심사에 간다")
+
+# 복붙 게이트가 배치의 탈락 사유로 실제로 연결돼 있는지 (설정·함수만 있고 아무도 안 부르면 죽은 자다)
+_bt35 = Path("src/bna/batch.py").read_text(encoding="utf-8")
+ok('"copy"' in _bt35 and 'st.get("copy")' in _bt35,
+   "batch 가 복붙 판정을 읽어 탈락 사유에 넣는다(안 읽으면 죽은 게이트다)")
+ok('out["copy"] = copy_check' in Path("src/bna/qa/structure.py").read_text(encoding="utf-8"),
+   "structure.check 가 복붙 판정을 함께 낸다(랜드마크 재검출 0)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
