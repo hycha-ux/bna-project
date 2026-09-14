@@ -549,7 +549,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <!-- ═══ 작업 ═══ -->
     <section class="page" id="tab-jobs">
       <div class="card">
-        <div class="card-head"><h3>작업 목록</h3><span class="muted" id="jobs-tr-label"></span><select id="jobs-kind" class="hsel" hidden><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="card-head"><h3>작업 목록</h3><span class="muted" id="jobs-tr-label"></span><select id="jobs-kind" class="hsel" hidden><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><div class="pill" id="jobs-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="running">실행 중</button><button data-f="pending">검수 대기</button><button data-f="reviewed">검수 끝</button></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
         <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
@@ -1125,16 +1125,22 @@ function clearDetail() {
   $('#detail-empty').hidden = false; $('#detail-body').hidden = true;
   $$('#batches tbody tr').forEach(tr => tr.classList.remove('sel'));
 }
+let JOBS_ST = ''; try { JOBS_ST = localStorage.getItem('bna.jobsfilter') || ''; } catch {}
+const JOBS_MATCH = { '': () => true, running: b => b.status === 'running', pending: b => (b.stats?.pending || 0) > 0, reviewed: b => b.status !== 'running' && (b.stats?.total || 0) > 0 && !(b.stats?.pending || 0) };
+$$('#jobs-filter button').forEach(b => b.onclick = () => { JOBS_ST = b.dataset.f; try { localStorage.setItem('bna.jobsfilter', JOBS_ST); } catch {} loadBatches(); });
+// 실패한 배치(오류·생성 0장)는 목록에서 뺀다 — 생성 자체가 안 된 거라 볼 게 없다(대기열에 실패로 남는다). 개발용 기록 보기를 켜면 보인다 (2026-09-14 성연서님)
+const isFailed = b => b.kind !== 'dry_run' && (b.status === 'error' || (b.status !== 'running' && !(b.stats?.total || 0)));
 async function loadBatches() {
   BATCHES = await api('/api/batches'); const kind = DEV_MODE ? $('#jobs-kind').value : 'run'; const q = SEARCH.toLowerCase();
+  $$('#jobs-filter button').forEach(b => b.classList.toggle('on', b.dataset.f === JOBS_ST));
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
-  const trOk = b => !JOBS_TR || b.treatment === JOBS_TR;
+  const trOk = b => (!JOBS_TR || b.treatment === JOBS_TR) && (DEV_MODE || !isFailed(b)) && (JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b);
   // 사이드바 시술마다 실제 배치 수 (검수 대기가 있으면 그 수를 먼저)
   Object.keys(CFG.treatments || {}).forEach(k => { const mine = BATCHES.filter(b => b.kind === 'run' && b.treatment === k); const pend = mine.reduce((a, b) => a + (b.stats?.pending || 0), 0);
     const el = $('#sub-n-' + k); if (el) { el.textContent = pend ? `${pend}` : (mine.length ? `${mine.length}` : ''); el.className = 'n' + (pend ? ' pend' : ''); el.title = pend ? `검수 대기 ${pend}장` : (mine.length ? `실제 생성 ${mine.length}건` : ''); } });
   $('#jobs-tr-label').textContent = JOBS_TR ? (CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR) : '전 시술';
   const list = BATCHES.filter(b => kindOk(b) && trOk(b) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
-  const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0;
+  const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0; $('#batches-empty').textContent = JOBS_ST && BATCHES.length ? '이 상태의 작업이 없습니다' : '생성 기록이 없습니다';
   LIST_IDS = list.map(b => b.batch_id);
   // 고른 작업이 지금 목록(필터·검색)에 없으면 상세도 비운다 — 안 그러면 필터를 바꿔도 사진이 따라온다 (2026-09-09 성연서님)
   if (CUR && !LIST_IDS.includes(CUR.batch_id)) clearDetail();
