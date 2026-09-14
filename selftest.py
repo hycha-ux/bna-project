@@ -1445,6 +1445,8 @@ _bad29, _n29 = [], 0
 for _t29 in _SKIN26:
     for _i29b, _pv29 in enumerate(_pb26("selfie", 100, seed=29, treatment=_t29)):
         _sp29 = build_prompts(_t29, "selfie", _pv29, 29000 + _i29b); _a29 = _sp29["after_variation"]
+        if _sp29["variation"]["timeline"]["key"] == "immediate":
+            continue                                        # 직후 컷은 같은 날 병원 빛이라 호가 안 걸린다(㉝)
         _n29 += 1
         if _a29["lighting"]["key"] in _HARSH29:
             _bad29.append(f'{_t29} {_a29["background"]["key"]}/{_a29["lighting"]["key"]}')
@@ -1484,7 +1486,7 @@ ok(not _LEAK30, f"광 금지는 Before 에만 — After 로 샌 시술 {_LEAK30}
 #    ⚠ 지울 것은 '리터칭'이지 '개선'이 아니다 — 금지는 시술 부위 **밖**에만 걸린다.
 _CONTRA31 = []
 for _t31 in ("skin_pores", "skinbooster_embo", "skin_redness", "nasolabial"):
-    _ap31 = build_prompts(_t31, "selfie", _pb26("selfie", 1, seed=31, treatment=_t31)[0], 31111)["after_prompt"]
+    _ap31 = build_prompts(_t31, "selfie", _pb26("selfie", 1, seed=31, treatment=_t31)[0], 31111, series=["2w", "4w"])["after_prompt"]   # 가라앉은 컷만(직후는 ㉝)
     if "not cleaner or smoother overall" in _ap31:
         _CONTRA31.append(f"{_t31}:개선금지문장부활")
     if "Outside the treated area" not in _ap31:
@@ -1580,7 +1582,7 @@ ok(not _missing32, f"셀카에 쓰는 표정 칸은 전부 expression_traits 에
 _viol32, _same32, _n32 = [], 0, 0
 for _t32 in ("skin_pores", "skinbooster_embo", "skin_redness"):
     for _i32, _p32 in enumerate(_pb26("selfie", 60, seed=32, treatment=_t32)):
-        _a32 = build_prompts(_t32, "selfie", _p32, 32000 + _i32)["after_variation"]
+        _a32 = build_prompts(_t32, "selfie", _p32, 32000 + _i32, series=["4w"])["after_variation"]   # 가라앉은 컷만(직후는 ㉝)
         _b32k, _a32k = _p32["expression"]["key"], _a32["expression"]["key"]
         _n32 += 1
         if _b32k == _a32k:
@@ -1598,7 +1600,7 @@ ok(_V32["after_drift"]["selfie"]["later"]["expression"] < 1.0,
 #       0914 실측으로 매트 쪽 압력은 세 곳인데 광을 요구하는 말은 엠보 한 마디뿐이었고 모공·홍조는 0개였다.
 _FIN32 = []
 for _t32 in ("skin_pores", "skinbooster_embo", "skin_redness"):
-    _sp32 = build_prompts(_t32, "selfie", _pb26("selfie", 1, seed=33, treatment=_t32)[0], 33001)
+    _sp32 = build_prompts(_t32, "selfie", _pb26("selfie", 1, seed=33, treatment=_t32)[0], 33001, series=["4w"])   # 가라앉은 컷만(직후는 ㉝)
     if "dewy sheen" not in _sp32["after_prompt"]:
         _FIN32.append(f"{_t32}:After광없음")
     # ⚠ Before 에는 "no dewy sheen"(금지문)이 있으므로 낱말로 재면 늘 걸린다 — 마감 칸 자체로 잰다
@@ -1623,6 +1625,29 @@ ok("dewy sheen" not in _ap32n and "{after_finish}" not in _ap32n,
 #    임상 After 는 '같은 사진 편집·조명 동일'이라 광을 얹으면 그건 시술이 아니라 리터칭이다 — 안 붙는 게 맞다.
 _apc32 = build_prompts("skin_pores", "clinical", _pb26("clinical", 1, seed=33, treatment="skin_pores")[0], 33002)["after_prompt"]
 ok("dewy sheen" not in _apc32, "임상 After 에는 광 문장이 붙지 않는다(조명 동일 편집이라 광은 리터칭이 된다)")
+
+
+# ㉝ 2026-09-14 저녁 연서님 "엠보는 직후가 조금 다이나믹한데 요렇게 직후로 보여지거든" (실사 6장).
+#    엠보에 직후 시점이 생겼다 — 직후 컷은 격자 볼록(팽진)이 보이고, 물광 마감·부드러운 조명 호는 안 붙는다.
+_EMBO33 = []
+_arc33 = set(_tr_all["skinbooster_embo"]["lighting_arc"]["after"])
+_soft33, _n33 = 0, 0
+for _s33 in range(20):
+    _sp33 = build_prompts("skinbooster_embo", "selfie", _pb26("selfie", 1, seed=_s33, treatment="skinbooster_embo")[0], 33300 + _s33, series=["immediate", "4w"])
+    _by33 = {a["when"]: a for a in _sp33["afters"]}
+    if list(_by33) != ["immediate", "4w"]:
+        _EMBO33.append(f"seed{_s33}:시점{list(_by33)}"); continue
+    _im, _w4 = _by33["immediate"]["after_prompt"], _by33["4w"]["after_prompt"]
+    if "grid of small raised bumps" not in _im: _EMBO33.append(f"seed{_s33}:직후에볼록없음")
+    if "Skin finish:" in _im: _EMBO33.append(f"seed{_s33}:직후에광마감")
+    if "natural glow" in _im: _EMBO33.append(f"seed{_s33}:직후에물광문장")   # 카드의 "no glow yet" 과 싸운다
+    if "raised bumps" in _w4 or "Skin finish:" not in _w4: _EMBO33.append(f"seed{_s33}:4주컷이상")
+    if _by33["immediate"]["effect_level"] != "early": _EMBO33.append(f"seed{_s33}:직후강도{_by33['immediate']['effect_level']}")
+    if not any(p.get("k") == "facts" for p in _by33["immediate"]["after_parts"]): _EMBO33.append(f"seed{_s33}:화면칸없음")
+    _n33 += 1; _soft33 += _by33["immediate"]["after_variation"]["lighting"]["key"] in _arc33
+ok(not _EMBO33, f"엠보 직후 컷은 격자 볼록이 보이고 광 마감은 4주 컷에만 붙는다 — {_EMBO33}")
+ok(_n33 and _soft33 < _n33, f"직후 컷은 부드러운 빛으로 몰리지 않는다(같은 날 병원 빛) — 부드러운 빛 {_soft33}/{_n33}")
+ok(_tr_all["skinbooster_embo"]["timeline"][0] == "immediate", "엠보 timeline 에 immediate 가 맨 앞에 있다")
 
 
 print()

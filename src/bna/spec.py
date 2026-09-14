@@ -260,12 +260,15 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     if "immediate" in probs or "later" in probs:
         probs = probs.get("immediate" if timeline == "immediate" else "later", {})
     override = v.get("after_immediate", {}).get(mode, {}) if timeline == "immediate" else {}
+    # 조명 호(전=센 빛 · 후=부드러운 빛)는 **가라앉은 뒤** 컷에만 (2026-09-14 저녁). 직후는 병원·차 안에서
+    # 같은 날 찍는 컷이라 센 빛이 정상이고, 부드러운 빛으로 몰면 볼록·홍조가 물광처럼 읽힌다.
+    stg = None if timeline == "immediate" else "after"
     after = {k: dict(val) for k, val in variation.items()}
     keys = {k: val["key"] for k, val in after.items()}
     for axis, p in probs.items():
         if axis in lock or axis not in v or rng.random() >= p:
             continue
-        allowed = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage="after")
+        allowed = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage=stg)
         if axis == "framing":                               # 프레이밍도 이웃 거리로만 (아래 framing_neighbors 주석)
             nb = v.get("framing_neighbors", {}).get(variation["framing"]["key"])
             if nb is not None:
@@ -298,11 +301,11 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     # 후 컷이 센 빛으로 남는다(0914 실측 22%, 그 세트는 '후가 더 나빠 보인다').
     # → 후 컷 배경이 호의 빛을 못 내면 **낼 수 있는 배경으로 옮긴다**. 옮길 곳이 없으면 종전대로 둔다(fail-open).
     arc_after = (tr.get("lighting_arc") or {}).get("after") or []
-    if arc_after and "lighting" not in lock and "background" not in lock:
+    if arc_after and stg and "lighting" not in lock and "background" not in lock:
         bl = v.get("background_lighting", {})
         if not (set(bl.get(keys.get("background"), [])) & set(arc_after)):
             bg_ok = [b for b in allowed_values("background", keys, mode, v, tr,
-                                               base=override.get("background"), stage="after")
+                                               base=override.get("background"), stage=stg)
                      if set(bl.get(b, [])) & set(arc_after)]
             if bg_ok:
                 k = rng.choice(bg_ok); after["background"] = {"key": k, "text": v["background"][k]}; keys["background"] = k
@@ -311,7 +314,7 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     for axis in ("lighting", "context"):
         if axis in lock:
             continue
-        ok = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage="after")
+        ok = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage=stg)
         if keys[axis] not in ok:
             k = rng.choice(ok); after[axis] = {"key": k, "text": v[axis][k]}; keys[axis] = k
     return after
@@ -543,7 +546,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             sl = str(((t.get("series_levels") or {}).get(w)) or (eff.get("series_levels") or {}).get(w, "final"))
             lowered = sl != "final"
             lv = final_level if sl == "final" else sl
-        c = f'{t["after_change"].strip()} {eff["effect_levels"][lv]}.'
+        # 직후이고 강도를 낮췄고 사실 카드가 있으면 after_change 를 뺀다 (2026-09-14 저녁 엠보 직후):
+        #   "hydrated with a natural glow" 와 카드의 "matte with no glow yet" 이 한 문장 건너 싸운다.
+        #   무엇이 보이는지는 카드가, '아직 결과가 아니다'는 early 문장이 말한다. 최종 강도 직후(필러)는 종전대로.
+        card = w == "immediate" and lowered and any((t.get("facts") or {}).get(k) for k in FACT_KEYS_PROMPT)
+        c = f'{eff["effect_levels"][lv]}.' if card else f'{t["after_change"].strip()} {eff["effect_levels"][lv]}.'
         if t.get("must_not_change"):
             c += " " + " ".join(str(t["must_not_change"]).split())
         if w == "immediate":
@@ -629,7 +636,9 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             #      0914 실측에서 엠보 after_change 의 `natural glow` 한 마디뿐이었고 모공·홍조는 아예 없었다.
             #      after_change 에 욱여넣지 않는 이유는 그 칸이 '무엇이 좋아졌나'(효과 강도와 짝)라서다 —
             #      마감은 강도를 안 올리고 빛만 바꾼다(과장 방지).
-            finish = " ".join(str(t.get("after_finish") or "").split())
+            #    ⚠ 직후 컷엔 안 붙인다 (2026-09-14 저녁 연서님 "엠보는 직후가 다이나믹"): 직후는 볼록·홍조가
+            #      보이는 시점이라 광이 돌면 4주 컷과 섞인다. 흔적은 facts.immediate_marks 가 그린다.
+            finish = "" if w == "immediate" else " ".join(str(t.get("after_finish") or "").split())
             txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
                 identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
                 after_finish=finish,

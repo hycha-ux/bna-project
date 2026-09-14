@@ -278,7 +278,9 @@ skinbooster_embo:
   modes: [clinical, selfie]
   angles_clinical: [front]
   mask_region: full_face_skin
-  timeline: [1w, 4w]
+  # 직후를 넣었다 (2026-09-14 저녁 연서님 "엠보는 직후가 조금 다이나믹한데 요렇게 직후로 보여지거든" + 실사 6장).
+  #   강도는 전역 기본(직후 early)이라 효과 문장은 '거의 안 보임'이고, 무엇이 보이는지는 아래 facts.immediate_marks 가 맡는다.
+  timeline: [immediate, 1w, 4w]
   effect_levels: [subtle, moderate]
   before_severity: [mild, marked]
   severity_min_age: {mild: early_20s, marked: 30s}
@@ -316,6 +318,27 @@ skinbooster_embo:
     hydration treatment, not a pigment or contour treatment.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
+  # ── 직후 컷 사실 카드 (2026-09-14 저녁 연서님 실사 6장, 온리프 촬영) ──
+  #   엠보 = 진피 얕게 점점이 주입 → 주입점마다 피부가 볼록 솟는다(팽진). 6장 공통으로 보인 것:
+  #   볼 전체에 지름 3~5mm 창백한 볼록이 약 1cm 간격으로 **격자처럼 줄지어** 있고, 사이 피부는 분홍 홍조,
+  #   군데군데 점 크기 핏자국. 광은 전혀 없고 표면이 울퉁불퉁하다. 드레싱·크림은 안 보인다.
+  #   ⚠ 직후엔 after_finish(물광)·조명 호(부드러운 빛)를 **붙이지 않는다**(spec.py 가 시점으로 거른다) —
+  #     볼록이 곧 직후 신호이고, 여기 광이 돌면 4주 컷과 구별이 안 된다.
+  #   ⚠ 금지 품목(크림·거즈)은 적지 않는다 — 적으면 그린다(0910 마취크림 5/5). 긍정문만.
+  #   ⚠ 사진 원본은 채팅으로만 받아 samples/reference 에 아직 없다 — 넣을 때 samples_index 에
+  #     timeline: immediate 로 달아야 직후 컷 참조로만 쓰인다(1주·4주 After 에 붙으면 볼록이 되살아난다).
+  facts:
+    onset: 물광·촉촉함은 볼록이 가라앉은 뒤(1주~)부터 보인다. 직후는 효과가 아니라 흔적이 보이는 시점이라 강도 early
+    extent: 볼 전체(광대 아래~턱선 위), 코 옆까지. 실사 6장 전부 한쪽 볼 확대 컷
+    immediate_marks: >
+      Right after the skin booster injections the treated cheek is covered in a regular grid of
+      small raised bumps: each bump is a pale, dome-shaped wheal about 3 to 5 mm across where the
+      product sits just under the skin, and the bumps are spaced roughly 1 cm apart in orderly rows
+      over the whole cheek, from below the cheekbone down toward the jawline. The skin between the
+      bumps is flushed pink, with a few tiny pinpoint blood dots at some injection points. The cheek
+      surface looks visibly lumpy and uneven, matte with no glow yet; the only things on the skin
+      are these bumps, the pink flush and the pinpoint dots.
+    later: 볼록은 1~2일 안에 가라앉고 1주 컷부터는 흔적 없이 물광. 홍조·핏자국이 며칠 가는지는 의료진 확인 대기
   # ⚠ 2026-09-14 오후 연서님 검수: 수염 2종을 더 뺀다. 0914 모공 배치에서 After 만 `beard_full` 로
   #   뽑혀 턱·볼 아래가 통째로 덮였다 — 시술 부위(볼·코)가 가려지면 전후 비교가 성립하지 않고,
   #   사람 눈에는 '2주 만에 다른 사람'으로 읽힌다. 전·후 양쪽에서 뺀다(한쪽만 빼면 그 차이가 곧 드리프트다).
