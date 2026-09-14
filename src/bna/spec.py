@@ -36,6 +36,18 @@ PERSON_AXES = ["country", "age", "gender", "face_shape", "skin_tone", "skin_cond
                "hair_style", "hair_color", "eyes", "extras"]
 SCENE_AXES = ["background", "angle", "framing", "context", "lighting", "color", "quality", "expression"]
 
+# 시술별 '못 잼(동일인 게이트가 얼굴을 못 찾음)' 상한. 정본은 여기 하나다 —
+#   selftest ⑱ 와 tools/framing_na_forecast.py 가 같이 읽는다(두 벌이면 한쪽만 고쳐져 갈린다).
+# 기본 10% = 2026-09-11 성연서님 B안.
+# 예외 2종:
+#   filler_neck : 목만 컷이 대표 구도인데 얼굴이 프레임 밖이다 — 어떻게 섞어도 10% 아래가 안 된다.
+#   피부 3종    : 2026-09-14 연서님 검수 "실제는 볼 한쪽 확대(모공이 보이는 거리)". one_cheek 의
+#                 실측 못 잼률이 100% 라, 확대 컷을 의미 있게 넣는 순간 10% 는 **산술적으로 불가능**하다.
+#                 목표를 낮춘 게 아니라 이 3종만 갈랐다. 되돌리는 레버 = framing_weights 하나.
+#                 ⚠ 20% 는 '다섯 장 중 한 장은 동일인 검사를 못 한다'는 뜻이다 — 사람 검수가 그만큼 더 중요하다.
+NA_LIMIT = {"filler_neck": 0.35, "skinbooster_embo": 0.20, "skin_pores": 0.20, "skin_redness": 0.20}
+NA_LIMIT_DEFAULT = 0.10
+
 
 def treatment_rules(treatment: str, mode: str) -> dict:
     """시술별 조건 제약 (treatments.yaml 의 구조 필드) → 추첨·드리프트가 같이 쓰는 한 뭉치.
@@ -45,15 +57,23 @@ def treatment_rules(treatment: str, mode: str) -> dict:
     framing_weights : 시술별 프레이밍 가중(전역 weights.framing 에 곱한다). 0 은 쓰지 마라 —
                       '안 뽑기'는 framing_allow 가 할 일이고, 여기서 0 을 주면 그 프레이밍이
                       다시 쓸 만해졌는지 확인할 길이 사라진다(age_weights 와 달리 0 을 안 거른다).
+    lighting_arc    : {before: [...], after: [...]} — Before 는 센 빛, After 는 부드러운 빛처럼
+                      **방향이 있는 조명 차이**. drift_lock 에 lighting 이 있으면 무시된다(잠금이 이긴다).
+                      ⚠ 이건 '조명을 자유롭게 푼다'가 아니다. 자유 재추첨은 후가 전보다 나빠 보이는
+                        경우를 절반쯤 만든다 — 호는 한 방향으로만 간다(2026-09-14 연서님 검수).
+    severity_weights: Before 강도 추첨 가중. 안 적으면 종전대로 균등이다.
+                      ⚠ 0 은 쓰지 마라 — '안 뽑기'는 before_severity 목록이 할 일이다.
     treatment 이 None 이면 빈 규칙 (예전 호출·테스트가 그대로 돈다)."""
     r = {"allow": {}, "ban": {}, "age_weights": {}, "framing_weights": {}, "drift_lock": [],
-         "framing_ban_by_angle": {}, "expression_policy": "free"}
+         "framing_ban_by_angle": {}, "expression_policy": "free", "lighting_arc": {},
+         "severity_weights": {}}
     if not treatment:
         return r
     t = load("treatments.yaml").get(treatment)
     if t is None:
         raise ValueError(f"treatments.yaml 에 {treatment} 가 없다")
     r["age_weights"] = {str(k): float(v) for k, v in (t.get("age_weights") or {}).items()}
+    r["severity_weights"] = {str(k): float(v) for k, v in (t.get("severity_weights") or {}).items()}
     r["drift_lock"] = list(t.get("drift_lock") or [])
     r["expression_policy"] = t.get("expression_policy", "free")
     if r["expression_policy"] == "lock" and "expression" not in r["drift_lock"]:
@@ -67,12 +87,19 @@ def treatment_rules(treatment: str, mode: str) -> dict:
             r["ban"][a] = list(ks)
         r["framing_ban_by_angle"] = {k: list(v) for k, v in (t.get("framing_ban_by_angle") or {}).items()}
         r["framing_weights"] = {str(k): float(v) for k, v in (t.get("framing_weights") or {}).items()}
+        arc = t.get("lighting_arc") or {}
+        r["lighting_arc"] = {k: list(arc.get(k) or []) for k in ("before", "after") if arc.get(k)}
     return r
 
 
-def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=None) -> list:
+def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=None, stage=None) -> list:
     """한 축의 허용 목록. 순서대로 거른다:
-    모드 화이트리스트(또는 base) → 시술 허용/금지 → 성별 제외 → 나이 0 가중 → 배경×조명 → 각도×프레이밍 → 배경×맥락·프레이밍×맥락.
+    모드 화이트리스트(또는 base) → 시술 허용/금지 → 성별 제외 → 나이 0 가중 → 배경×조명 → 조명 호(stage) → 각도×프레이밍 → 배경×맥락·프레이밍×맥락.
+
+    stage: "before" | "after" | None. lighting_arc 를 쓰는 시술에서만 뜻이 있다 —
+      Before 는 arc.before(센 빛)에서, After 는 arc.after(부드러운 빛)에서 뽑는다.
+      ⚠ 여기서도 빈 목록이면 한 단계 전으로 되돌린다(fail-open). 즉 그 배경이 그 빛을 못 내면
+        호가 성립하지 않고 조명이 그대로 남는다 — 없는 창문을 만들어내지 않으려는 것이다.
     keys 는 지금까지 뽑힌 {축: 값키}. 표가 서로 어긋나 빈 목록이 되면 한 단계 전 목록으로 돌아간다(조용히 죽지 않게).
     ⚠ 그 폴백은 config 오류를 숨기므로 selftest 가 실측으로 잡는다."""
     rules = v.get("mode_rules", {}).get(mode, {})
@@ -96,6 +123,12 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
         compat = v.get("background_lighting", {}).get(keys.get("background"))
         if compat:
             allowed = [k for k in allowed if k in compat] or allowed
+    # 조명 호는 **배경 호환표 뒤에** 건다 — 앞에 걸면 "욕실 + 창가 햇빛" 처럼
+    # 그 배경이 낼 수 없는 빛이 남는다(교집합이 비면 폴백이 호를 그대로 통과시킨다).
+    if axis == "lighting" and stage and "lighting" not in (tr.get("drift_lock") or []):
+        arcv = (tr.get("lighting_arc") or {}).get(stage) or []
+        if arcv:
+            allowed = [k for k in allowed if k in arcv] or allowed
     if axis == "framing":
         fb = (tr.get("framing_ban_by_angle") or {}).get(keys.get("angle")) or []
         allowed = [k for k in allowed if k not in fb] or allowed
@@ -213,7 +246,13 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
       직후=전체얼굴 · 1주=하관만 · 2주=전체얼굴+안경 으로 갈렸고, 1주 컷은 팔자 주름이 사실상 화면
       가장자리로 밀려났다. 심사가 그 컷을 보고 '턱선·목이 정리됐다'고 8점을 줬다 — 시술 부위가 아닌
       곳을 보고 준 점수다. 시점 비교는 '같은 구도로 다시 찍은 사진'일 때만 성립한다.
-      옷·배경·조명·머리는 그대로 계속 바뀐다(다른 날에 찍은 티는 거기서 난다)."""
+      옷·배경·조명·머리는 그대로 계속 바뀐다(다른 날에 찍은 티는 거기서 난다).
+
+    2026-09-14 (연서님 검수 "6장 전부 전·후 구분 불가·복붙처럼 보임"): 프레이밍은 **잠금과 자유 사이**다.
+      · 자유 재추첨 = '전 얼굴 전체 → 후 한쪽 볼' 점프 → 전후 비교가 물리적으로 성립 안 함(0911 사고)
+      · 완전 잠금  = 여섯 장이 같은 구도 → 복붙처럼 보임(0914 아침 v10)
+      그래서 `framing_neighbors` 로 **한 칸 옆 거리까지만** 옮긴다. 각도·머리와 같은 방식이다.
+      시리즈 컷은 SERIES_LOCK 이 여전히 완전 잠금이다(한 사람의 여러 시점은 같은 구도여야 한다)."""
     v = load("variations.yaml")
     tr = treatment_rules(treatment, mode)
     lock = set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())
@@ -226,7 +265,11 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     for axis, p in probs.items():
         if axis in lock or axis not in v or rng.random() >= p:
             continue
-        allowed = allowed_values(axis, keys, mode, v, tr, base=override.get(axis))
+        allowed = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage="after")
+        if axis == "framing":                               # 프레이밍도 이웃 거리로만 (아래 framing_neighbors 주석)
+            nb = v.get("framing_neighbors", {}).get(variation["framing"]["key"])
+            if nb is not None:
+                allowed = [k for k in allowed if k in nb]   # 빈 목록이면 안 바뀐다
         if axis == "angle":                                 # 각도는 이웃 각도로만 (비슷하되 동일하지 않게)
             nb = v.get("angle_neighbors", {}).get(variation["angle"]["key"])
             if nb:
@@ -242,7 +285,7 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     for axis in ("lighting", "context"):
         if axis in lock:
             continue
-        ok = allowed_values(axis, keys, mode, v, tr, base=override.get(axis))
+        ok = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage="after")
         if keys[axis] not in ok:
             k = rng.choice(ok); after[axis] = {"key": k, "text": v[axis][k]}; keys[axis] = k
     return after
@@ -390,7 +433,13 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     else:
         scene = selfie_scene(fields)
     sevs = t.get("before_severity", ["moderate"])
-    sev = rng.choice(sevs)
+    # Before 강도는 **가중 추첨**이다 (2026-09-14). 종전 균등 추첨은 피부 3종에서 절반이 mild 로 떨어졌고,
+    #   mild 는 effect_by_severity 상 subtle 하고만 짝지어진다 — 즉 "거의 없는 문제 → 은은한 개선"이라
+    #   전후가 물리적으로 구별되지 않는 세트가 설계상 50% 였다(0914 실측 6장 중 2장).
+    #   가중이 없으면 종전과 똑같이 균등이다.
+    _sw = treatment_rules(treatment, mode).get("severity_weights") or {}
+    _pool = [x for x in sevs for _ in range(max(1, round(4 * float(_sw.get(x, 1.0)))))]
+    sev = rng.choice(_pool)
     min_age = t.get("severity_min_age", {})
     if min_age:                                   # 인물 나이가 강도 최소 나이보다 어리면 한 단계씩 낮춤
         order = list(load("variations.yaml")["age"])

@@ -165,6 +165,20 @@ identity_lock_by_framing:
   neck_only: identity_lock_neck.md
 identity_lock_order: [full_face, forehead_cut, lower_face, one_cheek, nose_to_neck, neck_only]   # 뒤로 갈수록 좁다
 
+# 프레이밍 이웃표 (2026-09-14). After 프레이밍이 바뀔 때 **한 칸 옆 거리로만** 옮긴다.
+# 각도(angle_neighbors)·머리(hair_style_neighbors)와 같은 방식이고 이유도 같다: 자유 재추첨은
+#   '전=얼굴 전체 → 후=한쪽 볼' 같은 점프를 만들어 전후 비교 자체를 깨고(0911 시리즈 사고),
+#   완전 잠금은 여섯 장이 복붙처럼 보이게 한다(0914 연서님 검수).
+# ⚠ 이 표는 '거리'로 읽어라 — 목만 컷은 옮기면 시술 부위가 통째로 사라지므로 이웃이 없다.
+# ⚠ 시리즈 컷은 종전대로 완전 잠금이다(spec.SERIES_LOCK) — 같은 사람의 여러 시점은 같은 구도여야 한다.
+framing_neighbors:
+  full_face: [forehead_cut]
+  forehead_cut: [full_face, lower_face]
+  lower_face: [forehead_cut, one_cheek, nose_to_neck]
+  one_cheek: [lower_face]
+  nose_to_neck: [lower_face]
+  neck_only: []
+
 # 생활 맥락: 옷·소품·머리 (셀카 전용 축. 임상은 none 고정)
 context:
   none: ""
@@ -198,6 +212,11 @@ lighting:
   backlit: "backlit against a bright window, face slightly underexposed"
   ceiling_harsh: "harsh overhead ceiling light, shiny oily highlights on the nose and cheekbones, uneven exposure"
   mixed: "mixed light, warm lamp on one side and cool daylight on the other, slight color cast"
+  # ── 2026-09-14 피부 3종 조명 호(lighting_arc) 전용으로 신설 (연서님 검수: "실제 전은 센 빛에
+  #   모공이 그림자로 파이고, 후는 부드러운 빛에 하이라이트(물광)"). 다른 시술도 쓸 수 있게 전역 축에 둔다.
+  #   ⚠ 둘은 짝이다 — flash 만 넣고 window_soft 를 빼면 '전보다 나빠 보이는 후'가 나온다.
+  flash: "direct phone flash in a dim room, hard flat frontal light, sharp shadow outline behind the head, shiny oily highlights, every pore and flake raised by the light"
+  window_soft: "soft diffused daylight through a curtain, gentle even light with a smooth sheen on the cheekbones, no hard shadows"
 
 color:
   neutral: "neutral color balance"
@@ -265,7 +284,7 @@ mode_rules:
     # finger_on_cheek 제거(2026-09-10 성연서님) — 손을 화면에 들이는 유일한 맥락이라 손 등장의 뿌리였다
     context: [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face]
     angle: [selfie_3q, selfie_side, chin_up, tilted, selfie_high, selfie_low, front]
-    lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed]   # 링라이트 제외 (스튜디오 느낌)
+    lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed, flash, window_soft]   # 링라이트 제외 (스튜디오 느낌). flash·window_soft = 0914 조명 호
     color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외
     quality: [mid, old, front_cam, app_upload]                               # flagship 제외
     # ⚠ 이 줄은 화이트리스트다 — expression 축에 칸을 만들어도 여기 안 적으면 **한 번도 안 뽑힌다**
@@ -276,12 +295,15 @@ mode_rules:
   # 임상: 프레이밍·맥락은 고정
 
 # 배경별 호환 조명 (셀카 모드). 배경을 먼저 뽑고 조명은 이 목록 안에서만 선택.
+# ⚠ flash 는 어두운 실내에서만, window_soft 는 창이 있는 곳에서만 (2026-09-14).
+#   욕실엔 window_soft 를 넣지 않았다 — 그래서 욕실 배경에서는 '후=부드러운 빛' 호가 성립하지 않고
+#   조명이 그대로 남는다(종전 잠금과 같은 동작). 사실이 아닌 곳에 빛을 만들어 넣지 않으려는 것이다.
 background_lighting:
-  home: [window, fluorescent, night, ring, ceiling_harsh, mixed]
-  cafe: [window, fluorescent, backlit, mixed]
+  home: [window, fluorescent, night, ring, ceiling_harsh, mixed, flash, window_soft]
+  cafe: [window, fluorescent, backlit, mixed, window_soft]
   outdoor: [window, backlit]
-  car: [window, backlit, night, mixed]
-  bathroom: [fluorescent, ring, ceiling_harsh]
+  car: [window, backlit, night, mixed, flash, window_soft]
+  bathroom: [fluorescent, ring, ceiling_harsh, flash]
   clinic_waiting: [fluorescent, window, mixed]
   clinic_mirror: [fluorescent, ceiling_harsh]
   clinic_bed: [fluorescent, ceiling_harsh, ring]

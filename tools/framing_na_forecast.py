@@ -23,7 +23,7 @@ try:
 except Exception:                                       # noqa: BLE001
     pass
 from bna.planner import plan_batch
-from bna.spec import load
+from bna.spec import load, NA_LIMIT, NA_LIMIT_DEFAULT
 
 
 def measured_rates(out_dir: Path) -> dict:
@@ -164,5 +164,8 @@ if __name__ == "__main__":
     else:
         print(f"[예상 못 잼] 추첨 {a.samples}회 × 시술별")
         for row in forecast(r, a.samples, a.seed):
-            flag = "OVER " if row["expected_na"] >= 0.10 else "ok   "
+            # 상한은 시술마다 다르다 (정본=bna.spec.NA_LIMIT). 하나의 숫자로 재면 피부 3종이
+            # 늘 빨간불로 보여서, 정말 넘친 회차를 아무도 안 보게 된다.
+            _lim = NA_LIMIT.get(row["treatment"], NA_LIMIT_DEFAULT)
+            flag = "OVER " if row["expected_na"] >= _lim else "ok   "
             print(f"  {flag}{row['treatment']:20s} {row['expected_na']*100:5.1f}%   {row['dist']}")

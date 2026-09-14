@@ -1052,7 +1052,10 @@ from bna.planner import plan_batch as _pb18
 # 새로 재려면 tools/framing_na_forecast.py — 이 상수는 그때 같이 갱신하고 근거(장수)를 남겨라.
 _NA18 = {"one_cheek": 1.00, "neck_only": 0.75, "lower_face": 0.50,
          "nose_to_neck": 0.125, "forehead_cut": 0.0, "full_face": 0.0}
-_EXEMPT18 = {"filler_neck"}      # 목만 컷이 대표 구도인데 얼굴이 프레임 밖 — 어떻게 섞어도 10% 아래가 안 된다
+# 상한표의 정본은 bna.spec.NA_LIMIT 하나다 (2026-09-14) — 이 회귀와 tools/framing_na_forecast.py 가
+#   같이 읽는다. 종전엔 회귀에 10%, 도구에 10% 가 따로 박혀 있어 한쪽만 고치면 조용히 갈렸다.
+from bna.spec import NA_LIMIT as _LIM18, NA_LIMIT_DEFAULT as _LIMD18
+_EXEMPT18 = set()                # 예외도 상한표가 말한다(목주름 35% · 피부 3종 20%)
 
 
 def _na18(t, n=1200, seed=18):
@@ -1069,9 +1072,17 @@ for _t18 in load("treatments.yaml"):
     if _t18 in _EXEMPT18:
         continue
     _r18 = max(_na18(_t18, 1200, sd)[0] for sd in (18, 19, 20))
-    if _r18 >= 0.10:
-        _over18.append(f"{_t18} {_r18*100:.1f}%")
-ok(not _over18, f"목주름 외 전 시술의 예상 못 잼이 10% 미만이어야 한다 — 초과: {_over18}")
+    _lim18 = _LIM18.get(_t18, _LIMD18)
+    if _r18 >= _lim18:
+        _over18.append(f"{_t18} {_r18*100:.1f}% (상한 {_lim18*100:.0f}%)")
+ok(not _over18, f"예상 못 잼이 시술별 상한(bna.spec.NA_LIMIT) 미만이어야 한다 — 초과: {_over18}")
+
+# ⑱-1b 피부 3종은 확대 컷이 실제로 늘었는가 — 상한만 재면 '안 늘려도 통과'라 방향을 못 지킨다
+_close18 = {t: sum(_na18(t, 1200, 18)[1].get(f, 0) for f in ("one_cheek", "lower_face"))
+            for t in ("skinbooster_embo", "skin_pores", "skin_redness")}
+_close18_txt = {k: f"{v*100:.0f}%" for k, v in _close18.items()}
+ok(all(0.20 <= v <= 0.40 for v in _close18.values()),
+   f"피부 3종 확대 컷(한쪽 볼·아래 얼굴) 비중은 20~40% 여야 한다 — 실제 {_close18_txt}")
 
 # ⑱-2 '빼기'가 아니라 '낮추기'다. 0 으로 죽이면 모델이 좋아졌는지 확인할 길이 사라진다.
 _fw18 = load("variations.yaml")["weights"]["framing"]
@@ -1336,6 +1347,57 @@ try:
 except ValueError:
     _catbad = True
 ok(_catbad, "모르는 카테고리는 조용히 저장하지 말고 소리 내고 죽는다")
+
+# ㉖ 피부 3종 0914 검수 반영 — 조명 호·프레이밍 이웃·강도 가중·Before 전용 참조
+#    (연서님 검수 "6장 전부 AI 티 + 전·후 구분 불가", 빌디 전달 5건)
+from bna.planner import plan_batch as _pb26
+from bna.spec import treatment_rules as _tre26, allowed_values as _av26f
+_SKIN26 = ["skinbooster_embo", "skin_pores", "skin_redness"]
+_SOFT26, _HARSH26 = {"window", "window_soft"}, {"ceiling_harsh", "flash", "fluorescent"}
+_NB26 = load("variations.yaml")["framing_neighbors"]
+_bad26, _arc26, _sev26, _n26 = [], 0, 0, 0
+for _t26 in _SKIN26:
+    for _i26, _p26 in enumerate(_pb26("selfie", 150, seed=26, treatment=_t26)):
+        _sp26 = build_prompts(_t26, "selfie", _p26, 26000 + _i26); _av26 = _sp26["after_variation"]
+        _b26, _a26 = _p26["lighting"]["key"], _av26["lighting"]["key"]
+        _n26 += 1
+        # ① 호는 **한 방향**이다. 반대로 가면(후가 더 센 빛) 효과가 거꾸로 보인다.
+        if _b26 in _SOFT26:
+            _bad26.append(f"{_t26} Before 가 부드러운 빛({_b26})")
+        if _b26 in _HARSH26 and _a26 in _SOFT26:
+            _arc26 += 1
+        # ② 프레이밍은 같거나 **한 칸 옆**까지만 (자유 재추첨이면 전후 비교가 깨진다)
+        _fb26, _fa26 = _p26["framing"]["key"], _av26["framing"]["key"]
+        if _fa26 != _fb26 and _fa26 not in (_NB26.get(_fb26) or []):
+            _bad26.append(f"{_t26} 프레이밍 점프 {_fb26}->{_fa26}")
+        if _sp26["variation"]["before_severity"]["key"] == "marked":
+            _sev26 += 1
+ok(not _bad26, f"피부 3종: Before 는 센 빛 · After 프레이밍은 이웃까지 — 위반 {_bad26[:4]} ({len(_bad26)}건)")
+ok(_arc26 / _n26 >= 0.60,
+   f"'전=센 빛 → 후=부드러운 빛'이 6할 이상이어야 한다(물광은 빛이 만든다) — 실제 {_arc26/_n26*100:.0f}%")
+ok(_sev26 / _n26 >= 0.55,
+   f"Before 강도는 marked 쪽으로 기울어야 한다(mild+subtle 짝은 전후가 구별 안 된다) — 실제 {_sev26/_n26*100:.0f}%")
+# ③ 잠금이 호를 이긴다 — drift_lock 에 lighting 을 도로 넣으면 되돌아가야 한다(되돌릴 레버가 살아 있나)
+_tr26 = _tre26("skinbooster_embo", "selfie")
+ok(_tr26["lighting_arc"].get("before") and _tr26["lighting_arc"].get("after"),
+   "조명 호가 treatment_rules 까지 실려 와야 한다(안 실리면 설정이 죽은 칸이 된다)")
+_tr26b = dict(_tr26, drift_lock=list(_tr26["drift_lock"]) + ["lighting"])
+ok(_av26f("lighting", {"background": "home"}, "selfie", load("variations.yaml"), _tr26b, stage="after")
+   == _av26f("lighting", {"background": "home"}, "selfie", load("variations.yaml"), _tr26b),
+   "drift_lock 에 lighting 이 있으면 호는 무시돼야 한다(잠금이 이긴다 = 되돌리는 레버)")
+# ④ 시술 전 전용 참조는 After 컷에 안 붙는다 (방향만 반대인 0911 사고).
+#    축은 빌디가 같은 날 올린 `timeline: before` 하나다 — 티모가 짜던 `stage` 축은 같은 일을 두 벌로
+#    만들므로 버렸다(둘이면 한쪽만 고쳐져 갈린다). 회귀는 남긴다: 막는 성질이 같기 때문이다.
+import bna.refs as _R26
+_orig26 = _R26.check_index
+_R26.check_index = lambda: [{"file": "x.jpg", "mode": "selfie", "timeline": "before", "tags": {}},
+                            {"file": "y.jpg", "mode": "selfie", "timeline": "2w", "tags": {}},
+                            {"file": "z.jpg", "mode": "selfie", "tags": {}}]
+_bef26 = [r["file"] for r in _R26.candidates("selfie")]
+_aft26 = [r["file"] for r in _R26.candidates("selfie", when="2w")]
+_R26.check_index = _orig26
+ok(_bef26 == ["x.jpg", "z.jpg"] and _aft26 == ["y.jpg", "z.jpg"],
+   f"timeline=before 참조는 Before 에만·시점 태그는 그 시점 After 에만 — 실제 {_bef26} / {_aft26}")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

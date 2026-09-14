@@ -141,12 +141,13 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
             tries += 1
             p = {}
             for axis in PERSON_AXES:
-                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr))
+                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"))
             sig = tuple(p[a] for a in PERSON_AXES)
             if sig in seen or (strict and sig in past):
                 continue
             for axis in SCENE_AXES:
-                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr))
+                # stage="before" = 이 추첨이 **시술 전** 사진이라는 뜻 (조명 호가 있는 시술에서만 뜻이 있다)
+                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"))
             scene = tuple(p[a] for a in SCENE_SIG_AXES)
             # 구도 중복 회피(2026-09-10). **1차에서만** 막는다 — 구도 후보는 유한해서
             # 2차까지 막으면 배치가 말없이 줄어든다(그게 더 나쁘다는 게 이 루프의 원래 원칙).
