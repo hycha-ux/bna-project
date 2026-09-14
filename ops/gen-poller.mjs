@@ -224,14 +224,43 @@ function listeningPid(port = PORT) {
  * 생긴 `series` 칸이 오류 없이 통째로 무시돼 전·후 2장이 나왔다). 그래서 **①큐가 비었고
  * ②소스가 서버보다 새롭고 ③그 포트를 물고 있는 게 우리가 띄운 그 프로세스일 때만** 갈아 끼운다.
  */
+/**
+ * 떠 있는 서버를 어떻게 할지 — **순수 판단**(부작용 0, 회귀가 이 함수를 본다).
+ *
+ * ⚠ 2026-09-14 사고: 서버가 **3일간 옛 코드**로 떠 있었는데 갈아 끼우기가 한 번도 안 걸렸고,
+ *   종전 코드는 `return 'already'` 로 **조용히** 빠지는 길이 둘이라(판정 실패·kill 실패)
+ *   로그에 흔적이 한 줄도 없었다. 그날 요청 2건이 옛 서버에 들어가 그 자리에서 실패로
+ *   소모됐다(사람이 다시 보내야 했다). 그래서 ①판정을 여기로 꺼내 **이유를 항상 남기고**
+ *   ②옛 코드인 걸 알면서는 요청을 밀어 넣지 않는다(`wait`).
+ * ⚠ `use`(그냥 쓴다)로 떨어지는 두 갈래는 fail-open 이 맞다 — 기록이 없거나 포트 주인이 남이면
+ *   서버 코드의 나이를 **알 수 없다**. 여기서 멈추면 사람이 손으로 띄운 날 요청이 영영 안 돈다.
+ *   대신 경고를 남겨, 조용히 지나가지는 않게 한다.
+ * ⚠ config(YAML)는 이 판정에 넣지 않는다 — `spec.load` 가 파일 mtime 으로 캐시를 무르므로
+ *   설정 변경은 재시작이 필요 없다(넣으면 설정 한 줄마다 서버를 죽이게 된다).
+ */
+export function apiAction({ alive, rec, src, owner, idle }) {
+  if (!alive) return { act: 'spawn', why: '서버가 안 떠 있다' };
+  if (!rec) return { act: 'use', why: '우리가 띄운 서버가 아니다(기록 없음) — 코드 나이를 모른다', warn: true };
+  if (!(src > (rec.src || 0))) return { act: 'use', why: '서버가 이미 최신 코드다' };
+  if (owner !== rec.pid) return { act: 'use', why: `포트 주인 pid ${owner} ≠ 기록 ${rec.pid} — 남이 띄운 서버라 죽이지 않는다`, warn: true };
+  if (!idle) return { act: 'wait', why: '코드가 바뀌었는데 큐에 도는 작업이 있다 — 죽이면 그 생성이 날아간다' };
+  return { act: 'restart', why: '코드가 바뀌었다' };
+}
+
+/** 반환 `'stale'` = **이번 회차엔 요청을 넣지 마라**(옛 코드 서버에 밀어 넣으면 그 요청이 타 버린다). */
 async function ensureApi({ idle }) {
-  if (await alive()) {
-    const rec = readJson(API_STATE);
-    const stale = idle && rec && srcMtime() > (rec.src || 0) && listeningPid() === rec.pid;
-    if (!stale) return 'already';
-    try { process.kill(rec.pid); } catch { return 'already'; }
+  const rec = readJson(API_STATE);
+  const a = apiAction({ alive: await alive(), rec, src: srcMtime(), owner: listeningPid(), idle });
+  if (a.act === 'use') {
+    if (a.warn) log(`로컬 API 를 그대로 쓴다 — ${a.why}`);
+    return 'already';
+  }
+  if (a.act === 'wait') { log(`로컬 API 가 옛 코드다 — ${a.why}`); return 'stale'; }
+  if (a.act === 'restart') {
+    try { process.kill(rec.pid); } catch (e) { log(`옛 로컬 API(pid ${rec.pid}) 종료 실패 — ${e.message}`); return 'stale'; }
     for (let i = 0; i < 20 && await alive(); i++) await sleep(500);
-    log('코드가 바뀌어 로컬 API 를 다시 띄운다(큐가 비어 있을 때만)');
+    if (await alive()) { log(`포트 ${PORT} 가 아직 응답한다 — 옛 코드 서버가 안 죽었다`); return 'stale'; }
+    log(`코드가 바뀌어 로컬 API 를 다시 띄운다 — ${a.why}`);
   }
   return spawnApi();
 }
@@ -349,7 +378,10 @@ async function main() {
         }
         if (!req || req.status !== 'accepted') { log(`건너뜀 ${a.id} — 상태가 ${req?.status}`); continue; }
         try {
-          await ensureApi({ idle: !queueJobs().some((j) => j.status === 'queued' || j.status === 'running') });
+          const api = await ensureApi({ idle: !queueJobs().some((j) => j.status === 'queued' || j.status === 'running') });
+          // 옛 코드 서버에 넣으면 그 요청이 **그 자리에서 실패로 소모된다**(2026-09-14 실사고 2건).
+          // 상태를 그대로 두면 다음 회차가 같은 요청을 'add' 로 다시 집는다 — 재전송이 필요 없다.
+          if (api === 'stale') { log(`대기 ${a.id} — 로컬 API 가 옛 코드다. 요청은 그대로 둔다(다음 회차)`); continue; }
           const jobId = await addToQueue(jobSpec(req));
           await GR.annotate(token, a.id, { local_job_id: jobId });
           log(`${a.kind === 'accept' ? '받음' : '재등록'} ${a.id} → 큐 ${jobId} (${req.treatment}/${req.mode} ${req.count}장${req.simulate ? ' 시뮬' : ''})`);

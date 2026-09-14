@@ -1,7 +1,7 @@
 // 생성 요청 폴러 순수 함수 회귀 — 네트워크 0·생성 0. `node ops/gen-poller-tests.mjs`
 // 여기서 보는 것은 "이번 회차에 무엇을 할지"(plan) 하나다. 돈이 나가는 판단이라 이중 등록·
 // 취소 무시·유령 완료 같은 실패 모양을 시료로 박아 둔다.
-import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers, mergeKeys, needsKey, PROVIDER_KEYS } from './gen-poller.mjs';
+import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers, mergeKeys, needsKey, apiAction, PROVIDER_KEYS } from './gen-poller.mjs';
 
 const fails = [];
 const ok = (c, label) => { console.log((c ? 'PASS  ' : 'FAIL  ') + label); if (!c) fails.push(label); };
@@ -75,6 +75,24 @@ ok(PROVIDER_KEYS.includes('OPENAI_API_KEY') && !PROVIDER_KEYS.some((k) => k.star
    '물려줄 이름은 생성용 4개뿐이다(run-selfie-batches.ps1 화이트리스트와 한 벌)');
 ok(needsKey(REQ()) === true && needsKey(REQ({ simulate: true })) === false,
    '시뮬 요청은 키 없이도 돈다 — 키 없는 회차라도 시뮬까지 세우지 않는다');
+
+// ⑧ 옛 코드 서버 판정 (2026-09-14 실사고: 서버가 3일간 옛 코드였는데 갈아 끼우기가 한 번도
+//    안 걸렸고, 조용히 넘어가는 길이 둘이라 로그에 흔적이 없었다. 요청 2건이 그 서버에서 타 버렸다).
+const REC = (over = {}) => ({ pid: 100, src: 1000, ...over });
+const A = (over = {}) => apiAction({ alive: true, rec: REC(), src: 1000, owner: 100, idle: true, ...over });
+
+ok(A({ alive: false }).act === 'spawn', '서버가 없으면 띄운다');
+ok(A().act === 'use', '서버 코드가 최신이면 그대로 쓴다');
+ok(A({ src: 2000 }).act === 'restart', '코드가 새롭고 큐가 비었으면 갈아 끼운다');
+ok(A({ src: 2000, idle: false }).act === 'wait',
+   '코드가 새로운데 큐가 돌고 있으면 기다린다 — 죽이면 그 생성이 날아간다');
+ok(A({ src: 2000, owner: 999 }).act === 'use' && A({ src: 2000, owner: 999 }).warn === true,
+   '포트 주인이 남이면 죽이지 않고 쓰되(fail-open) 경고를 남긴다');
+ok(A({ rec: null }).act === 'use' && A({ rec: null }).warn === true,
+   '우리가 띄운 서버가 아니면 코드 나이를 모른다 — 쓰되 경고');
+ok([A(), A({ src: 2000 }), A({ src: 2000, idle: false })].every((r) => typeof r.why === 'string' && r.why.length > 5),
+   '어느 갈래로 가든 이유를 남긴다(조용한 분기가 그날 사고를 숨겼다)');
+ok(A({ src: 2000, rec: REC({ src: 0 }) }).act === 'restart', '기록에 소스 시각이 없으면 옛 서버로 본다');
 
 console.log(fails.length ? `실패 ${fails.length}건` : '전부 통과');
 process.exit(fails.length ? 1 : 0);
