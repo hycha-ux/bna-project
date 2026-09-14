@@ -351,6 +351,7 @@ def scorecard(out_dir: Path) -> list:
         after = [r for r in rows if r.get("at", 0) >= since]
         out.append({"rule": c.get("en"), "from": c.get("from"), "since": c.get("since"),
                     "before_rejects": sum(1 for r in before if r.get("pick") == "reject"),
+                    "before_reviewed": len(before),      # 0 이면 화면이 '—' 로 보인다 — 비교 자료 없음을 0 제외로 읽지 않게 (2026-09-14)
                     "after_rejects": sum(1 for r in after if r.get("pick") == "reject"),
                     "after_reviewed": len(after)})
     return out

@@ -141,7 +141,8 @@ tbody tr:last-child td { border-bottom:none }
 .pick-line { font-size:var(--fs-sm,12px); color:var(--muted,#77808a); margin:6px 0 2px } .pick-line.ok { color:var(--ok,#1a7f4b) } .pick-line.bad { color:var(--bad,#c0392b) }
 .item .act button[disabled], .rev-act button[disabled], .dd-opt input[disabled] { opacity:.45; cursor:not-allowed }
 .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border); border-radius:var(--r-md) var(--r-md) 0 0; overflow:hidden }
-.pair figure { position:relative; aspect-ratio:4/5; background:var(--ui-surface); display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
+@keyframes shimmer { 0% { background-position:200% 0 } 100% { background-position:-200% 0 } }
+.pair figure { position:relative; aspect-ratio:4/5; background:linear-gradient(90deg, var(--ui-surface) 25%, #fff 50%, var(--ui-surface) 75%); background-size:200% 100%; animation:shimmer 1.4s linear infinite; display:flex; align-items:center; justify-content:center; color:var(--ui-lo); font-size:12px }
 .pair img { width:100%; height:100%; object-fit:cover; display:block }
 .pair figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px }
 .item .body { padding:var(--sp-2) var(--sp-3) var(--sp-3) } .item .head { display:flex; align-items:center; gap:var(--sp-1); margin-bottom:2px } .item .id { font-weight:var(--fw-b); color:var(--ui-lo) }
@@ -442,7 +443,6 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <button class="profile" id="tb-profile"><span class="avatar">OL</span><span>온리프</span><span class="muted">▾</span></button>
       <div class="menu" id="menu" hidden>
         <button data-tab="settings"><svg width="18" height="18"><use href="#i-user"/></svg>프로필</button>
-        <button data-tab="help"><svg width="18" height="18"><use href="#i-help"/></svg>도움말</button>
         <button data-tab="settings"><svg width="18" height="18"><use href="#i-gear"/></svg>설정</button>
         <div class="mi-sep"></div>
         <button id="menu-open-out"><svg width="18" height="18"><use href="#i-folder"/></svg>결과 폴더 경로</button>
@@ -510,7 +510,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
               <div class="tags" id="q-series" style="margin:6px 0 0" hidden></div>
             </div>
             <div class="form-sep"></div>
-            <div class="row"><label class="field" style="flex:1"><span>생성 장수</span><input type="number" id="count" value="10" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
+            <div class="row"><label class="field" style="flex:1"><span>생성 장수</span><input type="number" id="count" value="3" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
             <div class="row"><label class="field" style="flex:1"><span>비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label><label class="field" style="flex:1"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성</option><option value="1">시뮬레이션</option></select></label></div>
             <div class="form-sep"></div>
             <details class="opt"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
@@ -606,17 +606,6 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-settings">
       <div class="grid g-main"><div class="card"><div class="card-head"><h3>설정</h3></div><div id="settings-body"></div></div>
       <div class="card"><div class="card-head"><h3>API 키</h3></div><div class="muted">`.env`에 GEMINI_API_KEY / OPENAI_API_KEY / HIGGSFIELD_API_KEY 를 넣고 서버를 재시작하면 실제 생성이 열립니다. 키가 없으면 시뮬레이션·샘플만 동작합니다.</div></div></div>
-    </section>
-    <section class="page" id="tab-help">
-      <div class="card"><div class="card-head"><h3>도움말</h3></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
-          <div><h4>홈</h4><div class="muted">전체 생성·통과·채택 현황, 시술별 통과율, 최근 작업, 진행 중 작업.</div></div>
-          <div><h4>생성</h4><div class="muted">시술(복수)·사진 종류·장수·목표 통과 장수·비용 상한을 정해 생성 시작. 모든 작업은 대기열로 들어가 순서대로 실행.</div></div>
-          <div><h4>작업</h4><div class="muted">작업 목록에서 줄을 누르면 아래에 진행·지표·탈락 사유·사진이 열림. 사진마다 채택(드라이브 저장)/제외(저장 안 함)와 제외 사유.</div></div>
-          <div><h4>학습</h4><div class="muted">제외 사유가 쌓여 다음 생성 프롬프트를 고칩니다. 메모는 사람이 확인해 「규칙으로 승격」해야 반영됩니다.</div></div>
-          <div><h4>라이브러리</h4><div class="muted">모든 작업에서 채택한 사진 모음(드라이브 저장본). 시술·종류로 걸러 zip + manifest.csv로 내보내기.</div></div>
-        </div>
-      </div>
     </section>
   </div>
 </div>
@@ -734,7 +723,7 @@ let CFG, BATCHES = [], CUR = null;
 let QSTAT = null, LIB = null, EXPORTS = [];
 let STATS_OPEN = false;
 try { STATS_OPEN = localStorage.getItem('statsOpen') === '1'; } catch {}
-const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', lessons:'학습', settings:'설정', help:'도움말'};
+const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브러리', lessons:'학습', settings:'설정'};
 
 // ---------- 화면 ----------
 function show(tab) {
@@ -812,15 +801,17 @@ async function loadHome() {
   ].map(([c, l, v, u, t]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}<span class="unit">${u}</span></div><div class="t">${t}</div></div>`).join('');
   renderBoard(); chartCombo(); chartAxis(); renderTodo();
   const tb = $('#home-recent tbody');
-  tb.innerHTML = batches.filter(b => HOME_SIM || !['sim', 'demo'].includes(b.kind)).slice(0, 7).map(b => { const s = b.stats || {}; const stc = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : s.pending ? `<span class="chip warn">검수 ${s.pending}</span>` : '';
+  tb.innerHTML = batches.filter(b => HOME_SIM || !['sim', 'demo'].includes(b.kind)).slice(0, 7).map(b => { const s = b.stats || {}; const stc = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : (b.status==='done' && !(s.total ?? 0) && b.kind !== 'dry_run') ? '<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽은 배치입니다">실패</span>' : s.pending ? `<span class="chip warn">검수 ${s.pending}</span>` : '';
     return `<tr class="click" data-id="${b.batch_id}"><td class="muted">${fmtBid(b.batch_id)}</td><td><div class="ell">${tname(b.treatment)} <span class="muted">${MODE_KO[b.mode]||''}</span></div></td><td style="text-align:right;white-space:nowrap">${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''}`} ${stc}</td></tr>`; }).join('')
     || '<tr><td colspan="3" class="empty">실제 생성 기록이 없습니다</td></tr>';
   tb.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
 }
 $('#home-sim').onchange = e => { HOME_SIM = e.target.checked; try { localStorage.setItem('bna.homesim', HOME_SIM ? '1' : '0'); } catch {} loadHome(); };
 function renderBoard() {
-  const rows = OV.board || [], goal = OV.goals?.default ?? 30;
-  $('#home-goal').textContent = goal;
+  const rows = OV.board || [];
+  // 현황판이 실제로 쓰는 목표는 시술별(per) 값이다. 설정의 '기본값'과 달라 보이면 어느 게 진짜인지 모른다 (2026-09-14 전수 조사 ⑩)
+  const targets = [...new Set(rows.map(r => r.target))];
+  $('#home-goal').textContent = targets.length === 1 ? targets[0] : `${Math.min(...targets)}~${Math.max(...targets)}`;
   const done = rows.filter(r => r.picked >= r.target).length, sum = rows.reduce((a, r) => a + r.picked, 0);
   $('#home-board-sum').textContent = `${sum}장 · 목표 달성 ${done} / ${rows.length}`;
   $('#home-board').innerHTML = rows.map(r => { const ratio = Math.min(1, r.picked / Math.max(1, r.target));
@@ -1065,7 +1056,7 @@ async function loadGenRequests() {
   tb.innerHTML = reqs.map((j, i) => {
     const ctl = j.status === 'requested' ? `<button class="b sm danger" data-gq="cancel" data-id="${j.id}">취소</button>` : j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button>` : '';
     // 머리글과 같은 11칸(#·시간·시술·유형·방식·장수·목표·예상·상태·결과·조작) — 6칸만 내면 칸이 밀려 어긋난다 (2026-09-10 성연서님 "대기열 보드 정렬 오류")
-    const res = j.status === 'done' && j.result ? `${j.result.passed ?? '?'}/${j.result.total ?? '?'}` : j.status === 'error' ? `<span class="muted" title="${esc(j.error || '')}">${esc((j.error || '').slice(0, 60))}</span>` : '';
+    const res = j.status === 'done' && j.result ? (!(j.result.total ?? 0) ? `<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽었습니다">실패 · 0장</span>` : `${j.result.passed ?? '?'}/${j.result.total ?? '?'}`) : j.status === 'error' ? `<span class="muted" title="${esc(j.error || '')}">${esc((j.error || '').slice(0, 60))}</span>` : '';
     const prog = j.status === 'running' && j.progress ? `<span class="muted"> ${j.progress.done ?? 0}/${j.progress.planned ?? j.count}</span>` : j.status === 'requested' && j.requested_by ? `<span class="muted" style="font-size:var(--fs-xs)"> ${esc(j.requested_by)}</span>` : '';
     return `<tr><td class="muted">${i + 1}</td><td class="muted" style="white-space:nowrap" title="요청 ${esc(j.requested_at || '')}${j.accepted_at ? ' · 받음 ' + esc(j.accepted_at) : ''}${j.done_at ? ' · 끝 ' + esc(j.done_at) : ''}">${fmtWhen(j.requested_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode] || j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td>
       <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num">—</td><td class="num">${j.cost_cap != null ? '$' + j.cost_cap : '<span class="muted">없음</span>'}</td>
@@ -1139,7 +1130,7 @@ async function loadBatches() {
   $('#batches-empty').innerHTML = DEV_MODE && kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : (JOBS_TR ? `${esc(CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR)} 생성 기록이 없습니다` : '생성 기록이 없습니다');
   const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; loadBatches(); };
   tb.innerHTML = list.map(b => { const s = b.stats || {};
-    const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : '<span class="chip ok">완료</span>';
+    const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : (!((b.stats || {}).total ?? 0) && b.kind !== 'dry_run') ? '<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽은 배치입니다. 사무실 PC 기록을 봐야 합니다">실패</span>' : '<span class="chip ok">완료</span>';
     const dry = b.kind === 'dry_run';
     return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}" title="${KIND_TIP[b.kind]||''}">${KIND_KO[b.kind]||b.kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td>
@@ -1749,8 +1740,8 @@ async function loadLessons() {
     catch (e) { msg('#les-msg', e.message, 'err'); }
   });
   // 4: 규칙 성적표 — 건수만이 아니라 검수 대비 비율
-  $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th>넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th><th>넣은 뒤 제외율</th></tr></thead><tbody>${
-    L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${r.before_rejects}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td><td>${r.after_reviewed ? pct(r.after_rejects / r.after_reviewed) : '—'}</td></tr>`).join('')}</tbody></table>`
+  $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th title="규칙을 넣기 전에 검수한 사진 중 제외된 수. 비교 자료가 없으면 —">넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th><th>넣은 뒤 제외율</th></tr></thead><tbody>${
+    L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${(r.before_reviewed ?? 0) ? `${r.before_rejects} <span class="muted">/ ${r.before_reviewed}</span>` : '<span class="muted" title="이 규칙을 넣기 전에 검수한 사진이 없어 비교할 수 없습니다">—</span>'}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td><td>${r.after_reviewed ? pct(r.after_rejects / r.after_reviewed) : '—'}</td></tr>`).join('')}</tbody></table>`
     : `<div class="les-empty">아직 승격된 규칙이 없습니다. 3번에서 규칙을 올리면 넣기 전·후 제외 건수가 여기 비교됩니다.</div>`;
   const bd = $('#les-badge'); bd.hidden = !(L.notes || []).length; bd.textContent = (L.notes || []).length;
   // 1: 버전 표 + 현재 버전 한 줄 요약 + 이전 실버전 대비 제외율 변화
@@ -1796,7 +1787,7 @@ async function loadGoals() { try { GOALS = await api('/api/goals'); } catch { GO
 function renderSettings() {
   $('#settings-body').innerHTML = `<div class="list">
     <div class="list-row" style="cursor:default"><div class="t"><b>결과 폴더</b><span>${esc(OUT_DIR || 'outputs/')}</span></div></div>
-    <div class="list-row" style="cursor:default"><div class="t"><b>시술별 목표 장수</b><span>홈 현황판의 기준. 전 시술 동일 (2026-09-09 성연서님: 일괄 30장)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-default" min="1" style="width:80px" value="${GOALS?.default ?? 30}"><button class="b sm" id="goal-save">저장</button></span></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>시술별 목표 장수</b><span>홈 현황판의 기준. 저장하면 모든 시술에 같은 값이 적용됩니다${(() => { const v = Object.values(GOALS?.per || {}); return v.length && new Set(v).size > 1 ? ` · 지금은 시술마다 다릅니다(${Math.min(...v)}~${Math.max(...v)})` : ''; })()}</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-default" min="1" style="width:80px" value="${(() => { const v = Object.values(GOALS?.per || {}); return v.length && new Set(v).size === 1 ? v[0] : (GOALS?.default ?? 30); })()}"><button class="b sm" id="goal-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>채택률 목표</b><span>홈 채택률 카드의 기준선. 사람이 채택한 비율이 여기 닿으면 검수를 줄일 근거가 됩니다 (2026-09-10 성연서님: 보수적으로 90%)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-rate" min="1" max="100" style="width:80px" value="${Math.round(((GOALS?.pick_rate ?? 0.9)) * 100)}">%<button class="b sm" id="goal-rate-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>개발용 기록 보기</b><span>시뮬레이션·샘플·프롬프트만 기록을 작업 목록과 홈에 보입니다. 화면 확인용이라 평소엔 꺼 둡니다</span></div><label class="sim-toggle"><input type="checkbox" id="dev-mode" ${DEV_MODE ? 'checked' : ''}> 켜기</label></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
@@ -1804,7 +1795,7 @@ function renderSettings() {
     <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
   const dm = $('#dev-mode'); if (dm) dm.onchange = e => { DEV_MODE = e.target.checked; try { localStorage.setItem('bna.dev', DEV_MODE ? '1' : '0'); } catch {} applyDevMode(); };
   const gr = $('#goal-rate-save'); if (gr) gr.onclick = async () => { try { GOALS = await api('/api/goals', {pick_rate: (+$('#goal-rate').value || 90) / 100}); gr.textContent = '저장됨 ✓'; setTimeout(() => gr.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
-  const gs = $('#goal-save'); if (gs) gs.onclick = async () => { try { GOALS = await api('/api/goals', {default: +$('#goal-default').value || 30}); gs.textContent = '저장됨 ✓'; setTimeout(() => gs.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
+  const gs = $('#goal-save'); if (gs) gs.onclick = async () => { try { GOALS = await api('/api/goals', {default: +$('#goal-default').value || 30, per: {}}); gs.textContent = '저장됨 ✓'; setTimeout(() => gs.textContent = '저장', 1500); if (OV) loadHome(); } catch (e) { alert(e.message); } };
 }
 
 // ---------- init ----------
