@@ -319,23 +319,104 @@ def avoid_text(lines: list) -> str:
         s if s.endswith('.') else s + '.' for s in lines)) if lines else ""
 
 
+def _append_custom_rule(src: str, rule: dict) -> str:
+    """`custom:` 블록 끝에 규칙 한 개를 **글자로** 덧붙인다(주석 보존).
+
+    ⚠ 종전엔 `yaml.safe_dump` 로 본문을 통째로 다시 썼다 — 값은 살지만 **주석이 전부 날아갔다**
+    (2026-09-14 실사고: 09-11 에 박아 둔 "직후 컷은 예외다" 설명 4줄이 승격 한 번에 사라졌다.
+    `not_at: [immediate]` 값만 남아 *왜 있는지 모르는 줄* 이 됐고, 그런 줄은 다음 사람이 지운다).
+    덧붙이기는 남의 줄을 건드리지 않으므로 주석·들여쓰기·순서가 그대로 남는다.
+    """
+    block = yaml.safe_dump([rule], allow_unicode=True, sort_keys=False, width=200).rstrip("\n")
+    lines = src.split("\n")
+    start = next((i for i, ln in enumerate(lines) if ln.rstrip() == "custom:"), None)
+    if start is None:                                   # custom: 이 아직 없으면 파일 끝에 새로 연다
+        return src.rstrip("\n") + "\ncustom:\n" + block + "\n"
+    # custom 블록의 끝 = 다음 최상위 키(들여쓰기 0, 주석·목록 아님) 직전. 없으면 파일 끝.
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        ln = lines[i]
+        if ln.strip() and not ln.startswith((" ", "\t", "-", "#")):
+            end = i
+            break
+    while end > start + 1 and not lines[end - 1].strip():   # 블록 끝의 빈 줄은 뒤로 민다
+        end -= 1
+    return "\n".join(lines[:end] + block.split("\n") + lines[end:])
+
+
+def _git_commit_avoid(rule: dict) -> dict:
+    """승격으로 바뀐 `avoid.yaml` 을 **그 자리에서** 커밋한다(2026-09-14 빌디 제안).
+
+    ⚠ 승격은 git 이 추적하는 파일을 *커밋하지 않고* 고친다 — 그래서 다음 `checkout --`·`restore`·
+    `rebase` 한 번에 규칙이 **오류 하나 없이** 사라진다(09-14 실사고: 같은 규칙을 두 번 승격했는데
+    둘 다 증발했다. `push.log` 는 `ok`, `version_names.json` 에 새 버전까지 찍혔는데 파일만
+    커밋본으로 되돌아가 있었다). 사람이 커밋하러 오기까지의 그 몇 분이 사고 구간이라,
+    쓰는 쪽이 같은 호흡에 커밋까지 끝낸다.
+
+    규칙 셋 — ①**이 파일 하나만** 커밋한다(`git commit -- <경로>`: 남이 편집 중인 다른 파일을
+    쓸어 담지 않는다) ②병합·리베이스 중이면 **아무것도 안 한다**(그 와중의 커밋이 더 비싸다)
+    ③푸시는 안 한다(원격 충돌은 사람 몫). 전부 **fail-open** — 커밋이 실패해도 규칙은 이미
+    파일에 들어갔으므로 승격을 되돌리지 않고, 실패 사유만 응답에 실어 화면이 알게 한다.
+    """
+    import subprocess
+    from .spec import ROOT
+    rel = "config/prompts/avoid.yaml"
+
+    def _git(*args):
+        return subprocess.run(["git", *args], cwd=ROOT, text=True, capture_output=True, timeout=20)
+
+    try:
+        if not (ROOT / ".git").exists():
+            return {"ok": False, "why": "깃 저장소가 아니다"}
+        for marker in ("MERGE_HEAD", "REBASE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD"):
+            if (ROOT / ".git" / marker).exists():
+                return {"ok": False, "why": "병합·리베이스 중(" + marker + ") — 커밋하지 않는다"}
+        clean = (_git("diff", "--quiet", "--", rel).returncode == 0
+                 and _git("diff", "--cached", "--quiet", "--", rel).returncode == 0)
+        if clean:
+            return {"ok": False, "why": "바뀐 것이 없다"}
+        _git("add", "--", rel)
+        msg = "feat(프롬프트): 규칙 승격 — " + (rule.get("from") or rule.get("en") or "")[:60]
+        r = _git("commit", "-q", "-m", msg, "--", rel)
+        if r.returncode != 0:
+            return {"ok": False, "why": (r.stderr or r.stdout or "커밋 실패").strip()[:200]}
+        return {"ok": True, "sha": _git("rev-parse", "--short", "HEAD").stdout.strip()}
+    except Exception as e:                              # noqa: BLE001
+        return {"ok": False, "why": str(e)[:200]}
+
+
 def promote(note: str, en: str, where=None) -> dict:
     """메모 한 줄을 규칙으로 승격. avoid.yaml 의 custom 에 붙는다(사람 확인 후에만)."""
     from .spec import CFG
     p = CFG / "prompts" / "avoid.yaml"
-    cfg = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    src = p.read_text(encoding="utf-8")
+    cfg = yaml.safe_load(src) or {}
     rule = {"en": en.strip(), "where": where or ["after"], "from": (note or "").strip(),
             "since": time.strftime("%Y-%m-%d")}
     cfg.setdefault("custom", [])
     if any((c or {}).get("en") == rule["en"] for c in cfg["custom"]):
         return {"ok": False, "error": "같은 규칙이 이미 있습니다"}
-    cfg["custom"].append(rule)
-    # 머리말 주석은 정본이라 지우지 않는다 — 본문만 다시 쓰고 주석 블록은 그대로 앞에 붙인다
-    src = p.read_text(encoding="utf-8")
-    head = src.split("\nsettings:")[0]
-    body = yaml.safe_dump({k: cfg[k] for k in ("settings", "tags", "custom") if k in cfg},
-                          allow_unicode=True, sort_keys=False, width=200)
-    p.write_text(head + "\n" + body, encoding="utf-8")
+    want = len(cfg["custom"]) + 1
+    new = _append_custom_rule(src, rule)
+    # 덧붙이기가 자리를 잘못 잡았으면 조용히 넘어가지 않는다 — 다시 읽어 개수·마지막 규칙·tags 를
+    # 확인하고, 하나라도 어긋나면 종전 방식(통째로 다시 쓰기)으로 떨어진다.
+    # 주석은 잃어도 규칙은 반드시 들어가야 한다(fail-safe).
+    try:
+        chk = yaml.safe_load(new) or {}
+        kept = (len(chk.get("custom") or []) == want
+                and (chk["custom"][-1] or {}).get("en") == rule["en"]
+                and (chk.get("tags") or {}) == (cfg.get("tags") or {})
+                and (chk.get("settings") or {}) == (cfg.get("settings") or {}))
+    except Exception:                                   # noqa: BLE001
+        kept = False
+    if kept:
+        p.write_text(new, encoding="utf-8")
+    else:
+        cfg["custom"].append(rule)
+        head = src.split("\nsettings:")[0]
+        body = yaml.safe_dump({k: cfg[k] for k in ("settings", "tags", "custom") if k in cfg},
+                              allow_unicode=True, sort_keys=False, width=200)
+        p.write_text(head + "\n" + body, encoding="utf-8")
     # 규칙을 넣으면 버전(설정 해시)이 바뀐다 — 새 버전에 "왜 바뀌었나"를 메모로 자동 남긴다. 사람이 나중에 고쳐도 된다.
     try:
         from .version import prompt_version
@@ -346,7 +427,8 @@ def promote(note: str, en: str, where=None) -> dict:
             names_set(out, nv, f"규칙 추가: {(note or en).strip()}", cat="검수")
     except Exception:                                   # noqa: BLE001
         pass
-    return {"ok": True, "rule": rule, "count": len(cfg["custom"])}
+    return {"ok": True, "rule": rule, "count": want, "kept_comments": kept,
+            "commit": _git_commit_avoid(rule)}
 
 
 def scorecard(out_dir: Path) -> list:

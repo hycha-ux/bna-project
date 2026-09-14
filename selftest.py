@@ -1668,6 +1668,125 @@ ok(_n33 and _soft33 < _n33, f"직후 컷은 부드러운 빛으로 몰리지 않
 ok(_tr_all["skinbooster_embo"]["timeline"][0] == "immediate", "엠보 timeline 에 immediate 가 맨 앞에 있다")
 
 
+
+# ㉞ 2026-09-14 승격 두 사고 — ①승격이 주석을 통째로 지웠다 ②승격이 커밋을 안 해 git 이 되돌렸다.
+#    둘 다 "오류 0 인데 규칙이 사라진다"라 회귀가 없으면 다음에도 똑같이 조용하다.
+import shutil as _sh34
+import subprocess as _sp34
+import tempfile as _tf34
+from pathlib import Path as _P34
+
+import yaml as _yml34
+
+import bna.lessons as _L34
+import bna.spec as _S34
+
+_HEAD34 = """# 머리말 주석(정본)
+settings:
+  top_n: 3
+tags:
+  손가락:
+    en: no hands
+    where:
+    - before
+custom:
+- en: first rule
+  where:
+  - after
+  # ⚠ 이 설명이 정본이다 — 지워지면 다음 사람이 위 줄을 지운다
+  not_at:
+  - immediate
+  from: 첫 규칙
+  since: '2026-09-10'
+"""
+
+
+def _mkcfg34(body: str, tmp):
+    """임시 config/prompts/avoid.yaml 을 만들고 bna.spec.CFG 를 그리로 돌린다."""
+    d = _P34(tmp) / "config" / "prompts"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "avoid.yaml").write_text(body, encoding="utf-8")
+    return d / "avoid.yaml"
+
+
+def _promote34(body: str, en: str, note: str = "메모", root=None):
+    """진짜 promote() 를 임시 트리에서 돌린다(CFG·ROOT 만 갈아 끼운다)."""
+    _cfg0, _root0 = _S34.CFG, _S34.ROOT
+    tmp = root or _tf34.mkdtemp()
+    try:
+        p = _mkcfg34(body, tmp)
+        _S34.CFG, _S34.ROOT = _P34(tmp) / "config", _P34(tmp)
+        r = _L34.promote(note, en)
+        return r, p.read_text(encoding="utf-8")
+    finally:
+        _S34.CFG, _S34.ROOT = _cfg0, _root0
+        if root is None:
+            _sh34.rmtree(tmp, ignore_errors=True)
+
+
+_r34, _txt34 = _promote34(_HEAD34, "second rule")
+ok(_r34.get("ok") and _r34.get("kept_comments"), f"승격은 덧붙이기로 들어간다 — {_r34.get('kept_comments')}")
+ok("# ⚠ 이 설명이 정본이다" in _txt34, "custom 안 주석이 승격 뒤에도 남는다 (09-14 사고: safe_dump 가 지웠다)")
+ok("# 머리말 주석(정본)" in _txt34, "머리말 주석도 그대로 남는다")
+_y34 = _yml34.safe_load(_txt34)
+ok([c["en"] for c in _y34["custom"]] == ["first rule", "second rule"], "새 규칙은 맨 끝에 붙는다")
+ok(_y34["custom"][0].get("not_at") == ["immediate"], "옆 규칙의 값은 안 건드린다")
+ok(_y34["tags"]["손가락"]["en"] == "no hands" and _y34["settings"]["top_n"] == 3, "tags·settings 는 그대로다")
+
+# custom 뒤에 다른 최상위 키가 오면 그 **앞**에 넣어야 한다(뒤에 붙이면 남의 블록에 섞인다)
+_r34b, _txt34b = _promote34(_HEAD34 + "\nextra:\n  a: 1\n", "third rule")
+_y34b = _yml34.safe_load(_txt34b)
+ok(_r34b.get("kept_comments") and [c["en"] for c in _y34b["custom"]] == ["first rule", "third rule"]
+   and _y34b.get("extra") == {"a": 1}, f"custom 뒤에 다른 키가 있어도 그 앞에 넣는다 — {_y34b.get('extra')}")
+
+# custom: 이 아예 없는 파일도 열 수 있어야 한다
+_r34c, _txt34c = _promote34("settings:\n  top_n: 3\n", "lonely rule")
+ok((_yml34.safe_load(_txt34c).get("custom") or [{}])[0].get("en") == "lonely rule", "custom 이 없으면 새로 연다")
+
+# 같은 문장은 두 번 안 들어간다(종전 규칙 유지)
+_r34d, _ = _promote34(_HEAD34, "first rule")
+ok(not _r34d.get("ok") and "이미" in (_r34d.get("error") or ""), "같은 en 은 거부한다")
+
+# ── 자동 커밋 ────────────────────────────────────────────────────────────────
+_git34 = _sh34.which("git")
+if not _git34:
+    print("SKIP  git 없음 — 승격 자동 커밋 검사 건너뜀")
+else:
+    _t34 = _tf34.mkdtemp()
+    try:
+        def _g34(*a, cwd=_t34):
+            return _sp34.run([_git34, *a], cwd=cwd, text=True, capture_output=True, timeout=20)
+        _g34("init", "-q", "-b", "main")
+        _g34("config", "user.email", "t@t"); _g34("config", "user.name", "t")
+        _mkcfg34(_HEAD34, _t34)
+        (_P34(_t34) / "남의파일.txt").write_text("처음", encoding="utf-8")
+        _g34("add", "-A"); _g34("commit", "-q", "-m", "init")
+        # 남이 편집 중인 파일을 만들어 둔다 — 승격이 이걸 쓸어 담으면 안 된다
+        (_P34(_t34) / "남의파일.txt").write_text("편집 중", encoding="utf-8")
+        _r34e, _ = _promote34(_HEAD34, "commit me", root=_t34)
+        _c34 = _r34e.get("commit") or {}
+        ok(_c34.get("ok") and _c34.get("sha"), f"승격이 그 자리에서 커밋한다 — {_c34}")
+        _files34 = _g34("show", "--name-only", "--format=", "HEAD").stdout.split()
+        ok(_files34 == ["config/prompts/avoid.yaml"], f"커밋에 담기는 건 avoid.yaml 하나뿐 — {_files34}")
+        ok(_g34("status", "--porcelain", "--", "남의파일.txt").stdout.strip().startswith("M"),
+           "남이 편집 중인 파일은 손대지 않는다(커밋도 스테이징도)")
+        ok(_g34("diff", "--quiet", "--", "config/prompts/avoid.yaml").returncode == 0,
+           "커밋 뒤 avoid.yaml 은 깨끗하다 — git 이 되돌려도 규칙이 살아남는 자리")
+        # 리베이스 중이면 아무것도 안 한다
+        (_P34(_t34) / ".git" / "REBASE_HEAD").write_text("x", encoding="utf-8")
+        _r34f, _ = _promote34(_HEAD34, "during rebase", root=_t34)
+        ok(_r34f.get("ok") and not (_r34f.get("commit") or {}).get("ok")
+           and "리베이스" in ((_r34f.get("commit") or {}).get("why") or ""),
+           f"병합·리베이스 중엔 커밋하지 않는다(승격 자체는 산다) — {(_r34f.get('commit') or {}).get('why')}")
+        (_P34(_t34) / ".git" / "REBASE_HEAD").unlink()
+    finally:
+        _sh34.rmtree(_t34, ignore_errors=True)
+
+# 깃이 아닌 폴더에서도 승격은 살아야 한다(fail-open)
+_r34g, _txt34g = _promote34(_HEAD34, "no git here")
+ok(_r34g.get("ok") and not (_r34g.get("commit") or {}).get("ok")
+   and "no git here" in _txt34g, "깃 저장소가 아니어도 승격은 성공한다(커밋만 건너뜀)")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
