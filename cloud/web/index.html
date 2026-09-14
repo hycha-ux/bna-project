@@ -381,6 +381,25 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
 .toast.show { opacity:1; transform:translate(-50%,0) }
 @media (max-width:1280px) { .g-kpi { grid-template-columns:repeat(2,1fr) } .g-main, .g-create { grid-template-columns:1fr } }
+/* ── 폰 폭 (2026-09-14 성연서님 전수 조사 ④): 사이드바는 서랍으로, 상단에 메뉴 버튼, 검수 모드는 위아래 */
+.tb-menu { display:none; width:36px; height:36px; border:0; background:none; border-radius:8px; color:var(--ui-md); cursor:pointer; margin-left:-8px } .tb-menu:hover { background:var(--ui-surface) }
+@media (max-width:860px) {
+  .app, .app.collapsed { grid-template-columns:1fr }
+  .side { position:fixed; top:0; left:0; bottom:0; width:260px; height:100vh; z-index:200; transform:translateX(-100%); transition:transform .2s; box-shadow:none; overflow-y:auto }
+  .app.side-open .side { transform:none; box-shadow:0 0 0 100vw rgba(25,31,40,.35) }
+  .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:initial }   /* 접힘 상태는 데스크톱 전용 */
+  .collapsed .nav-item { justify-content:flex-start; padding:var(--sp-2) }
+  .side .toggle { display:none } .tb-menu { display:inline-flex; align-items:center; justify-content:center }
+  .topbar { gap:var(--sp-2); padding:0 var(--sp-3) } .topbar .search { display:none } .topbar h1 { font-size:var(--fs-lg) }
+  .status-pill { max-width:42vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .g-kpi { grid-template-columns:1fr 1fr } .board { grid-template-columns:1fr } .g-dash { grid-template-columns:1fr }
+  .rev { grid-template-columns:1fr } .rev-side { border-left:0; border-top:1px solid var(--ui-border) } .rev-main .pair { border-radius:var(--r-md) var(--r-md) 0 0 }
+  body.reviewing .rev-main .cmp figure { height:min(48vh, 360px) }
+  .cmp[data-mode=side] { grid-template-columns:1fr 1fr }
+  .page { padding:var(--sp-3) }
+  .card-head { flex-wrap:wrap; row-gap:8px } .card-head h3 { white-space:nowrap } .card-head .tb-space { flex-basis:100% }
+}
+@media (max-width:520px) { .g-kpi { grid-template-columns:1fr } }
 </style>
 </head>
 <body>
@@ -415,6 +434,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 
   <div class="main">
     <div class="topbar">
+      <button class="tb-menu" id="tb-menu" title="메뉴"><svg width="20" height="20"><use href="#i-menu"/></svg></button>
       <h1 id="page-h1">홈</h1>
       <div class="search"><svg><use href="#i-search"/></svg><input id="search" placeholder="작업 검색 (시술, 유형, 날짜)"></div>
       <div class="tb-space"></div>
@@ -718,9 +738,12 @@ const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브�
 
 // ---------- 화면 ----------
 function show(tab) {
+  const prev = ($$('.page').find(p => p.classList.contains('active')) || {}).id;
   $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
   $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
+  if (prev !== 'tab-' + tab) window.scrollTo(0, 0);   // 홈 아래까지 내렸다가 생성을 누르면 폼이 안 보였다 (2026-09-14 성연서님 전수 조사 ③)
+  $('#app').classList.remove('side-open');            // 폰: 메뉴에서 고르면 서랍을 닫는다
   if (tab === 'home') loadHome();
   if (tab === 'create') loadQueue();
   document.body.classList.toggle('reviewing', tab === 'jobs' && VIEW === 'review');
@@ -730,6 +753,8 @@ function show(tab) {
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.remove('on')); } show(t); });
+$('#tb-menu').onclick = e => { e.stopPropagation(); $('#app').classList.toggle('side-open'); };
+document.addEventListener('click', e => { if ($('#app').classList.contains('side-open') && !e.target.closest('.side') && !e.target.closest('#tb-menu')) $('#app').classList.remove('side-open'); });
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
 try { if (localStorage.getItem('side') === '1') $('#app').classList.add('collapsed'); } catch {}
 // 사이드바에서 작업 항목을 누르면 검수 모드는 닫고 목록으로 간다 — 검수 중엔 목록 카드가 통째로 접혀 있어서
@@ -1797,6 +1822,8 @@ function renderSettings() {
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
   $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
   const h = location.hash.slice(1); show(TITLES[h] ? h : 'home');
+  // 주소(#create 등)를 바꾸거나 뒤로가기를 눌러도 화면이 따라간다 — 종전엔 주소만 바뀌고 화면은 그대로였다 (② )
+  window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (TITLES[t] && !$('#tab-' + t).classList.contains('active')) show(t); });
 })();
 </script>
 </body>

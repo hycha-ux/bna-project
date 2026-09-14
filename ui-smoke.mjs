@@ -168,6 +168,18 @@ try {
   ok((await ev("document.querySelectorAll('#home-range button.on').length")) === 0, '직접 입력하면 프리셋 강조가 풀린다');
   ok((await ev("document.querySelectorAll('#chart-combo rect.bar').length")) <= 3, '그래프도 그 기간(3일)만 그린다');
 
+  // ⑨ 주소(#탭)·뒤로가기로 화면이 바뀌고, 탭이 바뀌면 맨 위로 (2026-09-14 성연서님 전수 조사 ②③)
+  await goto('#create');
+  ok(await ev("document.querySelector('.page.active')?.id") === 'tab-create', '주소 #create 로 열면 생성 화면이다');
+  await ev("location.hash = '#lessons'"); await sleep(600);
+  ok(await ev("document.querySelector('.page.active')?.id") === 'tab-lessons', '주소만 바꿔도 화면이 따라간다');
+  await ev("history.back()"); await sleep(600);
+  ok(await ev("document.querySelector('.page.active')?.id") === 'tab-create', '뒤로가기로 이전 화면에 돌아간다');
+  await ev("document.querySelector('[data-tab=home]').click()"); await sleep(1500);
+  await ev("window.scrollTo(0, 900)"); await sleep(200);
+  await ev("document.querySelector('[data-tab=create]').click()"); await sleep(300);
+  ok((await ev("window.scrollY")) === 0, '탭을 바꾸면 맨 위에서 시작한다');
+
   ok(errs.length === 0, 'JS 오류가 없다', errs.join(' / ') || '없음');
 } finally {
   ws.close(); chrome.kill(); if (api) api.kill();
