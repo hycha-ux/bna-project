@@ -56,8 +56,14 @@ skin_state:
     the reference appears in the same position, same size and same stage; nothing has healed and
     nothing new has appeared. Same oily shine pattern on the nose and cheekbones. Do not clean up,
     move or redistribute any skin imperfection outside the treated area.
+  # ⚠ 2026-09-14: 마지막 문장이 종전엔 "The skin remains real and untouched, not cleaner or smoother
+  #   overall than the reference." 였다 — **바로 다음 문장('시술 결과가 보인다')과 정면으로 싸운다.**
+  #   피부 3종은 시술 부위가 곧 얼굴 피부라 이 한 줄이 효과를 통째로 지웠다(0914 실측: 효과 점수
+  #   8점 → 6점, 합격선 턱걸이 3/3). 원래 의도는 '리터칭 금지'이지 '개선 금지'가 아니다.
+  #   → 금지를 **시술 부위 밖**으로 좁힌다. 부위 안의 개선은 아래 after_change 가 정한다.
   different: >
     Skin state: it is one to two weeks later, so temporary skin marks may have changed naturally.
     Moles and permanent marks stay in the same positions; pimples and red spots from the reference
-    may have faded or healed, and one or two small new blemishes may appear elsewhere. The skin
-    remains real and untouched, not cleaner or smoother overall than the reference.
+    may have faded or healed, and one or two small new blemishes may appear elsewhere. Outside the
+    treated area the skin is still real and untouched - no overall retouching, no smoothing, no
+    whitening; any improvement belongs to the treated area described below.

@@ -1477,6 +1477,36 @@ _LEAK30 = [t for t in ("skin_pores", "skinbooster_embo", "skin_redness")
            if "no healthy glow" in build_prompts(t, "selfie", _pb26("selfie", 1, seed=31, treatment=t)[0], 31001)["after_prompt"]]
 ok(not _LEAK30, f"광 금지는 Before 에만 — After 로 샌 시술 {_LEAK30}")
 
+# ㉛ 2026-09-14 오후 3차 (연서님 "효과가 약하다" 신호 추적) — After 프롬프트가 **스스로를 지우던** 문장.
+#    `skin_state.different` 끝줄이 "not cleaner or smoother overall than the reference" 였고,
+#    바로 다음 문장이 "The treatment result is now visible: ..." 였다. 피부 3종은 시술 부위가 곧
+#    얼굴 피부라 앞 문장이 뒤 문장을 통째로 무효화한다(실측: 효과 점수 8 → 6, 3/3 이 합격선 턱걸이).
+#    ⚠ 지울 것은 '리터칭'이지 '개선'이 아니다 — 금지는 시술 부위 **밖**에만 걸린다.
+_CONTRA31 = []
+for _t31 in ("skin_pores", "skinbooster_embo", "skin_redness", "nasolabial"):
+    _ap31 = build_prompts(_t31, "selfie", _pb26("selfie", 1, seed=31, treatment=_t31)[0], 31111)["after_prompt"]
+    if "not cleaner or smoother overall" in _ap31:
+        _CONTRA31.append(f"{_t31}:개선금지문장부활")
+    if "Outside the treated area" not in _ap31:
+        _CONTRA31.append(f"{_t31}:부위밖한정이없음")
+ok(not _CONTRA31, f"After 에 '전보다 깨끗하면 안 된다'가 남아 효과를 지우면 안 된다 — {_CONTRA31}")
+
+# 참조는 그림체를 옮긴다 — 후 컷엔 물광(After) 참조가 붙어야 한다. 실측 120회 기준 100%.
+from bna import refs as _rf31
+_GLOWREF31 = {"skin_pores_after4w_02.jpg", "skinbooster_embo_after4w_01.jpg", "skin_redness_after4w_01.jpg"}
+_miss31, _tot31 = 0, 0
+for _t31 in _SKIN26:
+    for _s31 in range(30):
+        for _v31 in _pb26("selfie", 1, seed=_s31, treatment=_t31):
+            _got31 = [r["file"].split("/")[-1] for r in
+                      _rf31._rank(_rf31.candidates("selfie", _t31, "2w"), _v31, "2w")[:2]]
+            _tot31 += 1
+            if not (set(_got31) & _GLOWREF31):
+                _miss31 += 1
+ok(_miss31 / _tot31 <= 0.05,
+   f"후 컷에는 물광 참조가 붙는다(그림체가 무광으로 끌리지 않게) — 안 붙은 회차 {_miss31}/{_tot31}")
+
+
 
 
 ok(_arc26 / _n26 >= 0.60,
