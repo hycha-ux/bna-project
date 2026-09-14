@@ -332,6 +332,8 @@ def save_review(req):
     if not d.is_dir():
         return {"error": "item not found"}, 404
     rv = {"pick": req.get("pick"), "tags": req.get("tags", []), "note": req.get("note", ""), "updated_at": time.time()}
+    at = req.get("as_treatment")   # 다른 시술로 채택(2026-09-14) — 아는 시술 키만
+    rv["as_treatment"] = at if isinstance(at, str) and at in load("treatments.yaml") else None
     (d / "review.json").write_text(json.dumps(rv, ensure_ascii=False, indent=1), encoding="utf-8")
     # 채택 → 드라이브에 올린다 / 제외·판정 지움 → 채택본에서 내린다 (2026-09-08 성연서님 지시).
     # 훅은 백그라운드라 검수를 막지 않는다. 응답의 drive 는 '지금 이 순간' 상태이고,
@@ -412,8 +414,9 @@ def overview_payload(days=14, include_sim=False):
                 if it.get("dry_run"):
                     continue
                 p = bool(it.get("passed")); c = float(it.get("cost") or 0)
-                pick = (rvs.get(m.parent.name) or {}).get("pick")
-                t_all = picked_all.setdefault(it.get("treatment"), {"picked": 0, "pending": 0, "reviewed": 0})
+                rv_i = rvs.get(m.parent.name) or {}; pick = rv_i.get("pick")
+                # 현황판은 '쓰임새' 기준 — 다른 시술로 채택한 사진은 그 시술 칸에 센다 (학습·통과율은 원래 시술 그대로)
+                t_all = picked_all.setdefault(rv_i.get("as_treatment") or it.get("treatment"), {"picked": 0, "pending": 0, "reviewed": 0})
                 if pick == "pick":
                     t_all["picked"] += 1
                 if pick in ("pick", "reject"):
@@ -481,7 +484,7 @@ def library_payload():
             if not m.exists():
                 continue
             meta = json.loads(m.read_text(encoding="utf-8")); files = pair_files(d, meta)
-            items.append({"batch_id": d.parent.name, "item_id": d.name, "treatment": meta.get("treatment"), "mode": meta.get("mode"),
+            items.append({"batch_id": d.parent.name, "item_id": d.name, "treatment": rv.get("as_treatment") or meta.get("treatment"), "orig_treatment": meta.get("treatment"), "mode": meta.get("mode"),
                           "variation": meta.get("variation", {}), "review": rv, "passed": meta.get("passed"), "demo": meta.get("demo", False),
                           "before_file": next((f for f in files if f.endswith("_before.jpg")), None),
                           "after_file": last_after(files), "after_files": after_files_of(files), "picked_at": rv.get("updated_at"),

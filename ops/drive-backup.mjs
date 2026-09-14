@@ -169,7 +169,8 @@ export function reviews(root = ROOT) {
       try { rv = JSON.parse(readFileSync(rf, 'utf8')); } catch { continue; }
       try { meta = JSON.parse(readFileSync(path.join(d, 'meta.json'), 'utf8')); } catch { /* 메타 없으면 unknown */ }
       const v = meta.variation || {};
-      out[`${b.name}/${it.name}`] = { pick: rv.pick || null, treatment: meta.treatment || 'unknown', mode: meta.mode || 'unknown',
+      // as_treatment: 다른 시술로 채택한 사진은 그 시술 폴더로 (2026-09-14 성연서님)
+      out[`${b.name}/${it.name}`] = { pick: rv.pick || null, treatment: rv.as_treatment || meta.treatment || 'unknown', mode: meta.mode || 'unknown',
         country: v.country?.key || null, age: v.age?.key || null, gender: v.gender?.key || null };
     }
   }

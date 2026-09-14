@@ -35,11 +35,13 @@ export function parseBlobName(pathname) {
 }
 
 /** 아이템 하나의 판정을 Blob 에 쓴다. 값은 화면이 준 것 그대로 + 저장 시각. */
-export async function saveReview(token, { batch, item, pick, tags, note }) {
+export async function saveReview(token, { batch, item, pick, tags, note, as_treatment }) {
   const rv = {
     pick: pick ?? null,
     tags: Array.isArray(tags) ? tags : [],
     note: typeof note === 'string' ? note : '',
+    // 다른 시술로 채택 (2026-09-14 성연서님): 모공 배치에서 나왔지만 엠보로 쓸 사진. 현황판·라이브러리·드라이브가 이 값을 따른다.
+    as_treatment: typeof as_treatment === 'string' && /^[a-z_]{1,40}$/.test(as_treatment) ? as_treatment : null,
     updated_at: Date.now() / 1000,
     from: 'cloud',                          // 어디서 눌렀는지 — PC 흡수 로그가 이걸 쓴다
   };

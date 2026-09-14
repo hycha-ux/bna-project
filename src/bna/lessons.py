@@ -180,7 +180,19 @@ def summarize(out_dir: Path, treatment=None, mode=None) -> dict:
         merged.append(g)
     merged.sort(key=lambda g: (-g["count"], -g["at"]))
     judged_recent = [x for x in judged if now - x.get("at", 0) <= win]
+    # 다른 시술로 옮겨 채택한 사진 — "모공 프롬프트가 엠보 사진을 만든다"는 신호라 학습에 남긴다 (2026-09-14 성연서님)
+    moved = {}
+    for rp in out_dir.glob("*/*/review.json"):
+        try:
+            rvj = json.loads(rp.read_text(encoding="utf-8")); mp = rp.parent / "meta.json"
+            if rvj.get("pick") == "pick" and rvj.get("as_treatment") and mp.exists():
+                src = json.loads(mp.read_text(encoding="utf-8")).get("treatment")
+                if src and src != rvj["as_treatment"]:
+                    k = f"{src}>{rvj['as_treatment']}"; moved[k] = moved.get(k, 0) + 1
+        except Exception:                               # noqa: BLE001
+            continue
     return {"window_days": st.get("window_days", 14), "rejected": len(recent), "rejected_all": len(rows),
+            "moved": [{"from": k.split(">")[0], "to": k.split(">")[1], "n": n} for k, n in sorted(moved.items(), key=lambda kv: -kv[1])],
             "judged": len(judged_recent), "axis_uses": uses,
             "tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])), "axes": axes, "notes": merged[:50],
             "gate_by_framing": gate_by_framing(out_dir, treatment, mode),

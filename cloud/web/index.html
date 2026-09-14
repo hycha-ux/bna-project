@@ -236,6 +236,7 @@ body.reviewing .rev-side .scores { display:grid; grid-template-columns:1fr 1fr; 
 body.reviewing .rev-side .score > span:first-child { width:74px }
 body.reviewing .rev-side .score b { width:16px }
 .cond-line { line-height:1.5 } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
+.as-row { display:flex; align-items:center; gap:8px; margin-top:8px } .as-row .muted { white-space:nowrap; font-size:var(--fs-xs) } .as-row select { height:32px; font-size:var(--fs-sm); flex:1 }
 .rev-act { margin-top:auto } .rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
 .rev-side .reason { border-top:0; padding-top:0 } body.reviewing .rev-side .reason { margin-top:2px } body.reviewing .rev-side .reason > .muted { margin-bottom:2px }
 /* 안내 문구를 버튼과 같은 높이로 늘려 그 안에서 가운데 맞춘다 — align-items:center 만으로는
@@ -595,7 +596,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">3</span>메모 → 규칙으로 승격</h3><div class="tb-space"></div><span class="muted">자유 메모는 자동으로 안 들어갑니다. 영어 한 문장으로 다듬어 올려야 붙습니다.</span></div>
         <div id="les-notes"></div><div class="msg" id="les-msg"></div></div>
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">4</span>규칙 성적표</h3><div class="tb-space"></div><span class="muted">넣은 뒤 제외가 안 줄면 문장이 약한 것입니다</span></div>
-        <div id="les-score"></div></div>
+        <div id="les-score"></div><div class="muted" id="les-moved" style="margin-top:8px" hidden></div></div>
       <!-- 5: 동일인 게이트 × 프레이밍 (2026-09-11 연서님 결정 B: 눈 안 보이는 프레이밍은 덜 뽑아 못 잼 10% 아래로).
            모수는 검수분이 아니라 생성 전량(시뮬 제외) — "게이트가 몇 %에서 꺼져 있나"는 사람이 안 본 장까지 세야 나온다 (lessons.gate_by_framing). -->
       <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3><span class="num">5</span>동일인 검사가 안 되는 프레이밍</h3><span class="muted" id="les-gate-sum"></span><div class="tb-space"></div><span class="muted">목표: 못 잼 10% 아래</span></div>
@@ -1327,6 +1328,7 @@ function renderReview() {
           <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn} <kbd>1</kbd></button>
           <button class="b ${rv.pick==='reject'?'on-reject':''}"${RO()?' disabled':''} data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?PICK.reject.on:PICK.reject.btn} <kbd>2</kbd></button>
         </div>
+        <div class="as-row"><span class="muted">채택할 시술</span><select class="hsel" data-act="as" data-id="${it.item_id}"${RO()?' disabled':''} title="이 사진이 원래 시술보다 다른 시술 사진으로 더 쓸 만하면 여기서 바꿉니다. 현황판·라이브러리·드라이브 폴더가 따라갑니다">${[['', `${tname(it.treatment)} (원래)`], ...Object.keys(CFG.treatments).filter(k => k !== it.treatment).map(k => [k, tname(k)])].map(([k, n]) => `<option value="${k}" ${(rv.as_treatment || '') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
         ${pickLine(rv)}
         ${reasonBlock(it, rv.pick === 'reject')}
       </div>
@@ -1430,12 +1432,13 @@ function itemCard(it) {
   // 생성 조건 9개: 칩 대신 한 줄 텍스트(넘치면 말줄임, 전체는 상세에서)
   const conds = ['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'].filter(k => v[k]).map(k => esc(val(k, v[k].key)));
   const reviewed = rv.pick || (rv.tags||[]).length || rv.note;
+  const movedChip = rv.pick === 'pick' && rv.as_treatment && rv.as_treatment !== it.treatment ? `<span class="chip acc" title="원래 ${esc(tname(it.treatment))} 배치에서 나온 사진을 ${esc(tname(rv.as_treatment))}로 채택했습니다">→ ${esc(tname(rv.as_treatment))}</span>` : '';
   const open = rv.pick === 'reject';
   const afs = it.after_files || {}; const seriesN = Object.keys(afs).filter(k => k !== 'final').length;
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
     <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, seriesN > 1 ? `시술 후 · ${val('timeline', Object.keys(afs).at(-1))}` : '시술 후')}${seriesN > 1 ? `<span class="series-badge" title="경과 시리즈 ${Object.keys(afs).map(w => val('timeline', w)).join(' → ')}">${seriesN}시점</span>` : ''}</div>
     <div class="body">
-      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}${idBadge}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}${idBadge}${movedChip}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
       <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
       <div class="act">
         <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn}</button>
@@ -1459,8 +1462,9 @@ async function onAct(e) {
   if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const dd = el.closest('.dd'); dd.open = false;   // 고르면 바로 접는다 — 펼친 채 남아 매번 닫아야 했다 (2026-09-10 성연서님). 둘 이상은 다시 열어 고른다
     const v = dd.querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
   if (act === 'savereason') { DIRTY.delete(id); await save(it, prev); return; }
+  if (act === 'as') { rv.as_treatment = el.value || null; if (rv.pick !== 'pick') { rv.pick = 'pick'; } }   // 시술을 고르면 그 시술로 채택
   if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
-  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; DIRTY.delete(id); }
+  if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; rv.as_treatment = null; DIRTY.delete(id); }
   await save(it, prev);
 }
 // 2026-09-08 수리 — 종전엔 ①실패해도 조용(try/catch 없음: 클라우드 보기 전용 405 가 흔적 없이 삼켜졌다)
@@ -1471,8 +1475,8 @@ async function save(it, prev) {
   SAVING.add(it.item_id);
   try {
     const rv = it.review;
-    const saved = await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick ?? null, tags: rv.tags||[], note: rv.note||''});
-    it.review = {pick: saved.pick ?? null, tags: saved.tags || [], note: saved.note || '', updated_at: saved.updated_at, drive: saved.drive};
+    const saved = await api('/api/review', {batch: CUR.batch_id, item: it.item_id, pick: rv.pick ?? null, tags: rv.tags||[], note: rv.note||'', as_treatment: rv.as_treatment || null});
+    it.review = {pick: saved.pick ?? null, tags: saved.tags || [], note: saved.note || '', as_treatment: saved.as_treatment || null, updated_at: saved.updated_at, drive: saved.drive};
     if (saved.drive === 'uploaded') toast('채택 · 드라이브에 저장했습니다');
     else if (saved.drive === 'removed') toast('제외 · 드라이브 채택본에서 내렸습니다');
   } catch (e) {
@@ -1575,7 +1579,7 @@ async function downloadItem(bid, iid, it) {
 }
 function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
-  const badges = ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
+  const badges = (i.orig_treatment && i.orig_treatment !== i.treatment ? `<span class="chip acc" title="원래 ${esc(tname(i.orig_treatment))} 배치에서 나온 사진입니다">원래 ${esc(tname(i.orig_treatment))}</span>` : '') + ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
   const key = `${i.batch_id}/${i.item_id}`;
   return `<div class="item ${LIB_SEL.has(key) ? 'sel' : ''}"><div class="pair" data-zoom="${i.batch_id}/${i.item_id}" title="누르면 크게 비교하고 프롬프트를 봅니다">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
     <div class="head"><label class="lib-check" title="선택해서 여러 장을 한 번에 내려받거나 내보냅니다"><input type="checkbox" data-sel="${key}" ${LIB_SEL.has(key) ? 'checked' : ''}></label><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span><span class="head-r"><button class="b sm ghost" data-dl="${i.batch_id}/${i.item_id}" title="시술 전·후 원본 파일을 내려받습니다">다운로드</button>${driveBtn(i)}<button class="b sm ghost" data-open="${i.batch_id}" title="이 사진이 나온 작업으로">작업</button><button class="b sm ghost" data-unpick="${i.batch_id}/${i.item_id}" title="채택을 풀고 드라이브에서 내립니다">해제</button></span></div>
@@ -1747,6 +1751,7 @@ async function loadLessons() {
     catch (e) { msg('#les-msg', e.message, 'err'); }
   });
   // 4: 규칙 성적표 — 건수만이 아니라 검수 대비 비율
+  { const mv = L.moved || []; const el = $('#les-moved'); el.hidden = !mv.length; el.innerHTML = mv.length ? `다른 시술로 옮겨 채택한 사진 ${mv.reduce((a, m) => a + m.n, 0)}장 — ${mv.map(m => `${esc(tname(m.from))} → ${esc(tname(m.to))} ${m.n}장`).join(' · ')} <span title="원래 시술의 프롬프트가 다른 시술 사진을 만들고 있다는 신호입니다. 통과율·버전 성적은 원래 시술 기준입니다">ⓘ</span>` : ''; }
   $('#les-score').innerHTML = (L.scorecard || []).length ? `<table><thead><tr><th>규칙</th><th>넣은 날</th><th title="규칙을 넣기 전에 검수한 사진 중 제외된 수. 비교 자료가 없으면 —">넣기 전 제외</th><th>넣은 뒤 제외</th><th>넣은 뒤 검수</th><th>넣은 뒤 제외율</th></tr></thead><tbody>${
     L.scorecard.map(r => `<tr><td title="${esc(r.rule)}">${esc(r.from || r.rule).slice(0, 40)}</td><td>${esc(r.since)}</td><td>${(r.before_reviewed ?? 0) ? `${r.before_rejects} <span class="muted">/ ${r.before_reviewed}</span>` : '<span class="muted" title="이 규칙을 넣기 전에 검수한 사진이 없어 비교할 수 없습니다">—</span>'}</td><td>${r.after_rejects}</td><td>${r.after_reviewed}</td><td>${r.after_reviewed ? pct(r.after_rejects / r.after_reviewed) : '—'}</td></tr>`).join('')}</tbody></table>`
     : `<div class="les-empty">아직 승격된 규칙이 없습니다. 3번에서 규칙을 올리면 넣기 전·후 제외 건수가 여기 비교됩니다.</div>`;

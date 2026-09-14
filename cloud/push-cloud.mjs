@@ -174,7 +174,7 @@ async function absorbReviews(TOKEN) {
       if (local && (local.updated_at || 0) > (rv.updated_at || 0)) { done.push(b); continue; }
       const r = await fetch(BASE + '/api/review', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch: id.batch, item: id.item, pick: rv.pick ?? null, tags: rv.tags || [], note: rv.note || '' }),
+        body: JSON.stringify({ batch: id.batch, item: id.item, pick: rv.pick ?? null, tags: rv.tags || [], note: rv.note || '', as_treatment: rv.as_treatment ?? null }),
       });
       if (r.ok) done.push(b); else failed.push(`${b.pathname} (API ${r.status})`);
     } catch (e) { failed.push(`${b.pathname} (${e.message})`); }   // 한 건 실패가 회차를 죽이지 않는다
