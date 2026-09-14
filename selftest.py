@@ -1373,6 +1373,33 @@ for _t26 in _SKIN26:
         if _sp26["variation"]["before_severity"]["key"] == "marked":
             _sev26 += 1
 ok(not _bad26, f"피부 3종: Before 는 센 빛 · After 프레이밍은 이웃까지 — 위반 {_bad26[:4]} ({len(_bad26)}건)")
+# ㉘ 2026-09-14 오후 연서님 검수 (모공 2세트 실물): "전·후가 같은 사람의 2주 뒤로 안 읽힌다".
+#    원인 세 가지를 각각 시료로 박는다 — 셋 다 오류 없이 통과하던 값들이라 눈으로만 보면 또 샌다.
+_EYES28 = {"full_face": True, "forehead_cut": True,
+           "lower_face": False, "one_cheek": False, "nose_to_neck": False, "neck_only": False}
+_hair28, _beard28, _eye28, _n28 = [], [], [], 0
+for _t28 in _SKIN26:
+    for _i28, _p28 in enumerate(_pb26("selfie", 150, seed=28, treatment=_t28)):
+        _sp28 = build_prompts(_t28, "selfie", _p28, 28000 + _i28); _a28 = _sp28["after_variation"]
+        _n28 += 1
+        # ① 머리 모양은 전·후 동일 (2주 뒤 삭발이 실제로 뽑혔다)
+        if _a28["hair_style"]["key"] != _p28["hair_style"]["key"]:
+            _hair28.append(f'{_t28} {_p28["hair_style"]["key"]}->{_a28["hair_style"]["key"]}')
+        # ② 수염은 전·후 어디에도 없다 (볼·코를 덮으면 시술 부위가 화면에서 사라진다)
+        for _w28, _v28 in (("전", _p28), ("후", _a28)):
+            if _v28["extras"]["key"] in ("beard_light", "beard_full"):
+                _beard28.append(f'{_t28} {_w28} {_v28["extras"]["key"]}')
+        # ③ 프레이밍이 옮겨 가도 **눈 유무는 그대로** (눈이 사라지면 사람도 게이트도 대조 못 한다)
+        _fb28, _fa28 = _p28["framing"]["key"], _a28["framing"]["key"]
+        if _EYES28.get(_fb28) != _EYES28.get(_fa28):
+            _eye28.append(f"{_t28} {_fb28}->{_fa28}")
+ok(not _hair28, f"피부 3종: After 머리 모양은 안 바뀐다 — 위반 {_hair28[:3]} ({len(_hair28)}건)")
+ok(not _beard28, f"피부 3종: 수염은 전·후 어디에도 안 나온다(시술 부위를 덮는다) — 위반 {_beard28[:3]} ({len(_beard28)}건)")
+ok(not _eye28, f"프레이밍이 옮겨 가도 눈 유무는 그대로 — 위반 {_eye28[:3]} ({len(_eye28)}건, 표본 {_n28})")
+# 이웃표 자체도 본다 — 표를 넓히는 순간 위 실측이 통과해도 다음 값에서 샌다(같은 구멍의 거울상).
+_nbbad28 = [f"{_k}->{_v}" for _k, _vs in _NB26.items() for _v in _vs if _EYES28.get(_k) != _EYES28.get(_v)]
+ok(not _nbbad28, f"프레이밍 이웃표에 눈 유무가 갈리는 짝이 없다 — {_nbbad28}")
+
 ok(_arc26 / _n26 >= 0.60,
    f"'전=센 빛 → 후=부드러운 빛'이 6할 이상이어야 한다(물광은 빛이 만든다) — 실제 {_arc26/_n26*100:.0f}%")
 ok(_sev26 / _n26 >= 0.55,

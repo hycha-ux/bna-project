@@ -297,8 +297,14 @@ skinbooster_embo:
     hydration treatment, not a pigment or contour treatment.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
-  axis_ban: {extras: [mask_chin, makeup_light, glasses_thick], skin_condition: [clear]}   # 화장·마스크·뿔테가 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
-  drift_lock: [quality, color]                        # 화질·색감만 잠근다 (조명·프레이밍은 위 ②③)
+  # ⚠ 2026-09-14 오후 연서님 검수: 수염 2종을 더 뺀다. 0914 모공 배치에서 After 만 `beard_full` 로
+  #   뽑혀 턱·볼 아래가 통째로 덮였다 — 시술 부위(볼·코)가 가려지면 전후 비교가 성립하지 않고,
+  #   사람 눈에는 '2주 만에 다른 사람'으로 읽힌다. 전·후 양쪽에서 뺀다(한쪽만 빼면 그 차이가 곧 드리프트다).
+  axis_ban: {extras: [mask_chin, makeup_light, glasses_thick, beard_light, beard_full], skin_condition: [clear]}   # 화장·마스크·뿔테·수염이 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
+  # ⚠ 2026-09-14 오후: hair_style 을 잠근다. 이웃표(short→buzz)가 허용하던 '2주 뒤 삭발'이 실제로
+  #   뽑혔고, 배경·옷·조명이 이미 바뀌는 마당에 머리까지 바뀌니 같은 사람으로 안 읽혔다.
+  #   '다른 날에 찍은 티'는 배경·옷·조명이 이미 낸다 — 머리는 그 값을 더 안 보태고 위험만 키운다.
+  drift_lock: [quality, color, hair_style]            # 화질·색감·머리모양을 잠근다 (조명·프레이밍은 위 ②③)
   # ── 2026-09-14 연서님 검수 반영 (피부 3종 공통). 실제 후기 사진 3장과 맞대본 차이가 근거다. ──
   # ① 프레이밍: 실제는 '볼 한쪽 확대(모공이 보이는 거리)'인데 우리는 얼굴 전체였다(0914 6장 중 확대 컷 0).
   #    ⚠ 전역 가중의 근거였던 "확대 컷 채택 1/10" 은 팔자·필러 표본이라 피부엔 안 맞는다(빌디 지적).
@@ -357,8 +363,14 @@ skin_pores:
     texture after treatment.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
-  axis_ban: {extras: [mask_chin, makeup_light, glasses_thick], skin_condition: [clear]}   # 화장·마스크·뿔테가 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
-  drift_lock: [quality, color]                        # 화질·색감만 잠근다 (조명·프레이밍은 위 ②③)
+  # ⚠ 2026-09-14 오후 연서님 검수: 수염 2종을 더 뺀다. 0914 모공 배치에서 After 만 `beard_full` 로
+  #   뽑혀 턱·볼 아래가 통째로 덮였다 — 시술 부위(볼·코)가 가려지면 전후 비교가 성립하지 않고,
+  #   사람 눈에는 '2주 만에 다른 사람'으로 읽힌다. 전·후 양쪽에서 뺀다(한쪽만 빼면 그 차이가 곧 드리프트다).
+  axis_ban: {extras: [mask_chin, makeup_light, glasses_thick, beard_light, beard_full], skin_condition: [clear]}   # 화장·마스크·뿔테·수염이 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
+  # ⚠ 2026-09-14 오후: hair_style 을 잠근다. 이웃표(short→buzz)가 허용하던 '2주 뒤 삭발'이 실제로
+  #   뽑혔고, 배경·옷·조명이 이미 바뀌는 마당에 머리까지 바뀌니 같은 사람으로 안 읽혔다.
+  #   '다른 날에 찍은 티'는 배경·옷·조명이 이미 낸다 — 머리는 그 값을 더 안 보태고 위험만 키운다.
+  drift_lock: [quality, color, hair_style]            # 화질·색감·머리모양을 잠근다 (조명·프레이밍은 위 ②③)
   # ── 2026-09-14 연서님 검수 반영 (피부 3종 공통). 실제 후기 사진 3장과 맞대본 차이가 근거다. ──
   # ① 프레이밍: 실제는 '볼 한쪽 확대(모공이 보이는 거리)'인데 우리는 얼굴 전체였다(0914 6장 중 확대 컷 0).
   #    ⚠ 전역 가중의 근거였던 "확대 컷 채택 1/10" 은 팔자·필러 표본이라 피부엔 안 맞는다(빌디 지적).
@@ -422,8 +434,12 @@ skin_redness:
     tone, texture and moles stay the same.
   effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
   expression_policy: free
-  axis_ban: {extras: [mask_chin, makeup_light, glasses_thick], skin_condition: [clear]}   # 화장·마스크·뿔테가 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
-  drift_lock: [color]                                 # 색감은 계속 잠근다 — 따뜻한 색감은 홍조를 만들고 차가운 색감은 지운다 (조명·프레이밍은 위 ②③)
+  # ⚠ 2026-09-14 오후 연서님 검수: 수염 2종을 더 뺀다. 0914 모공 배치에서 After 만 `beard_full` 로
+  #   뽑혀 턱·볼 아래가 통째로 덮였다 — 시술 부위(볼·코)가 가려지면 전후 비교가 성립하지 않고,
+  #   사람 눈에는 '2주 만에 다른 사람'으로 읽힌다. 전·후 양쪽에서 뺀다(한쪽만 빼면 그 차이가 곧 드리프트다).
+  axis_ban: {extras: [mask_chin, makeup_light, glasses_thick, beard_light, beard_full], skin_condition: [clear]}   # 화장·마스크·뿔테·수염이 피부를 가리고, '깨끗한 피부'는 시술 전 상태와 모순
+  # ⚠ 2026-09-14 오후: hair_style 추가 — 근거는 위 두 시술과 같다(2주 뒤 삭발이 실제로 뽑혔다).
+  drift_lock: [color, hair_style]                     # 색감·머리모양을 잠근다 — 따뜻한 색감은 홍조를 만들고 차가운 색감은 지운다 (조명·프레이밍은 위 ②③)
   # ── 2026-09-14 연서님 검수 반영 (피부 3종 공통). 실제 후기 사진 3장과 맞대본 차이가 근거다. ──
   # ① 프레이밍: 실제는 '볼 한쪽 확대(모공이 보이는 거리)'인데 우리는 얼굴 전체였다(0914 6장 중 확대 컷 0).
   #    ⚠ 전역 가중의 근거였던 "확대 컷 채택 1/10" 은 팔자·필러 표본이라 피부엔 안 맞는다(빌디 지적).
