@@ -1049,7 +1049,7 @@ $('#btn-demo').onclick = async () => {
 };
 
 // ---------- 대기열 ----------
-const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 ${s.split(':')[1]}장 도달` : s.startsWith('cost_cap') ? `비용 상한 $${s.split(':')[1]} 도달` : s;
+const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 ${s.split(':')[1]}장 도달` : s.startsWith('cost_cap') ? `비용 상한 $${s.split(':')[1]} 도달` : s === 'interrupted' ? '중단됨' : s;
 $('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
 $('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
 let CREATE_PROG = null;

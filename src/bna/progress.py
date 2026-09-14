@@ -54,6 +54,35 @@ class Progress:
         os.replace(tmp, self.path)
 
 
+STALE_S = 30 * 60   # 마지막 진행 뒤 이만큼 아무 변화가 없으면 '끊긴 배치'로 본다
+
+
+def last_activity(d: dict) -> float:
+    return max([it.get("updated_at") or 0 for it in (d.get("items") or {}).values()] + [d.get("started_at") or 0])
+
+
+def close_stale(batch_dir: Path, why: str = "중단됨 — 서버가 끊기면서 멈춘 배치") -> bool:
+    """진행 중으로 남았지만 이 서버가 돌리고 있지 않고, 마지막 진행이 STALE_S 를 넘긴 배치를 닫는다.
+    9/9 배치가 닷새째 '실행 중 · 남은 시간 70시간'으로 남아 있었다 (2026-09-14 성연서님 "종결 처리 할 수 없나").
+    남은 사진은 skipped, finished_at·stopped='interrupted'·error 를 적는다. 사진 파일은 건드리지 않는다."""
+    p = batch_dir / "progress.json"
+    if not p.exists():
+        return False
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    if d.get("finished_at") is not None or time.time() - last_activity(d) < STALE_S:
+        return False
+    now = time.time()
+    for it in d.get("items", {}).values():
+        if it.get("stage") not in ("passed", "failed", "skipped"):
+            it["stage"] = "skipped"; it["updated_at"] = now
+    d["finished_at"] = now; d["stopped"] = "interrupted"; d["error"] = d.get("error") or why
+    tmp = p.with_suffix(".json.tmp"); tmp.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8"); os.replace(tmp, p)
+    return True
+
+
 def read(batch_dir: Path):
     p = batch_dir / "progress.json"
     if not p.exists():

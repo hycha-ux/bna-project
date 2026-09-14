@@ -1253,6 +1253,24 @@ ok("scattered across it" in _im,
 # 패치는 2026-09-11 저녁에 통째로 뺐다(성연서님). 실사엔 있지만 그리면 가짜로 보인다 — 위 ㉑ 블록이
 # 어느 컷에도 patch·tape 단어가 없는지 본다. 여기선 '직후 신호'가 남아 있는지만 확인한다.
 
+# ㉒-b 끊긴 배치 자동 종결 (2026-09-14 성연서님 "종결 처리 할 수 없나") — 진행 기록이 30분 넘게 멈췄고 이 서버가 돌리는 게 아니면 닫는다
+import bna.progress as _prog_mod
+import time, json
+import tempfile as _tf2
+_sd = _P(_tf2.mkdtemp())
+_pj = {"planned": 3, "started_at": time.time() - 5 * 86400, "finished_at": None, "error": None,
+       "items": {"0000": {"stage": "passed", "attempt": 1, "passed": True, "fail_reasons": [], "updated_at": time.time() - 5 * 86400, "elapsed": 1},
+                 "0001": {"stage": "after", "attempt": 1, "passed": None, "fail_reasons": [], "updated_at": time.time() - 5 * 86400, "elapsed": 1},
+                 "0002": {"stage": "queued", "attempt": 0, "passed": None, "fail_reasons": [], "updated_at": None, "elapsed": 0}}}
+(_sd / "progress.json").write_text(json.dumps(_pj), encoding="utf-8")
+ok(_prog_mod.close_stale(_sd), "닷새 전에 멈춘 배치는 닫힌다")
+_rd2 = _prog_mod.read(_sd)
+ok(_rd2["summary"]["running"] is False and _rd2["summary"]["stopped"] == "interrupted" and _rd2["items"]["0001"]["stage"] == "skipped" and _rd2["items"]["0000"]["stage"] == "passed",
+   "닫히면 진행 중 아님 · stopped=interrupted · 남은 사진은 skipped · 끝난 사진은 그대로")
+_pj["finished_at"] = None; _pj["items"]["0001"]["updated_at"] = time.time() - 60
+(_sd / "progress.json").write_text(json.dumps(_pj), encoding="utf-8")
+ok(not _prog_mod.close_stale(_sd), "1분 전에 움직인 배치는 닫지 않는다(진짜 돌고 있을 수 있다)")
+
 # ㉓ 참조 사진(A1)이 시술·시점을 거르는가 (2026-09-11 빌디 "refs.pick 이 거르는지 확인")
 #    종전엔 **안 걸렀다** — 모드와 조명·화질·배경만 봤다. 그래서 '팔자 직후' 실사진을 색인에 넣으면
 #    리프팅 컷에도, 시술 전(Before) 컷에도 들어간다. 뒤쪽이 특히 나쁘다: 아직 시술도 안 한 얼굴에

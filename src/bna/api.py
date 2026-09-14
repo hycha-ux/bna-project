@@ -136,6 +136,9 @@ def batch_summary(d: Path):
     st["review_tags"] = tags
     info["kind"] = info.get("kind") or ("dry_run" if items and items[0].get("dry_run") else "run")
     pg = prog.read(d)
+    # 이 서버가 돌리는 게 아닌데 '진행 중'으로 남은 배치(서버가 끊긴 것)는 닫는다 — 닫지 않으면 영영 실행 중이다
+    if pg and pg["summary"]["running"] and d.name not in RUNNING and prog.close_stale(d):
+        pg = prog.read(d)
     if pg:
         info["progress"] = pg["summary"]
     info["status"] = RUNNING.get(d.name, {}).get("status") or ("running" if pg and pg["summary"]["running"] else "done")
