@@ -332,7 +332,7 @@ def save_review(req):
     if not d.is_dir():
         return {"error": "item not found"}, 404
     rv = {"pick": req.get("pick"), "tags": req.get("tags", []), "note": req.get("note", ""), "updated_at": time.time()}
-    at = req.get("as_treatment")   # 다른 시술로 채택(2026-09-14) — 아는 시술 키만
+    at = req.get("as_treatment")
     rv["as_treatment"] = at if isinstance(at, str) and at in load("treatments.yaml") else None
     (d / "review.json").write_text(json.dumps(rv, ensure_ascii=False, indent=1), encoding="utf-8")
     # 채택 → 드라이브에 올린다 / 제외·판정 지움 → 채택본에서 내린다 (2026-09-08 성연서님 지시).
