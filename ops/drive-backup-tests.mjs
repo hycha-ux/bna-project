@@ -9,7 +9,7 @@ import { generateKeyPairSync, createVerify } from 'node:crypto';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, utimesSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { plan, walk, authMode, readKeys, signJwt, SKIP_DIRS, SKIP_EXT, planLanes, pickedDest, LANE_PICKED, LANE_OUT } from './drive-backup.mjs';
+import { plan, walk, authMode, readKeys, signJwt, SKIP_DIRS, SKIP_EXT, planLanes, pickedDest, outDestOf, LANE_PICKED, LANE_FULL, LANE_OUT } from './drive-backup.mjs';
 
 let fails = 0;
 const ok = (cond, msg) => {
@@ -213,6 +213,49 @@ ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
   ok(D.evict.length === 1 && D.evict[0].id === 'idF', '옛 인물의 그림은 채택본에서 내린다(지우지 않는다)');
   ok(D.conflicts.length === 0, '가드는 안전망으로만 남는다(잡힌 것 0)');
   rmSync(r3, { recursive: true, force: true });
+}
+
+// ⑧ 마스크는 어느 레인에도 안 올린다 (2026-09-14 성연서님 "빼자")
+{
+  const r4 = mkdtempSync(path.join(tmpdir(), 'bna-mask-'));
+  const it = path.join(r4, 'outputs', '20260911-094915-7933', '0000');
+  mkdirSync(it, { recursive: true });
+  const stem = 'nasolabial_selfie_korea30sm_0000';
+  writeFileSync(path.join(it, `${stem}_before.jpg`), 'B');
+  writeFileSync(path.join(it, `${stem}_after.jpg`), 'A');
+  writeFileSync(path.join(it, 'mask.png'), 'M');
+  writeFileSync(path.join(it, 'meta.json'), JSON.stringify({ treatment: 'nasolabial', mode: 'selfie',
+    variation: { country: { key: 'korea' }, age: { key: '30s' }, gender: { key: 'male' } } }));
+  writeFileSync(path.join(it, 'review.json'), JSON.stringify({ pick: 'pick' }));
+  const names = { nasolabial: '팔자주름' };
+
+  const L = planLanes(r4, {}, { full: true, names });
+  ok(!L.todo.some((f) => /mask\.png$/i.test(f.dest)), `마스크는 안전망에도 안 올라간다 — ${L.todo.map((f) => f.dest).join(', ')}`);
+  ok(L.todo.some((f) => f.dest === `${LANE_FULL}/outputs/20260911-094915-7933/0000/meta.json`), '마스크 말고는 종전대로 올라간다');
+
+  // 이미 올라간 안전망 마스크는 내린다. 그 외 안전망 파일은 건드리지 않는다(단방향 백업).
+  const gone = `${LANE_FULL}/outputs/20260101-000000-dead/0000/${stem}_before.jpg`;
+  const oldMan = {
+    [`${LANE_FULL}/outputs/20260911-094915-7933/0000/mask.png`]: { sig: 'x', id: 'idFullMask' },
+    [gone]: { sig: 'y', id: 'idGone' },
+  };
+  const E = planLanes(r4, oldMan, { full: true, names });
+  ok(E.evict.some((e) => e.id === 'idFullMask'), '안전망에 올라간 마스크는 내린다');
+  ok(!E.evict.some((e) => e.id === 'idGone'), '로컬에서 사라진 안전망 원본은 그대로 둔다(단방향)');
+
+  // 내리는 자리 — 안전망 마스크를 한 폴더로 몰면 전부 `mask.png` 라 겹친다
+  const a = outDestOf(`${LANE_FULL}/outputs/20260911-094915-7933/0000/mask.png`);
+  const b = outDestOf(`${LANE_FULL}/outputs/20260910-153348-63cb/0001/mask.png`);
+  ok(a !== b, `안전망 마스크는 경로를 살려 내린다 — ${a} vs ${b}`);
+  ok(a === `${LANE_OUT}/outputs/20260911-094915-7933/0000`, `안전망 마스크 자리 — ${a}`);
+  ok(outDestOf(`${LANE_PICKED}/nasolabial_selfie/20260909-100120-f4fa_0000_mask.png`) === `${LANE_OUT}/nasolabial_selfie`,
+    '채택본 마스크도 경로를 살려 내린다(이름에 배치·아이템이 있어 안 겹친다)');
+  // 실측 시료 — 안전망 마스크 자리는 전부 `mask.png` 라 한 폴더로 모으면 통째로 겹친다
+  const fulls = ['20260909-100120-f4fa/0000', '20260910-153348-63cb/0001', '20260911-094915-7933/0000']
+    .map((k) => `${LANE_FULL}/outputs/${k}/mask.png`);
+  ok(new Set(fulls.map(outDestOf)).size === fulls.length, '안전망 마스크는 자리가 서로 달라야 한다');
+  ok(new Set(fulls.map((d) => d.split('/').pop())).size === 1, '(그 자리들의 파일 이름은 전부 같다 — 모으면 겹친다는 뜻)');
+  rmSync(r4, { recursive: true, force: true });
 }
 
 rmSync(root, { recursive: true, force: true });

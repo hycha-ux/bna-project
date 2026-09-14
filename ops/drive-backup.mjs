@@ -232,7 +232,12 @@ export function batchTag(key) {
 /** 파일 하나가 드라이브 어느 자리로 갈지. 여러 자리일 수 있다(창고 + 안전망). */
 export function targetsFor(rel, rv, { full = true, names } = {}) {
   const out = [];
-  if (full) out.push({ dest: `${LANE_FULL}/${rel}`, key: null });
+  // 마스크는 어느 레인에도 안 올린다 (2026-09-14 성연서님 "빼자").
+  //   '전 사진 + meta.treatment + treatments.yaml' 로 다시 만들어지고(`api.py` 의 mask_payload),
+  //   드라이브 사본을 읽는 곳이 0곳이다(검수 화면 부위 표시는 클라우드 푸시 경로로 간다).
+  //   ⚠ 다시 그린 것이 픽셀까지 같지는 않다(실측 핵심영역 IoU 0.947 · 차이의 97%는 가장자리 번짐).
+  //     "그때 준 그 픽셀"이 필요해지면 이 줄을 되돌려라 — 로컬 원본은 그대로 있다.
+  if (full && !MASK_RE.test(rel)) out.push({ dest: `${LANE_FULL}/${rel}`, key: null });
   const key = itemKeyOf(rel);
   const r = key && rv[key];
   if (r && r.pick === 'pick') {
@@ -305,7 +310,9 @@ export function planLanes(root = ROOT, manifest = {}, opts = {}) {
     moves = moves.filter((x) => !clash.has(x.dest));
   }
   const evict = Object.entries(manifest)
-    .filter(([dest, m]) => dest.startsWith(LANE_PICKED + '/') && m.id && !wanted.has(dest) && !taken.has(dest))
+    .filter(([dest, m]) => m.id && !wanted.has(dest) && !taken.has(dest)
+      && (dest.startsWith(LANE_PICKED + '/')
+        || (dest.startsWith(LANE_FULL + '/') && MASK_RE.test(dest))))  // 안전망은 마스크만 — 넓히면 로컬에서 지운 원본까지 내려간다
     .map(([dest, m]) => ({ dest, id: m.id, key: m.key || null }));
   return { files, todo, moves, evict, conflicts, reviews: rv };
 }
@@ -399,8 +406,19 @@ async function upload(file, tok, rootId, cache, prevId) {
  * 채택본에서 내린다 — **지우지 않고** `_제외됨/` 으로 부모만 바꾼다.
  * 이 백업은 삭제 권한을 쓰지 않는다(단방향 원칙). 오판이면 드라이브에서 도로 끌어오면 된다.
  */
+/** 내린 것이 앉을 자리. 순수 함수 — 회귀가 여기를 본다.
+ *  **항상 경로를 살린다.** 종전엔 마스크면 `_제외됨/_마스크` 한 폴더로 모았는데, 그 가지는
+ *  실제로 한 번도 안 탔다 — 채택본 마스크의 자리 이름은 `<배치>_<아이템>_mask.png` 라
+ *  `(^|/)mask\.png$` 에 안 걸린다(실측 0/19). 그런데 2026-09-14 에 안전망 마스크가 내리기
+ *  대상이 되면서 그 죽은 가지가 깨어났고, 그쪽은 이름이 전부 `mask.png` 라(실측 70/70,
+ *  고유 이름 1개) 한 폴더에 70장이 같은 이름으로 쌓일 뻔했다. 드라이브는 같은 이름을
+ *  허용해서 오류 없이 겹친다 → 모으지 않는다. */
+export function outDestOf(dest) {
+  return `${LANE_OUT}/${dest.split('/').slice(1, -1).join('/')}`;
+}
+
 async function moveOut(e, tok, rootId, cache) {
-  const dest = MASK_RE.test(e.dest) ? `${LANE_OUT}/_마스크` : `${LANE_OUT}/${e.dest.split('/').slice(1, -1).join('/')}`;
+  const dest = outDestOf(e.dest);
   const to = await folderFor(dest.replace(/\/$/, ''), tok, rootId, cache);
   const cur = await gj(`${API}/files/${e.id}?fields=parents&${COMMON}`, tok);
   const from = (cur.parents || []).join(',');
