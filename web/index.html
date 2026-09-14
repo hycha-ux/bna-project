@@ -43,7 +43,8 @@ a { color:var(--primary) }
 .collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
 .sub { display:flex; flex-direction:column; padding:2px 0 var(--sp-1) 30px } .sub button { border:0; background:none; text-align:left; padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-r); color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:var(--fw-b); background:var(--pri-alpha) } .nav-item.active.has-sub { background:none; color:var(--ui-hi) }
 .sub button { display:flex; align-items:center; gap:6px } .sub button .n { margin-left:auto; font-size:11px; color:var(--ui-lo) } .sub button .n.pend { color:#fff; background:var(--warn,#C98A1B); border-radius:999px; padding:0 6px; font-weight:600 }
-.nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
+.nav-item .caret { margin-left:auto; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; color:var(--ui-lo); flex-shrink:0 } .nav-item .caret svg { width:16px; height:16px; transition:transform .15s } .nav-item .caret:hover { background:var(--ui-surface); color:var(--ui-hi) } .nav-item .chip + .caret { margin-left:6px }
+.side.fold-jobs #sub-jobs, .side.fold-library #sub-library { display:none } .side.fold-jobs [data-fold=jobs] svg, .side.fold-library [data-fold=library] svg { transform:rotate(-90deg) }
 .side .brand { font-size:var(--fs-lg); font-weight:var(--fw-b); color:var(--ui-hi); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
 .side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
 .nav-item { width:100%; padding:var(--sp-2) var(--sp-2); border:0; border-radius:var(--r-sm); background:none; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:var(--sp-2); text-align:left; margin-bottom:4px }
@@ -416,6 +417,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 3v18" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
 </defs></svg>
@@ -425,11 +427,11 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <div class="brand-row"><img class="logo" src="/assets/medibuilder-logo.png" alt="메디빌더"><div class="brand">B&amp;A 이미지</div><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">홈</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
-    <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret">▾</span></button>
+    <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret" data-fold="jobs" title="시술 목록 접기/펼치기"><svg><use href="#i-chev"/></svg></span></button>
     <!-- 작업 아래는 시술별 목록 (2026-09-10 성연서님 "전체·테스트 대신 카테고리별로"). 테스트 기록은 설정의 '개발용 기록 보기'를 켜야 보인다 -->
     <div class="sub" id="sub-jobs"></div>
     <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
-    <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret">▾</span></button>
+    <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret" data-fold="library" title="종류 목록 접기/펼치기"><svg><use href="#i-chev"/></svg></span></button>
     <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
     <div class="foot" id="side-foot"></div>
   </nav>
@@ -745,6 +747,8 @@ function show(tab) {
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'library' && b.classList.contains('nav-item')) { $$('#sub-library button').forEach(x => x.classList.remove('on')); const lm = $('#lib-mode'); if (lm) lm.value = ''; } if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.remove('on')); } show(t); });
+$$('.nav-item .caret[data-fold]').forEach(c => c.onclick = e => { e.stopPropagation(); const k = 'fold-' + c.dataset.fold; const on = $('.side').classList.toggle(k); try { localStorage.setItem('bna.' + k, on ? '1' : '0'); } catch {} });
+try { for (const k of ['fold-jobs', 'fold-library']) if (localStorage.getItem('bna.' + k) === '1') $('.side').classList.add(k); } catch {}
 $('#tb-menu').onclick = e => { e.stopPropagation(); $('#app').classList.toggle('side-open'); };
 document.addEventListener('click', e => { if ($('#app').classList.contains('side-open') && !e.target.closest('.side') && !e.target.closest('#tb-menu')) $('#app').classList.remove('side-open'); });
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
