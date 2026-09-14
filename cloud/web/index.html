@@ -1647,6 +1647,7 @@ function renderGateByFraming(G) {
   <div class="muted" style="font-size:var(--fs-xs);margin-top:8px">못 잼은 "다른 사람"이 아니라 "기계가 못 잰 것"입니다. 두 눈·코·입꼬리가 다 보여야 재고, 한쪽 볼·코~목·목만은 뽑히는 순간 못 잼이 됩니다. 그래서 줄이는 방법은 검수기를 고치는 게 아니라 <b>그 프레이밍을 덜 뽑는 것</b>입니다(2026-09-11 결정 B). 모수는 검수한 사진이 아니라 생성한 사진 전부입니다.</div>`;
 }
 async function loadLessons() {
+  const _m = $('#les-msg'); if (_m) { _m.textContent = ''; _m.className = 'msg'; }
   try { LES = await api('/api/lessons'); } catch (e) { $('#les-body').textContent = '불러오지 못했습니다 — ' + e.message; return; }
   const L = LES, tags = Object.entries(L.tags || {}), st = (L.active || {});
   const minN = 2, maxN = Math.max(1, ...tags.map(([, n]) => n));
@@ -1692,7 +1693,7 @@ async function loadLessons() {
         ${can || !d ? `<button class="b ${can ? 'primary' : ''}" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''} title="${can ? 'AI 가 규칙감으로 판정했고 아직 안 붙어 있는 문장입니다' : '초안 없이 올립니다 — 문장을 직접 확인하세요'}">규칙으로 승격</button>` : ''}
         <button class="b ${can ? 'ghost' : ''}" data-handoff="${i}" ${L.no_promote ? 'disabled' : ''} title="승격하지 않고 티모(프롬프트·검수기 담당)에게 넘깁니다. 이 목록에서 빠지고 '티모 확인' 칸으로 갑니다">티모에게 넘기기</button>
       </span>
-    </div>`; }).join('') : `<div class="les-empty">승격할 메모가 없습니다. 제외할 때 자유 메모를 적으면 여기서 규칙으로 올릴 수 있습니다.</div>`;
+    </div>`; }).join('') : `<div class="les-empty">승격할 메모 없음 · 제외할 때 자유 메모를 적으면 여기 쌓입니다</div>`;
   // 인터넷 화면에서 보낸 요청(사무실 PC 반영 전) — 목록 위에 '대기'로
   const pp = L.pending_promotions || [], ph = L.pending_handoffs || [];
   if ((pp.length || ph.length) && !(L.notes || []).length) $('#les-notes').innerHTML = '';   // 대기 줄이 있으면 '메모 없음' 상자는 군더더기
@@ -1701,8 +1702,11 @@ async function loadLessons() {
     + ph.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.why || r.en || '')}">${esc(r.why || r.en || '')}</span></div><span class="chip" title="프롬프트에는 안 붙습니다. 사무실 PC가 가져가면 아래 '티모 확인 대기'로 옮겨 갑니다"><i class="dot"></i>넘기기 대기</span></div>`).join(''));
   // 티모 확인 목록 (PC 기록 파일 outputs/handoffs.jsonl) — 목록 아래
   const ho = L.handoffs || [];
-  if (ho.length) $('#les-notes').insertAdjacentHTML('beforeend', `<div class="rev-h" style="margin-top:12px">티모 확인 대기 ${ho.length}건 <span class="muted" style="font-weight:400">— 프롬프트·검수기·조건 쪽에서 고칠 것들</span></div>` +
-    ho.map(r => { const k = r.kind ? KIND_KO[r.kind] : null; return `<div class="list-row" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span>${esc(r.why || '')}${r.en ? ` · <i>${esc(r.en)}</i>` : ''}</span></div>${k ? `<span class="chip ${k[1]}">${k[0]}</span>` : ''}<span class="muted" style="font-size:var(--fs-xs)">${fmtDay(r.at)}</span></div>`; }).join(''));
+  if (ho.length) { const kinds = {}; for (const r of ho) { const k = r.kind ? KIND_KO[r.kind] : null; const nm = k ? k[0] : '기타'; kinds[nm] = (kinds[nm] || 0) + 1; }
+    let openFold = false; try { openFold = localStorage.getItem('bna.les.handoffs') === '1'; } catch {}
+    $('#les-notes').insertAdjacentHTML('beforeend', `<details class="opt" id="les-handoffs" style="margin-top:12px" ${openFold ? 'open' : ''}><summary>티모 확인 대기 ${ho.length}건 <span class="muted" style="font-weight:400">· ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(' · ')}</span></summary><div>` +
+    ho.map(r => { const k = r.kind ? KIND_KO[r.kind] : null; return `<div class="list-row pend" style="cursor:default;margin-bottom:0" title="${esc([r.why, r.en].filter(Boolean).join('\n'))}"><div class="t" style="flex:1"><b>${esc(r.note)}</b></div>${k ? `<span class="chip ${k[1]}">${k[0]}</span>` : ''}<span class="muted" style="font-size:var(--fs-xs)">${fmtDay(r.at)}</span></div>`; }).join('') + '</div></details>');
+    $('#les-handoffs').ontoggle = e => { try { localStorage.setItem('bna.les.handoffs', e.target.open ? '1' : '0'); } catch {} }; }
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
     if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
