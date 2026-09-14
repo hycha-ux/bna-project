@@ -41,7 +41,7 @@ a { color:var(--primary) }
 .collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
 .collapsed .side .brand-row { flex-direction:column; align-items:center; gap:8px; padding-bottom:10px } .collapsed .side .toggle { margin:0; width:36px; height:32px }
 .collapsed .nav-item { justify-content:center; padding:11px 0 } .collapsed .nav-item svg { width:20px; height:20px }
-.sub { display:flex; flex-direction:column; padding:2px 0 var(--sp-1) 30px } .sub button { border:0; background:none; text-align:left; padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-r); color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:var(--fw-m) }
+.sub { display:flex; flex-direction:column; padding:2px 0 var(--sp-1) 30px } .sub button { border:0; background:none; text-align:left; padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-r); color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:var(--fw-b); background:var(--pri-alpha) } .nav-item.active.has-sub { background:none; color:var(--ui-hi) }
 .sub button { display:flex; align-items:center; gap:6px } .sub button .n { margin-left:auto; font-size:11px; color:var(--ui-lo) } .sub button .n.pend { color:#fff; background:var(--warn,#C98A1B); border-radius:999px; padding:0 6px; font-weight:600 }
 .nav-item .caret { margin-left:auto; font-size:10px; color:var(--ui-lo) } .nav-item .chip + .caret { margin-left:6px }
 .side .brand { font-size:var(--fs-lg); font-weight:var(--fw-b); color:var(--ui-hi); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
@@ -728,7 +728,9 @@ const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브�
 // ---------- 화면 ----------
 function show(tab) {
   const prev = ($$('.page').find(p => p.classList.contains('active')) || {}).id;
-  $$('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  // 세부 항목(작업>팔자주름, 라이브러리>셀카형)이 눌려 있으면 큰 카테고리는 채우지 않는다 (2026-09-14 성연서님 "가장 큰 카테고리가 눌러져 있는 듯한 효과")
+  const subOn = tab === 'jobs' ? !!$('#sub-jobs button.on') : tab === 'library' ? !!$('#sub-library button.on') : false;
+  $$('.nav-item').forEach(b => { b.classList.toggle('active', b.dataset.tab === tab); b.classList.toggle('has-sub', b.dataset.tab === tab && subOn); });
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
   $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
   if (prev !== 'tab-' + tab) window.scrollTo(0, 0);   // 홈 아래까지 내렸다가 생성을 누르면 폼이 안 보였다 (2026-09-14 성연서님 전수 조사 ③)
@@ -741,7 +743,7 @@ function show(tab) {
   if (tab === 'lessons') loadLessons();
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
-$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.remove('on')); } show(t); });
+$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'library' && b.classList.contains('nav-item')) { $$('#sub-library button').forEach(x => x.classList.remove('on')); const lm = $('#lib-mode'); if (lm) lm.value = ''; } if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.remove('on')); } show(t); });
 $('#tb-menu').onclick = e => { e.stopPropagation(); $('#app').classList.toggle('side-open'); };
 document.addEventListener('click', e => { if ($('#app').classList.contains('side-open') && !e.target.closest('.side') && !e.target.closest('#tb-menu')) $('#app').classList.remove('side-open'); });
 $('#side-toggle').onclick = () => { $('#app').classList.toggle('collapsed'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220); try { localStorage.setItem('side', $('#app').classList.contains('collapsed') ? '1' : '0'); } catch {} };
