@@ -55,9 +55,25 @@ export function plan(reqs, jobs, { maxAccept = MAX_ACCEPT } = {}) {
   const acts = [];
   const byId = new Map(jobs.map((j) => [j.job_id, j]));
   const byLabel = new Map(jobs.map((j) => [j.label, j]));
-  const findJob = (r) => (r.local_job_id && byId.get(r.local_job_id)) || byLabel.get(labelOf(r.id)) || null;
+  const DEAD = new Set(['cancelled', 'error']);
+  // 같은 요청을 새 서버가 다시 넣으면 라벨은 같고 job_id 만 바뀐다 — 옛(죽은) 작업만 보고 '실패'로 닫지 않는다 (2026-09-14 11:01 모공 실사고)
+  const findJob = (r) => {
+    const mine = r.local_job_id && byId.get(r.local_job_id);
+    const lbl = byLabel.get(labelOf(r.id));
+    if (mine && DEAD.has(mine.status) && lbl && lbl.job_id !== mine.job_id && !DEAD.has(lbl.status)) return lbl;
+    return mine || lbl || null;
+  };
 
   for (const r of reqs) {
+    if (r.status === 'error') {
+      // 복구: 이미 '실패'로 닫힌 요청인데 같은 라벨의 새 작업이 돌았거나 끝났으면 그쪽을 따른다(error→running|done 은 이 경우만 허용)
+      const j = findJob(r);
+      if (j && j.job_id !== r.local_job_id && !DEAD.has(j.status)) {
+        if (j.status === 'done') acts.push({ kind: 'done', id: r.id, job_id: j.job_id, batch_id: j.batch_id, stats: j.result || null, from: r.status });
+        else if (j.status === 'running') acts.push({ kind: 'running', id: r.id, job_id: j.job_id, batch_id: j.batch_id });
+      }
+      continue;
+    }
     if (r.status !== 'accepted' && r.status !== 'running') continue;
     const j = findJob(r);
     if (!j) {
@@ -407,7 +423,7 @@ async function main() {
           const up = await GR.advance(token, a.id, 'running', { batch_id: a.batch_id || null, started_at: new Date().toISOString() }, cur);
           if (up.ok) cur = up.ok;
         }
-        const r = await GR.advance(token, a.id, 'done', { batch_id: a.batch_id || null, finished_at: new Date().toISOString(), result }, cur);
+        const r = await GR.advance(token, a.id, 'done', { batch_id: a.batch_id || null, finished_at: new Date().toISOString(), result, ...(a.job_id ? { local_job_id: a.job_id, error: null } : {}) }, cur);
         log(r.error ? `전이 실패 ${a.id} — ${r.error}` : `완료 ${a.id} — ${result.passed ?? '?'}/${result.total ?? '?'}장 통과, $${result.cost ?? '?'}`);
       } else if (a.kind === 'error') {
         const r = await GR.advance(token, a.id, 'error', { error: a.error, finished_at: new Date().toISOString() });

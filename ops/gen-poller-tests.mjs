@@ -18,6 +18,15 @@ ok(kinds(plan([REQ({ status: 'accepted', local_job_id: 'j1' })], [JOB({ status: 
 ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1', batch_id: 'b1' })], [JOB({ status: 'done', batch_id: 'b1', result: { total: 8, passed: 4 } })])) === 'done', '끝나면 완료로 닫는다');
 ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1' })], [JOB({ status: 'error', error: 'RuntimeError()' })])) === 'error', '작업이 터지면 실패로 닫는다');
 ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1' })], [JOB({ status: 'cancelled' })])) === 'error', '이 PC에서 취소하면 요청도 닫는다');
+// 재시작 복구 (2026-09-14 11:01 모공): 옛 작업은 취소됐지만 새 서버가 같은 라벨로 다시 돌려 끝냈다 → 실패가 아니라 완료
+ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1' })], [JOB({ status: 'cancelled' }), JOB({ job_id: 'j2', status: 'done', batch_id: 'b2', result: { total: 2, passed: 2 } })])) === 'done',
+   '옛 작업이 취소돼도 같은 라벨의 새 작업이 끝났으면 완료다');
+ok(kinds(plan([REQ({ status: 'error', local_job_id: 'j1', error: '이 PC 대기열에서 취소됐습니다' })], [JOB({ status: 'cancelled' }), JOB({ job_id: 'j2', status: 'done', batch_id: 'b2', result: { total: 2, passed: 2 } })])) === 'done',
+   '이미 실패로 닫힌 요청도 새 작업이 끝났으면 완료로 되돌린다');
+ok(kinds(plan([REQ({ status: 'error', local_job_id: 'j1', error: '이 PC 대기열에서 취소됐습니다' })], [JOB({ status: 'cancelled' }), JOB({ job_id: 'j2', status: 'running', batch_id: 'b2' })])) === 'running',
+   '새 작업이 도는 중이면 생성 중으로 되돌린다');
+ok(kinds(plan([REQ({ status: 'error', local_job_id: 'j1', error: 'RuntimeError()' })], [JOB({ status: 'error' })])) === '', '진짜 실패는 그대로 둔다');
+ok(kinds(plan([REQ({ status: 'error', local_job_id: 'j1' })], [JOB({ status: 'cancelled' }), JOB({ job_id: 'j2', status: 'cancelled' })])) === '', '새 작업도 취소됐으면 되돌리지 않는다');
 
 // ② 이중 생성 방지 — 여기가 이 파일의 핵심이다(재시도가 곧 돈이다)
 ok(kinds(plan([REQ({ status: 'accepted' })], [JOB()])) === 'adopt',

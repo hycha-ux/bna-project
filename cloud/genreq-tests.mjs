@@ -18,6 +18,7 @@ ok(validate({ treatment: 'nasolabial', mode: 'selfie', count: 8 }, T).ok.series 
 ok(canTransition('requested', 'accepted') && canTransition('requested', 'cancelled'), '요청됨 → 받음/취소');
 ok(!canTransition('accepted', 'cancelled') && !canTransition('running', 'cancelled'), '받은 뒤엔 화면에서 취소 못 한다');
 ok(canTransition('running', 'done') && canTransition('running', 'error') && !canTransition('done', 'running'), '완료 뒤로는 못 돌아간다');
+ok(canTransition('error', 'done') && canTransition('error', 'running') && !canTransition('error', 'accepted') && !canTransition('done', 'error'), '실패는 복구(생성 중·완료)로만 되돌아간다 — PC 재시작 뒤 같은 요청을 다시 돌린 경우');
 
 const s = sortRequests([{ status: 'done', requested_at: '2' }, { status: 'requested', requested_at: '1' }, { status: 'running', requested_at: '0' }]);
 ok(s.map((x) => x.status).join(',') === 'running,requested,done', '진행 중 → 요청됨 → 끝난 것 순');

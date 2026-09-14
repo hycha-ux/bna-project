@@ -45,9 +45,11 @@ export function newId(now = new Date()) {
 
 export const blobName = (id) => `${PREFIX}${id}.json`;
 
-/** 전이 규칙: 화면은 requested→cancelled 만, 생성 PC 는 requested→accepted→running→done|error 만. */
+/** 전이 규칙: 화면은 requested→cancelled 만, 생성 PC 는 requested→accepted→running→done|error 만.
+ *  error→running|done 은 **복구** 한 가지뿐이다: PC 재시작으로 옛 작업이 취소돼 '실패'로 닫혔는데, 새 서버가 같은 요청을
+ *  다시 돌려 끝낸 경우(2026-09-14 11:01 모공 — 배치는 2/2 성공인데 화면은 실패). 폴러만 이 길을 쓴다. */
 export function canTransition(from, to) {
-  const next = { requested: ['accepted', 'cancelled'], accepted: ['running', 'error'], running: ['done', 'error'] };
+  const next = { requested: ['accepted', 'cancelled'], accepted: ['running', 'error'], running: ['done', 'error'], error: ['running', 'done'] };
   return (next[from] || []).includes(to);
 }
 
