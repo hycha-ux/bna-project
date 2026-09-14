@@ -531,7 +531,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div>
           <div class="card prog" id="prog-create" hidden></div>
           <div class="card" style="margin-top:0">
-            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
+            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
             <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th class="num" title="이 금액에 닿으면 배치가 멈춥니다(세트를 끝낸 뒤 재서 한 세트만큼 넘칠 수 있음)">상한</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
@@ -1048,12 +1048,17 @@ const STOP_KO = s => !s ? '' : s.startsWith('target_pass') ? `목표 ${s.split('
 $('#q-pause').onclick = async () => { const q = await api('/api/queue'); await api('/api/queue/pause', {paused: !q.paused}); loadQueue(); };
 $('#q-clear').onclick = async () => { await api('/api/queue/clear_finished'); loadQueue(); };
 let CREATE_PROG = null;
+let Q_FILTER = ''; try { Q_FILTER = localStorage.getItem('bna.qfilter') || ''; } catch {}
+const Q_MATCH = { '': () => true, live: j => ['requested', 'accepted', 'running'].includes(j.status), done: j => j.status === 'done', error: j => ['error', 'cancelled'].includes(j.status) };
+$$('#q-filter button').forEach(b => b.onclick = () => { Q_FILTER = b.dataset.f; try { localStorage.setItem('bna.qfilter', Q_FILTER); } catch {} loadQueue(); });
 async function loadGenRequests() {
   const r = await api('/api/gen_requests'); const tb = $('#q-table tbody'); const KO = r.status_ko || {};
-  const reqs = r.requests || [];
-  $('#q-sum').textContent = `요청 ${reqs.filter(x => x.status === 'requested').length} · 생성 중 ${reqs.filter(x => ['accepted', 'running'].includes(x.status)).length}`;
+  const all = r.requests || [];
+  $$('#q-filter button').forEach(b => b.classList.toggle('on', b.dataset.f === Q_FILTER));
+  const reqs = all.filter(Q_MATCH[Q_FILTER] || Q_MATCH['']);
+  $('#q-sum').textContent = `요청 ${all.filter(x => x.status === 'requested').length} · 생성 중 ${all.filter(x => ['accepted', 'running'].includes(x.status)).length}${Q_FILTER ? ` · 표시 ${reqs.length} / ${all.length}` : ''}`;
   $('#q-pause').hidden = true; $('#q-clear').hidden = true;
-  $('#q-empty').hidden = reqs.length > 0; $('#q-empty').textContent = '보낸 요청이 없습니다. 왼쪽에서 조건을 고르고 "생성 요청 보내기"를 누르세요.';
+  $('#q-empty').hidden = reqs.length > 0; $('#q-empty').textContent = all.length && !reqs.length ? '이 상태의 요청이 없습니다.' : '보낸 요청이 없습니다. 왼쪽에서 조건을 고르고 "생성 요청 보내기"를 누르세요.';
   const cls = {requested:'', accepted:'warn', running:'warn', done:'ok', error:'bad', cancelled:''};
   tb.innerHTML = reqs.map((j, i) => {
     const ctl = j.status === 'requested' ? `<button class="b sm danger" data-gq="cancel" data-id="${j.id}">취소</button>` : j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button>` : '';
