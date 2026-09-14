@@ -1242,7 +1242,7 @@ ok("scattered across it" in _im,
 import bna.refs as _refs_mod
 import tempfile as _tf
 _rd = _P(_tf.mkdtemp()); (_rd / "selfie").mkdir()
-for _f in ("na_imm.jpg", "generic.jpg", "lift_2w.jpg"):
+for _f in ("na_imm.jpg", "generic.jpg", "lift_2w.jpg", "pores_before.jpg"):
     (_rd / "selfie" / _f).write_bytes(b"\xff\xd8\xff")
 _refs_mod.REF_DIR = _rd
 _orig_rload = _refs_mod.load
@@ -1250,6 +1250,7 @@ _IDX = {"refs": [
     {"file": "selfie/na_imm.jpg", "mode": "selfie", "treatment": "nasolabial", "timeline": "immediate"},
     {"file": "selfie/generic.jpg", "mode": "selfie"},
     {"file": "selfie/lift_2w.jpg", "mode": "selfie", "treatment": "lifting", "timeline": "2w"},
+    {"file": "selfie/pores_before.jpg", "mode": "selfie", "treatment": "skin_pores", "timeline": "before"},
 ]}
 def _use(idx):
     _refs_mod.load = lambda n: idx if n == "samples_index.yaml" else _orig_rload(n)
@@ -1266,6 +1267,11 @@ ok(_names(mode="selfie", treatment="nasolabial", when="2w") == ["selfie/generic.
    "같은 시술이라도 다른 시점의 참조가 섞이면 안 된다")
 ok(_names(mode="clinical", treatment="nasolabial", when="immediate") == [],
    "모드가 다르면 안 붙는다(종전 축 유지)")
+# 2026-09-14: `timeline: before` = 시술 전 컷 전용(결함이 찍힌 사진). After 에 붙으면 결과가 도로 나빠 보인다.
+ok(_names(mode="selfie", treatment="skin_pores", when=None) == ["selfie/generic.jpg", "selfie/pores_before.jpg"],
+   "시술 전 전용 참조는 Before 컷에 붙는다")
+ok(_names(mode="selfie", treatment="skin_pores", when="4w") == ["selfie/generic.jpg"],
+   "시술 전 전용 참조는 After 컷엔 절대 안 붙는다")
 def _idx_raises(entry, exc=Exception):
     _use({"refs": [entry]})
     try:

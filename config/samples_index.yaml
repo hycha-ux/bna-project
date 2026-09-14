@@ -6,6 +6,7 @@
 #   mode       : selfie | clinical  (필수)
 #   treatment  : 이 시술 컷에만 쓴다. 목록 가능. **안 적으면 범용** — 모든 시술에 붙는다
 #   timeline   : 이 시점 After 에만 쓴다 (immediate | 1w | 2w | 4w). 목록 가능. 안 적으면 범용
+#                `before` 면 **시술 전 컷 전용** — 결함(푸석·큰 모공·홍조)이 찍힌 사진은 After 에 붙이면 안 된다 (2026-09-14)
 #   tags       : {lighting, quality, background} — 맞을수록 우선. 거르지는 않는다(점수축)
 #   note       : 출처·이용 가능 여부 (사람이 읽는 칸)
 #
@@ -30,3 +31,67 @@ refs:
     온리프 병원 촬영 팔자 필러 직후 실사 (2026-09-11 성연서님 제공, 눈 모자이크). 투명 하이드로콜로이드 패치가
     입꼬리 바깥쪽 볼(팔자 아래 끝)과 입가 주름(턱선 쪽)에 하나씩, 볼 넓게 홍조 + 주사 자국 점점이.
     After(직후) 컷 전용 — Before 나 다른 시점에 쓰면 안 된다.
+
+# ── 피부 3종 (2026-09-14 성연서님 제공 5장 → 전·후로 잘라 10장). 출처는 여신티켓·블로그 후기라 **내부 참조 전용**,
+#    외부 노출 금지. 원본 합성본(제목·라벨 포함)은 리포 밖. 1단계 6장이 "얼굴 전체·같은 조명·피부 결함 없음"으로
+#    AI 티가 났던 것에 대한 답 — 실제 후기는 볼 한쪽 확대 + 전은 센 빛에 모공 그림자, 후는 부드러운 빛에 물광.
+- file: selfie/skin_pores_before_01.jpg
+  mode: selfie
+  treatment: [skin_pores, skinbooster_embo]
+  timeline: before
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 포텐자 후기 전 컷 — 볼 한쪽 확대, 센 사광에 모공이 그림자로 파임, 피지 번들거림. 여신티켓 후기, 내부 참조 전용.
+- file: selfie/skin_pores_after4w_01.jpg
+  mode: selfie
+  treatment: [skin_pores, skinbooster_embo]
+  timeline: [2w, 4w]
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 같은 후기 후 컷 — 부드러운 빛, 모공 얕아짐, 하이라이트가 도는 물광. 2·4주(가라앉은 뒤) After 전용.
+- file: selfie/skin_pores_before_02.jpg
+  mode: selfie
+  treatment: skin_pores
+  timeline: before
+  tags: {lighting: fluorescent, quality: mid, background: home}
+  note: 모공 매크로 전 컷 — 귤껍질 질감, 피부만 화면 가득. 블로그 후기, 내부 참조 전용.
+- file: selfie/skin_pores_after4w_02.jpg
+  mode: selfie
+  treatment: [skin_pores, skinbooster_embo]
+  timeline: [2w, 4w]
+  tags: {lighting: fluorescent, quality: mid, background: home}
+  note: 같은 후기 후 컷 — 코 옆 볼, 촉촉한 하이라이트(물광). 2·4주(가라앉은 뒤) After 전용.
+- file: selfie/skin_pores_before_03.jpg
+  mode: selfie
+  treatment: skin_pores
+  timeline: before
+  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  note: 플래시 확대 전 컷 — 코·볼 모공이 점점이 또렷, 붉은 자국. 블로그 후기, 내부 참조 전용.
+- file: selfie/skin_pores_after4w_03.jpg
+  mode: selfie
+  treatment: skin_pores
+  timeline: [2w, 4w]
+  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  note: 같은 후기 후 컷 — 같은 플래시인데 모공이 얕아짐. 2·4주(가라앉은 뒤) After 전용.
+- file: selfie/skinbooster_embo_before_01.jpg
+  mode: selfie
+  treatment: [skinbooster_embo, skin_pores]
+  timeline: before
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 물광 후기 전 컷 — 볼·코 옆 확대, 피지 번들거림과 모공. 블로그 후기, 내부 참조 전용.
+- file: selfie/skinbooster_embo_after4w_01.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: [1w, 2w, 4w]
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 같은 후기 후 컷 — 촉촉한 광이 도는 물광 피부. 2·4주(가라앉은 뒤) After 전용. "후에 물광이 돌아야 한다"(성연서님)의 기준.
+- file: selfie/skin_redness_before_01.jpg
+  mode: selfie
+  treatment: [skin_redness, skinbooster_embo]
+  timeline: before
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 쥬베룩 볼륨 여드름 흉터 전 컷 — 볼 확대, 붉은 흉터 자국이 얼룩처럼. 블로그 후기, 내부 참조 전용.
+- file: selfie/skin_redness_after4w_01.jpg
+  mode: selfie
+  treatment: [skin_redness, skinbooster_embo]
+  timeline: [2w, 4w]
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 같은 후기 후 컷 — 붉은기 옅어지고 광이 돎. 2·4주(가라앉은 뒤) After 전용.

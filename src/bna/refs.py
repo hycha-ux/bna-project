@@ -6,7 +6,7 @@
    붙으면 모델이 아직 시술도 안 한 얼굴에 패치와 홍조를 그린다 — 오류 없이 전량 불량이 된다.
    그래서 두 축을 신설했다:
      · treatment : 그 시술 컷에만 쓴다. 안 적으면 범용(종전 동작 그대로).
-     · timeline  : 그 시점 After 에만 쓴다. 안 적으면 범용.
+     · timeline  : 그 시점 After 에만 쓴다. `before` 면 시술 전 컷 전용. 안 적으면 범용.
                    **시점 태그가 붙은 참조는 Before 에 절대 안 들어간다**(when=None 이면 전부 배제).
    실패 모드가 '틀린 그림'이 아니라 '조용히 섞임'이라, 모르는 값·없는 파일은 소리 내고 죽는다.
 """
@@ -38,7 +38,7 @@ def check_index() -> list:
         bad = _as_set(r.get("treatment")) - treatments
         if bad:
             raise ValueError(f"{where}: 모르는 시술 {sorted(bad)} (가능: {sorted(treatments)})")
-        bad = _as_set(r.get("timeline")) - set(TIMELINE_ORDER)
+        bad = _as_set(r.get("timeline")) - (set(TIMELINE_ORDER) | {"before"})   # before = 시술 전 컷 전용 (2026-09-14)
         if bad:
             raise ValueError(f"{where}: 없는 시점 {sorted(bad)} (가능: {TIMELINE_ORDER})")
         if not (REF_DIR / r["file"]).exists():
@@ -57,7 +57,11 @@ def candidates(mode: str, treatment: str = None, when: str = None) -> list:
         if tr and treatment is not None and treatment not in tr:
             continue
         tl = _as_set(r.get("timeline"))
-        if tl and (when is None or when not in tl):
+        if "before" in tl:
+            # 시술 전 전용 참조(푸석·큰 모공·홍조가 찍힌 사진). After 에 붙으면 결과가 도로 나빠 보인다 (2026-09-14 피부 3종 참조)
+            if when is not None:
+                continue
+        elif tl and (when is None or when not in tl):
             # 시점 태그가 붙은 참조 = 시술 흔적이 찍힌 사진이다. Before 엔 절대 안 간다.
             continue
         picked.append(r)
