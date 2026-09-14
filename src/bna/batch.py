@@ -12,6 +12,7 @@ from .version import prompt_version
 from .progress import Progress
 
 MAX_ATTEMPTS = 3
+BEFORE_PRECHECK_TRIES = 3     # 비포 선검사(콜라주)로 다시 그리는 최대 장수 — 3장 다 콜라주면 그대로 진행해 게이트가 잡는다
 
 # ── 재시도 정책 (2026-09-10) ────────────────────────────────────────────────
 # 종전엔 탈락하면 **같은 조건으로 Before 부터 통째로** 3번까지 다시 뽑았다.
@@ -134,32 +135,51 @@ class Batch:
             self._p(item_id, "before", attempt=attempt)
             # ① Before — 다시 그릴 이유가 없으면 앞 회차 것을 그대로 쓴다(생성 1회 = 비용 절반)
             if redo_before or before_b is None:
-                before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
-                                                      spec["aspect"], None, style_refs, None)
-                meta["cost"] += self.pricing[self.p_gen.name]["generate"]
-                before = Image.open(io.BytesIO(before_b))
+                # 비포 선검사 (2026-09-15 초안): 한 장에 큰 얼굴이 둘(before/after 콜라주)이면 후 3장을 그리기 전에
+                # 비포만 다시 그린다. 후 3장 + 검수까지 간 뒤에 떨어지면 세트 통째로 다시라 시간·돈이 4배다.
+                # 최대 BEFORE_PRECHECK_TRIES 장. 모델이 없으면(None) 검사를 건너뛴다(fail-open).
+                for pre in range(1, BEFORE_PRECHECK_TRIES + 1):
+                    before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
+                                                          spec["aspect"], None, style_refs, None)
+                    meta["cost"] += self.pricing[self.p_gen.name]["generate"]
+                    before = Image.open(io.BytesIO(before_b))
+                    nfaces = await loop.run_in_executor(None, identity.big_faces, before)
+                    if (nfaces or 0) < 2:
+                        break
+                    meta.setdefault("before_precheck", []).append({"attempt": attempt, "try": pre, "faces": nfaces})
+                    self._p(item_id, "before", attempt=attempt, note=f"콜라주 비포 다시 ({pre})")
                 pts = landmarks.detect(before)
                 mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
 
             # ② After — 시점마다 한 장. 시리즈가 아니면 시점 하나(종전과 같다). 참조는 항상 Before(After 를 다음 기준으로 쓰면 얼굴이 흘러간다)
             self._p(item_id, "after")
-            afters_out = []                                  # [(when, after_pp_bytes, after_pp_img)]
-            for af in spec["afters"]:
+            # 시점별 After 는 **동시에** 그린다 (2026-09-15 초안). 셋 다 기준이 같은 Before 라 서로 기다릴 이유가 없다 —
+            # 종전엔 직후→1주→4주를 한 장씩 차례로 그려 세트 1회가 '4장 시간'이었다(0915 07:55 실측 3회차 22분 30초).
+            # 공급자 동시 한도는 self._after_sem 이 배치 전체에서 지킨다(항목 3개 × 시점 3개 = 9콜이 한꺼번에 나가지 않게).
+            if not hasattr(self, "_after_sem"):               # run() 을 거치지 않고 run_item 을 직접 부르는 길(테스트·CLI)도 안전하게
+                self._after_sem = asyncio.Semaphore(self.p_edit.concurrency)
+            async def one_after(af):
                 after_prompt = self.p_edit.adapt_prompt(af["after_prompt"], "after")
-                if spec["generation"] == "edit":
-                    mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
-                    after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b)
-                    after = Image.open(io.BytesIO(after_b))
-                    if mask_img is not None:                   # A4: 마스크 밖 원본 복원 (모델 지원 여부와 무관)
-                        after = landmarks.composite_outside_mask(before, after, mask_img)
-                    meta["cost"] += self.pricing[self.p_edit.name]["edit"]
-                else:
-                    # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)
-                    after_refs = self._refs(af.get("after_variation") or variation, af["when"])
-                    after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
-                    after = Image.open(io.BytesIO(after_b))
-                    meta["cost"] += self.pricing[self.p_edit.name]["generate"]
-                afters_out.append((af["when"], af, after))
+                async with self._after_sem:
+                    if spec["generation"] == "edit":
+                        mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
+                        after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b)
+                        after = Image.open(io.BytesIO(after_b))
+                        if mask_img is not None:                   # A4: 마스크 밖 원본 복원 (모델 지원 여부와 무관)
+                            after = landmarks.composite_outside_mask(before, after, mask_img)
+                        cost = self.pricing[self.p_edit.name]["edit"]
+                    else:
+                        # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)
+                        after_refs = self._refs(af.get("after_variation") or variation, af["when"])
+                        after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
+                        after = Image.open(io.BytesIO(after_b))
+                        cost = self.pricing[self.p_edit.name]["generate"]
+                return af["when"], af, after, cost
+            results = await asyncio.gather(*(one_after(af) for af in spec["afters"]))
+            afters_out = []                                  # [(when, af, after_img)] — 시점 순서는 spec 그대로
+            for when, af, after, cost in results:
+                meta["cost"] += cost
+                afters_out.append((when, af, after))
 
             # ③ 후처리 (세트 동일 seed)
             self._p(item_id, "postprocess")
@@ -268,6 +288,7 @@ class Batch:
         remember(plans, self.batch_id)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
+        self._after_sem = asyncio.Semaphore(self.p_edit.concurrency)    # 시점별 After 동시 생성의 공급자 한도 (2026-09-15)
         self.dir.mkdir(parents=True, exist_ok=True)   # 여기가 첫 쓰기 — 생성자가 아니라 이 자리에서 만든다
         self.progress = Progress(self.dir, len(plans))
         for i in done:
