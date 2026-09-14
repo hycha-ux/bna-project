@@ -274,6 +274,16 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
             nb = v.get("angle_neighbors", {}).get(variation["angle"]["key"])
             if nb:
                 allowed = [k for k in allowed if k in nb] or allowed
+        if axis == "expression":
+            # 표정은 '키가 다르다'가 아니라 '사람 눈에 다르다'여야 한다 (2026-09-14 밤 연서님 검수).
+            # neutral_closed → slight_smile 은 키가 바뀌어도 입은 다문 채, 눈은 렌즈 — 실측 450세트에서
+            # **입·눈이 둘 다 그대로인 세트가 47%** 였다. 확률(0.7)은 그대로 두고 고르는 쪽만 좁힌다
+            # (연서님 "'무조건'이라는 단어로 너무 막아두지 말자" — 30%는 여전히 같은 표정으로 남는다).
+            tb = v.get("expression_traits", {})
+            cur_tr = tb.get(variation["expression"]["key"], {})
+            vis = [k for k in allowed
+                   if any(tb.get(k, {}).get(f) != cur_tr.get(f) for f in ("mouth", "eyes"))]
+            allowed = vis or allowed                        # 고를 게 없으면 종전대로 (fail-open)
         if axis == "hair_style":                            # 머리는 2주 안에 될 수 있는 모양으로만 (포니테일→삭발 금지)
             nb = v.get("hair_style_neighbors", {}).get(variation["hair_style"]["key"])
             if nb is not None:
@@ -612,12 +622,21 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 expression_line = (f'Expression: {a["expression"]}, clearly different from the reference. '
                                    + RESHOT_LINE)
             which = "same" if w == "immediate" else "different"
+            # ── 마감(after_finish): '피부가 빛을 어떻게 받는가' (2026-09-14 밤 연서님 "후 사진은 광이 좀 더
+            #    돌아야 하는데 매트한 느낌이 든다"). 시술마다 다른 값이라 treatments.yaml 에 두고, 없으면 빈 칸이다.
+            #    ⚠ 여기가 필요한 이유: After 프롬프트에 매트 쪽 압력이 **세 곳**(참조로 넘기는 Before 의 무광
+            #      문장 · skin_state 의 '부위 밖 리터칭 금지' · 끝줄의 '보정 금지')인데 광을 요구하는 말은
+            #      0914 실측에서 엠보 after_change 의 `natural glow` 한 마디뿐이었고 모공·홍조는 아예 없었다.
+            #      after_change 에 욱여넣지 않는 이유는 그 칸이 '무엇이 좋아졌나'(효과 강도와 짝)라서다 —
+            #      마감은 강도를 안 올리고 빛만 바꾼다(과장 방지).
+            finish = " ".join(str(t.get("after_finish") or "").split())
             txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
                 identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
+                after_finish=finish,
                 expression_line=expression_line, mode_extra=str(mx.get("selfie_after", "")).strip(),
                 after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
             spans = [("identity", ident), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
-                     ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after),
+                     ("must_not", t.get("must_not_change") or ""), ("finish", finish)] + fact_spans(w) + [("avoid", avoid_after),
                      ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
                      ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
         return {"when": w, "effect_level": lv, "effect_lowered": lowered,

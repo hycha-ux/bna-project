@@ -266,6 +266,31 @@ expression:
   lips_speak: "caught mid-word: the mouth is open a little with the lower lip dropped and the upper teeth just visible, not a smile"
   lip_asym: "resting face, lips closed but not symmetric - one corner sits a touch lower than the other, no smile"
 
+# 표정 칸을 '사람 눈에 보이는 상태'로 묶은 표 (2026-09-14 밤).
+# ⚠ 이 표는 **확률을 올리는 대신** 넣은 것이다 — 연서님 "표정 다르게 뽑기를 '무조건'이라는 단어로
+#   너무 막아두지 말자". 잠그면(확률 1.0) 전후가 늘 다른 표정이라 그것대로 기계 같아진다.
+# 근거(실측 450세트, tools/_probe_expr_0914.py): 표정 **키**는 69% 바뀌는데, 그중 상당수가
+#   neutral_closed → slight_smile 처럼 *입도 다물고 눈도 렌즈를 보는* 이웃이라
+#   **입·눈이 둘 다 그대로인 세트가 47%** 였다. 연서님이 본 "입 벌림·눈 뜬 정도가 딱 같다"가 이것이다.
+#   → 확률은 0.7 그대로 두고(30%는 여전히 같은 표정), *바뀔 때는* 입이나 눈 중 하나가 실제로 다른
+#     칸을 고른다. 고를 게 없으면 종전대로 아무 칸이나 고른다(fail-open — 막지 않는다).
+# ⚠ mouth 는 '모양'이 아니라 **벌림**이다(closed/open). jaw_loose·lip_asym 은 입 모양이 다르지만
+#   벌림은 같아서 closed 로 둔다 — 연서님이 지적한 축이 '입 벌림 정도'라 그 축으로 잰다.
+# ⚠ expression 에 칸을 새로 만들면 여기에도 한 줄 추가해라. 빠진 칸은 '상태 미상'이라
+#   이웃 회피가 안 걸린다(조용히 옛 동작으로 돌아간다). 회귀 ㉜-① 이 누락을 잡는다.
+expression_traits:
+  neutral_closed: {mouth: closed, eyes: lens}
+  slight_smile:   {mouth: closed, eyes: lens}
+  relaxed_open:   {mouth: open,   eyes: lens}
+  gaze_off:       {mouth: closed, eyes: away}
+  gaze_screen:    {mouth: open,   eyes: away}
+  brow_up:        {mouth: closed, eyes: brow}
+  eyes_narrow:    {mouth: closed, eyes: narrow}
+  blink_soft:     {mouth: closed, eyes: lowered}
+  jaw_loose:      {mouth: closed, eyes: lens}   # 입은 다문 채다 — 턱만 내려온다(입 '벌림'은 같다)
+  lips_speak:     {mouth: open,   eyes: lens}
+  lip_asym:       {mouth: closed, eyes: lens}   # 입꼬리 비대칭도 '다문 입'이다
+
 # 모드별 사용 제약
 mode_rules:
   clinical:

@@ -3,6 +3,9 @@
 # 시술 하나당 채우는 칸 (티모 설계안 prompt-design-0907 의 4칸 + 구조 필드)
 #   before_condition  : 시술 전 문제 상태 문장 (강도별). 없으면 Before 가 시술을 모른다 → 깨끗한 얼굴이 나온다
 #   must_not_change   : 그 시술이 절대 안 건드리는 곳 (After 지시문 뒤에 붙는다). 없으면 얼굴 전체를 손본다
+#   after_finish      : After 피부가 **빛을 어떻게 받는가** (셀카 전용, 없으면 빈 칸). after_change 와 갈라 둔 이유는
+#                       after_change = '무엇이 좋아졌나'(효과 강도와 짝)라서 — 광을 거기 섞으면 강도까지 같이 올라간다.
+#                       스킨부스터 3종 공용 문장은 skinbooster_embo 의 `&skin_finish` 한 벌이다 (2026-09-14 연서님).
 #   scene_allow       : 효과가 보이는 장면만 허용 (셀카). 모드 화이트리스트와 교집합. 모공은 야간 저화질에서 안 보인다
 #   drift_lock        : Before→After 사이 바뀌면 안 되는 축 (셀카). 팔자는 표정이 바뀌면 시술 없이도 B&A 가 된다
 #   framing_allow     : 시술 부위가 화면에 남는 프레이밍만 (셀카). one_cheek 에서 팔자는 프레임 밖 (0908 실비용 $2.28)
@@ -292,6 +295,22 @@ skinbooster_embo:
   after_change: >
     skin looks hydrated and plump with a natural glow, fine lines reduced, texture still
     visible (pores, tiny peach fuzz remain), no plastic smoothness.
+  # 피부 마감 — '피부가 빛을 어떻게 받는가' (2026-09-14 밤 연서님 "후 사진은 광이 조금 더 돌아야
+  # 하는데 매트한 느낌이 더 든다"). 스킨부스터 3종 공용이라 **여기 한 벌**로 두고 아래 둘은 *skin_finish 로 부른다
+  # (같은 문장을 세 곳에 복붙하면 한 곳만 고쳐진다 — 오늘 이미 한 번 겪었다).
+  # ⚠ 이 칸은 after_change 와 역할이 다르다: after_change = 무엇이 좋아졌나(효과 강도와 짝),
+  #   after_finish = 그 피부가 빛을 어떻게 받나. 광을 after_change 에 섞으면 효과 강도를 같이 올리게 된다.
+  # ⚠ 실측 근거(0914): After 프롬프트에 매트 쪽 압력이 세 곳인데(참조로 넘기는 Before 의 무광 문장·
+  #   skin_state 의 리터칭 금지·끝줄의 보정 금지) 광을 요구하는 말은 위 `natural glow` 한 마디뿐이었고
+  #   모공·홍조 After 엔 **한 단어도 없었다**.
+  # ⚠ 화장·하이라이터·유리알 피부로 넘어가면 AI 티가 난다 → 광 안에서도 모공·솜털이 보여야 한다고 못박는다.
+  after_finish: &skin_finish >
+    Skin finish: the treated skin is hydrated enough to catch the light. A soft dewy sheen sits on
+    the tops of the cheeks and along the cheekbones, clearly more luminous than the flat matte skin
+    in the reference photo, and the skin looks supple rather than dry. This glow comes from the skin
+    itself being hydrated, not from makeup, highlighter, oil or retouching: pores, peach fuzz and
+    fine texture stay clearly visible inside the lit areas, the sheen is soft and uneven the way real
+    skin is, and it must never look like a smooth glass-skin or airbrushed surface.
   must_not_change: >
     Do not remove moles or freckles. Do not change face shape, volume, or features. This is a
     hydration treatment, not a pigment or contour treatment.
@@ -358,6 +377,7 @@ skin_pores:
       few blackheads. Do not make the pores smaller or the skin smoother than described.
   after_change: >
     enlarged pores visibly tightened and less noticeable, skin still has realistic texture.
+  after_finish: *skin_finish          # 스킨부스터 3종 공용 (정본=skinbooster_embo)
   must_not_change: >
     Do not change skin tone, remove moles, or alter face shape. Skin must still show real
     texture after treatment.
@@ -429,6 +449,9 @@ skin_redness:
   after_change: >
     facial redness on cheeks noticeably calmer and more even, skin tone uniform, natural
     texture preserved.
+  after_finish: *skin_finish          # 스킨부스터 3종 공용 (정본=skinbooster_embo)
+                                      # ⚠ 홍조는 must_not_change 가 '톤을 밝히지 마라'다 — 광은 빛 반사이지
+                                      #   톤 상승이 아니다. 실물에서 얼굴이 희어 보이면 여기부터 빼라.
   must_not_change: >
     Do not lighten the overall skin tone or whiten the face. Only the redness pattern changes;
     tone, texture and moles stay the same.

@@ -268,7 +268,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .prompt .pk-template { color:var(--ui-lo) }
 .pk-person { background:#E4ECF9 } .pk-before_condition { background:#FDE7C8 } .pk-scene { background:#E2F3EA } .pk-expression { background:#E2F3EA; outline:1px dashed #7CBF9A }
 .pk-mode_extra { background:#EEE9FB } .pk-avoid { background:#FBE5E5 } .pk-identity { background:#E0F1F7 } .pk-day { background:#F3EBD7 } .pk-skin { background:#F6E6F0 }
-.pk-change { background:#FFD9A8 } .pk-effect { background:#FFE7C7 } .pk-must_not { background:#F9DADA } .pk-timeline { background:#F3EBD7 }
+.pk-change { background:#FFD9A8 } .pk-effect { background:#FFE7C7 } .pk-finish { background:#FFF3C4 } .pk-must_not { background:#F9DADA } .pk-timeline { background:#F3EBD7 }
 /* 학습 탭 흐름 */
 .flow-strip { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:var(--gap); font-size:var(--fs-sm); color:var(--ui-md) }
 .flow-strip .fs-step { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--ui-border); border-radius:999px; padding:5px 12px 5px 6px }
@@ -979,7 +979,7 @@ $('#btn-plan').onclick = async () => {
 };
 // 프롬프트 칸 이름 (비전공자 워딩). 조각(k)은 spec.segments 가 낸다.
 const PK_KO = {person:'인물', before_condition:'시술 전 상태', scene:'촬영 장면', expression:'표정', mode_extra:'셀카 규정', avoid:'금지문(학습)', identity:'동일인 잠금',
-  day:'촬영 시점', skin:'피부 상태', change:'시술 변화', effect:'효과 강도', must_not:'안 건드릴 곳', timeline:'경과', template:'고정 문장'};
+  day:'촬영 시점', skin:'피부 상태', change:'시술 변화', effect:'효과 강도', must_not:'안 건드릴 곳', finish:'피부 마감(광)', timeline:'경과', template:'고정 문장'};
 let PK_COLOR = true; try { PK_COLOR = localStorage.getItem('bna.pk') !== '0'; } catch {}
 function promptHtml(parts, raw) {
   if (!PK_COLOR || !parts || !parts.length) return `<div class="mono">${esc(raw || '')}</div>`;

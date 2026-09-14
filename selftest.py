@@ -1567,6 +1567,64 @@ ok(_R26._rank(_R26.candidates("selfie", "skin_pores", None), _p27a, None)
    == _R26._rank(_R26.candidates("selfie", "skin_pores", None), _p27a, None),
    "동점 섞기는 결정적이어야 한다 — 같은 컷은 늘 같은 참조")
 
+# ㉜ 2026-09-14 밤 (연서님 "후 사진은 광이 조금 더 돌아야 하는데 매트한 느낌이 더 든다" /
+#    "피부 3종 표정 다르게 뽑기를 '무조건'이라는 단어로 너무 막아두지 말자").
+#    ① 표정: 확률로 잠그지 않는다. 대신 *바뀔 때는* 입 벌림이나 눈/시선 중 하나가 실제로 다른 칸을 고른다.
+#       실측 근거(450세트): 키는 69% 바뀌는데 입·눈이 둘 다 그대로인 세트가 47% 였다
+#       (neutral_closed → slight_smile 처럼 둘 다 '다문 입·렌즈 응시'인 이웃).
+_V32 = load("variations.yaml")
+_TB32 = _V32.get("expression_traits", {})
+_missing32 = [k for k in _V32["mode_rules"]["selfie"]["expression"] if k not in _TB32]
+ok(not _missing32, f"셀카에 쓰는 표정 칸은 전부 expression_traits 에 있어야 한다(빠지면 조용히 옛 동작) — {_missing32}")
+
+_viol32, _same32, _n32 = [], 0, 0
+for _t32 in ("skin_pores", "skinbooster_embo", "skin_redness"):
+    for _i32, _p32 in enumerate(_pb26("selfie", 60, seed=32, treatment=_t32)):
+        _a32 = build_prompts(_t32, "selfie", _p32, 32000 + _i32)["after_variation"]
+        _b32k, _a32k = _p32["expression"]["key"], _a32["expression"]["key"]
+        _n32 += 1
+        if _b32k == _a32k:
+            _same32 += 1
+        elif _TB32.get(_b32k) == _TB32.get(_a32k):
+            _viol32.append(f"{_b32k}→{_a32k}")
+ok(not _viol32, f"표정이 바뀐 세트는 입 벌림이나 눈/시선이 실제로 달라야 한다 — 위반 {_viol32[:4]}")
+#    ⚠ '무조건 금지'는 여기서 지킨다 — 같은 표정으로 남는 여유가 사라지면 그것대로 기계가 된다.
+ok(0.15 <= _same32 / _n32 <= 0.45,
+   f"표정을 잠그지 않는다(연서님 지시) — 전후 같은 표정으로 남는 세트가 있어야 한다, 실제 {_same32/_n32*100:.0f}%")
+ok(_V32["after_drift"]["selfie"]["later"]["expression"] < 1.0,
+   "표정 재추첨 확률은 1.0 이면 안 된다 — 잠금 재발 감시(2026-09-14 연서님)")
+
+#    ② 광: After 에 '피부가 빛을 어떻게 받는가'를 말하는 칸이 있어야 한다.
+#       0914 실측으로 매트 쪽 압력은 세 곳인데 광을 요구하는 말은 엠보 한 마디뿐이었고 모공·홍조는 0개였다.
+_FIN32 = []
+for _t32 in ("skin_pores", "skinbooster_embo", "skin_redness"):
+    _sp32 = build_prompts(_t32, "selfie", _pb26("selfie", 1, seed=33, treatment=_t32)[0], 33001)
+    if "dewy sheen" not in _sp32["after_prompt"]:
+        _FIN32.append(f"{_t32}:After광없음")
+    # ⚠ Before 에는 "no dewy sheen"(금지문)이 있으므로 낱말로 재면 늘 걸린다 — 마감 칸 자체로 잰다
+    if "Skin finish:" in _sp32["before_prompt"]:
+        _FIN32.append(f"{_t32}:Before로샘")            # 전이 후보다 좋아 보이면 세트가 뒤집힌다
+    if "more luminous than the flat matte skin in the reference" not in _sp32["after_prompt"]:
+        _FIN32.append(f"{_t32}:참조대비문구없음")      # 참조(무광 Before)가 그림체를 끌어당기는 걸 막는 문장
+    if not any(p.get("k") == "finish" for p in _sp32["after_parts"]):
+        _FIN32.append(f"{_t32}:화면칸없음")            # 검수 화면이 "이 문장 어디서 왔나"를 못 보여준다
+ok(not _FIN32, f"스킨부스터 3종 After 에 피부 마감(광) 칸이 붙는다 — {_FIN32}")
+
+#    광은 '보정'과 한 끗 차이다 — 광 안에서도 모공·솜털이 보여야 한다는 제동이 같이 붙어야 한다.
+_ap32 = build_prompts("skin_pores", "selfie", _pb26("selfie", 1, seed=33, treatment="skin_pores")[0], 33001)["after_prompt"]
+ok("pores, peach fuzz and fine texture stay clearly visible" in _ap32 and "glass-skin" in _ap32,
+   "광 요구엔 '질감은 남는다·유리알 피부 금지' 제동이 같이 붙어야 한다(과장이 AI 티다)")
+
+#    마감 칸이 없는 시술엔 한 글자도 안 붙는다(빈 칸이 템플릿에 구멍을 남기지 않는지 포함)
+_ap32n = build_prompts("nasolabial", "selfie", _pb26("selfie", 1, seed=33, treatment="nasolabial")[0], 33001)["after_prompt"]
+ok("dewy sheen" not in _ap32n and "{after_finish}" not in _ap32n,
+   "after_finish 가 없는 시술엔 마감 문장도 빈 슬롯도 남지 않는다")
+
+#    임상 After 는 '같은 사진 편집·조명 동일'이라 광을 얹으면 그건 시술이 아니라 리터칭이다 — 안 붙는 게 맞다.
+_apc32 = build_prompts("skin_pores", "clinical", _pb26("clinical", 1, seed=33, treatment="skin_pores")[0], 33002)["after_prompt"]
+ok("dewy sheen" not in _apc32, "임상 After 에는 광 문장이 붙지 않는다(조명 동일 편집이라 광은 리터칭이 된다)")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

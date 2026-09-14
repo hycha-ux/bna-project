@@ -4,6 +4,7 @@ Scene: {after_scene}
 Hair: {after_hair}. {expression_line}
 {skin_state}
 The treatment result is now visible: {after_change}
+{after_finish}
 {mode_extra}
 Real skin with visible pores, faint peach fuzz and small blemishes; no beauty retouching, no skin smoothing, no CGI look.
 {avoid}
