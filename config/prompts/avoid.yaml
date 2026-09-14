@@ -77,10 +77,6 @@ custom:
   where:
   - before
   - after
-  # ⚠ 직후 컷은 예외다(2026-09-11 실사고). 필러 직후 컷엔 사실 카드가 "입가에 재생테이프"를
-  #   그리라고 넣는데, 이 규칙이 같은 컷에 붙어 "테이프 보이지 마라"를 동시에 말했다 —
-  #   프롬프트가 제 손으로 모순을 내고 effect_visible@immediate 로 떨어졌다.
-  #   흔적이 남는 게 정상인 시점에서 흔적을 금지하면, 이긴 쪽이 어디인지도 알 수 없다.
   not_at:
   - immediate
   from: 어색한 마취크림
@@ -91,3 +87,9 @@ custom:
   - after
   from: 동일한 각도, 구도, 표정
   since: '2026-09-10'
+- en: In the after photo, the nasolabial folds must be softened realistically and evenly along their length without over-smoothing only the central area.
+  where:
+  - before
+  - after
+  from: 시술 직후 - 듀오덤 패치 위치 이상, 2주 뒤 - 중앙만 보정이 들어가서 어색함
+  since: '2026-09-14'
