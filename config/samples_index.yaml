@@ -92,3 +92,60 @@ refs:
   timeline: [2w, 4w]
   tags: {lighting: window_soft, quality: mid}
   note: 같은 후기 후 컷 — 붉은기 옅어지고 광이 돎. 2·4주(가라앉은 뒤) After 전용.
+
+# ── 스킨부스터 엠보 직후·7일 (2026-09-14 성연서님 제공 3장 → 9장). 후기 사진, 내부 참조 전용. 원본은 리포 밖.
+#    직후 = 볼 전체에 규칙적으로 볼록한 주사 자국(엠보) + 붉은 점 + 살짝 부기. 7일 = 자국 없음, 촉촉한 물광 — 연서님이 정한 '후'의 기준.
+- file: selfie/skinbooster_embo_immediate_01.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 엠보 직후 — 볼 확대 · 규칙적 엠보 또렷 · 붉은 점 하나. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_02.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  note: 엠보 직후 — 볼·귀 쪽 · 엠보 + 홍조 · 수건. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_03.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  note: 엠보 직후 — 볼 · 엠보 + 붉은 점 촘촘. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_04.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 엠보 직후 — 볼·턱 · 엠보 + 붉은 점. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_05.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 엠보 직후 — 볼 · 엠보 넓게 · 붉은 기. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_06.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 엠보 직후 — 볼 · 엠보 옅음 · 귀걸이. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_07.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 엠보 직후 — 직후/3일/7일 후기의 직후 컷 — 볼 전체 볼록 엠보 + 붉은 점. 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_immediate_08.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: immediate
+  tags: {lighting: ceiling_harsh, quality: flagship, background: clinic}
+  note: 엠보 직후 — 이마 · 격자 모양 엠보 + 붉은 자국 (눈은 잘라냄). 직후(immediate) After 전용 — Before·다른 시점에 붙으면 시술 전 얼굴에 엠보가 그려진다.
+- file: selfie/skinbooster_embo_after1w_01.jpg
+  mode: selfie
+  treatment: skinbooster_embo
+  timeline: [1w, 2w, 4w]
+  tags: {lighting: window, quality: flagship, background: home}
+  note: 직후/3일/7일 후기의 7일차 컷 — 엠보·붉은 점 없음, 모공·솜털 보이되 촉촉한 물광. **'후'의 기준(성연서님)**. 1주 이후 After 공용.
