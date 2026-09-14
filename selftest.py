@@ -1400,6 +1400,51 @@ ok(not _eye28, f"프레이밍이 옮겨 가도 눈 유무는 그대로 — 위�
 _nbbad28 = [f"{_k}->{_v}" for _k, _vs in _NB26.items() for _v in _vs if _EYES28.get(_k) != _EYES28.get(_v)]
 ok(not _nbbad28, f"프레이밍 이웃표에 눈 유무가 갈리는 짝이 없다 — {_nbbad28}")
 
+# ㉙ 2026-09-14 오후 (연서님 "고치고 가자") — 남은 두 구멍.
+#    ①시술 부위가 '안 보이는 것'과 '확대해서 넘친 것'을 가르는 자 ②후 컷 조명 호가 배경에 지는 것.
+import numpy as _np29
+from bna.qa.structure import region_frame as _rf29, region_points as _rp29
+from bna.qa import landmarks as _lm29
+
+def _pts29(n=478, x=500.0, y=500.0):
+    a = _np29.zeros((n, 2)); a[:, 0] = x; a[:, 1] = y; return a
+
+_W29, _H29 = 1024, 1280
+_p29 = _pts29()
+for _i29, _k29 in enumerate(_lm29.REGIONS["cheeks"]):          # 볼 폴리곤을 화면 가운데 작게 편다
+    _p29[_k29] = (400 + _i29 * 2, 600 + _i29)
+ok(_rf29(_p29, "cheeks", (_W29, _H29))["region_in_frame"], "부위가 화면 안에 다 있으면 통과")
+
+_p29b = _p29.copy()
+for _k29 in _lm29.REGIONS["cheeks"][:20]:                      # 절반 가까이 화면 왼쪽 밖으로 (작게 보임 = 밀려났다)
+    _p29b[_k29] = (-50, 600)
+_r29b = _rf29(_p29b, "cheeks", (_W29, _H29))
+ok(not _r29b["region_in_frame"],
+   f"부위가 화면 밖으로 밀려 조금만 보이면 실패 — 안비율 {_r29b['region_in_ratio']} 덮음 {_r29b['region_coverage']}")
+
+_p29c = _p29.copy()                                            # 같은 만큼 밖인데 남은 부위가 화면을 크게 덮는다(확대 컷)
+for _i29, _k29 in enumerate(_lm29.REGIONS["cheeks"]):
+    _p29c[_k29] = (-200 + _i29 * 60, 100 + _i29 * 25)
+_r29c = _rf29(_p29c, "cheeks", (_W29, _H29))
+ok(_r29c["region_in_frame"],
+   f"확대해서 넘친 컷은 통과한다(3회 재시도로 태운 자리) — 안비율 {_r29c['region_in_ratio']} 덮음 {_r29c['region_coverage']}")
+
+ok(_rp29(_p29, "cheeks_nose") is not None and len(_rp29(_p29, "cheeks_nose")) > len(_rp29(_p29, "cheeks")),
+   "조합 부위(cheeks+nose)도 인덱스를 푼다 — 안 풀면 그 시술만 검사를 통째로 건너뛴다")
+
+# ② 후 컷은 배경을 옮겨서라도 호의 빛을 낸다 (욕실은 창이 없어 종전엔 22%가 센 빛으로 남았다)
+_SOFT29, _HARSH29 = {"window", "window_soft"}, {"ceiling_harsh", "flash", "fluorescent"}
+_bad29, _n29 = [], 0
+for _t29 in _SKIN26:
+    for _i29b, _pv29 in enumerate(_pb26("selfie", 100, seed=29, treatment=_t29)):
+        _sp29 = build_prompts(_t29, "selfie", _pv29, 29000 + _i29b); _a29 = _sp29["after_variation"]
+        _n29 += 1
+        if _a29["lighting"]["key"] in _HARSH29:
+            _bad29.append(f'{_t29} {_a29["background"]["key"]}/{_a29["lighting"]["key"]}')
+ok(len(_bad29) / _n29 <= 0.05,
+   f"후 컷이 센 빛으로 남는 세트는 5% 이하 — 실제 {len(_bad29)*100/_n29:.0f}% ({_bad29[:3]})")
+
+
 ok(_arc26 / _n26 >= 0.60,
    f"'전=센 빛 → 후=부드러운 빛'이 6할 이상이어야 한다(물광은 빛이 만든다) — 실제 {_arc26/_n26*100:.0f}%")
 ok(_sev26 / _n26 >= 0.55,

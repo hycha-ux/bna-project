@@ -281,6 +281,22 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
         opts = [k for k in allowed if k != variation[axis]["key"]]
         if opts:
             k = rng.choice(opts); after[axis] = {"key": k, "text": v[axis][k]}; keys[axis] = k
+    # ── 조명 호가 있는 시술은 **배경보다 조명이 먼저다** (2026-09-14 오후 연서님 검수) ──
+    # allowed_values 는 배경 호환표 뒤에 호를 걸고, 교집합이 비면 fail-open 으로 호를 버린다
+    # (없는 창문을 만들지 않으려는 것 — 그 판단은 그대로 맞다). 문제는 **배경 쪽을 아무도 안 옮긴 것**이다:
+    # After 배경이 욕실로 가면 창이 없어 부드러운 빛이 원천적으로 불가능해, 호가 조용히 깨진 채
+    # 후 컷이 센 빛으로 남는다(0914 실측 22%, 그 세트는 '후가 더 나빠 보인다').
+    # → 후 컷 배경이 호의 빛을 못 내면 **낼 수 있는 배경으로 옮긴다**. 옮길 곳이 없으면 종전대로 둔다(fail-open).
+    arc_after = (tr.get("lighting_arc") or {}).get("after") or []
+    if arc_after and "lighting" not in lock and "background" not in lock:
+        bl = v.get("background_lighting", {})
+        if not (set(bl.get(keys.get("background"), [])) & set(arc_after)):
+            bg_ok = [b for b in allowed_values("background", keys, mode, v, tr,
+                                               base=override.get("background"), stage="after")
+                     if set(bl.get(b, [])) & set(arc_after)]
+            if bg_ok:
+                k = rng.choice(bg_ok); after["background"] = {"key": k, "text": v["background"][k]}; keys["background"] = k
+
     # 배경이 바뀌었으면 조명·맥락이 새 배경(과 프레이밍)에 맞는지 마지막으로 한 번 더 확인
     for axis in ("lighting", "context"):
         if axis in lock:
