@@ -820,7 +820,7 @@ function renderBoard() {
     return `<div class="brow ${r.picked >= r.target ? 'done' : ''}" data-t="${r.treatment}" title="라이브러리에서 보기">
       <div class="h"><b>${esc(r.name_ko)}</b>${r.legacy ? '<span class="chip">옛 이름</span>' : ''}<span class="n"><b>${r.picked}</b> / ${r.target}</span></div>
       <div class="m"><i style="width:${(ratio*100).toFixed(0)}%"></i></div>
-      <div class="s">${[r.pending ? `<span class="pend">검수 대기 ${r.pending}</span>` : '', r.reviewed ? `검수 ${r.reviewed}` : '', r.picked >= r.target ? '목표 달성' : (r.picked && r.target - r.picked <= 5) ? `${r.target - r.picked}장 남음` : ''].filter(Boolean).join(' · ') || '&nbsp;'}</div></div>`; }).join('');
+      <div class="s">${[r.reviewed ? `검수 ${r.reviewed}` : '', r.picked >= r.target ? '목표 달성' : (r.picked && r.target - r.picked <= 5) ? `${r.target - r.picked}장 남음` : ''].filter(Boolean).join(' · ') || '&nbsp;'}</div></div>`; }).join('');
   $('#home-board').querySelectorAll('.brow').forEach(b => b.onclick = () => { show('library'); const sel = $('#lib-treatment'); if (sel) { sel.value = CFG.treatments[b.dataset.t] ? b.dataset.t : ''; renderLibrary(); } });
 }
 function renderTodo() {
