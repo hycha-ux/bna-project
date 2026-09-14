@@ -79,12 +79,19 @@ ok("must not change at all" not in _lock,
 ok("Do not smile" in _lock, "표정 잠금은 '웃지 마라'로 좁혀져야 한다")
 # 2026-09-11 오후 성연서님 "카메라 각도도 얼굴 각도도 다 똑같아, 로봇이야" → '몇 도 다르게'라는 *정도*
 # 대신 **팔을 다시 들었다는 사실**부터 말하게 바꿨다. 각도 축 자체는 여전히 잠근다(그림자가 효과로 둔갑).
-for _frag in ("picked up again", "open a little more", "not in exactly the same spot in the frame",
+# ⚠ 2026-09-14: 이 시료가 **문구 그대로**를 박고 있어서, 같은 뜻을 더 강하게 쓴 개정이 회귀로 걸렸다.
+#   지킬 것은 낱말이 아니라 **요구 항목**이다 → 항목별로 본다(문구는 RESHOT_LINE 한 곳에서 바뀐다).
+for _frag in ("picked up again", "eyes are open", "not in the same spot in the frame",
               "visible at a glance", "not the reference photo edited"):
     ok(_frag in _lock, f"표정 잠금이 미세 차이를 명시적으로 요구해야 한다 — '{_frag}'")
-# 잠금 없는 시술(free)은 종전대로 표정이 달라도 된다
-ok("may differ slightly" in build_prompts("nose_lifting", "selfie", sample_variation("selfie", 5), 5)["after_prompt"],
-   "expression_policy: free 시술은 종전 문장을 유지해야 한다")
+# 잠금 없는 시술(free)도 **같은 요구**를 받아야 한다 (2026-09-14 연서님 "딱 떨어지게 똑같다").
+#   ⚠ 종전 이 줄은 free 갈래가 `may differ slightly` 한 마디이길 *요구*하고 있었다 — 오늘 사고를
+#     고착시킨 시료다. 자유는 '표정을 달리 뽑아도 된다'는 뜻이지 '복제를 허용한다'가 아니다.
+_free14 = build_prompts("nose_lifting", "selfie", sample_variation("selfie", 5), 5)["after_prompt"]
+ok("not the reference photo edited" in _free14 and "Do not copy the pose" in _free14,
+   "expression_policy: free 시술도 '참조를 베끼지 마라'를 받아야 한다")
+ok("may differ slightly" not in _free14,
+   "free 갈래의 옛 한 줄('살짝 달라도 된다')은 되살아나면 안 된다 — 그게 복제를 막지 못했다")
 
 # ⑥-4 각도×프레이밍 금지 조합이 실제로 안 뽑히는가 (2026-09-10 검수 "카메라 앵글이 벗어남")
 #     아래 ⑳ 전수 검사가 이미 framing_ban_by_angle 을 보지만, 이 조합은 '왜 막았는지'가 검수 메모라
@@ -1443,6 +1450,33 @@ for _t29 in _SKIN26:
             _bad29.append(f'{_t29} {_a29["background"]["key"]}/{_a29["lighting"]["key"]}')
 ok(len(_bad29) / _n29 <= 0.05,
    f"후 컷이 센 빛으로 남는 세트는 5% 이하 — 실제 {len(_bad29)*100/_n29:.0f}% ({_bad29[:3]})")
+
+# ㉚ 2026-09-14 오후 2차 (연서님 "표정·입 벌림·눈 뜬 정도가 어떻게 딱 떨어지게 똑같지?" /
+#    "비포가 피부가 더 좋아 보이지 않았으면 해, 특히 광").
+#    ① 참조로 넘긴 Before 가 포즈까지 복제되는 걸 막는 문장은 **모든 시술**에 붙어야 한다 —
+#       09-10 에 만든 그 문장이 expression_policy=lock 갈래에만 있었다(자유인 시술이 무방비인 거울상).
+_RESHOT30 = []
+for _t30 in ("skin_pores", "skinbooster_embo", "skin_redness", "nasolabial", "lifting_thread"):
+    try:
+        _p30 = _pb26("selfie", 1, seed=30, treatment=_t30)[0]
+    except Exception:
+        continue
+    _sp30 = build_prompts(_t30, "selfie", _p30, 30001)
+    _ap30 = _sp30["after_prompt"]
+    if "not the reference photo edited" not in _ap30 or "Do not copy the pose" not in _ap30:
+        _RESHOT30.append(_t30)
+ok(not _RESHOT30, f"모든 셀카 시술의 After 에 '참조를 베끼지 마라' 문장이 붙는다 — 빠진 시술 {_RESHOT30}")
+
+# ② Before 는 광이 돌면 안 된다 (전 사진이 후 사진보다 좋아 보이면 세트가 뒤집힌다)
+_GLOW30 = [t for t in ("skin_pores", "skinbooster_embo", "skin_redness")
+           if "no healthy glow" not in build_prompts(t, "selfie", _pb26("selfie", 1, seed=31, treatment=t)[0], 31001)["before_prompt"]]
+ok(not _GLOW30, f"Before 프롬프트에 광 금지가 붙는다 — 빠진 시술 {_GLOW30}")
+
+# ③ 그 금지가 After 로 새면 안 된다 (After 는 물광이 목표다 — 같은 문장이 양쪽에 붙으면 목표가 서로를 지운다)
+_LEAK30 = [t for t in ("skin_pores", "skinbooster_embo", "skin_redness")
+           if "no healthy glow" in build_prompts(t, "selfie", _pb26("selfie", 1, seed=31, treatment=t)[0], 31001)["after_prompt"]]
+ok(not _LEAK30, f"광 금지는 Before 에만 — After 로 샌 시술 {_LEAK30}")
+
 
 
 ok(_arc26 / _n26 >= 0.60,

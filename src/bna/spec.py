@@ -415,6 +415,16 @@ def check_avoid_vs_facts(treatment: str, when: str, fact_texts: list, avoid_line
             f"그걸 금지한다 — avoid.yaml 의 그 규칙에 `not_at: [{when}]` 을 적어라")
 
 
+
+# "다시 찍은 사진"임을 말하는 공통 문장 (2026-09-10·09-11 성연서님 "로봇이야" → 2026-09-14 공통화).
+# ⚠ 이 문장이 없으면 참조로 넘긴 Before 가 포즈·눈 뜬 정도·입 벌림까지 그대로 복제된다.
+#   표정 축을 다시 뽑아도 소용없다 — 설정보다 참조 이미지가 세다(같은 구조: 물광은 빛이 만든다).
+RESHOT_LINE = (
+    'This is a second, separate photo of the same person, not the reference photo edited: the phone was put '
+    'down and picked up again, so the arm is at a different distance and height, the head sits at a different '
+    'tilt and rotation, the face is not in the same spot in the frame, the eyes are open a different amount and '
+    'the mouth is open a different amount. Do not copy the pose, the gaze or the mouth shape of the reference. ')
+
 def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None,
                   avoid_not_at=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
@@ -588,15 +598,19 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 expression_line = (
                     f'The expression is the same as in the reference: {variation["expression"]["text"]}. '
                     'Do not smile and do not tense the mouth or cheeks, since that alone would change the '
-                    'folds being treated. Everything else about the shot is new: the phone was put down and '
-                    'picked up again, so the arm is at a slightly different distance and height, the head sits '
-                    'at a slightly different tilt and rotation within the same general pose, the face is not in '
-                    'exactly the same spot in the frame, and the eyes are open a little more or a little less. '
+                    'folds being treated. ' + RESHOT_LINE +
                     'These differences must be visible at a glance when the two photos sit side by side, while '
-                    'still reading as the same pose. This is a second photo of the same person, not the '
-                    'reference photo edited.')
+                    'still reading as the same pose.')
             else:
-                expression_line = f'Expression: {a["expression"]}; it may differ slightly from the reference.'
+                # ⚠ 2026-09-14 오후 (연서님 "표정·입 벌림·눈 뜬 정도가 어떻게 딱 떨어지게 똑같지?").
+                #   종전 이 줄은 `it may differ slightly from the reference.` 한 마디였다 — **복제를 막는
+                #   문장이 하나도 없었다**. 참조 사진(Before)을 통째로 입력으로 넘기므로, 문장이 침묵하면
+                #   모델은 포즈·눈 뜬 정도·입 벌림까지 그대로 베낀다(0914 실측: 표정 축은 70% 확률로
+                #   다시 뽑히는데 결과 사진은 같았다 — 설정이 아니라 프롬프트가 진 것이다).
+                #   ⚠ 같은 지적을 09-10·09-11 에 이미 받아 고쳤는데 그 교정이 **lock 갈래에만** 들어갔다.
+                #     표정이 자유인 시술이 오히려 방어를 못 받는 거울상이었다 → 공통 문장(RESHOT_LINE)으로 합친다.
+                expression_line = (f'Expression: {a["expression"]}, clearly different from the reference. '
+                                   + RESHOT_LINE)
             which = "same" if w == "immediate" else "different"
             txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
                 identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
