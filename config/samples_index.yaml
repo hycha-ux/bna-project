@@ -41,21 +41,9 @@ refs:
     입꼬리 바깥쪽 볼(팔자 아래 끝)과 입가 주름(턱선 쪽)에 하나씩, 볼 넓게 홍조 + 주사 자국 점점이.
     After(직후) 컷 전용 — Before 나 다른 시점에 쓰면 안 된다.
 
-# ── 피부 3종 (2026-09-14 성연서님 제공 5장 → 전·후로 잘라 10장). 출처는 여신티켓·블로그 후기라 **내부 참조 전용**,
+# ── 피부 3종 (2026-09-14 성연서님 제공 5장 → 전·후로 잘라 10장, 그중 포텐자 01 쌍은 후가 모공이 더 또렷해 보여 뺐다 → 8장). 출처는 여신티켓·블로그 후기라 **내부 참조 전용**,
 #    외부 노출 금지. 원본 합성본(제목·라벨 포함)은 리포 밖. 1단계 6장이 "얼굴 전체·같은 조명·피부 결함 없음"으로
 #    AI 티가 났던 것에 대한 답 — 실제 후기는 볼 한쪽 확대 + 전은 센 빛에 모공 그림자, 후는 부드러운 빛에 물광.
-- file: selfie/skin_pores_before_01.jpg
-  mode: selfie
-  treatment: [skin_pores, skinbooster_embo]
-  timeline: before
-  tags: {lighting: ceiling_harsh, quality: mid}
-  note: 포텐자 후기 전 컷 — 볼 한쪽 확대, 센 사광에 모공이 그림자로 파임, 피지 번들거림. 여신티켓 후기, 내부 참조 전용.
-- file: selfie/skin_pores_after4w_01.jpg
-  mode: selfie
-  treatment: [skin_pores, skinbooster_embo]
-  timeline: [2w, 4w]
-  tags: {lighting: window, quality: mid}
-  note: 같은 후기 후 컷 — 부드러운 빛, 모공 얕아짐, 하이라이트가 도는 물광. 2·4주(가라앉은 뒤) After 전용.
 - file: selfie/skin_pores_before_02.jpg
   mode: selfie
   treatment: skin_pores
