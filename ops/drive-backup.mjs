@@ -266,6 +266,17 @@ export function planLanes(root = ROOT, manifest = {}, opts = {}) {
     const dir = path.posix.dirname(t.dest);
     if ((folderKeys.get(dir)?.size || 0) > 1) t.dest = `${dir}_${batchTag(t.key)}/${path.posix.basename(t.dest)}`;
   }
+  // 분 단위 꼬리로도 겹치면(같은 분에 뜬 두 배치 · 같은 번호 · 같은 인물) 배치 이름 전체(초+난수)를 붙인다 (2026-09-14 성연서님 "같을 가능성은?")
+  const tagged = new Map();
+  for (const { t } of cands) if (t.key) {
+    const dir = path.posix.dirname(t.dest);
+    if (!tagged.has(dir)) tagged.set(dir, new Set());
+    tagged.get(dir).add(t.key);
+  }
+  for (const { t } of cands) if (t.key) {
+    const dir = path.posix.dirname(t.dest);
+    if ((tagged.get(dir)?.size || 0) > 1) t.dest = `${dir.replace(/_[0-9]{4}-[0-9]{4}$/, '')}_${t.key.split('/')[0]}/${path.posix.basename(t.dest)}`;
+  }
   for (const { f, t } of cands) {
       wanted.add(t.dest);
       if (manifest[t.dest]?.sig === f.sig) continue;

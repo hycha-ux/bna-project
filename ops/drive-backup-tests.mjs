@@ -164,6 +164,19 @@ ok(!!rawPath && !/\t/.test(rawPath) && existsSync(rawPath),
   ok(dirs.length === 2 && dirs.every((d) => /0003_한국_30대_남_(0911-0949|0912-1015)$/.test(d)),
     `겹칠 때만 배치 꼬리가 붙어 두 사람이 갈린다 — 실제 ${dirs.join(', ')}`);
   ok(L3.conflicts.length === 0 && L3.todo.length === 5, `꼬리를 붙이면 자리 다툼이 없다 — 올릴 것 ${L3.todo.length}`);
+
+  // 같은 분에 뜬 세 번째 배치까지 겹치면 배치 이름 전체가 꼬리가 된다
+  const it3 = path.join(r2, 'outputs', '20260912-101559-qq11', '0003');
+  mkdirSync(it3, { recursive: true });
+  writeFileSync(path.join(it3, `${stem}_before.jpg`), 'B3');
+  writeFileSync(path.join(it3, 'meta.json'), JSON.stringify({ treatment: 'nasolabial', mode: 'selfie',
+    variation: { country: { key: 'korea' }, age: { key: '30s' }, gender: { key: 'male' } } }));
+  writeFileSync(path.join(it3, 'review.json'), JSON.stringify({ pick: 'pick' }));
+  const L4 = planLanes(r2, {}, { full: false, names });
+  const dirs4 = [...new Set(L4.todo.map((f) => path.posix.dirname(f.dest)))].sort();
+  ok(dirs4.length === 3 && dirs4.some((d) => d.endsWith('_20260912-101500-zz99')) && dirs4.some((d) => d.endsWith('_20260912-101559-qq11')) && dirs4.some((d) => d.endsWith('_0911-0949')),
+    `같은 분에도 겹치면 배치 이름 전체로 갈린다 — 실제 ${dirs4.join(', ')}`);
+  ok(L4.conflicts.length === 0, '그래도 자리 다툼은 없다');
   rmSync(r2, { recursive: true, force: true });
 }
 
