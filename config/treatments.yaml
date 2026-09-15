@@ -75,8 +75,11 @@ nasolabial:
     on both sides, with no single segment left unchanged and no segment erased more than the rest;
     same facial structure.
   must_not_change: >
-    Do not change lip shape, lip volume, mouth width, nose, or jawline width. Do not smooth,
-    brighten or tighten any other part of the face.
+    Do not change lip shape, lip volume, mouth width, nose, or jawline width. The cheeks and
+    cheekbones stay exactly as in the reference: no added volume, no lifting, no change to the
+    front cheek or under-eye area. Do not smooth, brighten or tighten any other part of the face.
+  # ⚠ 볼 문장은 2026-09-15 저녁 첫 실회차(연서님: "왜 볼쪽에 시술이 받아져 있지?")에서 넣었다 —
+  #   moderate/marked Before 가 '중안면 볼륨 감소·앞볼 처짐'을 말하니 모델이 그걸 고쳐 버렸다.
   # 사실 카드 — 빌디 초안 `docs/treatment-facts-0911-buildy.md` 를 그대로 옮겼다 (2026-09-11).
   #   ⚠ 의료진 검토 전이다. '며칠 뒤 멍'은 초안에서 미확인으로 표시된 줄이라 프롬프트에 안 실었다.
   facts:

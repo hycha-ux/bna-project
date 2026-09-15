@@ -70,6 +70,14 @@ micro_drift: >
   are not in exactly the same place, and the exposure is a touch brighter or darker.
   If the two photos overlap pixel for pixel outside the treated area, the result is wrong.
 
+# 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안). 켜면 같은 리그·같은 시점의 After 참조를 Before 뒤에
+#   붙이고 "얼굴은 1번 사진" 문구(prompts/edit_style_refs.md)를 더한다. 맞는 참조가 없으면 종전 1장 편집.
+#   ⚠ 참조는 남의 얼굴이다 — 첫 실회차에서 켠 것/끈 것의 동일인 점수를 같은 seed 로 비교해 판정.
+# ⚠ 2026-09-15 저녁 **껐다** — 첫 실회차에서 볼에 시술이 들어갔다. 팔자 After 참조(nasolabial_after2w_01)는
+#   서구 중안면 필러 사진이라 볼 볼륨이 참조에서 옮겨왔을 가능성이 크다. 한국인 임상 참조가 생기면 다시 켠다.
+#   (빌디가 cef9892 에서 이 블록을 실수로 지웠다 — 그 사이 .get() 이 None 이라 꺼진 채였다. 여기 복구.)
+after_style_refs: false
+
 # 구조 검사 임계값 (임상 모드에만 적용)
 # 정렬 허용 2% → 4% (2026-09-15 연서님 결정). 티모 실측: 연서님 레퍼런스의 **진짜 임상 쌍**이 눈 중심 이동
 #   2.65% 라 2% 면 레퍼런스 자체가 탈락한다. 합성을 끈 대신 여기서 잡는다.
