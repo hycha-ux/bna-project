@@ -276,11 +276,7 @@ th, td { text-align:left; padding:var(--sp-2) var(--sp-2); border-bottom:1px sol
 th { color:var(--ui-lo); font-weight:var(--fw-m); font-size:var(--fs-sm); white-space:nowrap }
 tr.vfold { display:none } .vfold-btn { margin-top:10px }
 tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.sel { background:var(--pri-alpha) }
-tr.detail-row > td { padding:0 !important; background:#fff; border-bottom:2px solid #191919 } tr.detail-row:hover { background:none }
-#detail-summary.inline { box-shadow:none; border-radius:0; padding:14px 20px 16px; border-left:2px solid #191919 }
-#detail-summary.inline .card-head { min-height:0; margin-bottom:10px } #detail-summary.inline .card-head h3 { font-size:var(--fs-md) }
-#detail-summary.inline #kpis .statline { font-size:var(--fs-sm) } #detail-summary.inline .stats-fold > summary { font-size:var(--fs-xs) } #detail-summary.inline #gal-stats { margin-top:6px }
-#detail-summary.inline .prog { margin-bottom:12px !important }
+#detail-summary { display:none !important }   /* 2026-09-15 연서님: 작업 요약 카드(진행·지표) 제거 — 사진 상세·학습 탭에 있는 정보 */
 tbody tr:last-child td { border-bottom:none }
 .tbl-wrap { overflow:auto } .tbl-wrap td { white-space:nowrap }
 .list { display:flex; flex-direction:column } .list-row { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) 0; border-bottom:1px solid var(--ui-border); cursor:pointer } .list-row:last-child { border-bottom:0 }
@@ -731,7 +727,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
         <div class="card empty" id="detail-empty">위 목록에서 작업을 고르면 사진이 여기 나와요</div>
         <div id="detail-body" hidden>
-          <div class="card" id="detail-summary"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div><div id="gal-stats" style="margin-top:var(--sp-2)"></div></div>
+          <div class="card" id="detail-summary" hidden><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div><div id="gal-stats" style="margin-top:var(--sp-2)"></div></div>
           <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><select id="gal-filter" class="hsel"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option><option value="id_na">동일인 못 잼 · 사람이 봐야 함</option></select><select id="gal-axis" class="hsel"><option value="">조건 전체</option></select><select id="gal-axis-val" class="hsel" hidden><option value="">값 전체</option></select><span class="muted" id="gal-count"></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on"><i class="ic ic-grid"></i>격자</button><button data-v="review"><i class="ic ic-frame"></i>검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
         </div>
       </div>
@@ -1376,7 +1372,6 @@ async function loadBatches() {
       <td>${dry ? '—' : `${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span>`}</td><td>${st}</td></tr>`; }).join('');
   tb.querySelectorAll('tr').forEach(tr => { const b = BATCHES.find(x => x.batch_id === tr.dataset.id); if (b && b.kind !== 'run') tr.classList.add('test-row'); });
   tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
-  placeSummary();
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches;
@@ -1386,14 +1381,6 @@ setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.s
 // ---------- 작업 상세 ----------
 // 작업을 고르면 목록을 접는다 — 고르고 나면 목록은 자리만 차지하고,
 // 그만큼 사진이 화면 밖으로 밀린다. 헤더를 누르면 다시 펼친다.
-/** 요약 카드(진행·지표)를 작업 표의 선택 행 바로 아래에 끼운다 — 따로 큰 카드로 두면 면적만 차지 (2026-09-15 연서님). 표에 그 행이 없으면 원래 자리(사진 카드 위) */
-function placeSummary() {
-  const card = $('#detail-summary'); if (!card) return;
-  $$('#batches tbody tr.detail-row').forEach(r => r.remove());
-  const tr = CUR && $(`#batches tbody tr[data-id="${CUR.batch_id}"]`);
-  if (tr) { const row = document.createElement('tr'); row.className = 'detail-row'; const td = document.createElement('td'); td.colSpan = tr.children.length; row.appendChild(td); tr.after(row); td.appendChild(card); card.classList.add('inline'); }
-  else { const body = $('#detail-body'); if (card.parentElement !== body) body.prepend(card); card.classList.remove('inline'); }
-}
 async function openBatch(id, byUser = false) {
   CUR = await api('/api/batches/' + id);
   // 사람이 목록에서 골랐을 때만 상세로 스크롤 — 목록은 위에 그대로 남는다(사라지지 않는다)
@@ -1406,7 +1393,7 @@ async function openBatch(id, byUser = false) {
   const axes = new Set(); CUR.items.forEach(it => Object.keys(it.variation||{}).forEach(a => axes.add(a)));
   $('#gal-axis').innerHTML = '<option value="">조건 전체</option>' + [...axes].map(a => `<option value="${a}">${AXIS_KO[a]||a}</option>`).join('');
   $('#gal-axis-val').innerHTML = '<option value="">값 전체</option>'; $('#gal-axis-val').hidden = true;
-  renderStats(); renderGallery(); startPoll(); placeSummary();
+  renderStats(); renderGallery(); startPoll();
   if (byUser) setTimeout(() => $('#batches tbody tr.sel')?.scrollIntoView({behavior:'smooth', block:'start'}), 30);
 }
 async function startPoll() {
