@@ -45,7 +45,9 @@ export function pickProgress(snapProg, live, nowS) {
   const useLive = liveOk && (!snapProg || liveAt >= lastActivity(snapProg));
   const v = useLive ? live : snapProg;
   if (!v) return null;
-  const age = liveOk ? Math.max(0, Math.round(nowS - liveAt)) : null;
+  // 신호 나이는 **둘 중 더 새 신호** 기준이다 — 실시간 올리기만 실패하고 스냅샷은 계속 올라오는 경우,
+  // 실시간 파일 나이로 재면 멀쩡히 도는 배치가 '멈춤 의심'으로 뜬다(2026-09-15 화면 연결 검토에서 발견).
+  const age = liveOk ? Math.max(0, Math.round(nowS - Math.max(liveAt, lastActivity(snapProg)))) : null;
   const running = !!v.summary?.running;
   return {
     ...v,
