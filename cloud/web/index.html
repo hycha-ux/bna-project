@@ -215,7 +215,7 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .cmp[data-mode=flip] .stage .after-w { clip-path:none; opacity:0 } .cmp[data-mode=flip].show-after .stage .after-w { opacity:1 }
 .cmp.zoomed { cursor:grab } .cmp.zoomed.dragging { cursor:grabbing }
 .gates { display:flex; gap:6px; flex-wrap:wrap } .gate { display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-xs); padding:3px 8px; border-radius:999px; border:1px solid var(--ui-border); background:#fff; color:var(--ui-md) }
-.gate.ok { border-color:var(--ok); color:var(--ok) } .gate.bad { border-color:var(--bad); color:var(--bad) } .gate.warn { border-color:var(--warn); color:var(--warn) } .gate.na { border-style:dashed }
+.gate.ok { background:#E9E9E7; border-color:#E9E9E7; color:#37352F } .gate.bad { background:#191919; border-color:#191919; color:#fff } .gate.warn { background:#D3D1CB; border-color:#D3D1CB; color:#191919 } .gate.na { border-style:dashed; color:var(--ui-lo) }
 .gate b { font-weight:var(--fw-m) }
 #batches-wrap { max-height:340px }
 /* 작업을 고르면 목록은 그대로 두고 상세로 스크롤한다 (2026-09-09: 접기는 '리스트가 사라지는' 느낌이라 뺐다). */
@@ -238,7 +238,7 @@ body.reviewing .cmp-bar { padding:5px 10px }
 body.reviewing .rev-main .pair figure img { object-fit:contain; background:var(--ui-surface,#F4F5F7) }   /* ⚠ contain 을 cover 로 되돌리지 마라 — 잘린 손·머리끝을 못 보면 검수가 안 된다 */
 /* ⚠ overflow:auto 로 되돌리지 마라 — 그게 '불필요한 스크롤'의 정체였다(09-08).
    칸을 잘라 스크롤을 만드는 대신 **내용을 줄여** 통째로 보이게 한다. */
-body.reviewing .rev-side { padding:10px 14px; gap:6px }
+body.reviewing .rev-side .sec { padding:12px 16px }
 body.reviewing .th { flex-basis:40px }
 body.reviewing .thumbs { padding:6px 12px }
 /* 남은 세로는 카드 여백에서 짜낸다 — 검수 중엔 제목·목록보다 사진이 먼저다 */
@@ -254,17 +254,22 @@ body.reviewing #detail-body > .card:last-child > .card-head { margin-bottom:8px 
 .thumbs { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--ui-border) } .th-row { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none } .th-row::-webkit-scrollbar { display:none }
 .th { flex:0 0 56px; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--ui-surface); cursor:pointer } .th img { width:100%; height:100%; object-fit:cover; display:block }
 .th.pick { border-color:#191919; border-width:2px } .th.reject { border-style:dashed; border-color:#9B9A97; opacity:.5 } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
-.rev-side { border-left:1px solid var(--ui-border); padding:20px; display:flex; flex-direction:column; gap:20px } .rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-md); margin-bottom:6px }
+.rev-side { border-left:1px solid var(--ui-border); padding:0; display:flex; flex-direction:column }
+.rev-side .sec { padding:16px 18px; border-bottom:1px solid var(--ui-border); display:flex; flex-direction:column; gap:10px } .rev-side .sec:last-child { border-bottom:0 }
+.rev-side .sec.head { gap:6px } .rev-side .row { display:flex; align-items:center; gap:8px } .rev-side .ttl { font-size:var(--fs-lg); font-weight:var(--fw-b) } .rev-side .muted.sm { font-size:var(--fs-xs); line-height:1.5 }
+.rev-side .rev-act { margin-top:auto; border-top:1px solid var(--ui-border); background:var(--ui-surface) }
+.rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-lo); letter-spacing:.02em; margin:0 }
 .scores { display:flex; flex-direction:column; gap:6px }
 /* 검수 모드 오른쪽 칸은 사진 높이만큼만 쓴다 — 넘치면 사유 칸이 숨어 스크롤이 생긴다
    (2026-09-08 실측 내용 609px / 칸 444px). 점수를 2열로 접어 세로를 벌었다. */
-body.reviewing .rev-side .scores { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px }
-body.reviewing .rev-side .score > span:first-child { width:74px }
+body.reviewing .rev-side .scores { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px }
+body.reviewing .rev-side .score > span:first-child { width:78px }
 body.reviewing .rev-side .score b { width:16px }
-.cond-line { line-height:1.5 } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:var(--ok) } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
-.as-row { display:flex; align-items:center; gap:8px; margin-top:8px } .as-row .muted { white-space:nowrap; font-size:var(--fs-xs) } .as-row select { height:32px; font-size:var(--fs-sm); flex:1 }
-.rev-act { margin-top:auto } .rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
-.rev-side .reason { border-top:0; padding-top:0 } body.reviewing .rev-side .reason { margin-top:2px } body.reviewing .rev-side .reason > .muted { margin-bottom:2px }
+.score.low .t i { background:#191919 } .score.low b { color:#191919; font-weight:700 } .score.low > span:first-child { color:var(--ui-hi) }
+.cond-line { line-height:1.5 } .score-why { font-size:var(--fs-xs); color:var(--ui-lo); margin:-2px 0 6px 100px; line-height:1.5 } .scores.lg .score-why { margin-left:100px } .score { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs) } .score > span:first-child { width:92px; color:var(--ui-md); white-space:nowrap } .score .t { flex:1; height:6px; border-radius:3px; background:var(--ui-border); overflow:hidden } .score .t i { display:block; height:100%; background:#C4C1BA } .score .t i.bad { background:var(--bad) } .score b { width:20px; text-align:right } .score b.bad { color:var(--bad) }
+.as-row { display:flex; align-items:center; gap:8px; margin-top:0 } .as-row .muted { white-space:nowrap; font-size:var(--fs-xs) } .as-row select { height:32px; font-size:var(--fs-sm); flex:1 }
+.rev-act .act .b { height:44px } .act kbd { font:inherit; font-size:11px; opacity:.6; margin-left:4px; font-weight:500 }
+.rev-side .reason { border-top:0; padding-top:0; margin-top:2px; display:flex; flex-direction:column; gap:8px } .rev-side .reason .rev-h { margin:0 }
 /* 안내 문구를 버튼과 같은 높이로 늘려 그 안에서 가운데 맞춘다 — align-items:center 만으로는
    버튼 안쪽 여백 때문에 2px 어긋난다(2026-09-08 실측 버튼 중심 1120 vs 문구 중심 1118). */
 /* 안내 문구를 버튼과 **같은 높이 박스**로 만들어 그 안에서 가운데 맞춘다.
@@ -1356,9 +1361,9 @@ function renderReview() {
       <figcaption class="cap-b">${CMP_MODE === 'flip' ? (FLIP_AFTER ? afterCap : '시술 전') : `시술 전 ◂ ▸ ${afterCap}`}</figcaption></figure>`;
   }
   const fails = (it.fail_reasons||[]).map(r => esc(failKo(r))).join(' · ');
-  const verdict = it.passed === null ? '<span class="verdict">프롬프트만</span>' : it.passed ? '<span class="verdict ok">AI 검수 통과</span>' : '<span class="verdict bad">AI 검수 탈락</span>';
+  const verdict = it.passed === null ? '<span class="chip">프롬프트만</span>' : it.passed ? '<span class="chip ok">AI 통과</span>' : '<span class="chip bad">AI 탈락</span>';
   const scores = it.vision?.scores ? Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v);
-    return `<div class="score" title="${esc(noteOf(v) || '')}"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n != null && n < 5 ? 'bad' : ''}" style="width:${n == null ? 0 : n*10}%"></i></span><b class="${n != null && n < 5 ? 'bad' : ''}">${n == null ? '—' : n}</b></div>`;
+    return `<div class="score ${n != null && n < 7 ? 'low' : ''}" title="${esc(noteOf(v) || '')}"><span>${SCORE_KO[k]||k}</span><span class="t"><i style="width:${n == null ? 0 : n*10}%"></i></span><b>${n == null ? '—' : n}</b></div>`;
   }).join('') : '<div class="muted">점수 없음</div>';
   const cond = (ks) => ks.filter(k => v[k]).map(k => esc(val(k, v[k].key))).join(' · ');
   const thumbs = GAL_ITEMS.map((x, i) => `<button class="th ${i === REV_IDX ? 'cur' : ''} ${x.review?.pick||''}" data-idx="${i}" title="${+x.item_id+1}">${x.after_file ? `<img loading="lazy" src="/files/${b}/${x.item_id}/${x.after_file}">` : ''}</button>`).join('');
@@ -1380,23 +1385,28 @@ function renderReview() {
       <div class="thumbs"><div class="rev-prog"><i style="width:${(GAL_ITEMS.filter(x => x.review?.pick).length / Math.max(1, GAL_ITEMS.length) * 100).toFixed(0)}%"></i></div><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 채택 ${GAL_ITEMS.filter(x => x.review?.pick === 'pick').length} · 제외 ${GAL_ITEMS.filter(x => x.review?.pick === 'reject').length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
     </div>
     <div class="rev-side">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px"><b style="font-size:var(--fs-lg)">${+it.item_id+1}번 사진</b>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
-        ${fails ? `<div class="muted">${fails}</div>` : ''}
+      <div class="sec head">
+        <div class="row"><b class="ttl">${+it.item_id+1}번 사진</b>${verdict}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+        ${fails ? `<div class="muted sm">${fails}</div>` : ''}
+        ${whens.length > 1 ? `<div class="muted sm">경과 ${whens.map(w => val('timeline', w)).join(' → ')} · 판정은 <b>세트 단위</b></div>` : ''}
       </div>
-      ${whens.length > 1 ? `<div class="muted" style="font-size:var(--fs-xs)">경과 시리즈 ${whens.map(w => val('timeline', w)).join(' → ')} · 채택·제외는 <b>세트 단위</b>입니다(한 시점이라도 이상하면 제외)</div>` : ''}
-      <div><div class="rev-h">자동 게이트${REV_WHEN ? ` <span class="muted">· ${val('timeline', REV_WHEN)}</span>` : ''}</div>${gateChips(REV_WHEN && it.after_results?.[REV_WHEN] ? {...it, ...it.after_results[REV_WHEN]} : it)}</div>
-      <div><div class="rev-h">AI 점수</div><div class="scores">${scores}</div></div>
-      <div><div class="rev-h">생성 조건</div><div class="muted cond-line">${cond(['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'])}</div></div>
-      <div class="rev-act">
+      <div class="sec">
+        <div class="rev-h">판정 근거${REV_WHEN ? ` <span class="muted">· ${val('timeline', REV_WHEN)}</span>` : ''}</div>
+        ${gateChips(REV_WHEN && it.after_results?.[REV_WHEN] ? {...it, ...it.after_results[REV_WHEN]} : it)}
+        <div class="scores">${scores}</div>
+      </div>
+      <div class="sec">
+        <div class="rev-h">생성 조건</div>
+        <div class="muted cond-line">${cond(['country','age','gender','angle','framing','background','before_severity','effect_level','timeline'])}</div>
+      </div>
+      <div class="sec rev-act">
         <div class="act">
           <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn} <kbd>1</kbd></button>
           <button class="b ${rv.pick==='reject'?'on-reject':''}"${RO()?' disabled':''} data-act="reject" data-id="${it.item_id}">${rv.pick==='reject'?PICK.reject.on:PICK.reject.btn} <kbd>2</kbd></button>
         </div>
-        <div class="as-row"><span class="muted">채택할 시술</span><select class="hsel" data-act="as" data-id="${it.item_id}"${RO()?' disabled':''} title="이 사진이 원래 시술보다 다른 시술 사진으로 더 쓸 만하면 여기서 바꿉니다. 현황판·라이브러리·드라이브 폴더가 따라갑니다">${[['', `${tname(it.treatment)} (원래)`], ...Object.keys(CFG.treatments).filter(k => k !== it.treatment).map(k => [k, tname(k)])].map(([k, n]) => `<option value="${k}" ${(rv.as_treatment || '') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
-        ${pickLine(rv)}
-        ${rv.pick === 'reject' ? `<div class="reason"><div class="muted">왜 제외했나요? · 키를 누르면 저장하고 다음 장</div><div class="qreasons">${TAGS.map((t, i) => `<button class="rs ${(rv.tags||[]).includes(t) ? 'on' : ''}"${RO()?' disabled':''} data-act="qtag" data-id="${it.item_id}" data-tag="${t}"><kbd>${QKEYS[i].toUpperCase()}</kbd>${t}</button>`).join('')}</div>
-        <input type="text"${RO()?' disabled':''} placeholder="메모 (Enter 로 저장)" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%;margin-top:6px"><div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div></div>` : ''}
+        ${rv.pick === 'pick' ? `<div class="as-row"><span class="muted">채택할 시술</span><select class="hsel" data-act="as" data-id="${it.item_id}"${RO()?' disabled':''} title="이 사진이 원래 시술보다 다른 시술 사진으로 더 쓸 만하면 여기서 바꿉니다. 현황판·라이브러리·드라이브 폴더가 따라갑니다">${[['', `${tname(it.treatment)} (원래)`], ...Object.keys(CFG.treatments).filter(k => k !== it.treatment).map(k => [k, tname(k)])].map(([k, n]) => `<option value="${k}" ${(rv.as_treatment || '') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>${pickLine(rv)}` : ''}
+        ${rv.pick === 'reject' ? `<div class="reason"><div class="rev-h">왜 제외했나요? <span class="muted">· 키를 누르면 저장하고 다음 장</span></div><div class="qreasons">${TAGS.map((t, i) => `<button class="rs ${(rv.tags||[]).includes(t) ? 'on' : ''}"${RO()?' disabled':''} data-act="qtag" data-id="${it.item_id}" data-tag="${t}"><kbd>${QKEYS[i].toUpperCase()}</kbd>${t}</button>`).join('')}</div>
+        <input type="text"${RO()?' disabled':''} placeholder="메모 (Enter 로 저장)" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%;margin-top:8px"><div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div></div>` : ''}
       </div>
     </div></div>`;
   bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; ZOOM = {s:1,x:0,y:0}; renderReview(); });
