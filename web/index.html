@@ -25,6 +25,13 @@
   --seed-color-bg-brand-weak:var(--pri-alpha); --seed-color-stroke-brand-solid:var(--primary); --seed-color-stroke-focus-ring:var(--primary);
   --seed-color-fg-neutral:var(--ui-hi); --seed-color-fg-neutral-muted:var(--ui-md); --seed-color-fg-neutral-subtle:var(--ui-lo); --seed-color-stroke-neutral-muted:var(--ui-border);
   --seed-color-bg-informative-weak:var(--brand-blue); --seed-color-fg-informative:var(--primary);
+  /* 뱃지(알약) 톤 — 전부 회색 농도로. 실패=블랙 바탕, 진행 중=진회색 바탕, 완료=연회색 바탕, 정보=아주 연한 회색 */
+  --seed-color-bg-critical-weak:#191919; --seed-color-bg-critical-weak-pressed:#37352F; --seed-color-fg-critical:#FFFFFF; --seed-color-fg-critical-contrast:#FFFFFF;
+  --seed-color-bg-critical-solid:#191919; --seed-color-bg-critical-solid-pressed:#37352F;
+  --seed-color-bg-warning-weak:#D3D1CB; --seed-color-bg-warning-weak-pressed:#C4C1BA; --seed-color-fg-warning:#191919;
+  --seed-color-bg-positive-weak:#E9E9E7; --seed-color-bg-positive-weak-pressed:#D3D1CB; --seed-color-fg-positive:#37352F;
+  --seed-color-bg-informative-weak:#F2F1EE; --seed-color-bg-informative-weak-pressed:#E9E9E7; --seed-color-fg-informative:#6B6A66;
+  --seed-color-bg-neutral-weak:#F7F7F5; --seed-color-bg-neutral-weak-pressed:#E9E9E7;
 }
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
 [hidden] { display:none !important }
@@ -286,7 +293,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .les-arrow { font-size:26px; color:var(--ui-lo); text-align:center; padding-top:22px }
 .tag-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--ui-border) } .tag-row:last-child { border-bottom:0 }
 .tag-row .n { font-weight:var(--fw-m); min-width:20px; text-align:right } .tag-row .meter { flex:1; height:6px; background:var(--ui-surface); border-radius:3px; overflow:hidden } .tag-row .meter i { display:block; height:100%; background:var(--bad); border-radius:3px }
-.tag-row .st { font-size:11px; padding:1px 8px; border-radius:999px; white-space:nowrap } .tag-row .st.on { background:var(--bad-weak); color:var(--bad) } .tag-row .st.off { background:var(--ui-surface); color:var(--ui-lo) }
+.tag-row .st { font-size:11px; padding:1px 8px; border-radius:999px; white-space:nowrap } .tag-row .st.on { background:#191919; color:#fff } .tag-row .st.off { background:var(--ui-surface); color:var(--ui-lo) }
 .les-empty { padding:14px; border:1px dashed var(--ui-border); border-radius:var(--r-md); color:var(--ui-md); font-size:var(--fs-sm); display:flex; align-items:center; gap:10px; flex-wrap:wrap }
 .delta.up { color:var(--bad) } .delta.down { color:var(--ok) }
 @media (max-width:1100px) { .les-grid { grid-template-columns:1fr } .les-arrow { display:none } }
