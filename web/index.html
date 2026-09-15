@@ -144,7 +144,7 @@ details.step > summary::after { content:"▾"; color:var(--ui-lo); font-size:12p
 table.jobs.compact th:nth-child(1), table.jobs.compact td:nth-child(1), table.jobs.compact th:nth-child(5), table.jobs.compact td:nth-child(5), table.jobs.compact th:nth-child(7), table.jobs.compact td:nth-child(7), table.jobs.compact th:nth-child(8), table.jobs.compact td:nth-child(8), table.jobs.compact th:nth-child(9), table.jobs.compact td:nth-child(9) { display:none }
 #q-cols.on { background:#191919; color:#fff; border-color:#191919 }
 .q-tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-8px 0 12px } .q-tools .b, .q-tools .btn, .q-tools .pill button { white-space:nowrap } #q-sum { white-space:nowrap; font-size:var(--fs-sm) } #q-tr { width:auto; flex:0 0 auto; height:32px; padding:0 28px 0 10px; font-size:var(--fs-sm) } #tab-create .card-head h3 { white-space:nowrap }
-.daynav { display:inline-flex; align-items:center; gap:2px } .daynav .b { min-width:30px; padding:0 8px } .daynav .b.day { min-width:96px; font-weight:var(--fw-m) } .daynav .b.day.on { background:#191919; color:#fff; border-color:#191919 } .daynav .b[disabled] { opacity:.35 }
+.daynav { display:inline-flex; align-items:center; gap:4px } .daynav .b { height:36px } .daynav .b.arr { width:36px; min-width:36px; padding:0; display:inline-flex; align-items:center; justify-content:center } .daynav .b.arr svg { width:18px; height:18px } .daynav .b.day { min-width:112px; padding:0 14px; font-size:var(--fs-md); font-weight:var(--fw-m) } .daynav .b.day.on { background:#191919; color:#fff; border-color:#191919 } .daynav .b[disabled] { opacity:.35 }
 .fixgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px }
 .fixgrid label { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--ui-lo) }
 .fixgrid select { height:32px; font-size:12px; padding:0 22px 0 8px }
@@ -1127,7 +1127,7 @@ function groupByDay(rows) {
   const i = days.indexOf(Q_DAY);
   const nav = $('#q-daynav'); if (nav) {
     nav.hidden = !days.length;
-    nav.innerHTML = `<button class="b sm" id="q-dprev" title="하루 전" ${Q_DAY === '' || i >= days.length - 1 ? 'disabled' : ''}>‹</button><button class="b sm day ${Q_DAY === '' ? '' : 'on'}" id="q-dcur" title="누르면 전체 ↔ 하루">${Q_DAY === '' ? '전체 기간' : dayLabel(Q_DAY)}</button><button class="b sm" id="q-dnext" title="하루 뒤" ${Q_DAY === '' || i <= 0 ? 'disabled' : ''}>›</button>`;
+    nav.innerHTML = `<button class="b sm arr" id="q-dprev" title="하루 전" ${Q_DAY === '' || i >= days.length - 1 ? 'disabled' : ''}><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button class="b sm day ${Q_DAY === '' ? '' : 'on'}" id="q-dcur" title="누르면 전체 ↔ 하루">${Q_DAY === '' ? '전체 기간' : dayLabel(Q_DAY)}</button><button class="b sm arr" id="q-dnext" title="하루 뒤" ${Q_DAY === '' || i <= 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
     $('#q-dprev').onclick = () => { Q_DAY = days[Math.min(days.length - 1, i + 1)]; loadQueue(); };
     $('#q-dnext').onclick = () => { Q_DAY = days[Math.max(0, i - 1)]; loadQueue(); };
     $('#q-dcur').onclick = () => { Q_DAY = Q_DAY === '' ? (days[0] ?? '') : ''; loadQueue(); };
