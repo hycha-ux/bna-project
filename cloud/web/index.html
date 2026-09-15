@@ -844,11 +844,20 @@ function tipify(root) {
     const i = document.createElement('i'); i.className = 'ic ic-info tip'; i.dataset.tip = text; i.tabIndex = 0;
     // ⓘ 는 제목 옆에: KPI 는 .l, 할 일은 b, 현황판은 이름 칸, 카드 머리는 h3, 폼은 라벨 span
     const host = el.closest('.kpi')?.querySelector('.l') || el.closest('.todo-row')?.querySelector('.k b') || el.closest('.brow')?.querySelector('.n, .name, b') || el.closest('.card-head')?.querySelector('h3') || el.closest('.field')?.querySelector(':scope > span');
-    (host || el.parentElement).appendChild(i);
+    const h = host || el.parentElement; const prev = h.querySelector(':scope > .tip');
+    if (prev) { prev.dataset.tip += '\n' + text; el._tip = prev; }   // 같은 제목에 문구가 둘이면 풍선 하나에 두 줄
+    else { h.appendChild(i); el._tip = i; }
     if (chips) { [...el.childNodes].forEach(n => { if (n !== chips) n.remove(); }); } else el.classList.add('note-hidden');
   });
 }
-new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => tipify(n)))).observe(document.body, {childList:true, subtree:true});
+const noteText = el => [...el.childNodes].filter(n => n.nodeType === 3 || (n.nodeType === 1 && !n.classList.contains('tags-line'))).map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+new MutationObserver(ms => ms.forEach(m => {
+  m.addedNodes.forEach(n => tipify(n));
+  // 이미 옮긴 문구가 나중에 갱신되면(숫자 채워짐) 풍선 글도 따라간다
+  const t = m.target instanceof Element ? (m.target.closest('[data-tipped]') || null) : null;
+  if (t && t._tip) { const x = noteText(t); if (x) t._tip.dataset.tip = x; }
+  else if (t && !t._tip && t.dataset.tipped && !t.querySelector('.tags-line')) { const x = noteText(t); if (x) { delete t.dataset.tipped; t.classList.remove('note-hidden'); tipify(t); } }
+})).observe(document.body, {childList:true, subtree:true, characterData:true});
 tipify(document.body);
 function seedify(root) {
   if (!(root instanceof Element)) return;
