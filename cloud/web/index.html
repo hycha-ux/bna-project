@@ -592,7 +592,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
           <div class="card" style="margin-top:0">
             <div class="card-head"><h3>대기열</h3><div class="daynav" id="q-daynav" hidden></div><div class="tb-space"></div><span class="muted" id="q-sum"></span></div>
             <!-- 필터·조작은 둘째 줄 — 한 줄에 다 넣으면 좁은 화면에서 글자가 세로로 눌린다 (2026-09-15) -->
-            <div class="q-tools"><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><select id="q-tr" class="hsel" title="시술로 걸러 봅니다"><option value="">전 시술</option></select><div class="tb-space"></div><button class="b sm" id="q-cols" title="방식·목표·예상·상한 열을 보이거나 숨깁니다">열 더 보기</button><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
+            <div class="q-tools"><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><select id="q-tr" class="hsel" title="시술로 걸러 봅니다"><option value="">전 시술</option></select><div class="tb-space"></div><button class="b sm" id="q-cols" title="방식·목표·예상·상한 열을 보이거나 숨깁니다">자세히 보기</button><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
             <div class="tbl-wrap"><table id="q-table" class="jobs compact"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th class="num" title="이 금액에 닿으면 배치가 멈춥니다(세트를 끝낸 뒤 재서 한 세트만큼 넘칠 수 있음)">상한</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
@@ -1169,7 +1169,7 @@ async function loadGenRequests() {
 }
 // 대기열 열 더 보기 (2026-09-15) — 기본은 6열, 켜면 12열
 let Q_COLS = false; try { Q_COLS = localStorage.getItem('bna.qcols') === '1'; } catch {}
-function applyQCols() { const t = $('#q-table'); if (t) t.classList.toggle('compact', !Q_COLS); const b = $('#q-cols'); if (b) { b.classList.toggle('on', Q_COLS); b.textContent = Q_COLS ? '열 줄이기' : '열 더 보기'; } }
+function applyQCols() { const t = $('#q-table'); if (t) t.classList.toggle('compact', !Q_COLS); const b = $('#q-cols'); if (b) { b.classList.toggle('on', Q_COLS); b.textContent = Q_COLS ? '간단히 보기' : '자세히 보기'; } }
 { const b = $('#q-cols'); if (b) b.onclick = () => { Q_COLS = !Q_COLS; try { localStorage.setItem('bna.qcols', Q_COLS ? '1' : '0'); } catch {} applyQCols(); }; applyQCols(); }
 /** 접힌 단계 제목 옆에 현재 값 요약 — 접어도 뭘 골랐는지 보이게 */
 function updateStepSums() {
