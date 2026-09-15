@@ -498,13 +498,15 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .brow .m { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .brow .m i { display:block; height:100%; background:#9B9A97; border-radius:4px } .brow.done .m i { background:#191919 }
 .brow .s { font-size:11px; color:var(--ui-lo) } .brow .s .pend { color:var(--warn) }
 /* 오늘 할 일: 모든 줄이 같은 3칸(글 | 숫자 | 버튼). 칸이 비어도 자리는 지킨다 — 숫자끼리·버튼끼리 세로로 맞는다 */
-.todo .todo-row { display:grid; grid-template-columns:minmax(0,1fr) 56px 84px; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--ui-border) } .todo .todo-row:last-child { border-bottom:0 }
-.todo .todo-row .k { min-width:0 } .todo .todo-row .k b { display:block; font-size:var(--fs-md) } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo) }
-.todo .todo-row .v { text-align:right; font-size:var(--fs-num-sm); font-weight:var(--fw-num); color:var(--primary); font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1.1 } .todo .v.warn { color:var(--warn) } .todo .v.ok { color:var(--ok) } .todo .v.plain { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) }
-.todo .todo-row .a { display:flex; justify-content:flex-end } .todo .todo-row .a .b { min-width:64px }
-.todo .tags-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px } .col { display:flex; flex-direction:column; gap:var(--gap) }
+.todo .todo-row { display:grid; grid-template-columns:minmax(0,1fr) 64px 92px; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--ui-border) } .todo .todo-row:first-child { padding-top:4px } .todo .todo-row:last-child { border-bottom:0; padding-bottom:4px }
+.todo .todo-row .k { min-width:0; display:flex; flex-direction:column; gap:3px } .todo .todo-row .k b { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi); line-height:1.3 } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo); line-height:1.4 }
+.todo .todo-row .v { text-align:right; font-size:20px; font-weight:var(--fw-num); color:var(--ui-hi); font-variant-numeric:tabular-nums; letter-spacing:-.02em; line-height:1; white-space:nowrap } .todo .v.ok { color:var(--ui-lo) } .todo .v.plain, .todo .v.warn { color:var(--ui-hi); font-size:20px; font-weight:var(--fw-num) }
+.todo .todo-row .a { display:flex; justify-content:flex-end } .todo .todo-row .a .b { min-width:76px; height:32px }
+.todo .tags-line { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px } .todo .tags-line .chip { font-size:11px } .col { display:flex; flex-direction:column; gap:var(--gap) }
 .axis-wide { display:grid; grid-template-columns:1fr 1fr; gap:0 32px } .axis-wide .empty { grid-column:1 / -1 } @media (max-width:1100px) { .axis-wide { grid-template-columns:1fr } }
 table.fixed3 { table-layout:fixed; width:100% } table.fixed3 th:first-child, table.fixed3 td:first-child { width:78px; white-space:nowrap } table.fixed3 th:last-child, table.fixed3 td:last-child { width:112px }
+#home-recent th { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-lo); padding:6px var(--sp-2) 8px } #home-recent td { padding:11px var(--sp-2); font-size:var(--fs-md); line-height:1.3 } #home-recent td:first-child { font-size:var(--fs-xs); color:var(--ui-lo) }
+#home-recent td .muted { font-size:var(--fs-xs) } #home-recent td b { font-weight:var(--fw-b) } #home-recent td .chip { margin-left:6px; vertical-align:1px }
 table.fixed3 .ell { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .card-head .hsel { width:auto; min-width:110px; height:32px; font-size:var(--fs-xs); padding:0 28px 0 10px }
 #batches tr.test-row td { color:var(--ui-md) } #batches tr.test-row td:first-child { color:var(--ui-lo) }
@@ -1009,8 +1011,8 @@ function renderTodo() {
   const lessons = row('제외 사유 상위', `최근 ${L.window_days || 14}일 · 제외 ${L.rejected || 0}장` + (tags.length ? `<div class="tags-line">${tags.map(([t, n]) => `<span class="chip ${(L.active_tags||[]).includes(t) ? 'bad' : ''}" title="${(L.active_tags||[]).includes(t) ? '지금 프롬프트에 반영 중' : '2회부터 반영'}">${esc(t)} ${n}</span>`).join('')}</div>` : ''),
     {text: L.rejected || 0, cls: L.rejected ? 'plain' : 'ok'}, `<button class="b sm" data-goto="lessons"><i class="ic ic-bulb"></i>학습</button>`);
   const idn = g.identity || {}, st = g.structure || {};
-  const gate = row('자동 게이트 못 잰 비율', `동일인 · 구조${(idn.na_rate || 0) > .3 ? ' · 부분 크롭이 많아 사람 검수 비중이 큽니다' : ''}`,
-    {text: `${idn.na_rate == null ? '—' : pct(idn.na_rate)}<span class="muted" style="font-size:var(--fs-xs);font-weight:500"> · ${st.na_rate == null ? '—' : pct(st.na_rate)}</span>`, cls: 'plain'}, '');
+  const gate = row('자동 게이트 못 잰 비율', `동일인 ${idn.na_rate == null ? '—' : pct(idn.na_rate)} · 구조 ${st.na_rate == null ? '—' : pct(st.na_rate)}${(idn.na_rate || 0) > .3 ? ' · 부분 크롭이 많아 사람 검수 비중이 큽니다' : ''}`,
+    {text: idn.na_rate == null ? '—' : pct(idn.na_rate), cls: 'plain'}, '');
   $('#home-todo').innerHTML = running + pending + lessons + gate;
   $('#home-todo').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
   const rb = $('#todo-review'); if (rb) rb.onclick = async () => { show('jobs'); await openBatch(OV.pending_batch, true); $('#gal-view [data-v=review]')?.click(); };
