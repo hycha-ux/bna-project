@@ -63,6 +63,22 @@ a { color:var(--primary) }
 .side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
 .nav-item { width:100%; padding:var(--sp-2) var(--sp-2); border:0; border-radius:var(--r-sm); background:none; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:var(--sp-2); text-align:left; margin-bottom:4px }
 .nav-item svg { width:18px; height:18px; flex-shrink:0 }
+/* 손그림 아이콘 (2026-09-15 연서님 세트) — 기존 <use href="#i-x"> 를 PNG 마스크로 덮어 색은 currentColor 그대로 */
+svg:has(> use[href="#i-home"]), svg:has(> use[href="#i-plus"]), svg:has(> use[href="#i-list"]), svg:has(> use[href="#i-help"]), svg:has(> use[href="#i-lib"]), svg:has(> use[href="#i-gear"]), svg:has(> use[href="#i-user"]), svg:has(> use[href="#i-out"]), svg:has(> use[href="#i-bell"]), svg:has(> use[href="#i-search"]), svg:has(> use[href="#i-folder"]), svg:has(> use[href="#i-menu"]) { background:currentColor; -webkit-mask-position:center; mask-position:center; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; border-radius:0 }
+svg:has(> use[href="#i-home"]) > use, svg:has(> use[href="#i-plus"]) > use, svg:has(> use[href="#i-list"]) > use, svg:has(> use[href="#i-help"]) > use, svg:has(> use[href="#i-lib"]) > use, svg:has(> use[href="#i-gear"]) > use, svg:has(> use[href="#i-user"]) > use, svg:has(> use[href="#i-out"]) > use, svg:has(> use[href="#i-bell"]) > use, svg:has(> use[href="#i-search"]) > use, svg:has(> use[href="#i-folder"]) > use, svg:has(> use[href="#i-menu"]) > use { visibility:hidden }
+svg:has(> use[href="#i-home"]) { -webkit-mask-image:url(/assets/icons/home.png); mask-image:url(/assets/icons/home.png) }
+svg:has(> use[href="#i-plus"]) { -webkit-mask-image:url(/assets/icons/plus.png); mask-image:url(/assets/icons/plus.png) }
+svg:has(> use[href="#i-list"]) { -webkit-mask-image:url(/assets/icons/list.png); mask-image:url(/assets/icons/list.png) }
+svg:has(> use[href="#i-help"]) { -webkit-mask-image:url(/assets/icons/help.png); mask-image:url(/assets/icons/help.png) }
+svg:has(> use[href="#i-lib"]) { -webkit-mask-image:url(/assets/icons/lib.png); mask-image:url(/assets/icons/lib.png) }
+svg:has(> use[href="#i-gear"]) { -webkit-mask-image:url(/assets/icons/gear.png); mask-image:url(/assets/icons/gear.png) }
+svg:has(> use[href="#i-user"]) { -webkit-mask-image:url(/assets/icons/user.png); mask-image:url(/assets/icons/user.png) }
+svg:has(> use[href="#i-out"]) { -webkit-mask-image:url(/assets/icons/out.png); mask-image:url(/assets/icons/out.png) }
+svg:has(> use[href="#i-bell"]) { -webkit-mask-image:url(/assets/icons/bell.png); mask-image:url(/assets/icons/bell.png) }
+svg:has(> use[href="#i-search"]) { -webkit-mask-image:url(/assets/icons/search.png); mask-image:url(/assets/icons/search.png) }
+svg:has(> use[href="#i-folder"]) { -webkit-mask-image:url(/assets/icons/folder.png); mask-image:url(/assets/icons/folder.png) }
+svg:has(> use[href="#i-menu"]) { -webkit-mask-image:url(/assets/icons/more.png); mask-image:url(/assets/icons/more.png) }
+
 .nav-item:hover { background:var(--ui-surface); color:var(--ui-hi) }
 .nav-item.active { background:var(--pri-alpha); color:var(--primary); font-weight:var(--fw-b) }
 .nav-item .chip { margin-left:auto }
