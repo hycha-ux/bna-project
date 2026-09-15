@@ -153,7 +153,8 @@ tbody tr:last-child td { border-bottom:none }
 .chip { margin:2px 3px 0 0; font-weight:500; white-space:nowrap }
 .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--sp-4) }
 .item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md) }
-.item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { border-color:var(--bad); box-shadow:0 0 0 2px var(--bad-weak) }
+.item.pick { border-color:#191919; box-shadow:0 0 0 2px #191919 } .item.reject { border-style:dashed; border-color:#9B9A97; box-shadow:none } .item.reject img, .item.reject .ph, .item.reject .cmp { opacity:.45; filter:grayscale(1) }
+button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9E9E7 !important; color:#6B6A66 !important; text-decoration:line-through; border-color:#E9E9E7 !important }
 .pick-line { font-size:var(--fs-sm,12px); color:var(--muted,#77808a); margin:6px 0 2px } .pick-line.ok { color:var(--ok,#37352F) } .pick-line.bad { color:var(--bad,#191919) }
 .item .act button[disabled], .rev-act button[disabled], .dd-opt input[disabled] { opacity:.45; cursor:not-allowed }
 .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border); border-radius:var(--r-md) var(--r-md) 0 0; overflow:hidden }
@@ -243,7 +244,7 @@ body.reviewing #detail-body > .card:last-child > .card-head { margin-bottom:8px 
 .rev-main { min-width:0; display:flex; flex-direction:column } .rev-main .pair { border-radius:var(--r-md) 0 0 0 } .rev-main .pair figure { aspect-ratio:4/5 }
 .thumbs { display:flex; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid var(--ui-border) } .th-row { display:flex; gap:8px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none } .th-row::-webkit-scrollbar { display:none }
 .th { flex:0 0 56px; aspect-ratio:4/5; border-radius:8px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--ui-surface); cursor:pointer } .th img { width:100%; height:100%; object-fit:cover; display:block }
-.th.pick { border-color:var(--ok) } .th.reject { border-color:var(--bad) } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
+.th.pick { border-color:#191919; border-width:2px } .th.reject { border-style:dashed; border-color:#9B9A97; opacity:.5 } .th.cur { border-color:var(--primary); box-shadow:0 0 0 2px var(--pri-alpha); opacity:1 }
 .rev-side { border-left:1px solid var(--ui-border); padding:20px; display:flex; flex-direction:column; gap:20px } .rev-h { font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-md); margin-bottom:6px }
 .scores { display:flex; flex-direction:column; gap:6px }
 /* 검수 모드 오른쪽 칸은 사진 높이만큼만 쓴다 — 넘치면 사유 칸이 숨어 스크롤이 생긴다
@@ -646,7 +647,7 @@ document.getElementById('dlg').addEventListener('click', (e) => {
 const setCls = (el, c) => { if (el.className !== c) el.className = c; };   // 같은 값이면 안 건드림 (옵저버 루프 방지)
 const SEED = {
   btn: (el) => {
-    const v = el.classList.contains('primary') ? 'brandSolid' : el.classList.contains('danger') ? 'criticalSolid' : el.classList.contains('on-pick') ? 'brandSolid' : el.classList.contains('on-reject') ? 'criticalSolid' : 'neutralOutline';
+    const v = el.classList.contains('primary') ? 'brandSolid' : el.classList.contains('danger') ? 'criticalSolid' : el.classList.contains('on-pick') ? 'brandSolid' : el.classList.contains('on-reject') ? 'neutralOutline' : 'neutralOutline';
     const size = el.closest('.item, td, .prog') ? 'xsmall' : 'small';
     setCls(el, el.className.replace(/\bseed-action-button\S*/g, '').trim().replace(/\s+/g, ' ') + ` seed-action-button seed-action-button--variant_${v} seed-action-button--size_${size} seed-action-button--size_${size}-layout_withText seed-action-button--layout_withText`);
   },
