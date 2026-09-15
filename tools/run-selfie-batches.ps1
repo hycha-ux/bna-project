@@ -31,6 +31,10 @@ param(
   # 2026-09-11: first series run. run_paid.py gained --series the same day; without it there was
   # no way to launch a series batch from a task at all.
   [string]$Series = '',
+  # selfie | clinical. 2026-09-15: first clinical paid run (nasolabial x6, seed 16) - this runner
+  # hard-coded selfie, so a clinical batch could not be launched from a task at all.
+  [ValidateSet('selfie', 'clinical')]
+  [string]$Mode = 'selfie',
   [string]$KeysFile = 'C:\Users\medib\teemo\keys.env',
   [string]$LogFile = 'C:\Users\medib\teemo\out\run-selfie-batches.log'
 )
@@ -71,7 +75,7 @@ foreach ($t in $Treatments) {
   "===== $t $(Get-Date -Format 'HH:mm:ss') =====" | Out-File -LiteralPath $LogFile -Append -Encoding utf8
   $so = "$LogFile.$t.out"
   $se = "$LogFile.$t.err"
-  $argv = @('tools\run_paid.py', '--treatment', $t, '--mode', 'selfie',
+  $argv = @('tools\run_paid.py', '--treatment', $t, '--mode', $Mode,
             '--count', "$Count", '--seed', "$Seed", '--cost-cap', "$CostCap")
   if ($Series -ne '') { $argv += @('--series', $Series) }
   foreach ($f in $Fix) { $argv += @('--fix', $f) }
