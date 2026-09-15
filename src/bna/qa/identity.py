@@ -73,9 +73,16 @@ def _detect(app, img: Image.Image):
 def big_faces(img: Image.Image, ratio: float = 0.25):
     """사진 안의 '큰 얼굴' 수. 가장 큰 얼굴의 ratio 배 이상인 얼굴만 센다(배경의 작은 얼굴은 무시).
     2 이상이면 before/after 2단 콜라주다 (2026-09-15 07:55 배치 실사고 — Before 가 같은 얼굴 둘을 위아래로 붙여 나왔는데
-    구조·동일인·비전 어느 자도 안 걸렸다). 모델이 없으면 None(못 잼)."""
+    구조·동일인·비전 어느 자도 안 걸렸다). **모델이 없거나 이미지가 없으면 None(못 잼)** — 0 이 아니다.
+
+    ⚠ `img is None` 을 여기서 막는 이유 (2026-09-15 티모): a679f22 가 `check()` 안에 이 계측을 넣은 뒤로,
+      이미지 없이 판정 로직만 보는 호출(selftest 2곳)이 **insightface 가 설치된 기계에서만** 죽었다.
+      selftest 가 그 줄에서 멈춰 뒤쪽 검사가 통째로 안 돌았는데(285줄에서 끊김) 설치 안 된 기계에서는
+      그냥 통과해서, **같은 커밋이 기계마다 다른 초록불**을 줬다. 부르는 쪽마다 대역을 끼우는 건
+      두더지잡기라, 못 잴 입력은 '못 잼'으로 답하는 이 한 곳에서 막는다.
+      (넓은 try/except 는 쓰지 않는다 — 깨진 이미지는 여전히 소리 내고 죽어야 한다.)"""
     app = _model()
-    if app is None:
+    if app is None or img is None:
         return None
     faces = app.get(np.asarray(img.convert("RGB"))[:, :, ::-1])
     return count_big(faces, ratio)

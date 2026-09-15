@@ -30,7 +30,12 @@ BEFORE_PRECHECK_TRIES = 3     # 비포 선검사(콜라주)로 다시 그리는 
 RETRY_REDRAW = {"vision:effect_visible", "structure"}
 # identity_review = 닮음이 '사람 확인 구간'(0.45~0.60). 둘의 *관계*가 흔들린 것이라
 # hard fail 과 같이 Before 부터 다시 그린다(After 만 다시 그리면 같은 Before 를 기준으로 또 흘러간다).
-REDO_BEFORE = {"identity", "identity_review", "vision:identity", "structure"}
+#
+# collage_before = Before 한 장에 큰 얼굴이 둘(2단 콜라주). **Before 자체가 틀린 것**이라 반드시 다시 그린다
+#   (2026-09-15 티모). a679f22 가 `collage` 게이트를 넣었는데 이 두 집합 어디에도 안 넣어서,
+#   콜라주 Before 는 2·3회차가 **같은 Before 를 재사용**해 확정 탈락이었다(3회 × $0.66 = 회차 전액 낭비).
+#   After 쪽 콜라주(`collage`)는 Before 가 멀쩡하니 여기 넣지 않는다 — 넣으면 멀쩡한 Before 를 버린다.
+REDO_BEFORE = {"identity", "identity_review", "vision:identity", "structure", "collage_before"}
 
 
 def _retry_plan(fail_reasons):
@@ -84,6 +89,32 @@ class Batch:
     def _refs(self, variation: dict, when: str = None) -> list:
         """이 컷에 붙일 참조 사진. `when=None` = 시술 전(Before) 컷 (2026-09-11 A1 축 신설)."""
         return refs.pick(self.mode, variation, treatment=self.treatment, when=when)
+
+    def _slots(self, provider) -> asyncio.Semaphore:
+        """이 **공급자**의 동시 이미지 호출 한도 (2026-09-15). 같은 벤더면 Before·After 가 같은 슬롯을 쓴다.
+
+        ⚠ 한도는 'After 몇 장'이 아니라 '그 벤더에 동시에 몇 콜'이다 — After 만 세면 새는 곳이 생긴다.
+          종전(순차) 구조에선 항목 세마포어(=3)가 총량을 지켜 줬다: 한 항목은 언제나 이미지 1콜만
+          들고 있었으니 동시 이미지 콜 ≤ 3. 시점별 After 를 동시에 던지면 그 전제가 깨진다 —
+          한 항목이 After 3콜을 들고 있는 동안 다른 두 항목이 각자 Before 1콜을 들 수 있어
+          **최대 6콜**이 된다(대역 실측에서 4콜이 실제로 관측됐다). 429 는 그렇게 온다.
+          그래서 Before 도 같은 세마포어를 탄다.
+        ⚠ 검수(p_qa)는 여기 넣지 않는다 — 이미지 모델과 채점 모델은 한도 버킷이 다르고, 검수는
+          항목 안에서 순차라 항목 세마포어가 이미 ≤3 으로 묶는다(종전 불변식 그대로).
+
+        자리를 여기 **한 곳**으로 둔 이유 둘.
+          ① run() 과 run_item() 두 곳에서 각각 만들면 한도 숫자가 두 벌이 된다 — 한쪽만 고치면
+             조용히 갈리고, 갈린 쪽이 공급자 한도를 넘겨도 오류가 아니라 429 로 나타난다.
+          ② `hasattr` 로 한 번만 만들면 **이벤트 루프가 바뀔 때** 죽은 세마포어를 물려받는다.
+             run_item 을 직접 부르는 길이 실제로 있고(tools/_probe_series_gate_0911.py), 한 프로세스가
+             asyncio.run 을 두 번 돌면 "Future attached to a different loop" 로 터진다.
+             그래서 루프를 키로 기억하고 바뀌면 다시 만든다."""
+        loop = asyncio.get_running_loop()
+        if getattr(self, "_slot_loop", None) is not loop:
+            self._slot_map, self._slot_loop = {}, loop
+        if provider.name not in self._slot_map:
+            self._slot_map[provider.name] = asyncio.Semaphore(provider.concurrency)
+        return self._slot_map[provider.name]
 
     # ---------- 단일 아이템 ----------
     async def run_item(self, idx: int, variation: dict) -> dict:
@@ -139,8 +170,9 @@ class Batch:
                 # 비포만 다시 그린다. 후 3장 + 검수까지 간 뒤에 떨어지면 세트 통째로 다시라 시간·돈이 4배다.
                 # 최대 BEFORE_PRECHECK_TRIES 장. 모델이 없으면(None) 검사를 건너뛴다(fail-open).
                 for pre in range(1, BEFORE_PRECHECK_TRIES + 1):
-                    before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
-                                                          spec["aspect"], None, style_refs, None)
+                    async with self._slots(self.p_gen):        # Before 도 공급자 한도를 탄다 — _slots 머리말이 근거
+                        before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
+                                                              spec["aspect"], None, style_refs, None)
                     meta["cost"] += self.pricing[self.p_gen.name]["generate"]
                     before = Image.open(io.BytesIO(before_b))
                     nfaces = await loop.run_in_executor(None, identity.big_faces, before)
@@ -155,12 +187,12 @@ class Batch:
             self._p(item_id, "after")
             # 시점별 After 는 **동시에** 그린다 (2026-09-15 초안). 셋 다 기준이 같은 Before 라 서로 기다릴 이유가 없다 —
             # 종전엔 직후→1주→4주를 한 장씩 차례로 그려 세트 1회가 '4장 시간'이었다(0915 07:55 실측 3회차 22분 30초).
-            # 공급자 동시 한도는 self._after_sem 이 배치 전체에서 지킨다(항목 3개 × 시점 3개 = 9콜이 한꺼번에 나가지 않게).
-            if not hasattr(self, "_after_sem"):               # run() 을 거치지 않고 run_item 을 직접 부르는 길(테스트·CLI)도 안전하게
-                self._after_sem = asyncio.Semaphore(self.p_edit.concurrency)
+            # 공급자 동시 한도는 self._slots(공급자) 가 배치 전체에서 지킨다 — Before·After 가 같은 슬롯을 쓰므로
+            # 항목 3개 × 시점 3개 = 9콜이 한꺼번에 나가지 않고, Before 콜이 그 한도를 우회하지도 않는다.
+            after_sem = self._slots(self.p_edit)              # 정본은 _slots 한 곳 (머리말이 근거)
             async def one_after(af):
                 after_prompt = self.p_edit.adapt_prompt(af["after_prompt"], "after")
-                async with self._after_sem:
+                async with after_sem:
                     if spec["generation"] == "edit":
                         mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
                         after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b)
@@ -175,11 +207,24 @@ class Batch:
                         after = Image.open(io.BytesIO(after_b))
                         cost = self.pricing[self.p_edit.name]["generate"]
                 return af["when"], af, after, cost
-            results = await asyncio.gather(*(one_after(af) for af in spec["afters"]))
+            # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
+            #   나머지 시점은 취소도 안 된 채 계속 도는데, 그 장들은 **이미 돈을 쓴 호출**이라 meta["cost"] 에
+            #   한 푼도 안 남는다(대역 실측: 2번째 After 가 터졌는데 유료 호출 3건이 다 나갔고 원장은 0).
+            #   그 원장이 cost_cap 정지 조건의 근거이기도 하다 — 병렬로 바꾼 자리에서 새로 생긴 구멍이다.
+            #   그래서 전부 기다려 **비용을 먼저 적고** 나서 첫 예외를 올린다.
+            results = await asyncio.gather(*(one_after(af) for af in spec["afters"]), return_exceptions=True)
             afters_out = []                                  # [(when, af, after_img)] — 시점 순서는 spec 그대로
-            for when, af, after, cost in results:
-                meta["cost"] += cost
-                afters_out.append((when, af, after))
+            for r in results:
+                if not isinstance(r, BaseException):
+                    when, af, after, cost = r
+                    meta["cost"] += cost
+                    afters_out.append((when, af, after))
+            err = next((r for r in results if isinstance(r, BaseException)), None)
+            if err is not None:
+                meta["after_error"] = repr(err)[:300]         # 원장에 남긴다 — 조용히 넘어가는 갈래를 만들지 않는다
+                # meta 는 예외와 함께 사라지므로 비용은 **progress 에** 적고 올린다(단계는 그대로 둔다).
+                self._p(item_id, "after", cost=meta["cost"], note=meta["after_error"])
+                raise err
 
             # ③ 후처리 (세트 동일 seed)
             self._p(item_id, "postprocess")
@@ -221,7 +266,9 @@ class Batch:
                 if idn["hard_fail"]:
                     r["fail_reasons"].append("identity")
                 if idn.get("collage"):                          # 한 장에 큰 얼굴이 둘 = before/after 콜라주 (2026-09-15)
-                    r["fail_reasons"].append("collage")
+                    # 어느 쪽이 콜라주인지로 사유를 가른다 — Before 면 그 Before 를 버려야 하고(REDO_BEFORE),
+                    # After 면 Before 는 멀쩡하니 After 만 다시 그린다. 안 가르면 둘 중 하나가 늘 틀린다.
+                    r["fail_reasons"].append("collage_before" if ((idn.get("faces") or {}).get("before") or 0) >= 2 else "collage")
                 if not r["fail_reasons"]:
                     vs = await loop.run_in_executor(None, vision.score, before_out, ab, self.mode, self.p_qa, ungate)
                     r["vision"] = vs; meta["cost"] += self.pricing[self.p_qa.name]["qa"]
@@ -288,7 +335,7 @@ class Batch:
         remember(plans, self.batch_id)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
-        self._after_sem = asyncio.Semaphore(self.p_edit.concurrency)    # 시점별 After 동시 생성의 공급자 한도 (2026-09-15)
+        self._slots(self.p_gen); self._slots(self.p_edit)     # 공급자 동시 한도를 이 루프에 맞춰 준비 (정본=_slots)
         self.dir.mkdir(parents=True, exist_ok=True)   # 여기가 첫 쓰기 — 생성자가 아니라 이 자리에서 만든다
         self.progress = Progress(self.dir, len(plans))
         for i in done:

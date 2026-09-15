@@ -115,7 +115,9 @@ ok(identity.check.__doc__ and "n/a" in identity.check.__doc__, "identity.check �
 _T, _R = identity.THRESHOLD, identity.REVIEW_BAND
 for gate, sim, want_hard, want_passed in [("ok", _T + 0.15, False, True), ("review", (_T + _R) / 2, False, None),
                                           ("fail", _R - 0.15, True, False), ("n/a", None, False, None)]:
-    # check() 는 이미지를 받으므로, 판정 로직만 보려고 similarity 를 가로챈다
+    # check() 는 이미지를 받으므로, 판정 로직만 보려고 similarity 를 가로챈다.
+    # (이미지 없이 부르는 이 길은 big_faces 가 None='못 잼'으로 답해 준다 — identity.big_faces 머리말 참조.
+    #  종전엔 여기서 insightface 설치 기계만 죽어 뒤쪽 검사가 통째로 안 돌았다, 2026-09-15 티모)
     orig = identity.similarity
     identity.similarity = lambda a, b, _s=sim: _s
     try:
@@ -1926,6 +1928,42 @@ for _s34 in range(10):
     _v34 = build_prompts("skinbooster_embo", "selfie", _pb26("selfie", 1, seed=_s34, treatment="skinbooster_embo")[0], 34100 + _s34, series=["4w"])["after_variation"]
     _first34.append(_rf34._rank(_rf34.candidates("selfie", "skinbooster_embo", "4w"), _v34, "4w", "skinbooster_embo")[0]["file"].split("/")[-1])
 ok(all(f.startswith("skinbooster_embo_") for f in _first34), f"엠보 4주 컷의 1순위 참조는 엠보 전용 사진이다 — {sorted(set(_first34))}")
+
+
+# ㉟ 시점별 After 동시 생성 · 비포 콜라주 선검사 · 429 재시도 (2026-09-15 티모 검토)
+#    값이 아니라 *구조*를 지키는 회귀다 — 이 셋은 한 벌이라 하나만 되돌리면 조용히 갈린다.
+#    벽시계·동시 재고 실측은 tools/_probe_after_parallel_0915.py(대역, $0)·_sim_after_parallel_0915.py.
+_BAT35 = open("src/bna/batch.py", encoding="utf-8").read()
+_OAI35 = open("src/bna/providers/openai_img.py", encoding="utf-8").read()
+from bna.batch import REDO_BEFORE as _RB35, RETRY_REDRAW as _RR35, _retry_plan as _rp35
+#    ① 콜라주 Before 는 반드시 다시 그린다 — 안 그러면 2·3회차가 같은 콜라주로 확정 탈락한다
+ok("collage_before" in _RB35 and _rp35(["collage_before"])[1] is True,
+   "콜라주 Before 탈락은 Before 를 다시 그린다(REDO_BEFORE)")
+ok(_rp35(["collage"])[1] is False and "collage" not in _RB35,
+   "After 쪽 콜라주는 멀쩡한 Before 를 버리지 않는다")
+ok(_rp35(["collage_before@4w"])[1] is True, "시리즈 접미(@시점)가 붙어도 같은 판정")
+#    ② 사유를 어느 쪽 얼굴 수로 가르는지 — 이 줄이 사라지면 ①이 영원히 안 발동한다
+ok('"collage_before" if ((idn.get("faces") or {}).get("before") or 0) >= 2' in _BAT35,
+   "콜라주 사유를 Before/After 얼굴 수로 가른다")
+#    ③ gather 는 예외를 삼키지 말고 **비용을 먼저 적고** 올린다(기본값이면 이미 쓴 돈이 원장에서 사라진다)
+ok("return_exceptions=True" in _BAT35 and 'meta["after_error"]' in _BAT35,
+   "시점별 After gather 는 return_exceptions=True 로 받아 비용을 적고 예외를 올린다")
+#    ④ After 동시 한도는 한 곳에서만 만든다(두 벌이면 한쪽만 고쳐져 공급자 한도를 넘긴다)
+ok(_BAT35.count("asyncio.Semaphore(") == 2 and "def _slots" in _BAT35,
+   "이미지 동시 한도 세마포어는 _slots 한 곳에서만 만든다(run() 의 항목 세마포어 1개 + 여기 1개)")
+#    ④-2 Before 도 같은 슬롯을 타야 한다 — After 만 세면 한도를 우회해 429 가 온다(대역 실측 4콜 > 한도 3)
+ok("self._slots(self.p_gen)" in _BAT35 and "self._slots(self.p_edit)" in _BAT35,
+   "Before·After 가 같은 공급자 슬롯을 쓴다(Before 가 한도를 우회하지 않는다)")
+ok("get_running_loop" in _BAT35, "세마포어는 이벤트 루프가 바뀌면 다시 만든다(hasattr 한 번 금지)")
+#    ⑤ 선검사 상한이 있다(없으면 콜라주가 계속 나오는 프롬프트에서 회차가 안 끝난다)
+from bna.batch import BEFORE_PRECHECK_TRIES as _BP35
+ok(isinstance(_BP35, int) and 1 <= _BP35 <= 5, f"비포 선검사 상한이 상수로 있다 — {_BP35}")
+#    ⑥ 429·5xx 재시도는 병렬화의 짝 방어다 — 둘 중 하나만 끄지 마라
+ok("RETRY_WAITS_S" in _OAI35 and "retry-after" in _OAI35 and "== 429" in _OAI35,
+   "OpenAI 호출은 429·5xx 를 기다렸다 다시 보낸다(병렬 버스트의 짝 방어)")
+#    ⑦ 못 잴 입력은 '못 잼'으로 답한다 — 이 줄이 깨지면 selftest 가 중간에서 죽어 뒤쪽이 통째로 안 돈다
+#       (초록불이 기계마다 갈리는 유형이라, 세는 줄 자체를 여기 둔다)
+ok(_idn34.big_faces(None) is None, "big_faces(None) 은 0 이 아니라 None(못 잼)")
 
 
 print()

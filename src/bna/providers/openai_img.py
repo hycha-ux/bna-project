@@ -22,6 +22,9 @@ from ..spec import load, ROOT
 
 API = "https://api.openai.com/v1"
 TIMEOUT = 300
+# 429(한도)·5xx(일시 장애) 재시도 대기(초). 이미지 1콜이 실측 ~108초라 이 정도 기다림은 회차를 못 망친다 —
+# 기다리지 않는 쪽이 비싸다(그 예외 하나가 배치 전체를 죽인다). 소진되면 종전대로 오류를 올린다.
+RETRY_WAITS_S = (10, 30, 60)
 
 # 실청구 대조용 토큰 원장. config/pricing.yaml 의 호출당 단가는 **추정치**라
 # ($0.19/장, 2026-09-08 미실측) 그 위에 선 "통과 1장 $2.68" 도 추정 위에 서 있다.
@@ -80,6 +83,36 @@ class OpenAIProvider(Provider):
             raise RuntimeError(f"이미지 없음: {json.dumps(payload)[:400]}")
         return base64.b64decode(data[0]["b64_json"])
 
+    def _send(self, path, files, data, body):
+        """한 번 보낸다. **429(한도)·5xx(일시 장애)는 여기서 기다렸다 다시 보낸다** (2026-09-15 티모).
+
+        왜 필요한가: 종전엔 429 든 500 이든 `_post` 가 그 자리에서 RuntimeError 를 올렸고, 그 예외는
+        run_item → run() 의 gather 로 올라가 **배치 전체를 죽였다**. 재시도가 아예 없었다.
+        시점별 After 를 동시에 던지기 시작하면(2026-09-15 초안) 같은 순간에 같은 엔드포인트로 3콜이
+        착지하므로, 한도에 스치는 확률이 0 이 아니다 — 완화(병렬)와 방어(재시도)는 한 벌이다.
+        ⚠ 둘 중 하나만 끄지 마라.
+
+        ⚠ 재시도 전에 파일 스트림을 되감아야 한다. requests 가 첫 요청에서 BytesIO 를 끝까지 읽어
+          두 번째엔 **0바이트**가 나가고, API 는 그걸 'invalid_image_file' 로 답한다
+          (2026-09-08 실측). 그래서 되감기는 이 함수 맨 앞에 있다 — 재시도 경로가 둘이라 한 곳에 둔다.
+        """
+        for i in range(len(RETRY_WAITS_S) + 1):
+            for _, (_, stream, _) in (files or []):
+                stream.seek(0)
+            r = (requests.post(f"{API}{path}", headers=self._headers(False), files=files, data=data, timeout=TIMEOUT)
+                 if files is not None else
+                 requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=TIMEOUT))
+            if not (r.status_code == 429 or r.status_code >= 500) or i >= len(RETRY_WAITS_S):
+                return r
+            # 서버가 알려 준 대기 시간이 있으면 그걸 따른다(우리 값보다 길 수 있다).
+            try:
+                wait = max(float(r.headers.get("retry-after") or 0), RETRY_WAITS_S[i])
+            except ValueError:
+                wait = RETRY_WAITS_S[i]
+            print(f"[openai] {path} HTTP {r.status_code} → {wait:.0f}초 뒤 재시도 ({i + 1}/{len(RETRY_WAITS_S)})", flush=True)
+            time.sleep(min(wait, 120))
+        return r
+
     def _post(self, path, *, files=None, data=None, body=None, retry_without=(), extra=None):
         """400 이 '모르는 파라미터' 때문이면 그 파라미터를 빼고 재시도한다(fail-open).
         API 가 옵션을 늘리거나 줄여도 파이프라인 전체가 멈추지는 않게.
@@ -94,11 +127,7 @@ class OpenAIProvider(Provider):
                     data = {k: v for k, v in data.items() if k != drop}
                 if body is not None:
                     body = {k: v for k, v in body.items() if k != drop}
-            for _, (_, stream, _) in (files or []):
-                stream.seek(0)
-            r = (requests.post(f"{API}{path}", headers=self._headers(False), files=files, data=data, timeout=TIMEOUT)
-                 if files is not None else
-                 requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=TIMEOUT))
+            r = self._send(path, files, data, body)
             if r.status_code < 400:
                 j = r.json()
                 self._log_usage(path, j, {
