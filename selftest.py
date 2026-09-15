@@ -532,6 +532,35 @@ with _tf15.TemporaryDirectory() as _td15:
            "끝내 거부되면 예외 없이 이번 기록만 건너뛴다(유료 배치를 죽이지 않는다)")
     finally:
         _pg15.os.replace = _real_replace15
+# 씨앗 은행 인물 참조 (2026-09-15 저녁 티모, 0909 ②안) — 통과한 파생 얼굴만 · 성별 같고 나이 ±1칸 · 꺼져 있으면 아무것도 안 붙는다
+from bna import seedbank as _sb15
+_rows15 = [{"file": "a.jpg", "gender": "female", "age_bucket": "30s", "passed": True},
+           {"file": "b.jpg", "gender": "male", "age_bucket": "late_20s", "passed": True}]
+_vf15 = {"gender": {"key": "female"}, "age": {"key": "40s"}}
+ok([r["file"] for r in _sb15.candidates(_vf15, _rows15)] == ["a.jpg"], "여성 40대엔 여성 30대 얼굴만(±1칸) — 남성 얼굴은 안 붙는다")
+ok(_sb15.candidates({"gender": {"key": "female"}, "age": {"key": "60s"}}, _rows15) == [],
+   "나이가 2칸 넘게 벌어지면 붙이지 않는다(종전 글 조건 Before 로)")
+ok(_sb15.age_bucket(31) == "30s" and _sb15.age_bucket(24) == "early_20s" and _sb15.age_bucket(64) == "60s",
+   "추정 나이 → variations.yaml 나이대 키")
+_real_cfg15 = _sb15._cfg
+with _tf15.TemporaryDirectory() as _sbd15:
+    for _n15 in ("a.jpg", "c.jpg"):
+        (_P15(_sbd15) / _n15).write_bytes(b"x")
+    (_P15(_sbd15) / "attrs.json").write_text(_json.dumps({"pool": [
+        {"file": "a.jpg", "gender": "female", "age_bucket": "30s", "passed": True},
+        {"file": "c.jpg", "gender": "female", "age_bucket": "30s", "passed": False},
+        {"file": "gone.jpg", "gender": "female", "age_bucket": "30s", "passed": True}]}), encoding="utf-8")
+    try:
+        _sb15._cfg = lambda: {"clinical_before_person_ref": True, "pool_dir": _sbd15, "attrs": str(_P15(_sbd15) / "attrs.json")}
+        ok([r["file"] for r in _sb15.pool()] == ["a.jpg"], "통과 못 한 파생(원본을 닮음)·파일 없는 항목은 후보에서 빠진다")
+        ok(_sb15.pick(_vf15, "k")[1] == "a.jpg", "켜져 있고 맞는 얼굴이 있으면 그 얼굴을 고른다")
+        _sb15._cfg = lambda: {"clinical_before_person_ref": False, "pool_dir": _sbd15, "attrs": str(_P15(_sbd15) / "attrs.json")}
+        ok(_sb15.pick(_vf15, "k") == (None, None), "스위치가 꺼져 있으면 얼굴을 안 고른다")
+    finally:
+        _sb15._cfg = _real_cfg15
+_bsrc15 = open("src/bna/batch.py", encoding="utf-8").read()
+ok("seedbank.pick(" in _bsrc15 and 'spec["aspect"], person_b, style_refs, None' in _bsrc15,
+   "배치가 고른 얼굴을 Before 호출의 인물 참조 칸으로 실제로 넘긴다(고르기만 하고 안 넘기면 죽은 배선)")
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm
 import numpy as _np

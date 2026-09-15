@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
-from . import postprocess, refs, providers
+from . import postprocess, refs, providers, seedbank
 from .qa import structure, identity, dedup, vision, landmarks
 from .stats import summarize, write_manifest
 from .version import prompt_version
@@ -169,10 +169,18 @@ class Batch:
                 # 비포 선검사 (2026-09-15 초안): 한 장에 큰 얼굴이 둘(before/after 콜라주)이면 후 3장을 그리기 전에
                 # 비포만 다시 그린다. 후 3장 + 검수까지 간 뒤에 떨어지면 세트 통째로 다시라 시간·돈이 4배다.
                 # 최대 BEFORE_PRECHECK_TRIES 장. 모델이 없으면(None) 검사를 건너뛴다(fail-open).
+                # 씨앗 은행 인물 참조 (2026-09-15 저녁, 0909 ②안) — 임상만, 스위치·고르는 규칙 정본은 seedbank.py 한 곳.
+                #   맞는 얼굴이 없으면 (None, None) → 종전과 똑같은 글 조건 Before. 조건을 다시 뽑으면(redraw) 여기서 다시 고른다.
+                person_b, person_f = (seedbank.pick(spec["variation"], f"{item_id}|{spec['variation']['gender']['key']}|{spec['variation']['age']['key']}")
+                                      if self.mode == "clinical" else (None, None))
+                meta["person_ref"] = person_f                  # 익명 파생 파일명만 — 어떤 가공 인물을 썼는지 사후 대조용
+                before_prompt = self.p_gen.adapt_prompt(spec["before_prompt"], "before")
+                if person_b:
+                    before_prompt = seedbank.prompt_line() + " " + before_prompt
                 for pre in range(1, BEFORE_PRECHECK_TRIES + 1):
                     async with self._slots(self.p_gen):        # Before 도 공급자 한도를 탄다 — _slots 머리말이 근거
-                        before_b = await loop.run_in_executor(None, self.p_gen.generate, self.p_gen.adapt_prompt(spec["before_prompt"], "before"),
-                                                              spec["aspect"], None, style_refs, None)
+                        before_b = await loop.run_in_executor(None, self.p_gen.generate, before_prompt,
+                                                              spec["aspect"], person_b, style_refs, None)
                     meta["cost"] += self.pricing[self.p_gen.name]["generate"]
                     before = Image.open(io.BytesIO(before_b))
                     nfaces = await loop.run_in_executor(None, identity.big_faces, before)

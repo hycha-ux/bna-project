@@ -1,0 +1,8 @@
+# 씨앗 은행 → 임상 Before 인물 참조 (2026-09-15 저녁 연서님 요청, 0909 문서 ②안). 코드 정본 = src/bna/seedbank.py 머리말.
+# ⚠ 켜면 파생 얼굴(가공 인물)이 OpenAI 로 올라간다 — 회수 불가. 씨앗(실제 환자 정제본)은 이 배선이 쓰지 않는다.
+# ⚠ 이 파일은 config/ 아래라 프롬프트 버전 해시에 들어간다 — 켜고 끄면 번호가 바뀌는 게 맞다(생성 결과가 달라진다).
+clinical_before_person_ref: false                 # 첫 켜기는 그날 돌던 임상 배치가 끝난 뒤 (도는 배치에 섞이지 않게)
+pool_dir: C:/Users/medib/teemo-raw/derived        # 리포 밖 — 얼굴 사진은 리포에 두지 않는다
+measure: C:/Users/medib/teemo/out/seed-measure.json
+prep: C:/Users/medib/teemo/out/seed-prep.json
+attrs: C:/Users/medib/teemo/out/seed-attrs.json   # tools/seedbank_attrs.py 가 쓴다 (숫자·익명 파일명만)
