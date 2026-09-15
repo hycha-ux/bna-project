@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>B&amp;A 이미지</title>
+<title>After by MediBuilder</title>
+<link rel="icon" type="image/png" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/favicon-180.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/vendor/seed/base.min.css">
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
@@ -35,7 +37,9 @@ a { color:var(--primary) }
 .app.collapsed { grid-template-columns:var(--rail-w) 1fr }
 .side { background:var(--ui-panel); border-right:1px solid var(--ui-border); padding:var(--sp-3) var(--sp-2); position:sticky; top:0; height:100vh; display:flex; flex-direction:column; overflow:hidden }
 .side .brand-row { display:flex; align-items:center; gap:var(--sp-2); padding:4px var(--sp-1) var(--sp-4) }
-.side .logo { width:36px; height:36px; border-radius:9px; flex-shrink:0; display:block; object-fit:contain }
+.side .logo { height:42px; width:auto; flex-shrink:0; display:block; margin:0 0 0 4px }
+.side .logo-mini { display:none; width:32px; height:32px; border-radius:8px }
+.collapsed .side .logo { display:none } .collapsed .side .logo-mini { display:block }
 .side .toggle { margin-left:auto; width:28px; height:28px; border:0; background:none; border-radius:8px; color:var(--ui-lo); cursor:pointer } .side .toggle:hover { background:var(--ui-surface); color:var(--ui-hi) }
 .side .toggle svg { width:16px; height:16px }
 .collapsed .side { padding:14px 10px } .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .foot, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:none }
@@ -424,7 +428,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
 
 <div class="app" id="app">
   <nav class="side">
-    <div class="brand-row"><img class="logo" src="/assets/medibuilder-logo.png" alt="메디빌더"><div class="brand">B&amp;A 이미지</div><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
+    <div class="brand-row"><img class="logo" src="/assets/after-logo.svg" alt="After by MediBuilder"><img class="logo-mini" src="/assets/favicon-180.png" alt="After"><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">홈</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
     <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret" data-fold="jobs" title="시술 목록 접기/펼치기"><svg><use href="#i-chev"/></svg></span></button>
