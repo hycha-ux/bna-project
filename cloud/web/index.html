@@ -189,8 +189,8 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 /* 단축키는 글자가 아니라 '키' 로 보이게 (2026-09-09 성연서님 'M·Esc 가 무슨 뜻인지 모르겠다') */
 .cmp-bar .b kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
 /* 목록으로 = 사진 카드 위 오른쪽 상단에 얹는다 (툴바 안에 있으면 무슨 버튼인지 안 보인다) */
-.cmp .cmp-back { position:absolute; top:8px; right:8px; z-index:5; background:rgba(255,255,255,.92); box-shadow:0 1px 4px rgba(0,0,0,.25) }
-.cmp .cmp-back kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
+.cmp-bar .cmp-back { margin-right:4px }
+.cmp-bar .cmp-back kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
 .cmp figure { position:relative; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--ui-surface,#F4F5F7); color:var(--ui-lo); font-size:12px }
 .cmp[data-mode=side] { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
 .cmp[data-mode=side].series { grid-template-columns:repeat(var(--n,2),minmax(0,1fr)) }   /* 경과 시리즈: 전 1장 + 시점마다 후 1장을 한 줄에 */
@@ -1367,6 +1367,7 @@ function renderReview() {
   el.innerHTML = `<div class="rev">
     <div class="rev-main">
       <div class="cmp-bar">
+        <button class="b sm cmp-back" id="cmp-back" title="사진 목록으로 돌아갑니다 · 단축키 Esc 또는 브라우저 뒤로 가기">← 목록으로 <kbd>Esc</kbd></button>
         <div class="pill" id="cmp-mode">${Object.entries(CMP_KO).map(([k, l]) => `<button data-m="${k}" class="${k === CMP_MODE ? 'on' : ''}">${l}</button>`).join('')}</div>
         ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="시술한 자리(${esc(region)})를 파란색으로 칠해 보여줍니다 — 이 자리 밖이 바뀌었으면 탈락 · 단축키 M">시술 부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 시술 부위 정보가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">시술 부위 정보 없음</span>`}
         <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
@@ -1375,7 +1376,7 @@ function renderReview() {
         <div class="sp"></div>
         <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
       </div>
-      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''} ${spread ? 'series' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%;--n:${1 + whens.length}">${view}<button class="b sm cmp-back" id="cmp-back" title="사진 목록으로 돌아갑니다 · 단축키 Esc 또는 브라우저 뒤로 가기">← 목록으로 <kbd>Esc</kbd></button></div>
+      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''} ${spread ? 'series' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%;--n:${1 + whens.length}">${view}</div>
       <div class="thumbs"><div class="rev-prog"><i style="width:${(GAL_ITEMS.filter(x => x.review?.pick).length / Math.max(1, GAL_ITEMS.length) * 100).toFixed(0)}%"></i></div><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 채택 ${GAL_ITEMS.filter(x => x.review?.pick === 'pick').length} · 제외 ${GAL_ITEMS.filter(x => x.review?.pick === 'reject').length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
     </div>
     <div class="rev-side">
