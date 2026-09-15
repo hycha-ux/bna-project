@@ -496,6 +496,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     #   가중이 없으면 종전과 똑같이 균등이다.
     _sw = treatment_rules(treatment, mode).get("severity_weights") or {}
     _pool = [x for x in sevs for _ in range(max(1, round(4 * float(_sw.get(x, 1.0)))))]
+    if mode == "clinical" and any(x != "mild" for x in _pool):
+        # 임상 기록 사진은 문제가 또렷한 사람이 찍는다 — mild 는 effect_by_severity 상 subtle 로만 이어져
+        #   전후가 구별되지 않는 세트가 된다 (2026-09-15 첫 실회차 "너무 안 바뀐다"). 셀카는 종전 그대로.
+        _pool = [x for x in _pool if x != "mild"]
     sev = rng.choice(_pool)
     min_age = t.get("severity_min_age", {})
     if min_age:                                   # 인물 나이가 강도 최소 나이보다 어리면 한 단계씩 낮춤
@@ -542,6 +546,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     eff = load("effects.yaml")
     # Before 강도 ↔ After 효과 짝 (mild+눈에 띄게 = 과장, marked+은은 = 효과 없음). 나이 하향 **뒤**의 sev 로 뽑는다
     levels = (t.get("effect_by_severity") or {}).get(sev) or t.get("effect_levels", ["moderate"])
+    if mode == "clinical":
+        # 임상은 비교했을 때 변화가 보여야 한다 (위 mild 제외와 한 짝). 나이 하향으로 mild 가 된 20대는
+        #   effect_by_severity 가 subtle 뿐이라, 그때는 시술 전체 effect_levels 에서 subtle 을 뺀 것으로 간다 —
+        #   '연한 팔자가 또렷이 옅어짐'은 기록 사진에서 과장이 아니라 정상 범위다 (2026-09-15 저녁 결정).
+        levels = [l for l in levels if l != "subtle"] or [l for l in t.get("effect_levels", ["moderate"]) if l != "subtle"] or list(levels)
     level = rng.choice(list(levels))
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
     when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))

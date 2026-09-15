@@ -43,3 +43,22 @@ PYTHONPATH=src python3 -m bna.cli --treatment nasolabial --mode clinical --count
 PYTHONPATH=src python3 -m bna.cli --treatment nasolabial --mode clinical --count 1 --seed 7 --dry-run   # 병원 벽 리그
 PYTHONPATH=src python3 selftest.py
 ```
+
+---
+
+## 5. 첫 실회차 후 수정 (2026-09-15 저녁) — "겹쳐놔도 전과 후가 똑같다"
+
+연서님이 첫 실회차(seed 16, 6세트)를 보고: 전·후를 겹쳐도 같고, 시술 부위도 거의 안 바뀜.
+
+원인 3개, 전부 After 편집 경로에 있었다:
+
+| 원인 | 왜 똑같아지나 | 수정 |
+|---|---|---|
+| **마스크를 모델에 보냄** | 마스크 편집은 마스크 밖을 픽셀 그대로 잠근다. 합성을 꺼도 모델 단계에서 이미 복사본. 부위 안 변화도 경계에 눌려 약해짐 | 임상은 마스크를 모델에 안 보냄 (`batch.py`). 검수용으로만 씀. 셀카는 그대로 |
+| **"Edit this exact photo" + "Do not re-render anything else"** | 살짝 다름 문단과 정면충돌. 편집 지시가 이기면 픽셀 보존 | 문안을 "1번 사진을 기준으로 **두 번째 사진**을 만든다"로. 살짝 다름을 맨 앞에, "픽셀 단위로 겹치면 틀린 결과"로 못박음 |
+| **mild Before + subtle 효과** | 팔자는 `effect_by_severity` 상 mild→subtle 뿐. "비교해야 겨우 보이는" 변화가 설계상 절반 | 임상은 mild Before(30대 이상)·subtle 효과를 안 뽑음. 20대는 나이 하향으로 mild 가 되지만 효과는 moderate |
+
+⚠ 티모가 오늘 만든 RGBA 마스크 전송은 임상에선 이제 안 쓰인다(셀카 편집에는 유효).
+⚠ 마스크를 빼면 편집이 팔자 밖으로 번질 위험이 커진다 → 동일인 게이트 + 구조 게이트 4%가 잡아야 한다. 2회차에서 확인.
+
+재현: `PYTHONPATH=src python3 -m bna.cli --treatment nasolabial --mode clinical --count 1 --seed 16 --dry-run`

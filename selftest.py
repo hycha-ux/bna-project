@@ -457,10 +457,19 @@ ok(all(p["expression"]["key"] == "neutral_closed" for p in _pb2("clinical", 10, 
 # 임상 프롬프트 v1 (2026-09-15): 리그 3벌 세트 고정 · After 는 '같은 부스에서 따로 찍은 사진' + 살짝 다름 요구 · 셀카 문장은 임상에 안 붙는다
 _pc15 = build_prompts("nasolabial", "clinical", sample_variation("clinical", 5, treatment="nasolabial"), 5, series=["immediate", "2w"])
 ok(_pc15["variation"]["rig"]["key"] in ("grey_studio", "blue_backdrop", "clinic_wall"), "임상 리그는 3벌 중 하나를 세트마다 뽑는다")
-ok("tired" not in _pc15["before_prompt"] and "greasy" not in _pc15["before_prompt"], "임상 Before 에 셀카용 '피곤·번들거림' 문장이 안 붙는다")
+ok("plainer and more tired" not in _pc15["before_prompt"] and "greasy T-zone" not in _pc15["before_prompt"], "임상 Before 에 셀카용 '피곤·번들거림' 문장이 안 붙는다")
 ok("Keep identical" not in _pc15["after_prompt"] and "separate exposure" in _pc15["after_prompt"], "임상 After 는 복사본이 아니라 따로 찍은 사진(살짝 다름 요구)")
 ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날(옷 다름)")
 ok("tired" in build_prompts("nasolabial", "selfie", sample_variation("selfie", 5, treatment="nasolabial"), 5)["before_prompt"], "셀카 Before 의 피부 읽힘 문장은 그대로")
+# 첫 실회차 "겹쳐놔도 똑같다" 수정 (2026-09-15 저녁): 임상은 mild·subtle 안 뽑고, After 문안은 편집 지시가 아니다
+_c15 = [build_prompts("nasolabial", "clinical", sample_variation("clinical", s, treatment="nasolabial"), s) for s in range(20)]
+ok(all(p["variation"]["effect_level"]["key"] != "subtle" for p in _c15), "임상은 subtle 효과를 뽑지 않는다 — 전후가 비교에서 보여야 한다")
+ok(all(p["variation"]["before_severity"]["key"] != "mild" for p in _c15 if p["variation"]["age"]["key"] not in ("late_teens", "early_20s", "late_20s")),
+   "임상 30대 이상은 mild Before 를 뽑지 않는다 (20대는 나이 하향으로 mild 가 될 수 있고, 그때도 효과는 subtle 이 아니다)")
+ok("Edit this exact photo" not in _c15[0]["after_prompt"] and "must not be a copy" in _c15[0]["after_prompt"],
+   "임상 After 는 '이 사진을 편집'이 아니라 '두 번째 사진' + 복사본 금지")
+ok(any(build_prompts("nasolabial", "selfie", sample_variation("selfie", s, treatment="nasolabial"), s)["variation"]["before_severity"]["key"] == "mild" for s in range(30)),
+   "셀카는 종전대로 mild 도 뽑힌다")
 # 참조는 세트가 뽑은 리그와 같은 것만 (2026-09-15 티모 선결 B)
 from bna import refs as _refs15
 _v15 = build_prompts("lifting", "clinical", sample_variation("clinical", 5, treatment="lifting"), 5)["variation"]

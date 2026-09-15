@@ -194,7 +194,11 @@ class Batch:
                 after_prompt = self.p_edit.adapt_prompt(af["after_prompt"], "after")
                 async with after_sem:
                     if spec["generation"] == "edit":
-                        mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
+                        # ⚠ 임상은 마스크를 모델에 **안 보낸다** (2026-09-15 저녁, 첫 실회차 연서님: "겹쳐놔도 전과 후가 똑같다").
+                        #   마스크 편집은 마스크 밖을 픽셀 그대로 잠그므로 '같은 부스에서 따로 찍은 사진'(머리 위치·잔머리·
+                        #   미세 주름 살짝 다름)이 원천적으로 불가능하고, 부위 안 변화도 마스크 경계에 눌려 약해진다.
+                        #   마스크는 검수(구조·부위 안 변화 측정)에만 쓴다. 셀카는 종전 그대로.
+                        mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask and self.mode != "clinical") else None
                         # 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안 "같은 리그 After 시점만 + 얼굴은 1번 사진").
                         #   고르기는 refs.pick 한 곳 — 리그·시점 필터가 거기 있다(여기서 다시 거르지 마라).
                         #   맞는 참조가 없으면 빈 목록 → 종전과 똑같은 1장 편집이고 문구도 안 붙는다.

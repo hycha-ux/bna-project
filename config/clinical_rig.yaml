@@ -54,12 +54,14 @@ retake:
     is arranged in roughly the same way but not identically.
 
 # 두 시점 공통: '살짝 다름'을 일부러 요구한다 (연서님 0915: "미세한 주름·잔머리가 살짝씩 다른 게 특징으로 자리해야")
+# ⚠ 2026-09-15 저녁 첫 실회차: "겹쳐놔도 똑같다" → 문장을 **요구**에서 **필수**로 올렸다. 재현하면 실패라고 못박는다.
 micro_drift: >
-  Because it is a separate exposure, small things differ naturally: the head sits a few millimetres
-  and a degree or two differently, the shoulders are not in exactly the same place, the loose strands
-  and the hairline edge fall differently, the neutral expression is not held in exactly the same way
-  so the fine lines around the eyes and mouth read slightly differently, and the exposure is a touch
-  brighter or darker. These small differences are expected and must not be copied from the reference.
+  This must not be a copy of the reference: it is a separate exposure and it must look like one.
+  The head sits a few millimetres and a degree or two differently, the shoulders are not in exactly
+  the same place, the loose strands and the hairline edge fall differently, the neutral expression is
+  held slightly differently so the fine lines around the eyes and mouth read a little differently,
+  and the exposure is a touch brighter or darker. If the two photos overlap pixel for pixel outside
+  the treated area, the result is wrong.
 
 # 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안). 켜면 같은 리그·같은 시점의 After 참조를 Before 뒤에
 #   붙이고 "얼굴은 1번 사진" 문구(prompts/edit_style_refs.md)를 더한다. 맞는 참조가 없으면 종전 1장 편집.
