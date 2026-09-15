@@ -133,6 +133,7 @@ table { border-collapse:collapse; width:100%; font-size:var(--fs-md); font-varia
 td { letter-spacing:-.01em }
 th, td { text-align:left; padding:var(--sp-2) var(--sp-2); border-bottom:1px solid var(--ui-border); vertical-align:middle }
 th { color:var(--ui-lo); font-weight:var(--fw-m); font-size:var(--fs-sm); white-space:nowrap }
+tr.vfold { display:none } .vfold-btn { margin-top:10px }
 tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.sel { background:var(--pri-alpha) }
 tbody tr:last-child td { border-bottom:none }
 .tbl-wrap { overflow:auto } .tbl-wrap td { white-space:nowrap }
@@ -1625,6 +1626,7 @@ function renderExports() {
 
 // ---------- 학습 (제외 사유 → 프롬프트) ----------
 let LES = null, PLAN_ITEMS = [];
+const LES_VER_SHOW = 5; let LES_VER_ALL = false;   // 버전 표 접기: 최근 5개만, 현재 버전은 항상 보임
 // 버전 해시 → 별명(v1·v2…). 학습 탭을 아직 안 열었으면 해시 그대로 (별명은 서버가 순번을 매긴다).
 const vname = v => { const r = (LES?.by_version || []).find(x => x.version === v); return r?.alias ? `${r.alias} (${v.slice(0, 7)})` : v; };
 // 검수 0건일 때만 뜨는 "첫 검수 안내". 아래 네 카드가 전부 비어 있으면 고리가 어디서 시작해 어디로 가는지
@@ -1782,7 +1784,7 @@ async function loadLessons() {
   const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
   $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
   $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th title="사진 1장을 얻기까지 평균 몇 번 그렸나. 프롬프트를 느슨하게 풀면 여기가 먼저 오릅니다">장당 시도</th><th title="동일인 검사를 기계가 못 잰 비율(전체 장수 기준). 통과율·제외율 어디에도 안 잡혀서 전용 칸이 필요합니다 — 목표 10% 아래">못 잼</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
-    vs.map(r => `<tr class="${r.version === L.current_version ? 'sel' : ''}"><td>${r.real
+    vs.map((r, i) => `<tr class="${r.version === L.current_version ? 'sel' : ''}${i >= LES_VER_SHOW && !LES_VER_ALL && r.version !== L.current_version ? ' vfold' : ''}"><td>${r.real
         ? `<div class="vcell"><b>${esc(r.alias || 'v?')}${r.title ? ` <span class="vtitle">${esc(r.title)}</span>` : ''}</b>${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}<span class="vhash" title="설정 파일 전체의 지문 — 빌디·티모와 이야기할 땐 이걸로">${esc(r.version)}</span>${
             r.note ? `<span class="vnote-txt" ${L.no_promote ? '' : `data-vedit="${esc(r.version)}" title="누르면 고칠 수 있습니다"`}>${esc(r.note)}</span>`
             : (L.no_promote ? '' : `<a class="vnote-add" data-vedit="${esc(r.version)}">+ 메모</a>`)}</div>`
@@ -1796,9 +1798,13 @@ async function loadLessons() {
       `<td>${r.id_na_rate == null ? '—' : `<span class="chip ${r.id_na_rate >= .3 ? 'bad' : r.id_na_rate > .1 ? 'warn' : 'ok'}" title="${r.n < 24 ? `표본 ${r.n}장 — 사진 한 장이 ${(100 / r.n).toFixed(1)}%p라 아직 판정 못 합니다. 24장(3회차)부터 읽어 주세요` : '동일인 검사를 기계가 못 잰 비율(전체 장수 기준)'}">${pct(r.id_na_rate)}</span>${r.n < 24 ? `<span class="muted" style="font-size:var(--fs-xs)"> 표본 부족</span>` : ''}`}</td>` +
       `<td>${r.reviewed}</td>` +
       `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
-      `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>
+      `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>${vs.length > LES_VER_SHOW ? `<button class="b sm vfold-btn" id="les-ver-more">${LES_VER_ALL ? '접기' : `이전 버전 ${vs.length - LES_VER_SHOW}개 더 보기`}</button>` : ''}
     <div class="muted" style="margin-top:8px;font-size:var(--fs-xs)">v1·v2… 는 처음 쓴 순서, 뒤 제목은 "어떤 시술을 만들었고 이전 버전에서 무엇이 바뀌었나"를 자동으로 적은 것입니다. 번호끼리 제외율을 비교하면 고친 효과가 보입니다. 메모는 사람이 덧붙이는 한 줄입니다.</div>`
     : `<div class="les-empty">아직 생성된 배치가 없습니다.</div>`;
+  // 버전 표는 최근 5개만 펼치고 나머지는 접는다 — 버전이 쌓일수록 표가 화면을 다 먹었다 (2026-09-15 성연서님 "너무 많이 쌓인다 한 5개?")
+  const more = $('#les-ver-more'); if (more) more.onclick = () => { LES_VER_ALL = !LES_VER_ALL;
+    $('#les-version').querySelectorAll('tbody tr').forEach((tr, i) => tr.classList.toggle('vfold', !LES_VER_ALL && i >= LES_VER_SHOW && !tr.classList.contains('sel')));
+    more.textContent = LES_VER_ALL ? '접기' : `이전 버전 ${vs.length - LES_VER_SHOW}개 더 보기`; };
   // 메모는 글자로만 보이고, 누르면 그 자리가 입력칸으로 바뀐다 — 줄마다 빈 입력칸을 두면 표가 폼처럼 보인다 (2026-09-10 성연서님 "중복으로 보인다")
   $('#les-version').querySelectorAll('[data-vedit]').forEach(el => el.onclick = () => {
     const v = el.dataset.vedit, cur = el.classList.contains('vnote-txt') ? el.textContent : '';
