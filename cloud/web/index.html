@@ -367,7 +367,7 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .pill { display:inline-flex; gap:4px } .pill button { border:1px solid var(--ui-border); background:#fff; font-size:var(--fs-xs); font-weight:var(--fw-m); padding:5px 12px; border-radius:999px; color:var(--ui-md); cursor:pointer } .pill button.on { background:var(--primary); border-color:var(--primary); color:#fff }
 /* 차트 (SVG) */
 .chart { display:block; max-width:100%; overflow:visible } 
-.chart .bar { fill:var(--primary); opacity:.85 } .chart .bar:hover { opacity:1 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:var(--ok); stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:var(--ok); stroke-width:2 }
+.chart .bar { fill:#D3D1CB } .chart .bar:hover { fill:#C4C1BA } .chart .bar.picked { fill:#191919 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:#6B6A66; stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:#6B6A66; stroke-width:2 }
 .chart .st0{fill:var(--ok)} .chart .st1{fill:var(--bad)} .chart .st2{fill:#6B6A66} .chart .st3{fill:#9B9A97} .chart .st4{fill:#C4C1BA} .chart .st5{fill:#E0DED9} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:12px }
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
 .chart .line2 { fill:none; stroke:#9B9A97; stroke-width:2.5 }
@@ -861,11 +861,11 @@ function chartCombo() {
   const rgrid = [0, .5, 1].map(f => `<text class="axis" x="${W-R+6}" y="${yr(f)+4}">${f*100}%</text>`).join('');
   const bars = keys.map((k, i) => `<rect class="bar" x="${x(i)+bw*.2}" y="${y(d[k].total)}" width="${bw*.6}" height="${y(0)-y(d[k].total)}" rx="3"><title>${k.slice(5)} · 생성 ${d[k].total} · AI 통과 ${d[k].passed} · 채택 ${d[k].picked || 0}</title></rect>`).join('');
   const withData = keys.map((k, i) => [k, i]).filter(([k]) => d[k].total);
-  const picked = keys.map((k, i) => d[k].picked ? `<rect class="bar" style="fill:var(--ok)" x="${x(i)+bw*.2}" y="${y(d[k].picked)}" width="${bw*.6}" height="${y(0)-y(d[k].picked)}" rx="3"><title>${k.slice(5)} · 채택 ${d[k].picked}</title></rect>` : '').join('');
+  const picked = keys.map((k, i) => d[k].picked ? `<rect class="bar picked" x="${x(i)+bw*.2}" y="${y(d[k].picked)}" width="${bw*.6}" height="${y(0)-y(d[k].picked)}" rx="3"><title>${k.slice(5)} · 채택 ${d[k].picked}</title></rect>` : '').join('');
   const line = withData.map(([k, i], j) => `${j ? 'L' : 'M'}${(x(i)+bw/2).toFixed(1)},${yr(d[k].passed/d[k].total).toFixed(1)}`).join(' ');
   const pts = withData.map(([k, i]) => `<circle class="ptok" cx="${x(i)+bw/2}" cy="${yr(d[k].passed/d[k].total)}" r="3.5"><title>${k.slice(5)} AI 통과율 ${pct(d[k].passed/d[k].total)}</title></circle>`).join('');
   const step = Math.ceil(n / 8); const labels = keys.map((k, i) => (i % step === 0 || (i === n-1 && (n-1) % step > step/2)) ? `<text class="axis" x="${x(i)+bw/2}" y="${H-8}" text-anchor="middle">${k.slice(5).replace('-', '/')}</text>` : '').join('');
-  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + picked + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:var(--primary)"></i>생성 장수</span><span><i style="background:var(--ok)"></i>채택 장수</span><span><i style="background:var(--ok);border-radius:50%"></i>AI 통과율</span></div>`;
+  $('#chart-combo').innerHTML = svgOpen(W, H) + grid + rgrid + bars + picked + `<path class="lineok" d="${line}"/>` + pts + labels + '</svg>' + `<div class="legend" style="margin-top:var(--sp-2)"><span><i style="background:#D3D1CB"></i>생성 장수</span><span><i style="background:#191919"></i>채택 장수</span><span><i style="background:#fff;border:2px solid #6B6A66;border-radius:50%"></i>AI 통과율</span></div>`;
 }
 const FAIL_GROUP = [['passed','통과','st0'],['identity','동일 인물 아님','st1'],['structure','얼굴 정렬','st2'],['vision:ai_look','AI 티','st3'],['vision:hair','머리카락','st4'],['vision:hands_absent','손이 나옴','st5'],['identity_review','동일 인물 의심','st1'],['vision:skin_texture','피부 질감','st5'],['vision:drift','부위 외 변화','st5'],['vision:effect_visible','효과 미확인','st5'],['duplicate','중복','st5']];
 function chartAxis() {
