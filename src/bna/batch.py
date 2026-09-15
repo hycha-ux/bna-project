@@ -205,7 +205,7 @@ class Batch:
                         if edit_refs:
                             after_prompt = after_prompt + " " + " ".join(
                                 (ROOT / "config" / "prompts" / "edit_style_refs.md").read_text(encoding="utf-8").split())
-                        after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs)
+                        after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs, spec["aspect"])
                         after = Image.open(io.BytesIO(after_b))
                         # A4: 마스크 밖 원본 복원 — **셀카만**. 임상은 끈다 (2026-09-15 연서님 결정, 티모 프로브
                         #   docs/clinical-prompt-v1-review-0915-teemo.md): 임상 v1 은 '같은 부스에서 따로 찍은 사진'이라

@@ -227,7 +227,7 @@ class OpenAIProvider(Provider):
         return self._first_image(self._post("/images/generations", body=body))
 
     # --- 편집 (마스크) ---
-    def edit(self, image, prompt, mask=None, style_refs=None) -> bytes:
+    def edit(self, image, prompt, mask=None, style_refs=None, aspect=None) -> bytes:
         # 1번 = 고칠 사진(Before), 스타일 참조는 **그 뒤에** 붙인다 (2026-09-15 티모, 임상 After 참조).
         # ⚠ 마스크는 입력 이미지 중 **첫 장에만** 걸린다(공식 가이드, 최대 10장). 순서를 바꾸면 마스크가
         #   참조 사진에 걸리고 Before 가 참조 취급된다 — 오류 없이 엉뚱한 사진을 고친다.
@@ -235,8 +235,12 @@ class OpenAIProvider(Provider):
         files = [self._part("image[]", b, i) for i, b in enumerate(imgs)]
         if mask:
             files.append(self._part("mask", alpha_mask(mask)))
+        # ⚠ size 를 Before 와 같은 비율로 못박는다 (2026-09-15 티모, 임상 첫 실회차 전 점검). 안 보내면 API 기본값
+        #   (auto)이 크기를 고르는데, 그 3건 실측 출력 토큰이 1024x1280 평균보다 8% 많아 크기가 달랐을 수 있다.
+        #   구조 검사는 전·후 **픽셀 좌표**로 눈 위치를 비교하므로 크기가 다르면 사람이 안 움직여도 정렬 오차가 난다.
         data = {"model": self.cfg["image_model"], "prompt": prompt,
-                "quality": self.cfg["quality"], "n": "1", **self._fidelity()}
+                "quality": self.cfg["quality"], "n": "1", **self._fidelity(),
+                **({"size": self._size(aspect)} if aspect else {})}
         return self._first_image(self._post("/images/edits", files=files, data=data,
                                             retry_without=("input_fidelity",)))
 

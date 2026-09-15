@@ -12,7 +12,7 @@ class HiggsfieldProvider(Provider):
     def generate(self, prompt, aspect, ref=None, style_refs=None, seed=None):
         raise NotImplementedError("TODO")
 
-    def edit(self, image, prompt, mask=None, style_refs=None):
+    def edit(self, image, prompt, mask=None, style_refs=None, aspect=None):
         raise NotImplementedError("Higgsfield 편집 미지원 가정 → 다른 프로바이더로 라우팅")
 
     def qa(self, before, after, items, mode):

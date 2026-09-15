@@ -484,8 +484,9 @@ _key15 = _os15.environ.get("OPENAI_API_KEY")
 _os15.environ["OPENAI_API_KEY"] = _key15 or "selftest-dummy"          # 실호출 없음 — _post 를 가로챈다
 try:
     _p15, _seen15 = _oi15.OpenAIProvider(), {}
-    _p15._post = lambda path, files=None, data=None, body=None, retry_without=(), extra=None: (_seen15.update(files=files), {"data": [{"b64_json": ""}]})[1]
-    _p15.edit(b"BEFORE", "p", _mb15.getvalue(), [b"REF1", b"REF2"])
+    _p15._post = lambda path, files=None, data=None, body=None, retry_without=(), extra=None: (_seen15.update(files=files, data=data), {"data": [{"b64_json": ""}]})[1]
+    _p15.edit(b"BEFORE", "p", _mb15.getvalue(), [b"REF1", b"REF2"], "4:5")
+    ok(_seen15["data"].get("size") == "1024x1280", f"편집도 Before 와 같은 크기로 요청한다(크기가 다르면 정렬 검사가 가짜 오차) — {_seen15['data'].get('size')}")
     ok([f[1].getvalue() for n, f in _seen15["files"] if n == "image[]"] == [b"BEFORE", b"REF1", b"REF2"],
        "편집 입력 첫 장 = Before, 참조는 그 뒤(마스크는 첫 장에만 걸린다)")
     ok(_Im15.open(_io15.BytesIO(next(f[1].getvalue() for n, f in _seen15["files"] if n == "mask"))).mode == "RGBA",
@@ -493,7 +494,7 @@ try:
 finally:
     if _key15 is None:
         _os15.environ.pop("OPENAI_API_KEY", None)
-ok("self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs" in open("src/bna/batch.py", encoding="utf-8").read(),
+ok("self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs, spec[\"aspect\"]" in open("src/bna/batch.py", encoding="utf-8").read(),
    "임상 After 편집 호출이 스타일 참조를 실제로 넘긴다(provider 만 받고 배치가 안 넘기면 죽은 기능)")
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm

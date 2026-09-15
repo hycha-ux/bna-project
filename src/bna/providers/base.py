@@ -27,8 +27,9 @@ class Provider:
     def generate(self, prompt: str, aspect: str, ref: bytes = None, style_refs: list = None, seed=None) -> bytes:
         raise NotImplementedError
 
-    def edit(self, image: bytes, prompt: str, mask: bytes = None, style_refs: list = None) -> bytes:
-        """style_refs = 첫 장(image) 뒤에 붙는 스타일 참조(임상 After, 2026-09-15). 미지원 벤더는 무시해도 된다."""
+    def edit(self, image: bytes, prompt: str, mask: bytes = None, style_refs: list = None, aspect: str = None) -> bytes:
+        """style_refs = 첫 장(image) 뒤에 붙는 스타일 참조(임상 After, 2026-09-15). 미지원 벤더는 무시해도 된다.
+        aspect = Before 와 같은 비율 — 출력 크기가 Before 와 달라지면 구조 검사의 픽셀 좌표 비교가 깨진다."""
         raise NotImplementedError
 
     def qa(self, before: bytes, after: bytes, items: dict, mode: str) -> dict:
