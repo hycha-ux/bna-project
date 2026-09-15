@@ -287,6 +287,7 @@ tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.s
 #detail-summary { display:none !important }   /* 2026-09-15 연서님: 작업 요약 카드(진행·지표) 제거 — 사진 상세·학습 탭에 있는 정보 */
 tbody tr:last-child td { border-bottom:none }
 .tbl-wrap { overflow:auto } .tbl-wrap td { white-space:nowrap }
+.subtabs { display:flex; gap:2px; border-bottom:1px solid var(--ui-border); margin-top:var(--sp-2) } .subtabs button { background:none; border:0; border-bottom:2px solid transparent; margin-bottom:-1px; padding:8px 14px; font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer } .subtabs button:hover { color:var(--ui-hi) } .subtabs button.on { color:var(--ui-hi); border-bottom-color:var(--ui-hi) }
 .list { display:flex; flex-direction:column } .list-row { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) 0; border-bottom:1px solid var(--ui-border); cursor:pointer } .list-row:last-child { border-bottom:0 }
 .list-row .n { width:18px; color:var(--ui-lo); font-size:12px } .list-row .thumb { width:40px; height:40px; border-radius:8px; background:var(--ui-surface); object-fit:cover; flex-shrink:0 }
 .list-row .t { flex:1; min-width:0 } .list-row .t b { display:block; font-size:var(--fs-md); font-weight:var(--fw-m); white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .list-row .t span { font-size:var(--fs-xs); color:var(--ui-lo) }
@@ -730,6 +731,8 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-jobs">
       <div class="card">
         <div class="card-head"><h3>작업 목록</h3><span class="muted" id="jobs-tr-label"></span><select id="jobs-kind" class="hsel" hidden><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><div class="pill" id="jobs-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="running">실행 중</button><button data-f="pending">검수 대기</button><button data-f="reviewed">검수 끝</button></div><button class="btn sm" id="btn-refresh"><i class="ic ic-refresh"></i>새로고침</button></div>
+        <!-- 유형 서브탭(셀카형·임상형은 고정 2개라 탭) — 목록이 쌓여도 한 유형씩 본다 (2026-09-15 성연서님) -->
+        <div class="subtabs" id="jobs-mode"><button data-m="">전체</button><button data-m="selfie">셀카형</button><button data-m="clinical">임상형</button></div>
         <div class="tr-chips" id="sub-jobs"></div>
         <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
@@ -1386,6 +1389,8 @@ function clearDetail() {
   $$('#batches tbody tr').forEach(tr => tr.classList.remove('sel'));
 }
 let JOBS_ST = ''; try { JOBS_ST = localStorage.getItem('bna.jobsfilter') || ''; } catch {}
+let JOBS_MODE = ''; try { JOBS_MODE = localStorage.getItem('bna.jobsmode') || ''; } catch {}   // 유형 서브탭 ''·selfie·clinical, 선택은 기억
+$$('#jobs-mode button').forEach(b => b.onclick = () => { JOBS_MODE = b.dataset.m; try { localStorage.setItem('bna.jobsmode', JOBS_MODE); } catch {} loadBatches(); });
 const JOBS_MATCH = { '': () => true, running: b => b.status === 'running', pending: b => (b.stats?.pending || 0) > 0, reviewed: b => b.status !== 'running' && (b.stats?.total || 0) > 0 && !(b.stats?.pending || 0) };
 $$('#jobs-filter button').forEach(b => b.onclick = () => { JOBS_ST = b.dataset.f; try { localStorage.setItem('bna.jobsfilter', JOBS_ST); } catch {} loadBatches(); });
 // 실패한 배치(오류·생성 0장)는 목록에서 뺀다 — 생성 자체가 안 된 거라 볼 게 없다(대기열에 실패로 남는다). 개발용 기록 보기를 켜면 보인다 (2026-09-14 성연서님)
@@ -1393,8 +1398,9 @@ const isFailed = b => b.kind !== 'dry_run' && (b.status === 'error' || (b.status
 async function loadBatches() {
   BATCHES = await api('/api/batches'); const kind = DEV_MODE ? $('#jobs-kind').value : 'run'; const q = SEARCH.toLowerCase();
   $$('#jobs-filter button').forEach(b => b.classList.toggle('on', b.dataset.f === JOBS_ST));
+  $$('#jobs-mode button').forEach(b => b.classList.toggle('on', b.dataset.m === JOBS_MODE));
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
-  const trOk = b => (!JOBS_TR || b.treatment === JOBS_TR) && (DEV_MODE || !isFailed(b)) && (JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b);
+  const trOk = b => (!JOBS_TR || b.treatment === JOBS_TR) && (!JOBS_MODE || b.mode === JOBS_MODE) && (DEV_MODE || !isFailed(b)) && (JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b);
   // 사이드바 시술마다 실제 배치 수 (검수 대기가 있으면 그 수를 먼저)
   Object.keys(CFG.treatments || {}).forEach(k => { const mine = BATCHES.filter(b => b.kind === 'run' && b.treatment === k); const pend = mine.reduce((a, b) => a + (b.stats?.pending || 0), 0);
     const el = $('#sub-n-' + k); if (el) { el.textContent = pend ? `${pend}` : (mine.length ? `${mine.length}` : ''); el.className = 'n' + (pend ? ' pend' : ''); el.title = pend ? `검수 대기 ${pend}장` : (mine.length ? `실제 생성 ${mine.length}건` : ''); } });
