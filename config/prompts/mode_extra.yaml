@@ -1,6 +1,18 @@
 clinical: >
-  Clinical before-and-after documentation style: subject centered, neutral expression,
-  hair pulled back, no makeup, shoulders square to camera.
+  Clinical before-and-after documentation photo taken at a clinic, the kind kept in a patient file:
+  subject centered, face filling most of the frame, neutral expression, shoulders square to the camera,
+  no posing. It is a plain record photo, not a portrait.
+
+# Before 본문의 피부 읽힘 문장 — 모드별 (2026-09-15). 종전엔 before.md 에 셀카용 한 줄이 박혀 있어
+#   임상 컷에도 "plainer and more tired", "greasy T-zone shine" 이 붙었다 — 리그의 '중립·무보정'과 정면충돌.
+#   셀카 문장은 글자 하나 안 바꿨다(종전 before.md 6행 그대로).
+skin_read:
+  selfie: >
+    Skin reads matte and unflattering in this shot: no dewy sheen, no healthy glow, no highlighter-like radiance - any oiliness must look like dull, greasy T-zone shine, never like glass skin. The skin here looks plainer and more tired than it would on a good day.
+  clinical: >
+    Under this flat clinic light the skin reads plain and honest: no dewy sheen, no healthy glow,
+    no highlighter-like radiance, and any oiliness is a dull shine on the forehead and nose. Fine lines,
+    uneven tone and small marks show as they are.
 selfie: >
   This is a photo a patient took of themselves to send to a clinic and show a skin concern,
   the kind of single snapshot a patient sends a clinic in a chat. It was not taken to look good: no posing

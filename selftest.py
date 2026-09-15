@@ -454,6 +454,13 @@ ok(all(p["framing"]["key"] in ("nose_to_neck", "neck_only") for p in _neck), "�
 ok(all(p["context"]["key"] != "necklace" for p in _neck), "목주름 필러에 목걸이가 없어야 한다 (플래너)")
 ok(all(p["age"]["key"] not in ("late_teens", "early_20s") for p in _pb2("selfie", 40, 3, treatment="nasolabial")), "팔자주름에 10대·20대 초가 없어야 한다 (플래너)")
 ok(all(p["expression"]["key"] == "neutral_closed" for p in _pb2("clinical", 10, 3, treatment="nasolabial")), "임상은 무표정 고정")
+# 임상 프롬프트 v1 (2026-09-15): 리그 3벌 세트 고정 · After 는 '같은 부스에서 따로 찍은 사진' + 살짝 다름 요구 · 셀카 문장은 임상에 안 붙는다
+_pc15 = build_prompts("nasolabial", "clinical", sample_variation("clinical", 5, treatment="nasolabial"), 5, series=["immediate", "2w"])
+ok(_pc15["variation"]["rig"]["key"] in ("grey_studio", "blue_backdrop", "clinic_wall"), "임상 리그는 3벌 중 하나를 세트마다 뽑는다")
+ok("tired" not in _pc15["before_prompt"] and "greasy" not in _pc15["before_prompt"], "임상 Before 에 셀카용 '피곤·번들거림' 문장이 안 붙는다")
+ok("Keep identical" not in _pc15["after_prompt"] and "separate exposure" in _pc15["after_prompt"], "임상 After 는 복사본이 아니라 따로 찍은 사진(살짝 다름 요구)")
+ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날(옷 다름)")
+ok("tired" in build_prompts("nasolabial", "selfie", sample_variation("selfie", 5, treatment="nasolabial"), 5)["before_prompt"], "셀카 Before 의 피부 읽힘 문장은 그대로")
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm
 import numpy as _np

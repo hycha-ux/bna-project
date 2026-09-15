@@ -1041,7 +1041,7 @@ $('#btn-plan').onclick = async () => {
   } catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 // 프롬프트 칸 이름 (비전공자 워딩). 조각(k)은 spec.segments 가 낸다.
-const PK_KO = {person:'인물', before_condition:'시술 전 상태', scene:'촬영 장면', expression:'표정', mode_extra:'셀카 규정', avoid:'금지문(학습)', identity:'동일인 잠금',
+const PK_KO = {person:'인물', before_condition:'시술 전 상태', scene:'촬영 장면', expression:'표정', mode_extra:'모드 규정', skin_read:'피부 읽힘', retake:'다시 찍기 규정', drift:'살짝 다름(임상)', avoid:'금지문(학습)', identity:'동일인 잠금',
   day:'촬영 시점', skin:'피부 상태', change:'시술 변화', effect:'효과 강도', must_not:'안 건드릴 곳', finish:'피부 마감(광)', timeline:'경과', template:'고정 문장'};
 let PK_COLOR = true; try { PK_COLOR = localStorage.getItem('bna.pk') !== '0'; } catch {}
 function promptHtml(parts, raw) {

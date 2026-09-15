@@ -407,7 +407,8 @@ weights:
   gender: {female: 3, male: 1}                                   # 여성 75%
   age: {late_teens: 1, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
   # 셀카: 정면은 드물게, 부분 크롭 우세 (레퍼런스 후기 사진 비율 반영)
-  angle: {front: 1, selfie_high: 1, selfie_low: 1, selfie_3q: 3, selfie_side: 2, chin_up: 2, tilted: 2}
+  # 임상 각도 three_quarter·side 는 임상 전용 값이라 셀카에 영향 없다. 레퍼런스 3장 전부 정면 → 정면 ≈ 50% (2026-09-15)
+  angle: {front: 1, selfie_high: 1, selfie_low: 1, selfie_3q: 3, selfie_side: 2, chin_up: 2, tilted: 2, three_quarter: 0.5, side: 0.5}
   # 프레이밍 (2026-09-11 성연서님 B안 "눈 안 보이는 컷은 계속 쓰되 비중을 줄인다", 목표 못 잼 10% 미만).
   # 가중은 취향이 아니라 **프레이밍별 실측 못 잼률**에서 나왔다 —
   #   한쪽 볼 7/7(100%) · 목만 3/4(75%) · 아래 얼굴 4/8(50%) · 코~목 1/8(12.5%) · 이마 잘림 0/11 · 얼굴 전체 0/8.

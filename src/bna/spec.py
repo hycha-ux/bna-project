@@ -475,13 +475,20 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         ek = "neutral_closed"; variation = {**variation, "expression": {"key": ek, "text": load("variations.yaml")["expression"][ek]}}
     tr = treatment_rules(treatment, mode)
     fields = {k: v["text"] for k, v in variation.items()}
+    rig = None
     if mode == "clinical":
+        # 리그 3벌 중 하나를 세트마다 뽑는다 (2026-09-15 v1). 세트 안(전·후)에서는 고정 — After 는 같은 rig 의
+        #   retake 문장을 쓴다. 종전 `rig_default` 하나는 실제 병원 사진보다 너무 깨끗했다(clinical_rig.yaml 머리말).
         rig = load("clinical_rig.yaml")
-        r = rig["rig_default"]
+        rig_key = rng.choice(sorted(rig["rigs"]))
+        r = rig["rigs"][rig_key]
+        variation = {**variation, "rig": {"key": rig_key, "text": r.get("label", rig_key)}}
         angle = rig["angles"].get({"front": "front", "three_quarter": "oblique_45", "side": "side"}.get(variation["angle"]["key"], "front"))
         scene = ". ".join([angle, r["camera"], r["distance"], r["lighting"], r["background"], r["subject_setup"], r["processing"]]) + "."
     else:
         scene = selfie_scene(fields)
+    # Before 의 피부 읽힘 한 줄은 모드별 (셀카 = 종전 before.md 문장 그대로, 임상 = 병원 조명용)
+    skin_read = " ".join(str(load("prompts/mode_extra.yaml")["skin_read"][mode]).split())
     sevs = t.get("before_severity", ["moderate"])
     # Before 강도는 **가중 추첨**이다 (2026-09-14). 종전 균등 추첨은 피부 3종에서 절반이 mild 로 떨어졌고,
     #   mild 는 effect_by_severity 상 subtle 하고만 짝지어진다 — 즉 "거의 없는 문제 → 은은한 개선"이라
@@ -499,7 +506,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     cond = t.get("before_condition", {})
     cond = cond.get(sev, "") if isinstance(cond, dict) else cond
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
-        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, avoid=avoid_before, **fields)
+        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, skin_read=skin_read, avoid=avoid_before, **fields)
     def identity_for(ref_framing, target_framing=None):
         """동일인 잠금 문장.
         - 항목 목록은 Before·After 중 **좁은 쪽** 파일에서 온다 (레퍼런스에 없는 걸 요구하면 모델이 지어낸다).
@@ -606,9 +613,16 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         check_avoid_vs_facts(treatment, w, [s for _k, s in fact_spans(w)], lines_w)
         if mode == "clinical":
             a_var = variation
-            txt = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(identity_lock=identity, after_change=chg, avoid=avoid_after)
-            spans = [("identity", identity), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
-                     ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after)]
+            # 다시 찍기 규정 (2026-09-15 v1): 같은 부스·같은 배경·같은 조명이되 **따로 찍은 사진**.
+            #   직후 = 같은 날(옷·머리 같음), 1주 이후 = 다른 날(옷 다름, 머리 대략 같음). 두 시점 공통으로
+            #   micro_drift 가 머리 위치 몇 mm·잔머리·미세 주름·노출의 '살짝 다름'을 **요구**한다 — 종전
+            #   "Keep identical framing, head position, expression, headband, gown…" 은 복사본을 시켰다.
+            retake = " ".join(str(rig["retake"]["same_day" if w == "immediate" else "different_day"]).split())
+            micro = " ".join(str(rig["micro_drift"]).split())
+            txt = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(
+                identity_lock=identity, retake=retake, micro_drift=micro, after_change=chg, avoid=avoid_after)
+            spans = [("identity", identity), ("retake", retake), ("drift", micro), ("change", t["after_change"]),
+                     ("effect", eff["effect_levels"][lv]), ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after)]
         else:
             a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment, series=bool(pts))
             a = {k: val["text"] for k, val in a_var.items()}
@@ -674,7 +688,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         afters.append(build_after(w, chg, lv, lowered))
     last = afters[-1]
     before_parts = segments(before, [("person", person_description(variation)), ("before_condition", cond), ("scene", scene),
-                                     ("mode_extra", mode_extra), ("avoid", avoid_before)])
+                                     ("mode_extra", mode_extra), ("skin_read", skin_read), ("avoid", avoid_before)])
     # ⚠ `avoid_applied` 는 "그 사진에 실제로 붙어 있던 금지문"이고 메모 초안(notedraft)이 정본으로 읽는다.
     #   after_prompt·after_parts 가 마지막 컷이므로 여기도 **마지막 컷에 붙은 목록**이어야 짝이 맞는다 —
     #   전체 목록을 적으면 직후 컷에서 빠진 규칙을 "이미 붙여 봤다"고 보고해 같은 규칙을 또 승격시킨다.

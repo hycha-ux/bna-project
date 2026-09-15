@@ -1,20 +1,69 @@
-# 임상(후기)용 촬영 리그 고정 프로파일.
-# 임상 모드는 이 세트를 변주 없이 그대로 사용. Before/After 양쪽에 동일 삽입.
+# 임상(후기)용 촬영 리그 프로파일 (2026-09-15 v1, 연서님 레퍼런스 3장 기준).
+#
+# 임상 사진의 특징 = **같은 자리, 같은 배경, 같은 조명**으로 다시 찍은 사진. 그런데 픽셀 복사가 아니다 —
+#   머리 위치가 몇 mm·몇 도 다르고, 잔머리·헤어라인이 다르고, 미세 주름과 표정의 결이 살짝 다르고,
+#   다른 날이면 옷이 다르다. 이 '살짝 다름'이 진짜 임상 사진의 표식이라 프롬프트가 **일부러** 요구한다.
+#
+# 종전(0907) 리그 하나 = "미러리스 85mm + 소프트박스 2개 + 회색 무지 배경"은 실제 병원 사진보다 훨씬 깨끗했다.
+#   레퍼런스: ① 회색 배경·스튜디오 플래시 ② 파란 배경·병원 플래시·색온도 어긋남 ③ 병원 벽·천장등·로고 헤어밴드·컴팩트 카메라.
+#   → 리그 3벌. 세트마다 하나를 뽑고 **세트 안(전·후)에서는 고정**. spec.build_prompts 가 고른다.
 
-rig_default:
-  camera: "clinic documentation camera, mirrorless with 85mm lens, f/5.6, everything in focus, no bokeh"
-  distance: "camera 1.2m from face, fixed tripod height at eye level"
-  lighting: "two softbox lights at 45 degrees left and right, even shadowless illumination, neutral 5500K, no ring light reflection"
-  background: "plain matte light grey backdrop, no texture, no objects"
-  subject_setup: "hair pulled back with white headband, no makeup, no earrings, white clinic gown, neutral expression, mouth closed, eyes to camera"
-  processing: "straight out of camera, neutral color, no retouching, moderate sharpness"
+rigs:
+  grey_studio:
+    label: "회색 무지 배경 · 스튜디오 조명"
+    camera: "clinic documentation camera, DSLR with 85mm lens, f/8, whole face in focus, no bokeh"
+    distance: "camera about 1.2m from the face, on a tripod at eye level"
+    lighting: "two softbox lights left and right, even illumination with soft shadows under the chin and beside the nose, neutral white balance"
+    background: "plain light grey paper backdrop, slightly uneven in tone"
+    subject_setup: "hair kept off the face, no or very light everyday makeup, no earrings, a plain top or a clinic gown, neutral expression, mouth closed, eyes to camera"
+    processing: "straight out of camera, neutral color, no retouching, moderate sharpness"
+  blue_backdrop:
+    label: "파란 배경 · 병원 플래시"
+    camera: "clinic photo booth camera, DSLR with on-camera flash, everything sharp, no bokeh"
+    distance: "camera about 1.5m from the face, at eye level"
+    lighting: "on-camera flash mixed with room light, flat frontal light, a faint flash shadow on the backdrop behind the head, white balance slightly off"
+    background: "plain blue photo backdrop with a little fabric texture"
+    subject_setup: "hair pushed behind the ears or tied back, no or very light everyday makeup, ordinary clothes, neutral expression, mouth closed, eyes to camera"
+    processing: "straight out of camera, slightly cool color, no retouching, moderate sharpness"
+  clinic_wall:
+    label: "병원 벽 · 천장등 · 헤어밴드"
+    camera: "compact camera or phone used at the clinic front desk, everything in focus, ordinary consumer image quality"
+    distance: "camera about 1m from the face, held at eye level"
+    lighting: "clinic ceiling fluorescent light from above, slightly flat, slightly yellow-green cast, mild shadows under the brows and chin"
+    background: "plain painted clinic wall in an off-white or pale color, a corner or door frame edge may show"
+    subject_setup: "hair held back with a plain fabric headband, no or very light everyday makeup, ordinary clothes, neutral expression, mouth closed, eyes to camera"
+    processing: "straight out of camera, no retouching, ordinary consumer sharpness and a little noise"
 
 angles:
   front: "exact frontal view, head level, Frankfort plane horizontal"
   oblique_45: "45 degree oblique view to the left, head level"
   side: "true side profile facing left, head level"
 
+# 다시 찍기(After) 규정 — 시점에 따라 고른다. same_day = 직후, different_day = 1주 이후.
+# ⚠ '똑같이'가 아니라 '같은 부스에서 따로 찍은 사진'이다. 아래 micro_drift 가 그 살짝 다름을 요구한다.
+retake:
+  same_day: >
+    This is a second photo taken in the same clinic photo spot later the same day: the same backdrop,
+    the same lamps in the same positions, the same camera at the same distance and height, the same
+    framing, the same clothes and the same hair arrangement. It is a separate exposure, not a copy of
+    the reference.
+  different_day: >
+    This is a second photo taken in the same clinic photo spot on a later visit: the same backdrop,
+    the same lamps in the same positions, the same camera at the same distance and height, the same
+    framing. Because it is a different day, the top the person is wearing is different, and the hair
+    is arranged in roughly the same way but not identically.
+
+# 두 시점 공통: '살짝 다름'을 일부러 요구한다 (연서님 0915: "미세한 주름·잔머리가 살짝씩 다른 게 특징으로 자리해야")
+micro_drift: >
+  Because it is a separate exposure, small things differ naturally: the head sits a few millimetres
+  and a degree or two differently, the shoulders are not in exactly the same place, the loose strands
+  and the hairline edge fall differently, the neutral expression is not held in exactly the same way
+  so the fine lines around the eyes and mouth read slightly differently, and the exposure is a touch
+  brighter or darker. These small differences are expected and must not be copied from the reference.
+
 # 구조 검사 임계값 (임상 모드에만 적용)
+# ⚠ micro_drift 가 '몇 mm·1~2도'를 요구하므로 정렬 임계는 그대로 2% 로 둔다 — 그 이상 움직이면 다른 구도다.
+#   luma_diff 는 종전 0.05 그대로. 리그 3벌·노출 차 허용으로 탈락이 늘면 0.08 까지가 후보 (티모 확인 항목).
 tolerance:
   landmark_align_pct: 2.0     # 눈 중심 거리 대비 위치 오차 %
   face_ratio_diff: 0.03       # 얼굴 세로 비율 차이
