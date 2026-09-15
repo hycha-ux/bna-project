@@ -192,6 +192,7 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .cmp[data-mode=side].series { grid-template-columns:repeat(var(--n,2),minmax(0,1fr)) }   /* 경과 시리즈: 전 1장 + 시점마다 후 1장을 한 줄에 */
 .cmp figure.when-cur { outline:2px solid #191919; outline-offset:-2px }
 .qreasons { display:flex; flex-wrap:wrap; gap:6px } .qreasons .rs { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid var(--ui-border); border-radius:6px; background:#fff; font-size:var(--fs-sm); cursor:pointer; color:var(--ui-hi) } .qreasons .rs.on { background:#191919; color:#fff; border-color:#191919 } .qreasons .rs.on kbd { background:#fff; color:#191919 }
+.rev-done { display:grid; justify-items:center; gap:6px; text-align:center; padding:48px 24px; background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-md) } .rev-done img { width:140px; margin-bottom:8px } .rev-done b { font-size:var(--fs-xl) } .rev-done .row { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; justify-content:center }
 .rev-prog { height:4px; background:var(--ui-surface); border-radius:2px; overflow:hidden; margin:6px 0 2px } .rev-prog i { display:block; height:100%; background:#191919 }
 .cmp[data-mode=wipe], .cmp[data-mode=flip] { display:block }
 /* ⚠ 사진은 절대 잘리면 안 된다 (2026-09-09 성연서님 "너무 잘려서 가독성이 떨어진다"). stage 가 figure 높이를 받고, img 는 그 안에 contain. */
@@ -1288,7 +1289,7 @@ const QKEYS = ['3','4','5','6','7','8','9','q','w','e'];   // 제외 사유 빠�
 function gotoNextUnreviewed() {
   const n = GAL_ITEMS.length; if (!n) return;
   let j = -1; for (let k = 1; k <= n; k++) { const i = (REV_IDX + k) % n; if (!GAL_ITEMS[i].review?.pick) { j = i; break; } }
-  if (j < 0) { toast(`이 작업 ${n}장 검수 끝 · 채택 ${GAL_ITEMS.filter(x => x.review?.pick === 'pick').length} · 제외 ${GAL_ITEMS.filter(x => x.review?.pick === 'reject').length}`); return; }
+  if (j < 0) { renderDone(); return; }
   REV_IDX = j; ZOOM = {s:1,x:0,y:0}; renderReview();
 }
 try { CMP_MODE = localStorage.getItem('bna.cmp') || 'side'; MASK_ON = localStorage.getItem('bna.mask') === '1'; } catch {}
@@ -1311,6 +1312,17 @@ function gateChips(it) {
     : sp === false ? `<span class="gate bad" title="${esc(st.region_in_frame === false ? '시술 부위가 프레임 밖' : '정렬·크기·밝기 차이 초과')}">구조 <b>탈락</b></span>`
     : sp === null ? `<span class="gate na" title="얼굴을 못 찾아 못 쟀습니다">구조 <b>못 잼</b></span>` : `<span class="gate na">구조 <b>—</b></span>`;
   return `<div class="gates">${id}${stc}</div>`;
+}
+/** 다 판정했을 때 — 손그림 컷 + 집계. 브랜드 시트 v0.6 '끝났어요' 화면 */
+function renderDone() {
+  const n = GAL_ITEMS.length, pk = GAL_ITEMS.filter(x => x.review?.pick === 'pick').length, rj = GAL_ITEMS.filter(x => x.review?.pick === 'reject').length;
+  const tags = {}; GAL_ITEMS.forEach(x => (x.review?.tags||[]).forEach(t => tags[t] = (tags[t]||0)+1));
+  const top = Object.entries(tags).sort((a,b) => b[1]-a[1]).slice(0,3).map(([t,c]) => `${t} ${c}`).join(' · ');
+  $('#rev').innerHTML = `<div class="rev-done"><img src="/assets/ill-done.png" alt=""><b>${n}장 끝났어요</b><span class="muted">채택 ${pk} · 제외 ${rj}${top ? ' · 제외 사유 ' + top : ''}</span>
+    <div class="row"><button class="b" id="done-grid">작업 목록으로 <kbd>Esc</kbd></button><button class="b" id="done-again">처음부터 다시 보기</button>${rj ? `<button class="b primary" id="done-les">학습 탭에서 사유 보기</button>` : ''}</div></div>`;
+  $('#done-grid').onclick = () => setView('grid');
+  $('#done-again').onclick = () => { REV_IDX = 0; ZOOM = {s:1,x:0,y:0}; renderReview(); };
+  const dl = $('#done-les'); if (dl) dl.onclick = () => { setView('grid'); document.querySelector('.nav-item[data-tab=lessons]')?.click(); };
 }
 function renderReview() {
   const el = $('#rev'); let it = GAL_ITEMS[REV_IDX];   // let: 시리즈면 보는 시점의 After 로 바꿔 끼운다
