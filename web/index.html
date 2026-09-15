@@ -156,13 +156,14 @@ a { color:var(--primary) }
 .ic-clip { -webkit-mask-image:url(/assets/icons2/clip.png); mask-image:url(/assets/icons2/clip.png) }
 .ic-more-v { -webkit-mask-image:url(/assets/icons2/more-v.png); mask-image:url(/assets/icons2/more-v.png) }
 .ic-more-h { -webkit-mask-image:url(/assets/icons2/more-h.png); mask-image:url(/assets/icons2/more-h.png) }
-/* 보조 문구는 화면에서 빼고 ⓘ 말풍선으로 (2026-09-15 연서님: 주석이 너무 많다). data-tip 이 있으면 호버·포커스에 풍선 */
-.tip { position:relative; cursor:help } .tip.ic-info { width:14px; height:14px; color:var(--ui-lo); vertical-align:-2px; margin-left:4px }
-.tip:hover, .tip:focus-visible { color:var(--ui-hi) }
-.tip::after { content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); background:#191919; color:#fff; font-size:12px; font-weight:500; line-height:1.45; padding:8px 10px; border-radius:6px; white-space:pre-line; width:max-content; max-width:260px; text-align:left; box-shadow:0 4px 14px rgba(0,0,0,.18); opacity:0; pointer-events:none; transition:opacity .12s; z-index:60; letter-spacing:0 }
-.tip::before { content:""; position:absolute; left:50%; bottom:calc(100% + 3px); transform:translateX(-50%); border:5px solid transparent; border-top-color:#191919; opacity:0; transition:opacity .12s; z-index:60 }
-.tip:hover::after, .tip:hover::before, .tip:focus-visible::after, .tip:focus-visible::before, .tip.open::after, .tip.open::before { opacity:1 }
-.tip.tip-right::after { left:auto; right:0; transform:none } .tip.tip-right::before { left:auto; right:6px; transform:none }
+/* 보조 문구는 화면에서 빼고 ⓘ 말풍선으로 (2026-09-15 연서님). 풍선은 body 에 붙는 진짜 요소 — 아이콘(마스크) 안의 가짜요소는 마스크에 잘려 안 보였다 */
+.tip { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-left:4px; vertical-align:-3px; border-radius:50%; cursor:pointer; color:var(--ui-lo); background:none; border:0; padding:0 }
+.tip:hover, .tip.open { color:var(--ui-hi); background:var(--ui-surface) } .tip .ic { font-size:14px; pointer-events:none }
+.bubble { position:absolute; z-index:80; max-width:300px; background:#191919; color:#fff; border-radius:12px; padding:12px 40px 12px 16px; font-size:13px; font-weight:500; line-height:1.55; letter-spacing:-.01em; box-shadow:0 8px 24px rgba(0,0,0,.22); white-space:pre-line; animation:bubble-in .14s ease-out }
+.bubble::before { content:""; position:absolute; top:-7px; left:var(--tail,20px); width:14px; height:14px; background:#191919; transform:rotate(45deg); border-radius:2px }
+.bubble .x { position:absolute; top:10px; right:10px; width:24px; height:24px; border:0; background:none; color:#fff; opacity:.7; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; border-radius:6px } .bubble .x:hover { opacity:1; background:rgba(255,255,255,.12) } .bubble .x .ic { font-size:14px }
+@keyframes bubble-in { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:none } }
+@media (prefers-reduced-motion:reduce) { .bubble { animation:none } }
 .note-hidden { display:none !important }
 .nav-item svg { width:18px; height:18px; flex-shrink:0 }
 /* 손그림 아이콘 (2026-09-15 연서님 세트) — 기존 <use href="#i-x"> 를 PNG 마스크로 덮어 색은 currentColor 그대로 */
@@ -840,7 +841,7 @@ function tipify(root) {
     const text = [...el.childNodes].filter(n => n.nodeType === 3 || (n.nodeType === 1 && !n.classList.contains('tags-line'))).map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
     el.dataset.tipped = '1';
     if (!text) { if (!chips) el.classList.add('note-hidden'); return; }
-    const i = document.createElement('i'); i.className = 'ic ic-info tip'; i.dataset.tip = text; i.tabIndex = 0;
+    const i = document.createElement('button'); i.type = 'button'; i.className = 'tip'; i.dataset.tip = text; i.title = ''; i.setAttribute('aria-label', '설명'); i.innerHTML = '<i class="ic ic-info"></i>';
     // ⓘ 는 제목 옆에: KPI 는 .l, 할 일은 b, 현황판은 이름 칸, 카드 머리는 h3, 폼은 라벨 span
     const host = el.closest('.kpi')?.querySelector('.l') || el.closest('.todo-row')?.querySelector('.k b') || el.closest('.brow')?.querySelector('.n, .name, b') || el.closest('.card-head')?.querySelector('h3') || el.closest('.field')?.querySelector(':scope > span');
     const h = host || el.parentElement; const prev = h.querySelector(':scope > .tip');
@@ -858,7 +859,22 @@ new MutationObserver(ms => ms.forEach(m => {
   else if (t && !t._tip && t.dataset.tipped && !t.querySelector('.tags-line')) { const x = noteText(t); if (x) { delete t.dataset.tipped; t.classList.remove('note-hidden'); tipify(t); } }
 })).observe(document.body, {childList:true, subtree:true, characterData:true});
 tipify(document.body);
-document.addEventListener('click', e => { const t = e.target.closest('.tip'); $$('.tip.open').forEach(x => { if (x !== t) x.classList.remove('open'); }); if (t) { e.stopPropagation(); t.classList.toggle('open'); } });
+let BUBBLE = null;
+function closeBubble() { if (BUBBLE) { BUBBLE.remove(); BUBBLE = null; } $$('.tip.open').forEach(x => x.classList.remove('open')); }
+function openBubble(t) {
+  closeBubble(); t.classList.add('open');
+  const b = document.createElement('div'); b.className = 'bubble'; b.setAttribute('role', 'tooltip');
+  b.textContent = t.dataset.tip; const x = document.createElement('button'); x.className = 'x'; x.type = 'button'; x.setAttribute('aria-label', '닫기'); x.innerHTML = '<i class="ic ic-x"></i>'; x.onclick = closeBubble; b.appendChild(x);
+  document.body.appendChild(b); BUBBLE = b;
+  const r = t.getBoundingClientRect(), bw = b.offsetWidth, vw = document.documentElement.clientWidth;
+  let left = r.left + r.width / 2 - 24; left = Math.max(8, Math.min(left, vw - bw - 8));
+  b.style.left = left + window.scrollX + 'px'; b.style.top = r.bottom + 10 + window.scrollY + 'px';
+  b.style.setProperty('--tail', Math.max(12, Math.min(bw - 26, r.left + r.width / 2 - left - 7)) + 'px');
+}
+document.addEventListener('click', e => { const t = e.target.closest('.tip'); if (t) { e.stopPropagation(); e.preventDefault(); t.classList.contains('open') ? closeBubble() : openBubble(t); return; } if (!e.target.closest('.bubble')) closeBubble(); });
+document.addEventListener('mouseover', e => { const t = e.target.closest('.tip'); if (t && !t.classList.contains('open')) openBubble(t); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBubble(); });
+window.addEventListener('scroll', closeBubble, {passive:true}); window.addEventListener('resize', closeBubble);
 function seedify(root) {
   if (!(root instanceof Element)) return;
   const q = sel => [...(root.matches(sel) ? [root] : []), ...root.querySelectorAll(sel)];
