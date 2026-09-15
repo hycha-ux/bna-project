@@ -15,7 +15,7 @@
   /* 아프터 브랜드 시트 v0.4 — 블랙·그레이 스케일. 강조색 없음, 상태색만 예외 */
   --primary:#191919; --pri-hov:#37352F; --pri-alpha:rgba(25,25,25,.06); --pri-border:rgba(25,25,25,.16); --brand-blue:#E9E9E7;
   --ui-bg:#F7F7F5; --ui-panel:#fff; --ui-border:#E9E9E7; --ui-hi:#37352F; --ui-md:#6B6A66; --ui-lo:#9B9A97; --ui-surface:#F7F7F5;
-  --ok:#1C3829; --ok-weak:#DBEDDB; --bad:#A32D2D; --bad-weak:#FFE2DD; --warn:#7A5A00; --warn-weak:#FDECC8;
+  --ok:#37352F; --ok-weak:#E9E9E7; --bad:#191919; --bad-weak:#D3D1CB; --warn:#6B6A66; --warn-weak:#F2F1EE;
   --rail-w:72px; --side-w:240px; --top-h:68px; --r-sm:8px; --r-md:12px; --r-lg:16px; --gap:24px;
   --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-num:32px; --fs-num-sm:24px;
   --fw-r:400; --fw-m:600; --fw-b:700; --fw-num:800;
@@ -144,7 +144,7 @@ tbody tr:last-child td { border-bottom:none }
 .gal { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--sp-4) }
 .item { background:var(--ui-panel); border:1px solid var(--ui-border); border-radius:var(--r-md) }
 .item.pick { border-color:var(--ok); box-shadow:0 0 0 2px var(--ok-weak) } .item.reject { border-color:var(--bad); box-shadow:0 0 0 2px var(--bad-weak) }
-.pick-line { font-size:var(--fs-sm,12px); color:var(--muted,#77808a); margin:6px 0 2px } .pick-line.ok { color:var(--ok,#1a7f4b) } .pick-line.bad { color:var(--bad,#c0392b) }
+.pick-line { font-size:var(--fs-sm,12px); color:var(--muted,#77808a); margin:6px 0 2px } .pick-line.ok { color:var(--ok,#37352F) } .pick-line.bad { color:var(--bad,#191919) }
 .item .act button[disabled], .rev-act button[disabled], .dd-opt input[disabled] { opacity:.45; cursor:not-allowed }
 .pair { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border); border-radius:var(--r-md) var(--r-md) 0 0; overflow:hidden }
 @keyframes shimmer { 0% { background-position:200% 0 } 100% { background-position:-200% 0 } }
@@ -183,9 +183,9 @@ tbody tr:last-child td { border-bottom:none }
 .cmp .stage { position:relative; transform-origin:0 0; will-change:transform; line-height:0; max-width:100%; height:100%; display:flex; align-items:center; justify-content:center }
 .cmp .stage > img { display:block; max-width:100%; max-height:100%; width:auto; height:auto; object-fit:contain }
 .cmp figure { height:min(60vh, 640px) }
-.cmp .stage .ov { position:absolute; inset:0; pointer-events:none; background:rgba(var(--accent-rgb,52,82,178),.42); mix-blend-mode:multiply;
+.cmp .stage .ov { position:absolute; inset:0; pointer-events:none; background:rgba(var(--accent-rgb,25,25,25),.42); mix-blend-mode:multiply;
   -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; outline:0 }
-.cmp .stage .ov::after { content:''; position:absolute; inset:0; -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; background:rgba(52,82,178,.9); opacity:.35 }
+.cmp .stage .ov::after { content:''; position:absolute; inset:0; -webkit-mask-image:var(--mask); mask-image:var(--mask); -webkit-mask-size:100% 100%; mask-size:100% 100%; -webkit-mask-mode:luminance; mask-mode:luminance; background:rgba(25,25,25,.9); opacity:.35 }
 .cmp:not(.mask-on) .ov { display:none }
 .cmp figcaption { position:absolute; left:8px; top:8px; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; z-index:3; pointer-events:none }
 .cmp .stage .after-w { position:absolute; inset:0; overflow:hidden; clip-path:inset(0 0 0 var(--wipe,50%)) }
@@ -195,7 +195,7 @@ tbody tr:last-child td { border-bottom:none }
 .cmp[data-mode=flip] .stage .after-w { clip-path:none; opacity:0 } .cmp[data-mode=flip].show-after .stage .after-w { opacity:1 }
 .cmp.zoomed { cursor:grab } .cmp.zoomed.dragging { cursor:grabbing }
 .gates { display:flex; gap:6px; flex-wrap:wrap } .gate { display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-xs); padding:3px 8px; border-radius:999px; border:1px solid var(--ui-border); background:#fff; color:var(--ui-md) }
-.gate.ok { border-color:var(--ok); color:var(--ok) } .gate.bad { border-color:var(--bad); color:var(--bad) } .gate.warn { border-color:#C98A00; color:#9A6700 } .gate.na { border-style:dashed }
+.gate.ok { border-color:var(--ok); color:var(--ok) } .gate.bad { border-color:var(--bad); color:var(--bad) } .gate.warn { border-color:var(--warn); color:var(--warn) } .gate.na { border-style:dashed }
 .gate b { font-weight:var(--fw-m) }
 #batches-wrap { max-height:340px }
 /* 작업을 고르면 목록은 그대로 두고 상세로 스크롤한다 (2026-09-09: 접기는 '리스트가 사라지는' 느낌이라 뺐다). */
@@ -272,9 +272,9 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .prompt { font-size:var(--fs-sm); line-height:1.7; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px 12px; margin-top:6px; color:var(--ui-hi); word-break:break-word }
 .prompt .pk { border-radius:4px; padding:1px 3px; margin:0 1px; box-decoration-break:clone; -webkit-box-decoration-break:clone }
 .prompt .pk-template { color:var(--ui-lo) }
-.pk-person { background:#E4ECF9 } .pk-before_condition { background:#FDE7C8 } .pk-scene { background:#E2F3EA } .pk-expression { background:#E2F3EA; outline:1px dashed #7CBF9A }
-.pk-mode_extra { background:#EEE9FB } .pk-avoid { background:#FBE5E5 } .pk-identity { background:#E0F1F7 } .pk-day { background:#F3EBD7 } .pk-skin { background:#F6E6F0 }
-.pk-change { background:#FFD9A8 } .pk-effect { background:#FFE7C7 } .pk-finish { background:#FFF3C4 } .pk-must_not { background:#F9DADA } .pk-timeline { background:#F3EBD7 }
+.pk-person { background:#F7F7F5 } .pk-before_condition { background:#EFEEEB } .pk-scene { background:#E9E9E7 } .pk-expression { background:#E9E9E7; outline:1px dashed #9B9A97 }
+.pk-mode_extra { background:#E3E1DC } .pk-avoid { background:#D3D1CB } .pk-identity { background:#F2F1EE } .pk-day { background:#EFEEEB } .pk-skin { background:#F7F7F5 }
+.pk-change { background:#DCDAD4 } .pk-effect { background:#E3E1DC } .pk-finish { background:#EFEEEB } .pk-must_not { background:#D3D1CB } .pk-timeline { background:#EFEEEB }
 /* 학습 탭 흐름 */
 .flow-strip { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:var(--gap); font-size:var(--fs-sm); color:var(--ui-md) }
 .flow-strip .fs-step { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--ui-border); border-radius:999px; padding:5px 12px 5px 6px }
@@ -325,7 +325,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); font-weight:var(--fw-m) }
 .prog .top { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--sp-2) } .prog .lead { display:flex; align-items:center; gap:var(--sp-2) } .prog .ttl { font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md) } .prog .big small { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-left:4px } .prog .big { font-size:var(--fs-num-sm); font-weight:var(--fw-num); line-height:1; font-variant-numeric:tabular-nums; letter-spacing:-.03em }
 .stack { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--ui-surface); margin:10px 0 6px } .stack i { display:block; height:100%; transition:width .4s }
-.st-skipped{background:#D4D8DE} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
+.st-skipped{background:#D3D1CB} .st-passed{background:var(--ok)} .st-failed{background:var(--bad)} .st-before,.st-after,.st-postprocess,.st-qa{background:var(--primary)} .st-retry{background:var(--warn)} .st-queued{background:transparent}
 .legend { display:flex; gap:var(--sp-3); flex-wrap:wrap; font-size:var(--fs-xs); color:var(--ui-lo) } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px }
 .cells { display:flex; flex-wrap:wrap; gap:3px; margin-top:10px } .cells b { width:20px; height:20px; border-radius:4px; background:var(--ui-surface); display:block; font-size:10px; color:#fff; text-align:center; line-height:20px; font-weight:700 } .cells b.st-queued, .cells b.st-skipped { color:var(--ui-lo) }
 .cells b.st-before,.cells b.st-after,.cells b.st-postprocess,.cells b.st-qa { animation:pulse 1.2s infinite } @keyframes pulse { 50% { opacity:.45 } }
@@ -368,9 +368,9 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 /* 차트 (SVG) */
 .chart { display:block; max-width:100%; overflow:visible } 
 .chart .bar { fill:var(--primary); opacity:.85 } .chart .bar:hover { opacity:1 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:var(--ok); stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:var(--ok); stroke-width:2 }
-.chart .st0{fill:var(--ok)} .chart .st1{fill:var(--bad)} .chart .st2{fill:#E98A2E} .chart .st3{fill:#8FA9C8} .chart .st4{fill:#B8A0D9} .chart .st5{fill:#C4C9D1} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:12px }
+.chart .st0{fill:var(--ok)} .chart .st1{fill:var(--bad)} .chart .st2{fill:#6B6A66} .chart .st3{fill:#9B9A97} .chart .st4{fill:#C4C1BA} .chart .st5{fill:#E0DED9} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:12px }
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
-.chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
+.chart .line2 { fill:none; stroke:#9B9A97; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
 .lib .item { position:relative } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
 .lib-check { display:flex; align-items:center; cursor:pointer; margin-right:2px } .lib-check input { width:16px; height:16px; margin:0; cursor:pointer; accent-color:var(--primary) }
