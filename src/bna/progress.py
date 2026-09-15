@@ -64,7 +64,26 @@ class Progress:
     def _flush(self):
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.data, ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp, self.path)
+        _replace(tmp, self.path)
+
+
+# ⚠ Windows 에선 누가 progress.json 을 **읽느라 열어 둔 그 순간** os.replace 가 PermissionError(WinError 5)로 실패한다
+#   (Python 의 open 은 FILE_SHARE_DELETE 없이 연다). 종전엔 그 예외가 set() → run_item → gather 로 올라가 **유료 배치를 통째로 죽였다**:
+#   2026-09-15 임상 첫 실회차(b925) — 바깥 감시가 20초마다 이 파일을 읽다가 15:34 교체와 겹쳐, 이미 그린 3세트
+#   (이미지 14장·$2.72 중 일부)를 버리고 멈췄다. 대시보드도 2초마다 읽으므로 감시를 끄는 것으로는 못 막는다.
+#   → 짧게 다시 시도하고, 끝내 안 되면 **이번 기록만 건너뛴다**. 진행 기록은 표시용이고 다음 set() 이 최신 상태로 다시 쓴다.
+REPLACE_TRIES, REPLACE_WAIT_S = 6, 0.05
+
+
+def _replace(tmp: Path, dst: Path) -> bool:
+    for i in range(REPLACE_TRIES):
+        try:
+            os.replace(tmp, dst)
+            return True
+        except PermissionError:
+            time.sleep(REPLACE_WAIT_S * (i + 1))
+    print(f"[progress] {dst.name} 교체 {REPLACE_TRIES}회 거부(누가 읽는 중) — 이번 기록만 건너뛴다", flush=True)
+    return False
 
 
 STALE_S = 30 * 60   # 마지막 진행 뒤 이만큼 아무 변화가 없으면 '끊긴 배치'로 본다
@@ -92,8 +111,8 @@ def close_stale(batch_dir: Path, why: str = "중단됨 — 서버가 끊기면�
         if it.get("stage") not in ("passed", "failed", "skipped"):
             it["stage"] = "skipped"; it["updated_at"] = now
     d["finished_at"] = now; d["stopped"] = "interrupted"; d["error"] = d.get("error") or why
-    tmp = p.with_suffix(".json.tmp"); tmp.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8"); os.replace(tmp, p)
-    return True
+    tmp = p.with_suffix(".json.tmp"); tmp.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    return _replace(tmp, p)                            # 교체 규칙은 _replace 한 곳 (위 머리말)
 
 
 def read(batch_dir: Path):

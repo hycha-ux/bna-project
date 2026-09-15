@@ -496,6 +496,31 @@ finally:
         _os15.environ.pop("OPENAI_API_KEY", None)
 ok("self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs, spec[\"aspect\"]" in open("src/bna/batch.py", encoding="utf-8").read(),
    "임상 After 편집 호출이 스타일 참조를 실제로 넘긴다(provider 만 받고 배치가 안 넘기면 죽은 기능)")
+# 진행 기록 교체가 '읽는 중'과 겹쳐도 배치가 안 죽는다 (2026-09-15 티모 — 임상 첫 실회차 b925 가 이 예외로 중단)
+import tempfile as _tf15
+from pathlib import Path as _P15
+from bna import progress as _pg15
+_real_replace15, _calls15 = _pg15.os.replace, {"n": 0}
+def _flaky15(a, b):
+    _calls15["n"] += 1
+    if _calls15["n"] <= 2:
+        raise PermissionError("[WinError 5] reader holds the file")
+    return _real_replace15(a, b)
+def _always15(a, b):
+    raise PermissionError("[WinError 5] always")
+with _tf15.TemporaryDirectory() as _td15:
+    _src15 = _P15(_td15) / "x.tmp"
+    _src15.write_text("{}", encoding="utf-8")
+    try:
+        _pg15.os.replace = _flaky15
+        ok(_pg15._replace(_src15, _P15(_td15) / "x.json") is True and _calls15["n"] == 3,
+           f"교체가 두 번 거부돼도 다시 시도해 성공한다 — 시도 {_calls15['n']}회")
+        _src15.write_text("{}", encoding="utf-8")
+        _pg15.os.replace = _always15
+        ok(_pg15._replace(_src15, _P15(_td15) / "x.json") is False,
+           "끝내 거부되면 예외 없이 이번 기록만 건너뛴다(유료 배치를 죽이지 않는다)")
+    finally:
+        _pg15.os.replace = _real_replace15
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm
 import numpy as _np
