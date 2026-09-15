@@ -189,6 +189,10 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .cmp .cmp-back kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
 .cmp figure { position:relative; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--ui-surface,#F4F5F7); color:var(--ui-lo); font-size:12px }
 .cmp[data-mode=side] { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
+.cmp[data-mode=side].series { grid-template-columns:repeat(var(--n,2),minmax(0,1fr)) }   /* 경과 시리즈: 전 1장 + 시점마다 후 1장을 한 줄에 */
+.cmp figure.when-cur { outline:2px solid #191919; outline-offset:-2px }
+.qreasons { display:flex; flex-wrap:wrap; gap:6px } .qreasons .rs { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid var(--ui-border); border-radius:6px; background:#fff; font-size:var(--fs-sm); cursor:pointer; color:var(--ui-hi) } .qreasons .rs.on { background:#191919; color:#fff; border-color:#191919 } .qreasons .rs.on kbd { background:#fff; color:#191919 }
+.rev-prog { height:4px; background:var(--ui-surface); border-radius:2px; overflow:hidden; margin:6px 0 2px } .rev-prog i { display:block; height:100%; background:#191919 }
 .cmp[data-mode=wipe], .cmp[data-mode=flip] { display:block }
 /* ⚠ 사진은 절대 잘리면 안 된다 (2026-09-09 성연서님 "너무 잘려서 가독성이 떨어진다"). stage 가 figure 높이를 받고, img 는 그 안에 contain. */
 .cmp .stage { position:relative; transform-origin:0 0; will-change:transform; line-height:0; max-width:100%; height:100%; display:flex; align-items:center; justify-content:center }
@@ -1277,6 +1281,16 @@ function bindActs(root) {
 let VIEW = 'grid', REV_IDX = 0, GAL_ITEMS = [];
 // 검수 비교 뷰 상태 — 사진을 넘겨도 보기 방식·오버레이는 유지, 확대만 초기화한다
 let CMP_MODE = 'side', MASK_ON = false, ZOOM = {s:1, x:0, y:0}, FLIP_AFTER = false, REV_WHEN = null;   // REV_WHEN = 시리즈에서 보는 시점
+let AUTO_NEXT = true;   // 채택·사유를 고르면 다음 안 본 사진으로 (2026-09-15 검수 모드 시안)
+try { AUTO_NEXT = localStorage.getItem('bna.autonext') !== '0'; } catch {}
+const QKEYS = ['3','4','5','6','7','8','9','q','w','e'];   // 제외 사유 빠른 키 (TAGS 순서)
+/** 다음 '아직 판정 안 한' 사진으로. 없으면 그냥 다음 장, 끝이면 안내. */
+function gotoNextUnreviewed() {
+  const n = GAL_ITEMS.length; if (!n) return;
+  let j = -1; for (let k = 1; k <= n; k++) { const i = (REV_IDX + k) % n; if (!GAL_ITEMS[i].review?.pick) { j = i; break; } }
+  if (j < 0) { toast(`이 작업 ${n}장 검수 끝 · 채택 ${GAL_ITEMS.filter(x => x.review?.pick === 'pick').length} · 제외 ${GAL_ITEMS.filter(x => x.review?.pick === 'reject').length}`); return; }
+  REV_IDX = j; ZOOM = {s:1,x:0,y:0}; renderReview();
+}
 try { CMP_MODE = localStorage.getItem('bna.cmp') || 'side'; MASK_ON = localStorage.getItem('bna.mask') === '1'; } catch {}
 const CMP_KO = {side:'나란히', wipe:'슬라이더', flip:'깜빡이'};
 // 동일인 게이트 값 — ok / review / fail / n/a / null. 옛 메타(gate 없음)는 hard_fail·measured 로 되살린다.
@@ -1313,7 +1327,10 @@ function renderReview() {
     ? `<figure><div class="stage"><img src="${src(file)}" draggable="false">${extra}${ov}</div><figcaption>${cap}</figcaption></figure>`
     : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   let view;
-  if (CMP_MODE === 'side' || !it.before_file || !it.after_file) {
+  const spread = CMP_MODE === 'side' && whens.length > 1;   // 경과 시리즈는 한 줄에 다 펼친다 — 세트 단위로 판정하니 한눈에 봐야 한다
+  if (spread) {
+    view = stage(it.before_file, '시술 전') + whens.map(w => { const cur = w === REV_WHEN; return stage(afs[w], `시술 후 · ${val('timeline', w)}`).replace('<figure>', `<figure class="${cur ? 'when-cur' : ''}" data-w="${w}">`); }).join('');
+  } else if (CMP_MODE === 'side' || !it.before_file || !it.after_file) {
     view = stage(it.before_file, '시술 전') + stage(it.after_file, afterCap);
   } else {
     const afterW = `<div class="after-w"><img src="${src(it.after_file)}" draggable="false"></div>`;
@@ -1335,12 +1352,13 @@ function renderReview() {
         <div class="pill" id="cmp-mode">${Object.entries(CMP_KO).map(([k, l]) => `<button data-m="${k}" class="${k === CMP_MODE ? 'on' : ''}">${l}</button>`).join('')}</div>
         ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="시술한 자리(${esc(region)})를 파란색으로 칠해 보여줍니다 — 이 자리 밖이 바뀌었으면 탈락 · 단축키 M">시술 부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 시술 부위 정보가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">시술 부위 정보 없음</span>`}
         <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
+        <button class="b sm ${AUTO_NEXT ? 'primary' : ''}" id="cmp-auto" title="채택하거나 제외 사유를 고르면 아직 안 본 다음 사진으로 넘어갑니다 · 단축키 A">판정하면 다음 장 <kbd>A</kbd></button>
         ${whens.length > 1 ? `<span class="hint" style="margin-left:6px">시점</span><div class="pill" id="cmp-when">${whens.map(w => `<button data-w="${w}" class="${w === REV_WHEN ? 'on' : ''}" title="${(it.after_results||{})[w]?.fail_reasons?.length ? '이 시점 탈락: ' + it.after_results[w].fail_reasons.map(failKo).join(', ') : ''}">${val('timeline', w)}${(it.after_results||{})[w]?.fail_reasons?.length ? ' ✕' : ''}</button>`).join('')}</div>` : ''}
         <div class="sp"></div>
         <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
       </div>
-      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%">${view}<button class="b sm cmp-back" id="cmp-back" title="사진 목록으로 돌아갑니다 · 단축키 Esc 또는 브라우저 뒤로 가기">← 목록으로 <kbd>Esc</kbd></button></div>
-      <div class="thumbs"><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
+      <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''} ${spread ? 'series' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%;--n:${1 + whens.length}">${view}<button class="b sm cmp-back" id="cmp-back" title="사진 목록으로 돌아갑니다 · 단축키 Esc 또는 브라우저 뒤로 가기">← 목록으로 <kbd>Esc</kbd></button></div>
+      <div class="thumbs"><div class="rev-prog"><i style="width:${(GAL_ITEMS.filter(x => x.review?.pick).length / Math.max(1, GAL_ITEMS.length) * 100).toFixed(0)}%"></i></div><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 채택 ${GAL_ITEMS.filter(x => x.review?.pick === 'pick').length} · 제외 ${GAL_ITEMS.filter(x => x.review?.pick === 'reject').length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
     </div>
     <div class="rev-side">
       <div>
@@ -1358,7 +1376,8 @@ function renderReview() {
         </div>
         <div class="as-row"><span class="muted">채택할 시술</span><select class="hsel" data-act="as" data-id="${it.item_id}"${RO()?' disabled':''} title="이 사진이 원래 시술보다 다른 시술 사진으로 더 쓸 만하면 여기서 바꿉니다. 현황판·라이브러리·드라이브 폴더가 따라갑니다">${[['', `${tname(it.treatment)} (원래)`], ...Object.keys(CFG.treatments).filter(k => k !== it.treatment).map(k => [k, tname(k)])].map(([k, n]) => `<option value="${k}" ${(rv.as_treatment || '') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
         ${pickLine(rv)}
-        ${reasonBlock(it, rv.pick === 'reject')}
+        ${rv.pick === 'reject' ? `<div class="reason"><div class="muted">왜 제외했나요? · 키를 누르면 저장하고 다음 장</div><div class="qreasons">${TAGS.map((t, i) => `<button class="rs ${(rv.tags||[]).includes(t) ? 'on' : ''}"${RO()?' disabled':''} data-act="qtag" data-id="${it.item_id}" data-tag="${t}"><kbd>${QKEYS[i].toUpperCase()}</kbd>${t}</button>`).join('')}</div>
+        <input type="text"${RO()?' disabled':''} placeholder="메모 (Enter 로 저장)" value="${esc(rv.note||'')}" data-act="note" data-id="${it.item_id}" style="width:100%;margin-top:6px"><div class="reason-foot" id="rf-${it.item_id}">${reasonFoot(it)}</div></div>` : ''}
       </div>
     </div></div>`;
   bindActs(el); el.querySelectorAll('.th').forEach(t => t.onclick = () => { REV_IDX = +t.dataset.idx; ZOOM = {s:1,x:0,y:0}; renderReview(); });
@@ -1373,6 +1392,8 @@ function bindCompare(el) {
   const stages = [...cmp.querySelectorAll('.stage')];
   const apply = () => { stages.forEach(st => st.style.transform = `translate(${ZOOM.x}px,${ZOOM.y}px) scale(${ZOOM.s})`); cmp.classList.toggle('zoomed', ZOOM.s > 1); const r = el.querySelector('#cmp-reset'); if (r) r.disabled = ZOOM.s === 1; };
   el.querySelector('#cmp-reset').onclick = () => { ZOOM = {s:1,x:0,y:0}; apply(); };
+  const au = el.querySelector('#cmp-auto'); if (au) au.onclick = () => { AUTO_NEXT = !AUTO_NEXT; try { localStorage.setItem('bna.autonext', AUTO_NEXT ? '1' : '0'); } catch {} au.classList.toggle('primary', AUTO_NEXT); };
+  el.querySelectorAll('.cmp.series figure[data-w]').forEach(f => f.onclick = () => { if (ZOOM.s === 1) { REV_WHEN = f.dataset.w; renderReview(); } });
   const bk = el.querySelector('#cmp-back'); if (bk) bk.onclick = () => setView('grid');
   apply();
   // 휠 = 커서 기준 확대. 두 장이 같은 변환을 받아 같은 자리가 커진다(팔자·모공은 확대 없이는 못 본다).
@@ -1422,6 +1443,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' && REV_IDX < GAL_ITEMS.length - 1) { REV_IDX++; ZOOM = {s:1,x:0,y:0}; renderReview(); }
   else if (e.key === 'ArrowLeft' && REV_IDX > 0) { REV_IDX--; ZOOM = {s:1,x:0,y:0}; renderReview(); }
   else if (e.key === '1' || e.key === '2') { $('#rev').querySelector(`[data-act=${e.key === '1' ? 'pick' : 'reject'}]`)?.click(); }
+  else if (QKEYS.includes(e.key.toLowerCase()) && it.review?.pick === 'reject') { $('#rev').querySelectorAll('[data-act=qtag]')[QKEYS.indexOf(e.key.toLowerCase())]?.click(); }
+  else if (e.key === 'a' || e.key === 'A' || e.code === 'KeyA') { $('#cmp-auto')?.click(); }
   else if (e.key === 'm' || e.key === 'M' || e.code === 'KeyM') { $('#cmp-mask')?.click(); }   // 한글 입력 상태면 key 가 'ㅡ' 로 들어와서 code 로도 잡는다 (2026-09-09 성연서님 'm 눌러도 반응 없음')
   else if (e.key === '0') { $('#cmp-reset')?.click(); }
   else if (e.key === 'Escape') { setView('grid'); }
@@ -1490,10 +1513,12 @@ async function onAct(e) {
   if (act === 'tag') { const t = el.dataset.tag; rv.tags = rv.tags || []; if (el.checked) { if (!rv.tags.includes(t)) rv.tags.push(t); } else rv.tags.splice(rv.tags.indexOf(t), 1); const dd = el.closest('.dd'); dd.open = false;   // 고르면 바로 접는다 — 펼친 채 남아 매번 닫아야 했다 (2026-09-10 성연서님). 둘 이상은 다시 열어 고른다
     const v = dd.querySelector('.dd-val'); v.textContent = rv.tags.length ? rv.tags.join(', ') : '제외 사유 선택'; v.classList.toggle('empty', !rv.tags.length); DIRTY.add(id); refreshFoot(it); return; }
   if (act === 'savereason') { DIRTY.delete(id); await save(it, prev); return; }
+  if (act === 'qtag') { const t = el.dataset.tag; rv.tags = rv.tags || []; const on = !rv.tags.includes(t); if (on) rv.tags.push(t); else rv.tags.splice(rv.tags.indexOf(t), 1); DIRTY.delete(id); await save(it, prev); if (on && AUTO_NEXT && VIEW === 'review' && !SAVING.has(id)) gotoNextUnreviewed(); return; }
   if (act === 'as') { rv.as_treatment = el.value || null; if (rv.pick !== 'pick') { rv.pick = 'pick'; } }   // 시술을 고르면 그 시술로 채택
   if (act === 'pick' || act === 'reject') rv.pick = rv.pick === act ? null : act;
   if (act === 'clear') { rv.pick = null; rv.tags = []; rv.note = ''; rv.as_treatment = null; DIRTY.delete(id); }
   await save(it, prev);
+  if (act === 'pick' && rv.pick === 'pick' && AUTO_NEXT && VIEW === 'review') gotoNextUnreviewed();   // 채택은 사유가 없으니 바로 다음 장
 }
 // 2026-09-08 수리 — 종전엔 ①실패해도 조용(try/catch 없음: 클라우드 보기 전용 405 가 흔적 없이 삼켜졌다)
 // ②화면을 먼저 바꾸고 저장(실패하면 화면과 디스크가 갈려, 새로고침하면 원복 = "눌렀는데 안 먹었다")
