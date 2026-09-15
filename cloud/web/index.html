@@ -128,13 +128,18 @@ input::placeholder { color:var(--ui-lo) }
 select { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center }
 .form { display:flex; flex-direction:column; gap:var(--sp-3) } .form-sep { height:1px; background:var(--ui-border); margin:var(--sp-1) 0 }
 /* 3단계 폼 */
-.form.steps { gap:var(--sp-2) } details.step { border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
-details.step > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:12px 14px; font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) } details.step > summary::-webkit-details-marker { display:none }
+.form.steps { gap:12px } details.step { border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+details.step > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 20px; font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) } details.step > summary::-webkit-details-marker { display:none }
 details.step > summary b { width:22px; height:22px; border-radius:50%; background:#191919; color:#fff; font-size:12px; display:inline-flex; align-items:center; justify-content:center; flex:none }
 details.step:not([open]) > summary b { background:#D3D1CB; color:#191919 } details.step > summary .muted { font-weight:var(--fw-r); font-size:var(--fs-sm); margin-left:auto; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60% }
 details.step > summary::after { content:"▾"; color:var(--ui-lo); font-size:12px; margin-left:6px } details.step:not([open]) > summary::after { content:"▸" }
-.step-body { padding:4px 14px 14px; display:flex; flex-direction:column; gap:var(--sp-3); border-top:1px solid var(--ui-border) } .step-body .form-sep { margin:0 }
-.form-actions { display:flex; flex-direction:column; gap:8px; padding-top:4px }
+.step-body { padding:20px; display:flex; flex-direction:column; gap:20px; border-top:1px solid var(--ui-border) } .step-body .form-sep { display:none }   /* 구분선 대신 간격으로 */
+.step-body .field { gap:8px } .step-body .row { gap:12px } .step-body .row .field { min-width:0 } .step-body .modes { gap:10px } .step-body .modes button { padding:12px 14px; gap:3px }
+.step-body #q-treatments { gap:10px } .step-body .tgrp { gap:8px } .step-body .tgrp .tl { width:56px } .step-body #q-series { margin:10px 0 0 }
+.step-body:has(> details.opt) { gap:10px }   /* 3단계 안 접힌 항목끼리는 촘촘하게 */
+.step-body details.opt > summary { padding:12px 14px } .step-body details.opt > div { padding:14px 0 2px; display:flex; flex-direction:column; gap:12px } .step-body details.opt .row { gap:8px }
+.form-actions { display:flex; flex-direction:column; gap:10px; padding-top:8px } .form-actions .row { gap:10px } .form-actions .btn { height:44px }
+#tab-create .card-head { margin-bottom:20px }
 /* 대기열 표 6열 기본 — 방식(5)·목표(7)·예상(8)·상한(9)·#(1) 숨김 */
 table.jobs.compact th:nth-child(1), table.jobs.compact td:nth-child(1), table.jobs.compact th:nth-child(5), table.jobs.compact td:nth-child(5), table.jobs.compact th:nth-child(7), table.jobs.compact td:nth-child(7), table.jobs.compact th:nth-child(8), table.jobs.compact td:nth-child(8), table.jobs.compact th:nth-child(9), table.jobs.compact td:nth-child(9) { display:none }
 #q-cols.on { background:#191919; color:#fff; border-color:#191919 }
