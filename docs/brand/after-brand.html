@@ -94,13 +94,24 @@ td:first-child{font-weight:500;white-space:nowrap}
 .hero .fav{display:none}
 .hero .selfie{width:140px;height:auto;display:block}
 @media (max-width:560px){.hero{grid-template-columns:1fr}.hero .selfie{width:130px}}
+
+/* 뱃지·상태 */
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.bd{display:inline-block;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:4px;line-height:1.6}
+.bd.b1{background:#191919;color:#fff}.bd.b2{background:#D3D1CB;color:#191919}.bd.b3{background:#E9E9E7;color:#37352F}.bd.b4{background:#F2F1EE;color:#6B6A66}
+.pr{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:12px 0}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--paper)}
+.card .ph{height:110px;border-radius:6px;background:#D3D1CB;margin-bottom:10px}
+.card.pick{border:2px solid #191919}.card.reject{border:1px dashed #9B9A97}.card.reject .ph{opacity:.45}
+.card .b{display:inline-block;font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:4px;border:1px solid var(--line);margin-right:6px}
+.card .b.on{background:#191919;color:#fff;border-color:#191919}.card .b.off{background:#E9E9E7;color:#6B6A66;border-color:#E9E9E7;text-decoration:line-through}
 ul.rules{padding-left:0;margin:8px 0;list-style:none}
 ul.rules li{display:grid;grid-template-columns:24px 1fr;gap:6px;padding:4px 0;font-size:15px}
 ul.rules li span:first-child{color:var(--ink-3);text-align:center}
 </style>
 
 <div class="page">
-  <p class="eyebrow">메디빌더 · 브랜드 시트 v0.5 · 2026-09-15 · 빌디 초안</p>
+  <p class="eyebrow">메디빌더 · 브랜드 시트 v0.6 · 2026-09-15 · 빌디 초안</p>
 
   <div class="hero">
     <div>
@@ -246,6 +257,31 @@ ul.rules li span:first-child{color:var(--ink-3);text-align:center}
     <li><span>·</span><span>한 화면에 한 컷. 여러 컷을 격자로 늘어놓지 않습니다.</span></li>
     <li><span>·</span><span>사진이 있는 자리에는 넣지 않습니다. 사진이 주인공입니다.</span></li>
     <li><span>✕</span><span>색·그림자·그라데이션 없음. 컷을 새로 그리지 않고 이 세트 안에서만 고릅니다.</span></li>
+  </ul>
+
+  <h2>뱃지 4단계</h2>
+  <p class="muted">알약·칩·상태 표시는 색이 아니라 <b style="color:var(--ink)">진하기</b>로 중요도를 말합니다. 중요할수록 진합니다.</p>
+  <div class="badges"><span class="bd b1">실패</span><span class="bd b1">오류</span><span class="bd b1">중단됨</span><span class="bd b2">실행 중</span><span class="bd b2">대기</span><span class="bd b3">완료</span><span class="bd b3">통과</span><span class="bd b4">실제</span><span class="bd b4">셀카형</span><span class="bd b4">테스트</span></div>
+  <table>
+    <tr><th>단계</th><th>바탕 / 글자</th><th>뜻</th><th>예</th></tr>
+    <tr><td>1 · 블랙</td><td class="mono">#191919 / #FFFFFF</td><td>사람이 봐야 하는 것</td><td>실패, 오류, 중단됨, 제외 사유</td></tr>
+    <tr><td>2 · 그레이 300</td><td class="mono">#D3D1CB / #191919</td><td>지금 움직이는 것</td><td>실행 중, 대기, 재시도</td></tr>
+    <tr><td>3 · 그레이 200</td><td class="mono">#E9E9E7 / #37352F</td><td>끝난 것</td><td>완료, 통과, 채택</td></tr>
+    <tr><td>4 · 그레이 100</td><td class="mono">#F2F1EE / #6B6A66</td><td>그냥 정보</td><td>실제, 셀카형, 임상형, 테스트</td></tr>
+  </table>
+  <p class="muted">막대·차트도 같은 규칙: 달성·통과 블랙, 진행 중 그레이 500, 실패 그레이 300, 빈 트랙 그레이 100. 차트 계열은 블랙부터 5단계.</p>
+
+  <h2>채택함 · 제외함</h2>
+  <p class="muted">둘 다 "끝난 것"이라 색만으로는 안 갈립니다. 그래서 <b style="color:var(--ink)">형태</b>로 가릅니다. 채택은 붙잡고, 제외는 놓아줍니다.</p>
+  <div class="pr">
+    <div class="card pick"><div class="ph"></div><span class="b on">✓ 채택함</span><span class="b">제외</span><p class="mono" style="margin-top:8px">굵은 블랙 테두리 · 사진 선명 · 버튼 블랙에 체크</p></div>
+    <div class="card reject"><div class="ph"></div><span class="b">채택</span><span class="b off">제외함</span><p class="mono" style="margin-top:8px">점선 회색 테두리 · 사진 흐림 · 버튼 회색에 취소선</p></div>
+    <div class="card"><div class="ph"></div><span class="b">채택</span><span class="b">제외</span><p class="mono" style="margin-top:8px">아직 안 정함 · 얇은 테두리 · 둘 다 빈 버튼</p></div>
+  </div>
+  <ul class="rules">
+    <li><span>·</span><span>선택된 쪽만 채우고, 반대쪽 버튼은 비워 둡니다. 둘 다 진하면 다시 못 갈립니다.</span></li>
+    <li><span>·</span><span>제외한 사진은 흐리게. 눈이 채택한 사진으로 먼저 갑니다.</span></li>
+    <li><span>·</span><span>썸네일 줄에서도 같음: 채택 굵은 테두리, 제외 점선 + 반투명.</span></li>
   </ul>
 
   <h2>서체</h2>
