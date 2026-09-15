@@ -195,7 +195,17 @@ class Batch:
                 async with after_sem:
                     if spec["generation"] == "edit":
                         mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
-                        after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b)
+                        # 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안 "같은 리그 After 시점만 + 얼굴은 1번 사진").
+                        #   고르기는 refs.pick 한 곳 — 리그·시점 필터가 거기 있다(여기서 다시 거르지 마라).
+                        #   맞는 참조가 없으면 빈 목록 → 종전과 똑같은 1장 편집이고 문구도 안 붙는다.
+                        #   스위치 = clinical_rig.yaml `after_style_refs` (켠 것/끈 것 동일인 점수 비교용).
+                        edit_refs = (self._refs(af.get("after_variation") or spec["variation"], af["when"])
+                                     if self.mode == "clinical" and self.p_edit.supports_style_refs
+                                     and load("clinical_rig.yaml").get("after_style_refs") else [])
+                        if edit_refs:
+                            after_prompt = after_prompt + " " + " ".join(
+                                (ROOT / "config" / "prompts" / "edit_style_refs.md").read_text(encoding="utf-8").split())
+                        after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs)
                         after = Image.open(io.BytesIO(after_b))
                         # A4: 마스크 밖 원본 복원 — **셀카만**. 임상은 끈다 (2026-09-15 연서님 결정, 티모 프로브
                         #   docs/clinical-prompt-v1-review-0915-teemo.md): 임상 v1 은 '같은 부스에서 따로 찍은 사진'이라

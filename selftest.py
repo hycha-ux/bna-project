@@ -471,6 +471,30 @@ ok(_refs15.pick_files("clinical", {**_v15, "rig": {"key": "grey_studio", "text":
    "리프팅에 회색 스튜디오 참조가 없으면 다른 리그 사진을 억지로 붙이지 않는다(빈 목록)")
 ok(_refs15.pick_files("clinical", {**_v15, "rig": {"key": "clinic_wall", "text": ""}}, treatment="lifting", when="4w") == ["clinical/lifting_after4w_02.jpg"],
    "임상 After 참조도 리그·시점이 맞는 것만")
+# 임상 After 편집: 첫 장 = Before, 참조는 뒤 · 마스크는 알파 채널로 (2026-09-15 티모)
+import io as _io15, os as _os15
+from PIL import Image as _Im15
+from bna.providers import openai_img as _oi15
+_m15 = _Im15.new("L", (8, 8), 0); _m15.putpixel((1, 1), 255)
+_mb15 = _io15.BytesIO(); _m15.save(_mb15, "PNG")
+_a15 = _Im15.open(_io15.BytesIO(_oi15.alpha_mask(_mb15.getvalue())))
+ok(_a15.mode == "RGBA" and _a15.getpixel((1, 1))[3] == 0 and _a15.getpixel((0, 0))[3] == 255,
+   "OpenAI 마스크: 흰색(편집 허용) → 투명, 검정(보존) → 불투명")
+_key15 = _os15.environ.get("OPENAI_API_KEY")
+_os15.environ["OPENAI_API_KEY"] = _key15 or "selftest-dummy"          # 실호출 없음 — _post 를 가로챈다
+try:
+    _p15, _seen15 = _oi15.OpenAIProvider(), {}
+    _p15._post = lambda path, files=None, data=None, body=None, retry_without=(), extra=None: (_seen15.update(files=files), {"data": [{"b64_json": ""}]})[1]
+    _p15.edit(b"BEFORE", "p", _mb15.getvalue(), [b"REF1", b"REF2"])
+    ok([f[1].getvalue() for n, f in _seen15["files"] if n == "image[]"] == [b"BEFORE", b"REF1", b"REF2"],
+       "편집 입력 첫 장 = Before, 참조는 그 뒤(마스크는 첫 장에만 걸린다)")
+    ok(_Im15.open(_io15.BytesIO(next(f[1].getvalue() for n, f in _seen15["files"] if n == "mask"))).mode == "RGBA",
+       "편집 호출에 실제로 나가는 마스크가 RGBA")
+finally:
+    if _key15 is None:
+        _os15.environ.pop("OPENAI_API_KEY", None)
+ok("self.p_edit.edit, before_b, after_prompt, mask_b, edit_refs" in open("src/bna/batch.py", encoding="utf-8").read(),
+   "임상 After 편집 호출이 스타일 참조를 실제로 넘긴다(provider 만 받고 배치가 안 넘기면 죽은 기능)")
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm
 import numpy as _np

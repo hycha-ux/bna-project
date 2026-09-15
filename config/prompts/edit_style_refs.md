@@ -1,0 +1,1 @@
+Image 1 is the photo to edit. The other images are style references from the same kind of clinic photo booth only: match their backdrop, lighting, color cast, sharpness and camera look. Never copy the people in them — face, identity, hair and body come from image 1 only.

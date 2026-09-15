@@ -21,11 +21,26 @@ REF = ROOT / "samples" / "reference" / "clinical"
 OUT = ROOT / "outputs" / "_probe"
 OUT.mkdir(parents=True, exist_ok=True)
 
-before = Image.open(REF / "nasolabial_before_01.jpg").convert("RGB")
-after = Image.open(REF / "nasolabial_after2w_01.jpg").convert("RGB")
+# 인자 = 전·후 파일 이름 (기본 = 팔자 쌍). 리프팅 2쌍 재측정(2026-09-15 2차):
+#   python tools/_probe_composite_0915.py lifting_before_01.jpg lifting_after2w_01.jpg
+PAIR = sys.argv[1:3] if len(sys.argv) >= 3 else ["nasolabial_before_01.jpg", "nasolabial_after2w_01.jpg"]
+TAG = PAIR[0].replace("_before", "").rsplit(".", 1)[0]
+before = Image.open(REF / PAIR[0]).convert("RGB")
+after = Image.open(REF / PAIR[1]).convert("RGB")
 print("size before/after:", before.size, after.size)
 if after.size != before.size:
-    # 현행 코드는 크기가 다르면 Image.composite 가 ValueError 로 죽는다 — 여기선 보려고 맞춘다
+    # 크기가 다르면 원본(웹 콜라주)을 잘라낸 폭이 다른 것이다 — 늘려 맞추면 눈 좌표가 같이 늘어나 정렬값이 가짜가 된다.
+    # 그래서 늘리기 전 원래 크기에서 **왼쪽 맞춤·오른쪽 맞춤** 두 경우의 정렬 오차를 범위로 낸다(어느 쪽을 잘랐는지 모른다).
+    _pb, _pa = L.detect(before), L.detect(after)
+    if _pb is not None and _pa is not None:
+        _kb, _ka = L.key_points(_pb), L.key_points(_pa)
+        _ipd = float(np.linalg.norm(_kb["eye_r"] - _kb["eye_l"]))
+        _cb, _ca = (_kb["eye_l"] + _kb["eye_r"]) / 2, (_ka["eye_l"] + _ka["eye_r"]) / 2
+        _dx, _dy = after.width - before.width, after.height - before.height
+        for name, off in (("왼쪽·위 맞춤", (0, 0)), ("오른쪽·아래 맞춤", (_dx, _dy))):
+            e = np.linalg.norm((_ca - off) - _cb) / _ipd * 100
+            print(f"원래 크기 정렬 오차({name}): {e:.2f}%")
+    # 합성 그림은 보려고 맞춘다(이 아래 정렬값은 늘린 뒤라 참고 금지)
     after = after.resize(before.size, Image.LANCZOS)
 
 pb, pa = L.detect(before), L.detect(after)
@@ -36,6 +51,9 @@ ipd = float(np.linalg.norm(kb["eye_r"] - kb["eye_l"]))
 shift = (ka["eye_l"] + ka["eye_r"]) / 2 - (kb["eye_l"] + kb["eye_r"]) / 2
 luma = abs(np.asarray(before.convert("L")).mean() - np.asarray(after.convert("L")).mean()) / 255
 print(f"실사진 쌍 실측: 눈 중심 이동 {shift.round(1)}px = IPD 대비 {np.linalg.norm(shift) / ipd * 100:.2f}% · 밝기차 {luma:.3f}")
+_ipd_a = float(np.linalg.norm(ka["eye_r"] - ka["eye_l"]))
+print(f"얼굴 크기 비율 차(face_ratio_diff, 원래 크기 기준): "
+      f"{abs(_ipd_a * (Image.open(REF / PAIR[1]).width / after.width) - ipd) / ipd:.3f}")
 
 m_naso = L.region_mask(before, pb, "nasolabial")
 m_face = L.region_mask(before, pb, "full_face_skin")
@@ -63,7 +81,7 @@ tiles = [tile(before, "BEFORE"), tile(after, "AFTER (real reshoot)"),
 sheet = Image.new("RGB", (W * 4, tiles[0].height), "white")
 for i, t in enumerate(tiles):
     sheet.paste(t, (W * i, 0))
-sheet.save(OUT / "composite_0915.png")
+sheet.save(OUT / f"composite_0915_{TAG}.png")
 
 # 이음매 확대(얼굴 윤곽 왼쪽 볼 가장자리)
 x, y = int(pb[234][0]), int(pb[234][1])
@@ -71,5 +89,5 @@ box = (max(0, x - 80), max(0, y - 120), x + 80, y + 120)
 zoom = Image.new("RGB", (160 * 3 * 2, 240 * 2), "white")
 for i, img in enumerate((after, now, b)):
     zoom.paste(img.crop(box).resize((320, 480), Image.NEAREST), (320 * i, 0))
-zoom.save(OUT / "composite_0915_zoom.png")
-print("saved", OUT / "composite_0915.png")
+zoom.save(OUT / f"composite_0915_{TAG}_zoom.png")
+print("saved", OUT / f"composite_0915_{TAG}.png")

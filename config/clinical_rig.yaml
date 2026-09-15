@@ -61,10 +61,19 @@ micro_drift: >
   so the fine lines around the eyes and mouth read slightly differently, and the exposure is a touch
   brighter or darker. These small differences are expected and must not be copied from the reference.
 
+# 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안). 켜면 같은 리그·같은 시점의 After 참조를 Before 뒤에
+#   붙이고 "얼굴은 1번 사진" 문구(prompts/edit_style_refs.md)를 더한다. 맞는 참조가 없으면 종전 1장 편집.
+#   ⚠ 참조는 남의 얼굴이다 — 첫 실회차에서 켠 것/끈 것의 동일인 점수를 같은 seed 로 비교해 판정.
+after_style_refs: true
+
 # 구조 검사 임계값 (임상 모드에만 적용)
 # 정렬 허용 2% → 4% (2026-09-15 연서님 결정). 티모 실측: 연서님 레퍼런스의 **진짜 임상 쌍**이 눈 중심 이동
-#   2.65% 라 2% 면 레퍼런스 자체가 탈락한다. 합성을 끈 대신 여기서 잡는다. 표본 1쌍(팔자) — 리프팅 2쌍 재고 확정.
-#   luma_diff 는 종전 0.05 그대로 (같은 쌍 실측 0.013).
+#   2.65% 라 2% 면 레퍼런스 자체가 탈락한다. 합성을 끈 대신 여기서 잡는다.
+#   리프팅 2쌍 재측정(같은 날 2차, tools/_probe_composite_0915.py): lifting_01 = 2.07% 이지만 **눈이 프레임 밖**(코 아래 컷)이라
+#   MediaPipe 가 지어낸 눈 좌표다(참고치) · lifting_02 = 전·후 가로 폭이 달라(282 vs 309px, 원본 콜라주를 다르게 자름)
+#   오른쪽 맞춤 가정 3.59% / 왼쪽 맞춤 14.8%(화면상 불가능) → 3.59% 로 읽는다(추정). 믿을 수 있는 값 중 4% 를 넘는 쌍은 없다.
+#   ⚠ 여유가 얇다(3.59 vs 4.0, 다른 날 촬영 clinic_wall). 실회차에서 '진짜 같은데 정렬로 탈락'이 나오면 5% 후보.
+#   luma_diff 0.05 그대로 (3쌍 실측 0.013·0.014·0.037) · face_ratio_diff 0.03 그대로 (3쌍 0.003·0.010·0.002).
 tolerance:
   landmark_align_pct: 4.0     # 눈 중심 거리 대비 위치 오차 %
   face_ratio_diff: 0.03       # 얼굴 세로 비율 차이

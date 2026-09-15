@@ -27,7 +27,8 @@ class Provider:
     def generate(self, prompt: str, aspect: str, ref: bytes = None, style_refs: list = None, seed=None) -> bytes:
         raise NotImplementedError
 
-    def edit(self, image: bytes, prompt: str, mask: bytes = None) -> bytes:
+    def edit(self, image: bytes, prompt: str, mask: bytes = None, style_refs: list = None) -> bytes:
+        """style_refs = 첫 장(image) 뒤에 붙는 스타일 참조(임상 After, 2026-09-15). 미지원 벤더는 무시해도 된다."""
         raise NotImplementedError
 
     def qa(self, before: bytes, after: bytes, items: dict, mode: str) -> dict:

@@ -16,9 +16,27 @@ import mimetypes
 import threading
 import time
 import requests
+from PIL import Image, ImageOps
 
 from .base import Provider
 from ..spec import load, ROOT
+
+
+def alpha_mask(mask_png: bytes) -> bytes:
+    """우리 마스크(L, 흰색 = 편집 허용) → OpenAI 마스크(RGBA, **투명 = 편집 허용**). (2026-09-15 티모)
+
+    OpenAI 는 마스크의 알파 채널을 본다(공식: 완전히 투명한 곳이 편집 영역, 알파 채널 필수).
+    `batch._png` 는 L 모드 PNG 를 만든다 — 그대로 보내면 알파가 없어 400 이거나 '전부 보존'으로 읽힐 수 있다.
+    ⚠ 문서 근거이고 실호출은 아직 안 쟀다 — 첫 임상 실회차에서 편집이 팔자 쪽에 걸리는지 눈으로 확인.
+    가장자리 feather(회색)는 반투명으로 옮겨진다. 이미 RGBA 면 손대지 않는다."""
+    m = Image.open(io.BytesIO(mask_png))
+    if m.mode == "RGBA":
+        return mask_png
+    rgba = Image.new("RGBA", m.size, (0, 0, 0, 255))
+    rgba.putalpha(ImageOps.invert(m.convert("L")))
+    b = io.BytesIO()
+    rgba.save(b, "PNG")
+    return b.getvalue()
 
 API = "https://api.openai.com/v1"
 TIMEOUT = 300
@@ -209,10 +227,14 @@ class OpenAIProvider(Provider):
         return self._first_image(self._post("/images/generations", body=body))
 
     # --- 편집 (마스크) ---
-    def edit(self, image, prompt, mask=None) -> bytes:
-        files = [self._part("image[]", image)]
+    def edit(self, image, prompt, mask=None, style_refs=None) -> bytes:
+        # 1번 = 고칠 사진(Before), 스타일 참조는 **그 뒤에** 붙인다 (2026-09-15 티모, 임상 After 참조).
+        # ⚠ 마스크는 입력 이미지 중 **첫 장에만** 걸린다(공식 가이드, 최대 10장). 순서를 바꾸면 마스크가
+        #   참조 사진에 걸리고 Before 가 참조 취급된다 — 오류 없이 엉뚱한 사진을 고친다.
+        imgs = [image] + list(style_refs or [])[:9]
+        files = [self._part("image[]", b, i) for i, b in enumerate(imgs)]
         if mask:
-            files.append(self._part("mask", mask))
+            files.append(self._part("mask", alpha_mask(mask)))
         data = {"model": self.cfg["image_model"], "prompt": prompt,
                 "quality": self.cfg["quality"], "n": "1", **self._fidelity()}
         return self._first_image(self._post("/images/edits", files=files, data=data,

@@ -9,7 +9,7 @@ class GeminiProvider(Provider):
     def generate(self, prompt, aspect, ref=None, style_refs=None, seed=None):
         raise NotImplementedError("TODO: genai.Client().models.generate_content(image model, contents=[prompt, ref, *style_refs])")
 
-    def edit(self, image, prompt, mask=None):
+    def edit(self, image, prompt, mask=None, style_refs=None):
         raise NotImplementedError("TODO: 이미지 입력 + 편집 지시")
 
     def qa(self, before, after, items, mode):
