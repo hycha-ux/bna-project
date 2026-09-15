@@ -19,6 +19,16 @@ openai:
   image_model: gpt-image-2
   vision_model: gpt-5.1          # 검수(qa) 채점용 비전 모델
   quality: high
+  # 이미지 호출 한도 (2026-09-15 성연서님 "분당 이미지 수 8장" — OpenAI 대시보드 Limits 값).
+  # ⚠ 응답 헤더엔 이 값이 안 온다(tools/_probe_ratelimit_0915.py 실측) — 대시보드가 바뀌면 여기를 손으로 고쳐라.
+  # 두 값은 한 벌이다:
+  #   concurrency        동시에 들고 있는 이미지 콜 수(공급자 슬롯 = batch._slots, 항목 동시 수도 이 값).
+  #                      이미지 1콜 ≈ 105초라 10칸이면 분당 약 5.7장이 나간다.
+  #   images_per_minute  **출발 간격** 안전장치(openai_img._StartGate) — 60초 ÷ (한도 × 0.9) 마다 1콜만 출발.
+  #                      칸만 늘리면 배치 시작 순간 10콜이 한꺼번에 나가 한도에 부딪힌다(429 3연속 = 배치 사망).
+  # 칸을 올리려면 "칸 × 60 ÷ 105 < 한도 × 0.9" 인지 먼저 계산해라 — 넘으면 칸이 놀고 출발 줄만 길어진다.
+  concurrency: 10
+  images_per_minute: 8
   # 레퍼런스 충실도. ⚠ 2026-09-08 실측 — **gpt-image-2 는 이 파라미터를 지원하지 않는다**
   # (400 invalid_input_fidelity_model). 그래서 비워 둔다(비면 아예 안 보낸다).
   # gpt-image-1 계열로 바꿀 때만 high 를 넣어라(토큰이 크게 붙는다: 정사각 +4,160 / 세로·가로 +6,240).

@@ -26,6 +26,42 @@ TIMEOUT = 300
 # 기다리지 않는 쪽이 비싸다(그 예외 하나가 배치 전체를 죽인다). 소진되면 종전대로 오류를 올린다.
 RETRY_WAITS_S = (10, 30, 60)
 
+# 분당 이미지 한도의 안전 여유 — 한도 8이면 7.2장/분(8.3초 간격)으로 출발시킨다.
+GATE_SAFETY = 0.9
+
+
+class _StartGate:
+    """이미지 콜의 **출발 간격**을 지킨다 (2026-09-15 티모, 성연서님 "분당 이미지 수 8장").
+
+    왜 필요한가: 동시 칸(concurrency)은 '들고 있는 콜 수'만 묶지 '분당 출발 수'는 안 묶는다.
+    배치가 시작하는 순간 빈 칸 10개가 한꺼번에 채워지면 1초 안에 10콜이 나가 한도 8을 넘기고,
+    429 재시도 3번이 소진되면 그 예외 하나가 배치 전체를 죽인다. 그래서 칸과 간격을 한 벌로 둔다.
+    ⚠ 둘 중 하나만 끄지 마라 — 칸만 두면 버스트, 간격만 두면 느리다.
+
+    ⚠ 프로세스 안에서만 지킨다. 큐는 배치를 한 번에 하나씩 돌려(queue._loop) 한 프로세스면 충분하지만,
+      예약작업 유료 회차(ops/register-paid-run.ps1)를 서버 배치와 **동시에** 돌리면 두 프로세스가 각자 센다.
+    429 재시도도 이 문을 다시 지난다(_send 루프 안) — 한도에 부딪힌 직후 또 몰려가지 않게."""
+
+    def __init__(self, per_minute, clock=time.monotonic, sleep=time.sleep):
+        self.interval = 60.0 / (per_minute * GATE_SAFETY) if per_minute else 0.0
+        self._next, self._lock, self._clock, self._sleep = 0.0, threading.Lock(), clock, sleep
+
+    def wait(self) -> float:
+        """차례가 올 때까지 잔다. 잔 초를 돌려준다(회귀가 읽는다)."""
+        if self.interval <= 0:
+            return 0.0
+        with self._lock:                                  # 자리 예약만 락 안에서 — 자는 건 락 밖(다른 콜 예약을 막지 않는다)
+            now = self._clock()
+            at = max(now, self._next)
+            self._next = at + self.interval
+        if at > now:
+            self._sleep(at - now)
+        return at - now
+
+
+_GATE_LOCK = threading.Lock()
+_IMAGE_GATE = None          # 프로세스 공용 — 인스턴스마다 만들면 인스턴스 수만큼 한도가 늘어난다
+
 # 실청구 대조용 토큰 원장. config/pricing.yaml 의 호출당 단가는 **추정치**라
 # ($0.19/장, 2026-09-08 미실측) 그 위에 선 "통과 1장 $2.68" 도 추정 위에 서 있다.
 # API 응답의 usage 는 과금의 원장 그 자체이므로, 호출마다 한 줄씩 남겨 실단가를 사후에 잰다.
@@ -40,7 +76,14 @@ class OpenAIProvider(Provider):
 
     def __init__(self):
         super().__init__()
+        global _IMAGE_GATE
         self.cfg = load("providers.yaml")["openai"]
+        # 동시 칸·출발 간격의 정본은 providers.yaml 한 곳이다(2026-09-15). 값이 없으면 종전 3칸·간격 없음.
+        self.concurrency = int(self.cfg.get("concurrency") or 3)
+        with _GATE_LOCK:
+            if _IMAGE_GATE is None:
+                _IMAGE_GATE = _StartGate(self.cfg.get("images_per_minute"))
+        self.gate = _IMAGE_GATE
 
     # --- 공통 ---
     def _headers(self, json_body: bool):
@@ -99,6 +142,8 @@ class OpenAIProvider(Provider):
         for i in range(len(RETRY_WAITS_S) + 1):
             for _, (_, stream, _) in (files or []):
                 stream.seek(0)
+            if path.startswith("/images/"):              # 출발 간격 — 채점(chat)은 한도 버킷이 달라 안 태운다
+                self.gate.wait()
             r = (requests.post(f"{API}{path}", headers=self._headers(False), files=files, data=data, timeout=TIMEOUT)
                  if files is not None else
                  requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=TIMEOUT))

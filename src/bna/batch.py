@@ -335,6 +335,10 @@ class Batch:
         remember(plans, self.batch_id)
         done = set(json.loads(self.state_path.read_text()).get("done", [])) if self.state_path.exists() else set()
         sem = asyncio.Semaphore(min(self.p_gen.concurrency, self.p_edit.concurrency))
+        # 이미지 콜(최대 칸 수)·채점·얼굴 검사가 전부 기본 스레드 풀을 나눠 쓴다 (2026-09-15, 칸 3 → 10).
+        # 기본 풀은 CPU+4(이 PC 16)라 이미지 10콜이 자는 동안 채점이 줄을 선다 — 넉넉히 연다(스레드는 대부분 네트워크 대기).
+        from concurrent.futures import ThreadPoolExecutor
+        asyncio.get_running_loop().set_default_executor(ThreadPoolExecutor(max_workers=32))
         self._slots(self.p_gen); self._slots(self.p_edit)     # 공급자 동시 한도를 이 루프에 맞춰 준비 (정본=_slots)
         self.dir.mkdir(parents=True, exist_ok=True)   # 여기가 첫 쓰기 — 생성자가 아니라 이 자리에서 만든다
         self.progress = Progress(self.dir, len(plans))

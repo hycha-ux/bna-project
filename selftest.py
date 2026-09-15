@@ -1966,6 +1966,37 @@ ok("RETRY_WAITS_S" in _OAI35 and "retry-after" in _OAI35 and "== 429" in _OAI35,
 ok(_idn34.big_faces(None) is None, "big_faces(None) 은 0 이 아니라 None(못 잼)")
 
 
+# ㊱ 동시 칸 3 → 10 + 출발 간격 (2026-09-15 성연서님 "분당 이미지 수 8장")
+#    칸과 간격은 한 벌이다 — 칸만 늘리면 배치 시작 순간 10콜이 한꺼번에 나가 한도에 부딪힌다.
+import yaml as _y36
+from bna.providers.openai_img import _StartGate as _SG36, GATE_SAFETY as _GS36
+_cfg36 = _y36.safe_load(open("config/providers.yaml", encoding="utf-8"))["openai"]
+_OAI36 = open("src/bna/providers/openai_img.py", encoding="utf-8").read()
+ok(isinstance(_cfg36.get("concurrency"), int) and isinstance(_cfg36.get("images_per_minute"), (int, float)),
+   f"동시 칸·분당 한도는 providers.yaml 이 정본이다 — {_cfg36.get('concurrency')}칸 · {_cfg36.get('images_per_minute')}장/분")
+#    ① 칸이 한도 안에서 도는지 산술로 — 1콜 ≈ 105초(09-15 실측 중앙 104.3~109.1)
+ok(_cfg36["concurrency"] * 60 / 105 < _cfg36["images_per_minute"] * _GS36,
+   f"칸 × 60 ÷ 105 < 한도 × 안전율 — {_cfg36['concurrency'] * 60 / 105:.1f} < {_cfg36['images_per_minute'] * _GS36:.1f}")
+#    ② 간격: 가짜 시계로 동시에 10콜이 몰려도 한도 × 안전율보다 촘촘히 출발하지 않는다
+_t36 = [0.0]
+_g36 = _SG36(8, clock=lambda: _t36[0], sleep=lambda s: None)
+_starts36 = [_g36.wait() for _ in range(10)]          # 같은 순간에 10콜 — 각 콜이 몇 초 뒤 출발하는지
+ok(abs(_starts36[1] - 60 / (8 * _GS36)) < 1e-9 and _starts36[0] == 0.0,
+   f"첫 콜은 바로, 다음 콜은 {60 / (8 * _GS36):.2f}초 뒤")
+ok(sum(1 for s in _starts36 if s < 60) <= int(8 * _GS36) + 1,
+   f"몰린 10콜 중 첫 60초 안에 출발하는 건 한도 이내 — {sum(1 for s in _starts36 if s < 60)}콜")
+_t36[0] = 1000.0
+ok(_g36.wait() == 0.0, "오래 쉬었으면 밀린 간격을 쌓아 두지 않고 바로 출발한다")
+ok(_SG36(None).wait() == 0.0 and _SG36(0).wait() == 0.0, "한도 값이 없으면 간격 없음(종전 동작)")
+#    ③ 이미지 경로만 문을 지나고, 429 재시도도 같은 문을 다시 지난다(루프 안)
+ok('path.startswith("/images/")' in _OAI36 and "self.gate.wait()" in _OAI36
+   and _OAI36.index("self.gate.wait()") > _OAI36.index("for i in range(len(RETRY_WAITS_S) + 1)"),
+   "출발 간격은 이미지 콜에만, 재시도 루프 안에서 매번 건다")
+#    ④ 문은 프로세스 공용 한 개 — 인스턴스마다 만들면 인스턴스 수만큼 한도가 늘어난다
+ok(_OAI36.count("_StartGate(") == 1 and "_IMAGE_GATE = _StartGate(" in _OAI36,
+   "_StartGate 는 한 곳(공용 _IMAGE_GATE)에서만 만든다")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
