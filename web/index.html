@@ -211,6 +211,10 @@ svg:has(> use[href="#i-menu"]) { -webkit-mask-image:url(/assets/icons/more.png);
 .menu button { width:100%; padding:var(--sp-2); border:0; background:none; border-radius:var(--r-sm); text-align:left; font-size:var(--fs-md); font-weight:var(--fw-r); color:var(--ui-hi); cursor:pointer; display:flex; gap:10px; align-items:center }
 .menu button:hover { background:var(--ui-surface) }
 .menu .mi-sep { height:1px; background:var(--ui-border); margin:4px 6px }
+/* 프로필 메뉴: 내 계정 + 병원 보기(관리자만) — 2026-09-16 연서님 A안. 구성원은 자기 병원 하나라 전환 항목이 안 보인다 */
+.menu .mi-me { padding:8px 10px 10px; display:flex; gap:10px; align-items:center } .menu .mi-me > div { min-width:0 } .menu .mi-me .avatar { width:32px; height:32px; border-radius:50%; background:var(--brand-blue); color:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; flex-shrink:0 } .menu .mi-me b { display:block; font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi); line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .menu .mi-me small { display:block; font-size:11px; color:var(--ui-lo); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.menu .mi-head { font-size:11px; font-weight:600; color:var(--ui-lo); padding:6px 10px 4px }
+.menu button.ws .av { width:24px; height:24px; border-radius:7px; background:var(--brand-blue); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; flex-shrink:0 } .menu button.ws.on { background:var(--pri-alpha); font-weight:var(--fw-b) } .menu button.ws.on .av { background:var(--primary); color:#fff } .menu button.ws .chk { margin-left:auto; font-size:12px; color:var(--primary) } .menu button.ws:not(.on) .chk { visibility:hidden }
 
 /* ════ 콘텐츠 ════ */
 .page { padding:var(--sp-5) var(--sp-5) 64px; display:none } .page.active { display:block }
@@ -622,7 +626,16 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div class="tb-space"></div>
       <button class="status-pill" id="tb-status"><span class="dot"></span><span id="tb-status-text">확인 중</span></button>
       <button class="profile" id="tb-profile"><span class="avatar">OL</span><span>온리프</span><span class="muted">▾</span></button>
-      <div class="menu" id="menu" hidden>
+      <div class="menu" id="menu" style="width:232px" hidden>
+        <div class="mi-me"><span class="avatar" id="me-av">OL</span><div><b id="me-name">온리프</b><small id="me-sub"></small></div></div>
+        <div id="menu-clinics" hidden>
+          <div class="mi-sep"></div>
+          <div class="mi-head">병원 보기</div>
+          <button class="ws" data-clinic="onlif"><span class="av">OL</span>온리프<span class="chk">✓</span></button>
+          <button class="ws" data-clinic="leshine"><span class="av">LS</span>르샤인<span class="chk">✓</span></button>
+          <button class="ws" data-clinic="obliv"><span class="av">OB</span>오블리브<span class="chk">✓</span></button>
+        </div>
+        <div class="mi-sep"></div>
         <button data-tab="settings"><svg width="18" height="18"><use href="#i-user"/></svg>프로필</button>
         <button data-tab="settings"><svg width="18" height="18"><use href="#i-gear"/></svg>설정</button>
         <div class="mi-sep"></div>
@@ -1003,6 +1016,24 @@ function renderSubJobs() {
   $$('#sub-jobs button').forEach(b => b.onclick = () => { leaveReview(); JOBS_TR = b.dataset.tr; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === JOBS_TR)); show('jobs'); });
 }
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
+// 병원 분기 (2026-09-16 연서님 결정) — 계정에 병원 하나, 관리자만 전체. 구성원은 자기 병원으로 고정되고 메뉴에 전환 항목이 안 보인다.
+//   /api/me 는 클라우드에만 있다(생성 PC엔 로그인이 없다 → 관리자 취급). clinic 필드는 티모 쪽 작업 전까지 없을 수 있어 온리프로 둔다.
+//   ⚠ 아직 화면 표시만 바뀐다. 작업·라이브러리를 병원별로 거르는 건 저장소에 병원 키가 붙은 뒤.
+const CLINICS = { onlif:{ko:'온리프', av:'OL'}, leshine:{ko:'르샤인', av:'LS'}, obliv:{ko:'오블리브', av:'OB'} };
+let ME = null, CLINIC = 'onlif';
+function setClinic(id, save = true) { const c = CLINICS[id] || CLINICS.onlif; CLINIC = CLINICS[id] ? id : 'onlif'; $$('#menu-clinics .ws').forEach(b => b.classList.toggle('on', b.dataset.clinic === CLINIC)); $('#tb-profile .avatar').textContent = c.av; $('#tb-profile .avatar + span').textContent = c.ko; const f = $('#side-foot'); if (f) f.textContent = c.ko + ' · 전후 사진 자동 생성'; if (save) { try { localStorage.setItem('bna.clinic', CLINIC); } catch {} } }
+async function loadMe() {
+  try { ME = await api('/api/me'); } catch { ME = null; }
+  const admin = !ME || ME.role === 'admin';   // 로그인 없는 생성 PC = 관리자
+  const mine = ME?.clinic && CLINICS[ME.clinic] ? ME.clinic : 'onlif';
+  $('#menu-clinics').hidden = !admin;
+  $('#me-name').textContent = ME?.email ? ME.email.split('@')[0] : CLINICS[mine].ko;
+  $('#me-sub').textContent = ME ? (ME.role_label || (admin ? '관리자' : '구성원')) + (admin ? ' · 병원 전체' : ' · ' + CLINICS[mine].ko) + ' · ' + ME.email : '생성 컴퓨터 · 로그인 없음';
+  $('#me-av').textContent = ME?.email ? ME.email.slice(0, 2).toUpperCase() : CLINICS[mine].av;
+  let pick = mine; if (admin) { try { pick = localStorage.getItem('bna.clinic') || mine; } catch {} }
+  setClinic(pick, false);
+}
+$$('#menu-clinics .ws').forEach(b => b.onclick = () => { setClinic(b.dataset.clinic); $('#menu').hidden = true; });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
 document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').hidden = true; });
 $('#tb-status').onclick = () => show('create');
@@ -2165,7 +2196,7 @@ function renderSettings() {
   }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
-  $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
+  await loadMe();   // 프로필 칩·바닥글·병원 전환 메뉴를 계정 기준으로
   const h = location.hash.slice(1); show(TITLES[h] ? h : 'home');
   // 주소(#create 등)를 바꾸거나 뒤로가기를 눌러도 화면이 따라간다 — 종전엔 주소만 바뀌고 화면은 그대로였다 (② )
   window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (TITLES[t] && !$('#tab-' + t).classList.contains('active')) show(t); });
