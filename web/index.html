@@ -186,10 +186,9 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .cmp-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--ui-border); flex-wrap:wrap }
 .cmp-bar .sp { flex:1 }
 .cmp-opt { position:relative } .cmp-opt .dd-btn { height:32px; font-size:var(--fs-sm) } .cmp-opt .dd-menu { left:auto; right:0; width:max-content; min-width:280px; padding:6px; display:flex; flex-direction:column; gap:2px }   /* 기본 .dd-menu 는 2열 격자 — 옵션은 한 줄에 하나씩 */
-.cmp-opt .opt, .cmp-opt .opt-hint { white-space:nowrap }
+.cmp-opt .opt { white-space:nowrap }
 .cmp-opt .opt { display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border:0; background:none; border-radius:6px; font-size:var(--fs-sm); color:var(--ui-hi); text-align:left; cursor:pointer } .cmp-opt .opt:hover { background:var(--ui-surface) } .cmp-opt .opt.off { color:var(--ui-lo); cursor:default }
-.cmp-opt .opt i { width:14px; height:14px; border:1.5px solid var(--ui-lo); border-radius:4px; flex:none } .cmp-opt .opt.on i { background:#191919; border-color:#191919 } .cmp-opt .opt kbd { margin-left:auto; font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px }
-.cmp-opt .opt-hint { padding:8px 10px 4px; font-size:11px; color:var(--ui-lo); border-top:1px solid var(--ui-border); margin-top:4px } .cmp-bar .hint { font-size:11px; color:var(--ui-lo) } .cmp-bar .hint kbd { font:inherit; border:1px solid var(--ui-border); border-radius:3px; padding:0 4px; margin:0 1px }
+.cmp-opt .opt i { width:14px; height:14px; border:1.5px solid var(--ui-lo); border-radius:4px; flex:none } .cmp-opt .opt.on i { background:#191919; border-color:#191919 } .cmp-opt .opt kbd { margin-left:auto; font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px } .cmp-bar .hint { font-size:11px; color:var(--ui-lo) } .cmp-bar .hint kbd { font:inherit; border:1px solid var(--ui-border); border-radius:3px; padding:0 4px; margin:0 1px }
 .cmp { position:relative; background:var(--ui-surface,#F4F5F7); overflow:hidden; user-select:none; touch-action:none }
 /* 단축키는 글자가 아니라 '키' 로 보이게 (2026-09-09 성연서님 'M·Esc 가 무슨 뜻인지 모르겠다') */
 .cmp-bar .b kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
@@ -1385,7 +1384,6 @@ function renderReview() {
         <details class="dd cmp-opt"><summary class="dd-btn">옵션 <span class="dd-caret">▾</span></summary><div class="dd-menu">
           ${maskUrl ? `<button class="opt ${MASK_ON ? 'on' : ''}" id="cmp-mask" title="시술한 자리(${esc(region)})를 칠해 보여줍니다 — 이 자리 밖이 바뀌었으면 탈락"><i></i>시술 부위 표시 <kbd>M</kbd></button>` : `<div class="opt off" title="이 사진은 시술 부위 정보가 없습니다(얼굴 미검출 또는 랜드마크 미설치)"><i></i>시술 부위 표시 <span class="muted">정보 없음</span></div>`}
           <button class="opt ${AUTO_NEXT ? 'on' : ''}" id="cmp-auto" title="채택하거나 제외 사유를 고르면 아직 안 본 다음 사진으로 넘어갑니다"><i></i>판정하면 다음 장 <kbd>A</kbd></button>
-          <div class="opt-hint">휠 = 확대(두 장 같이) · 드래그 = 이동 · <kbd>0</kbd> 확대 초기화${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</div>
         </div></details>
       </div>
       <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''} ${spread ? 'series' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%;--n:${1 + whens.length}">${view}</div>
