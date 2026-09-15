@@ -49,6 +49,22 @@ export const labelOf = (id) => `genreq:${id}`;
 /** 재시작이 죽여선 안 되는 작업들. 순수 함수라 회귀가 이걸 본다(돈이 걸린 판단이라 눈으로만 보지 않는다). */
 export const restartBlockers = (jobs) => (jobs || []).filter((j) => j.status === 'queued' || j.status === 'running');
 
+/**
+ * 서버는 죽었는데 큐 원장엔 '도는 중'으로 남은 작업 — **아무도 안 깨우는 자리**(2026-09-15 09:48 실사고).
+ * PC 가 꺼졌다 켜지면서 배치를 돌던 로컬 API 가 같이 죽었다. 큐 원장(파일)은 'running' 그대로라
+ * 폴러는 매분 "진행 중 1건"만 적었고, 서버는 **새 요청이 들어올 때만** 띄우므로 1시간 동안
+ * 아무것도 안 일어났다. 화면엔 '생성 중'이 떠 있었다.
+ * ⚠ 포트를 누가 물고 있으면 빈 배열이다 — 생성 중엔 응답이 1.5초를 넘길 수 있고, 그때 새 서버를
+ *   띄우면 `queue.py` 가 **살아 있는 작업을 '중단됨'으로 덮어쓴다**. 확실히 비어 있을 때만 깨운다.
+ */
+export const orphaned = ({ alive, owner, jobs }) => (alive || owner) ? [] : restartBlockers(jobs);
+
+/** 서버가 꺼져 끊긴 작업의 사유 — `src/bna/queue.py` 의 `"서버 재시작으로 중단됨"` 과 **한 벌**이다(회귀가 둘을 대조한다). */
+export const RESTART_ABORT = '서버 재시작으로 중단됨';
+export const isRestartAbort = (e) => String(e ?? '').startsWith(RESTART_ABORT);
+/** 꺼져서 끊긴 요청을 사람 재전송 없이 다시 돌리는 횟수. 1회 = 재부팅 한 번은 흡수하고, 반복되면 실패로 닫는다(돈이 계속 새지 않게). */
+export const MAX_RESTART_RETRIES = 1;
+
 // ── 순수 판단 ────────────────────────────────────────────────────────────────
 // 요청 목록 + 로컬 큐 작업 목록 → 이번 회차에 할 일. 여기엔 부작용이 없다(회귀가 이 함수를 본다).
 export function plan(reqs, jobs, { maxAccept = MAX_ACCEPT } = {}) {
@@ -84,6 +100,9 @@ export function plan(reqs, jobs, { maxAccept = MAX_ACCEPT } = {}) {
     }
     if (!r.local_job_id) acts.push({ kind: 'adopt', id: r.id, job_id: j.job_id });
     if (j.status === 'done') acts.push({ kind: 'done', id: r.id, job_id: j.job_id, batch_id: j.batch_id, stats: j.result || null, from: r.status });
+    // 서버가 꺼져 끊긴 건 요청 탓이 아니다 — 한 번은 사람이 다시 누르지 않아도 다시 돌린다(위 `orphaned` 머리말)
+    else if (j.status === 'error' && isRestartAbort(j.error) && (r.restart_retries || 0) < MAX_RESTART_RETRIES)
+      acts.push({ kind: 'readd', id: r.id, dead_job_id: j.job_id, tries: (r.restart_retries || 0) + 1 });
     else if (j.status === 'error') acts.push({ kind: 'error', id: r.id, error: shortErr(j.error) });
     else if (j.status === 'cancelled') acts.push({ kind: 'error', id: r.id, error: '이 PC 대기열에서 취소됐습니다' });
     else if (j.status === 'running' && r.status !== 'running') acts.push({ kind: 'running', id: r.id, job_id: j.job_id, batch_id: j.batch_id });
@@ -345,7 +364,8 @@ export function jobSpec(req) {
  * ⚠ 죽일 번호는 상태 파일이 아니라 **그 포트를 실제로 물고 있는** 번호다(껍데기 pid 함정, `ensureApi` 머리말).
  */
 async function restartApi() {
-  const busy = restartBlockers(queueJobs());
+  // 서버가 이미 꺼져 있으면 죽일 게 없다 — 원장의 'running' 은 유령이다(09-15: 이 가드가 유령에 막혀 재시작 문까지 잠겼다)
+  const busy = (await alive()) || listeningPid() ? restartBlockers(queueJobs()) : [];
   if (busy.length) { log(`재시작 안 한다 — 큐에 도는 작업 ${busy.length}건(죽이면 그 생성이 그 자리에서 날아간다)`); process.exitCode = 2; return; }
   const owner = listeningPid();
   if (DRY) { log(`--dry — 재시작했을 것: 포트 ${PORT} ${owner ? `pid ${owner} 종료 후 ` : '(떠 있는 서버 없음) '}새로 띄움`); return; }
@@ -363,6 +383,17 @@ async function main() {
   const token = blobToken();
   if (!token) { log('Blob 토큰이 없다(cloud/.env.local) — 아직 연결 전이라 조용히 멈춘다'); process.exit(3); }
   const GR = await import('../cloud/lib/genreq.mjs');   // @vercel/blob 은 cloud/ 안에서 풀린다
+
+  // 서버가 죽은 채 큐가 도는 척하면 여기서 깨운다 — 새 서버의 `queue.py` 가 유령 'running' 을
+  // '서버 재시작으로 중단됨'으로 닫고, 아래 plan 이 그 요청을 한 번 다시 넣는다(`orphaned` 머리말).
+  const ghosts = orphaned({ alive: await alive(), owner: listeningPid(), jobs: queueJobs() });
+  if (ghosts.length) {
+    if (DRY) log(`--dry — 로컬 API 가 꺼져 있는데 큐에 도는 작업 ${ghosts.length}건 — 서버를 띄웠을 것`);
+    else {
+      log(`로컬 API 가 꺼져 있는데 큐에 도는 작업 ${ghosts.length}건(${ghosts.map((j) => j.job_id).join(',')}) — 서버를 다시 띄운다`);
+      try { await spawnApi(); } catch (e) { log('서버 기동 실패 —', e.message); }
+    }
+  }
 
   let reqs = [];
   try { reqs = await GR.listAll(token, { keep: 200 }); } catch (e) { log('요청 목록을 못 읽었다 —', e.message); process.exit(1); }
@@ -404,6 +435,19 @@ async function main() {
         } catch (e) {
           await GR.advance(token, a.id, 'error', { error: shortErr(e.message), finished_at: new Date().toISOString() });
           log(`실패 ${a.id} — ${e.message}`);
+        }
+      } else if (a.kind === 'readd') {
+        const req = known.get(a.id);
+        try {
+          const api = await ensureApi({ idle: !queueJobs().some((j) => j.status === 'queued' || j.status === 'running') });
+          if (api === 'stale') { log(`대기 ${a.id} — 로컬 API 가 옛 코드다. 재등록은 다음 회차`); continue; }
+          const jobId = await addToQueue(jobSpec(req));
+          // 한 번에 적는다 — 연달아 annotate 하면 두 번째가 Blob 캐시의 옛 값을 읽어 횟수를 지운다(genreq `advance` 머리말)
+          await GR.annotate(token, a.id, { local_job_id: jobId, batch_id: null, restart_retries: a.tries });
+          log(`재등록 ${a.id} → 큐 ${jobId} — 서버가 꺼져 끊긴 작업 ${a.dead_job_id} 을 다시 돌린다(${a.tries}/${MAX_RESTART_RETRIES})`);
+        } catch (e) {
+          await GR.advance(token, a.id, 'error', { error: shortErr(`${RESTART_ABORT} — 재등록 실패: ${e.message}`), finished_at: new Date().toISOString() });
+          log(`실패 ${a.id} — 재등록 실패: ${e.message}`);
         }
       } else if (a.kind === 'adopt') {
         const r = await GR.annotate(token, a.id, { local_job_id: a.job_id });

@@ -1,7 +1,9 @@
 // 생성 요청 폴러 순수 함수 회귀 — 네트워크 0·생성 0. `node ops/gen-poller-tests.mjs`
 // 여기서 보는 것은 "이번 회차에 무엇을 할지"(plan) 하나다. 돈이 나가는 판단이라 이중 등록·
 // 취소 무시·유령 완료 같은 실패 모양을 시료로 박아 둔다.
-import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers, mergeKeys, needsKey, apiAction, PROVIDER_KEYS } from './gen-poller.mjs';
+import { plan, labelOf, jobSpec, resultOf, shortErr, restartBlockers, mergeKeys, needsKey, apiAction, PROVIDER_KEYS,
+  orphaned, isRestartAbort, RESTART_ABORT, MAX_RESTART_RETRIES } from './gen-poller.mjs';
+import { readFileSync } from 'node:fs';
 
 const fails = [];
 const ok = (c, label) => { console.log((c ? 'PASS  ' : 'FAIL  ') + label); if (!c) fails.push(label); };
@@ -102,6 +104,25 @@ ok(A({ rec: null }).act === 'use' && A({ rec: null }).warn === true,
 ok([A(), A({ src: 2000 }), A({ src: 2000, idle: false })].every((r) => typeof r.why === 'string' && r.why.length > 5),
    '어느 갈래로 가든 이유를 남긴다(조용한 분기가 그날 사고를 숨겼다)');
 ok(A({ src: 2000, rec: REC({ src: 0 }) }).act === 'restart', '기록에 소스 시각이 없으면 옛 서버로 본다');
+
+// ⑨ 서버가 죽은 채 멈춘 작업 (2026-09-15 09:48 실사고: PC 가 꺼졌다 켜져 배치 서버가 죽었는데
+//    큐 원장은 'running' 그대로라 폴러가 1시간 동안 "진행 중 1건"만 적었다. 화면은 '생성 중'.)
+const ABORT = JOB({ status: 'error', error: RESTART_ABORT, batch_id: 'b1' });
+ok(orphaned({ alive: false, owner: null, jobs: [JOB({ status: 'running' })] }).length === 1, '서버가 꺼졌는데 큐가 도는 척하면 깨울 대상이다');
+ok(orphaned({ alive: false, owner: 4242, jobs: [JOB({ status: 'running' })] }).length === 0,
+   '응답만 늦고 포트는 물려 있으면 깨우지 않는다 — 새 서버가 살아 있는 작업을 중단됨으로 덮는다');
+ok(orphaned({ alive: true, owner: 1, jobs: [JOB({ status: 'running' })] }).length === 0, '서버가 살아 있으면 손대지 않는다');
+ok(orphaned({ alive: false, owner: null, jobs: [JOB({ status: 'done' })] }).length === 0, '도는 작업이 없으면 서버를 띄우지 않는다(띄우는 건 넣을 게 있을 때뿐)');
+ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1', batch_id: 'b1' })], [ABORT])) === 'readd', '서버가 꺼져 끊긴 요청은 한 번 다시 넣는다');
+ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1', batch_id: 'b1', restart_retries: MAX_RESTART_RETRIES })], [ABORT])) === 'error',
+   '다시 넣은 것도 꺼져 끊겼으면 실패로 닫는다 — 재부팅이 반복될 때 돈이 계속 새지 않게');
+ok(kinds(plan([REQ({ status: 'running', local_job_id: 'j1' })], [JOB({ status: 'error', error: 'RuntimeError("429")' })])) === 'error', '진짜 오류는 다시 넣지 않는다');
+ok(!/readd|error|add/.test(kinds(plan([REQ({ status: 'running', local_job_id: 'j2', batch_id: null, restart_retries: 1 })], [ABORT, JOB({ job_id: 'j2', status: 'running' })]))),
+   '다시 넣은 작업이 도는 동안엔 옛 작업의 실패를 보지 않는다');
+ok(!/readd|error/.test(kinds(plan([REQ({ status: 'running', local_job_id: 'j1', batch_id: 'b1' })], [ABORT, JOB({ job_id: 'j2', status: 'running' })]))),
+   '작업 번호를 못 적고 죽었어도 같은 라벨의 새 작업을 따른다(이중 재등록 없음)');
+ok(readFileSync(new URL('../src/bna/queue.py', import.meta.url), 'utf8').includes(`error="${RESTART_ABORT}"`) && isRestartAbort(RESTART_ABORT),
+   '중단 사유 문구는 queue.py 와 한 벌이다 — 한쪽만 바꾸면 재등록이 조용히 안 걸린다');
 
 console.log(fails.length ? `실패 ${fails.length}건` : '전부 통과');
 process.exit(fails.length ? 1 : 0);
