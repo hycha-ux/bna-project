@@ -635,7 +635,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
       </div>
       <div id="detail" style="margin-top:var(--gap);scroll-margin-top:calc(var(--top-h) + 12px)">
-        <div class="card empty" id="detail-empty">작업을 선택하세요</div>
+        <div class="card empty" id="detail-empty">위 목록에서 작업을 고르면 사진이 여기 나와요</div>
         <div id="detail-body" hidden>
           <div class="card" id="detail-summary"><div class="card-head" id="detail-head"></div><div class="prog" id="prog" hidden style="margin-bottom:var(--sp-4)"></div><div id="kpis"></div><div id="gal-stats" style="margin-top:var(--sp-2)"></div></div>
           <div class="card" style="margin-top:var(--gap)"><div class="card-head"><h3>사진</h3><span class="muted" id="gal-batch" hidden></span><select id="gal-filter" class="hsel"><option value="all">전체 보기</option><option value="passed">AI 검수 통과</option><option value="failed">AI 검수 탈락</option><option value="unreviewed">미검수</option><option value="pick">채택됨 (드라이브 저장)</option><option value="reject">제외됨 (저장 안 함)</option><option value="id_na">동일인 못 잼 · 사람이 봐야 함</option></select><select id="gal-axis" class="hsel"><option value="">조건 전체</option></select><select id="gal-axis-val" class="hsel" hidden><option value="">값 전체</option></select><span class="muted" id="gal-count"></span><div class="tb-space"></div><div class="pill" id="gal-view"><button data-v="grid" class="on">격자</button><button data-v="review">검수 모드</button></div></div><div class="gal" id="gal"></div><div id="rev" hidden></div><div class="empty" id="gal-empty" hidden>표시할 항목이 없습니다</div></div>
@@ -821,7 +821,7 @@ function show(tab) {
   if (tab === 'home') loadHome();
   if (tab === 'create') loadQueue();
   document.body.classList.toggle('reviewing', tab === 'jobs' && VIEW === 'review');
-  if (tab === 'jobs') loadBatches().then(() => { if (!CUR && LIST_IDS[0]) openBatch(LIST_IDS[0]); });
+  if (tab === 'jobs') loadBatches();   // 첫 진입은 빈 상태 — 사람이 고를 때까지 안 연다 (2026-09-15 연서님)
   if (tab === 'library') loadLibrary();
   if (tab === 'lessons') loadLessons();
   if (tab === 'settings') loadGoals().then(renderSettings);
@@ -1286,7 +1286,7 @@ async function loadBatches() {
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches;
-$('#jobs-kind').onchange = () => { loadBatches().then(() => { if (!CUR && LIST_IDS[0]) openBatch(LIST_IDS[0]); }); };
+$('#jobs-kind').onchange = () => { loadBatches(); };
 setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.some(b => b.status === 'running')) loadBatches(); }, 3000);
 
 // ---------- 작업 상세 ----------
