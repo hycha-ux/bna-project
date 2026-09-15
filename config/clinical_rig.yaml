@@ -41,32 +41,34 @@ angles:
 
 # 다시 찍기(After) 규정 — 시점에 따라 고른다. same_day = 직후, different_day = 1주 이후.
 # ⚠ '똑같이'가 아니라 '같은 부스에서 따로 찍은 사진'이다. 아래 micro_drift 가 그 살짝 다름을 요구한다.
+# ⚠ 2026-09-15 저녁 연서님: "옷은 똑같은 걸 유지하되 조금씩 틀어져야" — 종전 different_day 의 '옷 다름'을 뺐다.
+#   레퍼런스 ②는 옷이 달랐지만 기준은 연서님 규정이다. 옷·머리 모양은 같고, 매무새·잔머리만 틀어진다.
 retake:
   same_day: >
     This is a second photo taken in the same clinic photo spot later the same day: the same backdrop,
     the same lamps in the same positions, the same camera at the same distance and height, the same
-    framing, the same clothes and the same hair arrangement. It is a separate exposure, not a copy of
+    framing, the same clothes and the same hairstyle. It is a separate exposure, not a copy of
     the reference.
   different_day: >
     This is a second photo taken in the same clinic photo spot on a later visit: the same backdrop,
     the same lamps in the same positions, the same camera at the same distance and height, the same
-    framing. Because it is a different day, the top the person is wearing is different, and the hair
-    is arranged in roughly the same way but not identically.
+    framing, the same kind of clothes and the same hairstyle. It is a separate exposure taken on
+    another day, not a copy of the reference.
 
-# 두 시점 공통: '살짝 다름'을 일부러 요구한다 (연서님 0915: "미세한 주름·잔머리가 살짝씩 다른 게 특징으로 자리해야")
-# ⚠ 2026-09-15 저녁 첫 실회차: "겹쳐놔도 똑같다" → 문장을 **요구**에서 **필수**로 올렸다. 재현하면 실패라고 못박는다.
+# 두 시점 공통: '살짝 다름'을 **필수**로 요구한다.
+# 2026-09-15 저녁 첫 실회차 연서님 지적 3개를 항목으로 박았다 — ①잔머리 틀어짐 ②눈 뜬 정도·입 모양 ③옷 매무새.
+#   종전 문장은 "살짝 다르다"고 뭉뚱그려서 모델이 전부 무시했다. 항목마다 '무엇이 어떻게' 다른지 적는다.
 micro_drift: >
   This must not be a copy of the reference: it is a separate exposure and it must look like one.
-  The head sits a few millimetres and a degree or two differently, the shoulders are not in exactly
-  the same place, the loose strands and the hairline edge fall differently, the neutral expression is
-  held slightly differently so the fine lines around the eyes and mouth read a little differently,
-  and the exposure is a touch brighter or darker. If the two photos overlap pixel for pixel outside
-  the treated area, the result is wrong.
-
-# 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안). 켜면 같은 리그·같은 시점의 After 참조를 Before 뒤에
-#   붙이고 "얼굴은 1번 사진" 문구(prompts/edit_style_refs.md)를 더한다. 맞는 참조가 없으면 종전 1장 편집.
-#   ⚠ 참조는 남의 얼굴이다 — 첫 실회차에서 켠 것/끈 것의 동일인 점수를 같은 seed 로 비교해 판정.
-after_style_refs: true
+  Hair: the same hairstyle, but the loose strands, flyaways and the hairline edge fall differently -
+  a strand that was tucked is now loose, a wisp sits on the other side, the parting is a few
+  millimetres off. Face: the eyes are open a slightly different amount, the gaze is a hair off,
+  the lips rest in a slightly different way, so the fine lines around the eyes and mouth read a
+  little differently while the expression stays neutral. Clothes: the same clothes, but the collar,
+  neckline, straps and folds sit differently - shifted, rumpled or straightened compared with the
+  reference. Body: the head sits a few millimetres and a degree or two differently, the shoulders
+  are not in exactly the same place, and the exposure is a touch brighter or darker.
+  If the two photos overlap pixel for pixel outside the treated area, the result is wrong.
 
 # 구조 검사 임계값 (임상 모드에만 적용)
 # 정렬 허용 2% → 4% (2026-09-15 연서님 결정). 티모 실측: 연서님 레퍼런스의 **진짜 임상 쌍**이 눈 중심 이동

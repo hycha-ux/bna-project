@@ -459,7 +459,9 @@ _pc15 = build_prompts("nasolabial", "clinical", sample_variation("clinical", 5, 
 ok(_pc15["variation"]["rig"]["key"] in ("grey_studio", "blue_backdrop", "clinic_wall"), "임상 리그는 3벌 중 하나를 세트마다 뽑는다")
 ok("plainer and more tired" not in _pc15["before_prompt"] and "greasy T-zone" not in _pc15["before_prompt"], "임상 Before 에 셀카용 '피곤·번들거림' 문장이 안 붙는다")
 ok("Keep identical" not in _pc15["after_prompt"] and "separate exposure" in _pc15["after_prompt"], "임상 After 는 복사본이 아니라 따로 찍은 사진(살짝 다름 요구)")
-ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날(옷 다름)")
+ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날")
+ok(all(k in _pc15["after_prompt"] for k in ("flyaways", "eyes are open a slightly different amount", "collar, neckline, straps and folds")) and "wearing is different" not in _pc15["after_prompt"],
+   "살짝 다름 3항목(잔머리·눈/입·옷 매무새)이 문안에 있고, 옷은 같은 옷 (2026-09-15 저녁 연서님)")
 ok("tired" in build_prompts("nasolabial", "selfie", sample_variation("selfie", 5, treatment="nasolabial"), 5)["before_prompt"], "셀카 Before 의 피부 읽힘 문장은 그대로")
 # 첫 실회차 "겹쳐놔도 똑같다" 수정 (2026-09-15 저녁): 임상은 mild·subtle 안 뽑고, After 문안은 편집 지시가 아니다
 _c15 = [build_prompts("nasolabial", "clinical", sample_variation("clinical", s, treatment="nasolabial"), s) for s in range(20)]
