@@ -3,15 +3,12 @@
 //        2) node tools/portfolio_shots.mjs <출력폴더> [BASE=http://127.0.0.1:8798] [BATCH=20260910-153348-63cb]
 // 결과: <출력폴더>/home.png create.png jobs.png review.png library.png lessons.png lessons2.png
 //       + samples/before.jpg after-immediate.jpg after-2w.jpg (같은 인물 4:5 세트, 미러 /files/ 에서 복사)
-import { spawn } from 'node:child_process'; import { writeFileSync, mkdirSync, statSync } from 'node:fs';
+import { spawn } from 'node:child_process'; import { writeFileSync, mkdirSync } from 'node:fs';
 const OUT = process.argv[2]; if (!OUT) { console.error('출력 폴더를 주세요'); process.exit(1); }
 const BASE = process.argv[3] || 'http://127.0.0.1:8798';
 const BATCH = process.argv[4] || '20260910-153348-63cb';           // 팔자 셀카 8장, 채택 6·제외 2, AI 점수 7항목·2w 시리즈 있음
 const SAMPLE = { b: '20260911-094915-7933', i: '0004', stem: 'nasolabial_selfie_korea40sf_0004' }; // 전 · 직후 · 2주 한 세트
-const CHROME = process.platform === 'win32'
-  ? ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'].find(p => { try { return statSync(p).isFile(); } catch { return false; } })
-  : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-if (!CHROME) { console.error('크롬 실행 파일을 못 찾았다'); process.exit(1); }
+const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 mkdirSync(OUT + '/samples', { recursive: true }); mkdirSync(OUT + '/prof', { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=9352', '--no-first-run', '--hide-scrollbars', '--window-size=1440,900', '--user-data-dir=' + OUT + '/prof', 'about:blank'], { stdio: 'ignore' });
