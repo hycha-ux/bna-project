@@ -62,9 +62,10 @@ micro_drift: >
   brighter or darker. These small differences are expected and must not be copied from the reference.
 
 # 구조 검사 임계값 (임상 모드에만 적용)
-# ⚠ micro_drift 가 '몇 mm·1~2도'를 요구하므로 정렬 임계는 그대로 2% 로 둔다 — 그 이상 움직이면 다른 구도다.
-#   luma_diff 는 종전 0.05 그대로. 리그 3벌·노출 차 허용으로 탈락이 늘면 0.08 까지가 후보 (티모 확인 항목).
+# 정렬 허용 2% → 4% (2026-09-15 연서님 결정). 티모 실측: 연서님 레퍼런스의 **진짜 임상 쌍**이 눈 중심 이동
+#   2.65% 라 2% 면 레퍼런스 자체가 탈락한다. 합성을 끈 대신 여기서 잡는다. 표본 1쌍(팔자) — 리프팅 2쌍 재고 확정.
+#   luma_diff 는 종전 0.05 그대로 (같은 쌍 실측 0.013).
 tolerance:
-  landmark_align_pct: 2.0     # 눈 중심 거리 대비 위치 오차 %
+  landmark_align_pct: 4.0     # 눈 중심 거리 대비 위치 오차 %
   face_ratio_diff: 0.03       # 얼굴 세로 비율 차이
   luma_diff: 0.05             # 평균 밝기 차이

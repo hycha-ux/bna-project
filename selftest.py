@@ -18,7 +18,7 @@ def ok(cond, msg):
 d = defaults_for("selfie")
 ok(d["gen"] == "openai" and d["edit"] == "openai" and d["qa"] == "openai",
    f"셀카 기본 프로바이더가 GPT(openai) 셋 다여야 한다 — 실제 {d}")
-ok(defaults_for("clinical")["gen"] == "gemini", "임상 기본은 종전대로 gemini")
+ok(defaults_for("clinical") == {"gen": "openai", "edit": "openai", "qa": "openai"}, "임상 기본도 GPT 셋 다 (2026-09-15 연서님 확정, Gemini 미구현)")
 
 # ② 벤더 이름을 코드에 다시 박지 않았는가 (정본은 providers.yaml 하나)
 for f in ("src/bna/cli.py", "src/bna/batch.py"):
@@ -461,6 +461,16 @@ ok("tired" not in _pc15["before_prompt"] and "greasy" not in _pc15["before_promp
 ok("Keep identical" not in _pc15["after_prompt"] and "separate exposure" in _pc15["after_prompt"], "임상 After 는 복사본이 아니라 따로 찍은 사진(살짝 다름 요구)")
 ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날(옷 다름)")
 ok("tired" in build_prompts("nasolabial", "selfie", sample_variation("selfie", 5, treatment="nasolabial"), 5)["before_prompt"], "셀카 Before 의 피부 읽힘 문장은 그대로")
+# 참조는 세트가 뽑은 리그와 같은 것만 (2026-09-15 티모 선결 B)
+from bna import refs as _refs15
+_v15 = build_prompts("lifting", "clinical", sample_variation("clinical", 5, treatment="lifting"), 5)["variation"]
+_v15 = {**_v15, "rig": {"key": "blue_backdrop", "text": ""}}
+_f15 = _refs15.pick_files("clinical", _v15, treatment="lifting")
+ok(_f15 == ["clinical/lifting_before_01.jpg"], f"임상 Before 참조는 세트 리그(blue_backdrop)와 같은 것만 — {_f15}")
+ok(_refs15.pick_files("clinical", {**_v15, "rig": {"key": "grey_studio", "text": ""}}, treatment="lifting") == [],
+   "리프팅에 회색 스튜디오 참조가 없으면 다른 리그 사진을 억지로 붙이지 않는다(빈 목록)")
+ok(_refs15.pick_files("clinical", {**_v15, "rig": {"key": "clinic_wall", "text": ""}}, treatment="lifting", when="4w") == ["clinical/lifting_after4w_02.jpg"],
+   "임상 After 참조도 리그·시점이 맞는 것만")
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm
 import numpy as _np

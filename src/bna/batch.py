@@ -131,7 +131,7 @@ class Batch:
         # 참조는 **컷마다 다시 고른다** (2026-09-11). 종전엔 한 번 골라 Before·After 에 같이 썼는데,
         # 그러면 '팔자 직후' 참조가 시술 전 컷에도 들어가 아직 시술도 안 한 얼굴에 패치를 그린다.
         # 시점 축은 refs.pick(when=...) 이 가른다 — when=None 이 곧 Before 다.
-        style_refs = self._refs(variation)
+        style_refs = self._refs(spec["variation"])      # spec 의 변주에 임상 리그(rig)가 들어 있다 — 참조 리그 필터용 (2026-09-15)
 
         before_b = before = pts = mask_img = None      # 재시도 때 Before 를 물려받는 자리
         prev_fail = []
@@ -160,7 +160,7 @@ class Batch:
                                      avoid_not_at=(self.avoid or {}).get("not_at"))
                 meta.update({k: v for k, v in spec.items()})
                 meta["redrawn"].append(attempt)
-                style_refs = self._refs(variation)
+                style_refs = self._refs(spec["variation"])      # spec 의 변주에 임상 리그(rig)가 들어 있다 — 참조 리그 필터용 (2026-09-15)
                 # 조건이 바뀌면 Before 도 다시 — 그 묶음은 _retry_plan 안에 있다(여기서 또 켜지 않는다)
 
             self._p(item_id, "before", attempt=attempt)
@@ -197,7 +197,12 @@ class Batch:
                         mask_b = _png(mask_img) if (mask_img is not None and self.p_edit.supports_mask) else None
                         after_b = await loop.run_in_executor(None, self.p_edit.edit, before_b, after_prompt, mask_b)
                         after = Image.open(io.BytesIO(after_b))
-                        if mask_img is not None:                   # A4: 마스크 밖 원본 복원 (모델 지원 여부와 무관)
+                        # A4: 마스크 밖 원본 복원 — **셀카만**. 임상은 끈다 (2026-09-15 연서님 결정, 티모 프로브
+                        #   docs/clinical-prompt-v1-review-0915-teemo.md): 임상 v1 은 '같은 부스에서 따로 찍은 사진'이라
+                        #   머리 위치·잔머리·미세 주름이 살짝 달라야 하는데, 합성은 그걸 Before 픽셀로 도로 덮고
+                        #   얼굴만 복원(b)해도 이중 윤곽이 난다. 마스크 자체는 모델에 그대로 보낸다(편집 범위 안내용).
+                        #   대신 정렬 허용을 4% 로 풀었다(clinical_rig.yaml tolerance) — 진짜 임상 쌍도 2.65% 움직인다.
+                        if mask_img is not None and self.mode != "clinical":
                             after = landmarks.composite_outside_mask(before, after, mask_img)
                         cost = self.pricing[self.p_edit.name]["edit"]
                     else:

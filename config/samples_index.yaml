@@ -154,39 +154,46 @@ refs:
 # ⚠ 출처는 외부 웹 이미지(3번은 병원 워터마크·눈 모자이크 있음). **내부 스타일 참조 전용**, 외부 노출 금지.
 # ⚠ 임상 After 는 edit 경로라 지금 코드에선 참조가 **Before 생성에만** 붙는다(batch._refs 는 generate 경로만).
 #   그래서 timeline 태그가 있는 After 컷은 지금은 아무 데도 안 붙는다 — 사실대로 태그만 남긴다(티모 확인 항목).
-# 리그 대응: nasolabial_01 = grey_studio · lifting_01 = blue_backdrop · lifting_02 = clinic_wall (clinical_rig.yaml).
+# rig: 촬영 리그(clinical_rig.yaml rigs 의 키). 임상 컷은 **세트가 뽑은 리그와 같은 참조만** 붙는다 (2026-09-15 티모 선결 B —
+#   종전엔 리그를 몰라서 어떤 리그를 뽑아도 회색 스튜디오 사진이 붙었다). 없는 리그 이름은 소리 내고 죽는다.
 - file: clinical/nasolabial_before_01.jpg
   mode: clinical
+  rig: grey_studio
   treatment: nasolabial
   timeline: before
   tags: {lighting: window, quality: flagship, background: clinic}
   note: 회색 무지 배경·스튜디오 조명, 서구 40대 여성 정면. 팔자·중안면 볼륨 Before. 리그 grey_studio 의 기준 사진.
 - file: clinical/nasolabial_after2w_01.jpg
   mode: clinical
+  rig: grey_studio
   treatment: nasolabial
   timeline: [2w, 4w]
   tags: {lighting: window, quality: flagship, background: clinic}
   note: 같은 부스 After — 머리 위치·잔머리·표정 결이 살짝 다름(이게 정상). 팔자 얕아지고 중안면 차오름.
 - file: clinical/lifting_before_01.jpg
   mode: clinical
+  rig: blue_backdrop
   treatment: lifting
   timeline: before
   tags: {lighting: fluorescent, quality: mid, background: clinic}
   note: 파란 배경·병원 플래시(색온도 어긋남), 50대 여성 코 아래~쇄골 컷. 턱선·심부볼 Before. 리그 blue_backdrop 기준 사진.
 - file: clinical/lifting_after2w_01.jpg
   mode: clinical
+  rig: blue_backdrop
   treatment: lifting
   timeline: [2w, 4w]
   tags: {lighting: fluorescent, quality: mid, background: clinic}
   note: 다른 날 After — 옷·목걸이 다름, 배경·프레이밍 같음. 턱선 정리.
 - file: clinical/lifting_before_02.jpg
   mode: clinical
+  rig: clinic_wall
   treatment: lifting
   timeline: before
   tags: {lighting: fluorescent, quality: mid, background: clinic}
   note: 병원 벽·천장등·헤어밴드, 20대 여성 정면, 눈 모자이크. 2018-12-17 촬영(캡션). 리그 clinic_wall 기준 사진.
 - file: clinical/lifting_after4w_02.jpg
   mode: clinical
+  rig: clinic_wall
   treatment: lifting
   timeline: [4w]
   tags: {lighting: fluorescent, quality: mid, background: clinic}

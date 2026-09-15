@@ -42,17 +42,25 @@ def check_index() -> list:
         bad = _as_set(r.get("timeline")) - (set(TIMELINE_ORDER) | {"before"})   # before = 시술 전 컷 전용 (2026-09-14)
         if bad:
             raise ValueError(f"{where}: 없는 시점 {sorted(bad)} (가능: {TIMELINE_ORDER})")
+        if r.get("rig") is not None and str(r["rig"]) not in load("clinical_rig.yaml")["rigs"]:
+            raise ValueError(f"{where}: 없는 리그 {r['rig']!r} (가능: {sorted(load('clinical_rig.yaml')['rigs'])})")
         if not (REF_DIR / r["file"]).exists():
             raise FileNotFoundError(f"{where}: 파일이 없다 — {REF_DIR / r['file']}")
         out.append(r)
     return out
 
 
-def candidates(mode: str, treatment: str = None, when: str = None) -> list:
-    """이 컷에 써도 되는 참조만. `when=None` = 시술 전(Before) 컷."""
+def candidates(mode: str, treatment: str = None, when: str = None, rig: str = None) -> list:
+    """이 컷에 써도 되는 참조만. `when=None` = 시술 전(Before) 컷.
+    `rig` = 이 세트가 뽑은 촬영 리그(임상). 리그 태그가 있는 참조는 **같은 리그일 때만** 쓴다 — 점수가 아니라
+    필터다. 참조는 그림체(배경·조명)도 옮기므로 다른 리그 사진이 붙으면 '세트마다 리그 고정'이 깨진다
+    (2026-09-15 티모: 팔자는 회색 스튜디오 참조 1장뿐이라 어떤 리그를 뽑아도 그게 붙었다). 리그 태그가 없는
+    참조는 종전처럼 범용."""
     picked = []
     for r in check_index():
         if r.get("mode") != mode:
+            continue
+        if r.get("rig") is not None and rig is not None and str(r["rig"]) != str(rig):
             continue
         tr = _as_set(r.get("treatment"))
         if tr and treatment is not None and treatment not in tr:
@@ -93,5 +101,12 @@ def _rank(refs: list, variation: dict, when, treatment: str = None) -> list:
 
 
 def pick(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
+    rig = (variation.get("rig") or {}).get("key") if isinstance(variation.get("rig"), dict) else None
     return [(REF_DIR / r["file"]).read_bytes()
-            for r in _rank(candidates(mode, treatment, when), variation, when, treatment)[:k]]
+            for r in _rank(candidates(mode, treatment, when, rig), variation, when, treatment)[:k]]
+
+
+def pick_files(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
+    """pick 과 같은 선택, 파일 이름만 (검사·화면용)."""
+    rig = (variation.get("rig") or {}).get("key") if isinstance(variation.get("rig"), dict) else None
+    return [r["file"] for r in _rank(candidates(mode, treatment, when, rig), variation, when, treatment)[:k]]

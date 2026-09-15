@@ -5,10 +5,10 @@
 #   프레이밍 축(코 아래만·한쪽 볼) 준수율 GPT 4/4 vs Gemini 0/4.
 #   Gemini 는 부분 크롭 지시를 통째로 무시하고 늘 얼굴 전체를 그려, 레퍼런스(후기 앱) 룩이 안 나온다.
 # 셀카는 gen·edit·qa 셋 다 GPT 다 — 한 키로 셀카 파이프가 끝까지 돈다(중간에 다른 벤더를 끼우지 않는다).
-# 임상 모드는 종전대로 두었다(빌디 소관).
+# 임상도 GPT (2026-09-15 성연서님 확정) — GeminiProvider.generate/edit 가 미구현이라 실생성이 첫 장에서 멈춘다(티모 판독).
 default_provider:
   selfie:   {gen: openai, edit: openai, qa: openai}
-  clinical: {gen: gemini, edit: gemini, qa: gemini}
+  clinical: {gen: openai, edit: openai, qa: openai}
 
 # 메모 → 규칙 초안(bna/notedraft.py)을 쓰는 벤더. **모드별로 가르지 않는다** —
 # 병합 그룹은 셀카·임상 메모가 한 줄에 섞일 수 있어서, 모드로 가르면 같은 표 안에서
