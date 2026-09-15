@@ -184,7 +184,11 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .rev { display:grid; grid-template-columns:minmax(0,1fr) 340px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
 /* ── 검수 비교 뷰 (2026-09-09): 나란히 · 슬라이더 · 깜빡이 + 확대 동기화 + 부위 오버레이 ── */
 .cmp-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--ui-border); flex-wrap:wrap }
-.cmp-bar .sp { flex:1 } .cmp-bar .hint { font-size:11px; color:var(--ui-lo) } .cmp-bar .hint kbd { font:inherit; border:1px solid var(--ui-border); border-radius:3px; padding:0 4px; margin:0 1px }
+.cmp-bar .sp { flex:1 }
+.cmp-opt { position:relative } .cmp-opt .dd-btn { height:32px; font-size:var(--fs-sm) } .cmp-opt .dd-menu { left:auto; right:0; min-width:260px; padding:6px }
+.cmp-opt .opt { display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border:0; background:none; border-radius:6px; font-size:var(--fs-sm); color:var(--ui-hi); text-align:left; cursor:pointer } .cmp-opt .opt:hover { background:var(--ui-surface) } .cmp-opt .opt.off { color:var(--ui-lo); cursor:default }
+.cmp-opt .opt i { width:14px; height:14px; border:1.5px solid var(--ui-lo); border-radius:4px; flex:none } .cmp-opt .opt.on i { background:#191919; border-color:#191919 } .cmp-opt .opt kbd { margin-left:auto; font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px }
+.cmp-opt .opt-hint { padding:8px 10px 4px; font-size:11px; color:var(--ui-lo); border-top:1px solid var(--ui-border); margin-top:4px } .cmp-bar .hint { font-size:11px; color:var(--ui-lo) } .cmp-bar .hint kbd { font:inherit; border:1px solid var(--ui-border); border-radius:3px; padding:0 4px; margin:0 1px }
 .cmp { position:relative; background:var(--ui-surface,#F4F5F7); overflow:hidden; user-select:none; touch-action:none }
 /* 단축키는 글자가 아니라 '키' 로 보이게 (2026-09-09 성연서님 'M·Esc 가 무슨 뜻인지 모르겠다') */
 .cmp-bar .b kbd { font:inherit; font-size:10px; opacity:.6; border:1px solid currentColor; border-radius:3px; padding:0 4px; margin-left:4px; line-height:1.4 }
@@ -1374,12 +1378,14 @@ function renderReview() {
       <div class="cmp-bar">
         <button class="b sm cmp-back" id="cmp-back" title="사진 목록으로 돌아갑니다 · 단축키 Esc 또는 브라우저 뒤로 가기">← 목록으로 <kbd>Esc</kbd></button>
         <div class="pill" id="cmp-mode">${Object.entries(CMP_KO).map(([k, l]) => `<button data-m="${k}" class="${k === CMP_MODE ? 'on' : ''}">${l}</button>`).join('')}</div>
-        ${maskUrl ? `<button class="b sm ${MASK_ON ? 'primary' : ''}" id="cmp-mask" title="시술한 자리(${esc(region)})를 파란색으로 칠해 보여줍니다 — 이 자리 밖이 바뀌었으면 탈락 · 단축키 M">시술 부위 표시 <kbd>M</kbd></button>` : `<span class="hint" title="이 사진은 시술 부위 정보가 없습니다(얼굴 미검출 또는 랜드마크 미설치)">시술 부위 정보 없음</span>`}
-        <button class="b sm" id="cmp-reset" ${ZOOM.s === 1 ? 'disabled' : ''}>확대 초기화 <kbd>0</kbd></button>
-        <button class="b sm ${AUTO_NEXT ? 'primary' : ''}" id="cmp-auto" title="채택하거나 제외 사유를 고르면 아직 안 본 다음 사진으로 넘어갑니다 · 단축키 A">판정하면 다음 장 <kbd>A</kbd></button>
-        ${whens.length > 1 ? `<span class="hint" style="margin-left:6px">시점</span><div class="pill" id="cmp-when">${whens.map(w => `<button data-w="${w}" class="${w === REV_WHEN ? 'on' : ''}" title="${(it.after_results||{})[w]?.fail_reasons?.length ? '이 시점 탈락: ' + it.after_results[w].fail_reasons.map(failKo).join(', ') : ''}">${val('timeline', w)}${(it.after_results||{})[w]?.fail_reasons?.length ? ' ✕' : ''}</button>`).join('')}</div>` : ''}
+        ${whens.length > 1 && !spread ? `<div class="pill" id="cmp-when">${whens.map(w => `<button data-w="${w}" class="${w === REV_WHEN ? 'on' : ''}" title="${(it.after_results||{})[w]?.fail_reasons?.length ? '이 시점 탈락: ' + it.after_results[w].fail_reasons.map(failKo).join(', ') : ''}">${val('timeline', w)}${(it.after_results||{})[w]?.fail_reasons?.length ? ' ✕' : ''}</button>`).join('')}</div>` : ''}
         <div class="sp"></div>
-        <span class="hint">휠 = 확대(두 장 같이) · 드래그 = 이동${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</span>
+        ${ZOOM.s > 1 ? `<button class="b sm" id="cmp-reset">확대 초기화 <kbd>0</kbd></button>` : ''}
+        <details class="dd cmp-opt"><summary class="dd-btn">옵션 <span class="dd-caret">▾</span></summary><div class="dd-menu">
+          ${maskUrl ? `<button class="opt ${MASK_ON ? 'on' : ''}" id="cmp-mask" title="시술한 자리(${esc(region)})를 칠해 보여줍니다 — 이 자리 밖이 바뀌었으면 탈락"><i></i>시술 부위 표시 <kbd>M</kbd></button>` : `<div class="opt off" title="이 사진은 시술 부위 정보가 없습니다(얼굴 미검출 또는 랜드마크 미설치)"><i></i>시술 부위 표시 <span class="muted">정보 없음</span></div>`}
+          <button class="opt ${AUTO_NEXT ? 'on' : ''}" id="cmp-auto" title="채택하거나 제외 사유를 고르면 아직 안 본 다음 사진으로 넘어갑니다"><i></i>판정하면 다음 장 <kbd>A</kbd></button>
+          <div class="opt-hint">휠 = 확대(두 장 같이) · 드래그 = 이동 · <kbd>0</kbd> 확대 초기화${CMP_MODE === 'flip' ? ' · <kbd>Space</kbd> 전/후 전환' : CMP_MODE === 'wipe' ? ' · 선을 끌어 비교' : ''}</div>
+        </div></details>
       </div>
       <div class="cmp ${MASK_ON ? 'mask-on' : ''} ${FLIP_AFTER ? 'show-after' : ''} ${spread ? 'series' : ''}" data-mode="${CMP_MODE}" style="--wipe:50%;--n:${1 + whens.length}">${view}</div>
       <div class="thumbs"><div class="rev-prog"><i style="width:${(GAL_ITEMS.filter(x => x.review?.pick).length / Math.max(1, GAL_ITEMS.length) * 100).toFixed(0)}%"></i></div><div class="th-row">${thumbs}</div><span class="muted">${REV_IDX+1} / ${GAL_ITEMS.length} · 채택 ${GAL_ITEMS.filter(x => x.review?.pick === 'pick').length} · 제외 ${GAL_ITEMS.filter(x => x.review?.pick === 'reject').length} · 남은 검수 ${GAL_ITEMS.filter(x => !x.review?.pick).length}장</span></div>
@@ -1417,11 +1423,11 @@ function bindCompare(el) {
   const cmp = el.querySelector('.cmp'); if (!cmp) return;
   el.querySelectorAll('#cmp-mode button').forEach(bt => bt.onclick = () => { CMP_MODE = bt.dataset.m; try { localStorage.setItem('bna.cmp', CMP_MODE); } catch {} renderReview(); });
   el.querySelectorAll('#cmp-when button').forEach(bt => bt.onclick = () => { REV_WHEN = bt.dataset.w; renderReview(); });
-  const mk = el.querySelector('#cmp-mask'); if (mk) mk.onclick = () => { MASK_ON = !MASK_ON; try { localStorage.setItem('bna.mask', MASK_ON ? '1' : '0'); } catch {} cmp.classList.toggle('mask-on', MASK_ON); mk.classList.toggle('primary', MASK_ON); };
+  const mk = el.querySelector('#cmp-mask'); if (mk) mk.onclick = () => { MASK_ON = !MASK_ON; try { localStorage.setItem('bna.mask', MASK_ON ? '1' : '0'); } catch {} cmp.classList.toggle('mask-on', MASK_ON); mk.classList.toggle('on', MASK_ON); };
   const stages = [...cmp.querySelectorAll('.stage')];
-  const apply = () => { stages.forEach(st => st.style.transform = `translate(${ZOOM.x}px,${ZOOM.y}px) scale(${ZOOM.s})`); cmp.classList.toggle('zoomed', ZOOM.s > 1); const r = el.querySelector('#cmp-reset'); if (r) r.disabled = ZOOM.s === 1; };
-  el.querySelector('#cmp-reset').onclick = () => { ZOOM = {s:1,x:0,y:0}; apply(); };
-  const au = el.querySelector('#cmp-auto'); if (au) au.onclick = () => { AUTO_NEXT = !AUTO_NEXT; try { localStorage.setItem('bna.autonext', AUTO_NEXT ? '1' : '0'); } catch {} au.classList.toggle('primary', AUTO_NEXT); };
+  const apply = () => { stages.forEach(st => st.style.transform = `translate(${ZOOM.x}px,${ZOOM.y}px) scale(${ZOOM.s})`); cmp.classList.toggle('zoomed', ZOOM.s > 1); let r = el.querySelector('#cmp-reset'); if (!r && ZOOM.s > 1) { r = document.createElement('button'); r.className = 'b sm'; r.id = 'cmp-reset'; r.innerHTML = '확대 초기화 <kbd>0</kbd>'; r.onclick = () => { ZOOM = {s:1,x:0,y:0}; apply(); }; el.querySelector('.cmp-bar .cmp-opt').before(r); } if (r) r.hidden = ZOOM.s === 1; };
+  const rs = el.querySelector('#cmp-reset'); if (rs) rs.onclick = () => { ZOOM = {s:1,x:0,y:0}; apply(); };
+  const au = el.querySelector('#cmp-auto'); if (au) au.onclick = () => { AUTO_NEXT = !AUTO_NEXT; try { localStorage.setItem('bna.autonext', AUTO_NEXT ? '1' : '0'); } catch {} au.classList.toggle('on', AUTO_NEXT); };
   el.querySelectorAll('.cmp.series figure[data-w]').forEach(f => f.onclick = () => { if (ZOOM.s === 1) { REV_WHEN = f.dataset.w; renderReview(); } });
   const bk = el.querySelector('#cmp-back'); if (bk) bk.onclick = () => setView('grid');
   apply();
@@ -1475,7 +1481,7 @@ document.addEventListener('keydown', e => {
   else if (QKEYS.includes(e.key.toLowerCase()) && it.review?.pick === 'reject') { $('#rev').querySelectorAll('[data-act=qtag]')[QKEYS.indexOf(e.key.toLowerCase())]?.click(); }
   else if (e.key === 'a' || e.key === 'A' || e.code === 'KeyA') { $('#cmp-auto')?.click(); }
   else if (e.key === 'm' || e.key === 'M' || e.code === 'KeyM') { $('#cmp-mask')?.click(); }   // 한글 입력 상태면 key 가 'ㅡ' 로 들어와서 code 로도 잡는다 (2026-09-09 성연서님 'm 눌러도 반응 없음')
-  else if (e.key === '0') { $('#cmp-reset')?.click(); }
+  else if (e.key === '0') { const r = $('#cmp-reset'); if (r) r.click(); else { ZOOM = {s:1,x:0,y:0}; renderReview(); } }
   else if (e.key === 'Escape') { setView('grid'); }
   else if (e.key === ' ' && CMP_MODE === 'flip') { const c = $('#rev .cmp'); if (c) flipToggle(c); }
   else return; e.preventDefault();
