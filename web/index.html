@@ -187,14 +187,6 @@ svg:has(> use[href="#i-menu"]) { -webkit-mask-image:url(/assets/icons/more.png);
 .nav-item .chip { margin-left:auto }
 .side .divider { height:1px; background:var(--ui-border); margin:12px 4px }
 .side .foot { margin-top:auto; padding:var(--sp-2); font-size:var(--fs-xs); color:var(--ui-lo); line-height:1.5 }
-/* 워크스페이스(병원) 전환 — 2026-09-16 연서님: 온리프·르샤인·오블리브 세 병원을 사이드바에서 고른다 */
-.side .sec { font-size:11px; font-weight:600; color:var(--ui-lo); letter-spacing:.02em; padding:0 var(--sp-2); margin:0 0 6px }
-.ws { width:100%; padding:6px var(--sp-2); border:0; border-radius:var(--r-sm); background:none; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:10px; text-align:left; margin-bottom:2px }
-.ws:hover { background:var(--ui-surface); color:var(--ui-hi) }
-.ws.on { background:var(--pri-alpha); color:var(--primary); font-weight:var(--fw-b) }
-.ws .av { width:26px; height:26px; border-radius:8px; background:var(--brand-blue); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; flex-shrink:0; letter-spacing:0 }
-.ws.on .av { background:var(--primary); color:#fff }
-.collapsed .side .sec { display:none } .collapsed .ws { justify-content:center; padding:6px 0 }
 
 /* ════ 상단 바 ════ */
 .main { min-width:0 }
@@ -578,7 +570,6 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
   .app.side-open .side { transform:none; box-shadow:0 0 0 100vw rgba(25,31,40,.35) }
   .collapsed .side .brand, .collapsed .side .lbl, .collapsed .side .chip, .collapsed .side .sub, .collapsed .side .caret { display:initial }   /* 접힘 상태는 데스크톱 전용 */
   .collapsed .nav-item { justify-content:flex-start; padding:var(--sp-2) }
-  .collapsed .side .sec { display:block } .collapsed .ws { justify-content:flex-start; padding:6px var(--sp-2) }
   .side .toggle { display:none } .tb-menu { display:inline-flex; align-items:center; justify-content:center }
   .topbar { gap:var(--sp-2); padding:0 var(--sp-3) } .topbar .search { display:none } .topbar h1 { font-size:var(--fs-lg) }
   .status-pill { max-width:42vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
@@ -618,14 +609,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
     <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span></button>
     <button class="nav-item" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl">설정</span></button>
-    <div class="divider"></div>
-    <div class="sec">워크스페이스</div>
-    <div id="ws-list">
-      <button class="ws on" data-ws="onlif" title="온리프"><span class="av">OL</span><span class="lbl">온리프</span></button>
-      <button class="ws" data-ws="leshine" title="르샤인"><span class="av">LS</span><span class="lbl">르샤인</span></button>
-      <button class="ws" data-ws="oblive" title="오블리브"><span class="av">OB</span><span class="lbl">오블리브</span></button>
-    </div>
-    <!-- 시술·종류 필터는 2026-09-15 사이드바에서 각 화면 상단 칩으로 옮겼다 (사이드바는 메뉴 6줄 + 워크스페이스). 아래 두 칸은 옛 JS 가 찾는 자리 -->
+    <!-- 시술·종류 필터는 2026-09-15 사이드바에서 각 화면 상단 칩으로 옮겼다 (사이드바는 메뉴 6줄만). 아래 두 칸은 옛 JS 가 찾는 자리 -->
     <div id="sub-library" hidden></div>
     <div class="foot" id="side-foot"></div>
   </nav>
@@ -995,11 +979,6 @@ function show(tab) {
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
 $$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'library' && b.classList.contains('nav-item')) { $$('#sub-library button').forEach(x => x.classList.remove('on')); const lm = $('#lib-mode'); if (lm) lm.value = ''; } if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === '')); } show(t); });
-// 워크스페이스(병원) 전환 (2026-09-16) — 지금은 표시(사이드바·상단 프로필·바닥글)만 바뀐다. 데이터는 아직 온리프 하나라 분리는 다음 단계
-const WS = { onlif:{ko:'온리프', av:'OL'}, leshine:{ko:'르샤인', av:'LS'}, oblive:{ko:'오블리브', av:'OB'} };
-let WS_ID = 'onlif'; try { WS_ID = localStorage.getItem('bna.ws') || 'onlif'; } catch {} if (!WS[WS_ID]) WS_ID = 'onlif';
-function setWs(id) { const w = WS[id] || WS.onlif; WS_ID = id; $$('.ws').forEach(b => b.classList.toggle('on', b.dataset.ws === id)); const p = $('#tb-profile'); if (p) { p.querySelector('.avatar').textContent = w.av; p.querySelector('.avatar + span').textContent = w.ko; } const f = $('#side-foot'); if (f) f.textContent = w.ko + ' · 전후 사진 자동 생성'; try { localStorage.setItem('bna.ws', id); } catch {} }
-$$('.ws').forEach(b => b.onclick = () => setWs(b.dataset.ws));
 $$('.nav-item .caret[data-fold]').forEach(c => c.onclick = e => { e.stopPropagation(); const k = 'fold-' + c.dataset.fold; const on = $('.side').classList.toggle(k); try { localStorage.setItem('bna.' + k, on ? '1' : '0'); } catch {} });
 try { for (const k of ['fold-jobs', 'fold-library']) if (localStorage.getItem('bna.' + k) === '1') $('.side').classList.add(k); } catch {}
 $('#tb-menu').onclick = e => { e.stopPropagation(); $('#app').classList.toggle('side-open'); };
@@ -2186,7 +2165,7 @@ function renderSettings() {
   }
   renderTreatmentChips(); renderFixed(); renderProvDefault();
   api('/api/library').then(l => { $('#lib-badge').hidden = !l.total; $('#lib-badge').textContent = l.total; });
-  setWs(WS_ID);   // 바닥글·상단 프로필을 고른 워크스페이스로
+  $('#side-foot').textContent = '온리프 · 전후 사진 자동 생성';
   const h = location.hash.slice(1); show(TITLES[h] ? h : 'home');
   // 주소(#create 등)를 바꾸거나 뒤로가기를 눌러도 화면이 따라간다 — 종전엔 주소만 바뀌고 화면은 그대로였다 (② )
   window.addEventListener('hashchange', () => { const t = location.hash.slice(1); if (TITLES[t] && !$('#tab-' + t).classList.contains('active')) show(t); });
