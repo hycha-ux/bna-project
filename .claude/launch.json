@@ -1,1 +1,14 @@
-{"version":"0.0.1","configurations":[{"name":"bna-dashboard","url":"http://localhost:8765"}]}
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bna-local",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/medibulider_design/Desktop/Projects/bna && PYTHONPATH=src python3 -m src.bna.api --port 8766"
+      ],
+      "port": 8766
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+// 위클리용 대시보드 화면 캡처 — 사용: node tools/weekly_shots.mjs <출력폴더> [BASE=http://localhost:8765]. 클라우드 실데이터로 찍으려면 tools/cloud_mirror.mjs 를 띄우고 BASE=http://127.0.0.1:8798
+import { spawn } from 'node:child_process'; import { writeFileSync } from 'node:fs';
+const S=process.argv[2]; const BASE_OVERRIDE=process.argv[3]; const CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'; const BASE=BASE_OVERRIDE||'http://localhost:8765';
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+const chrome=spawn(CHROME,['--headless=new','--remote-debugging-port=9351','--no-first-run','--window-size=1440,900','--user-data-dir='+S+'/prof','about:blank'],{stdio:'ignore'});
+await sleep(3500);
+const tabs=await (await fetch('http://127.0.0.1:9351/json/list')).json();
+const ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);
+let id=0; const pend=new Map();
+ws.addEventListener('message',e=>{const j=JSON.parse(e.data); if(pend.has(j.id)){pend.get(j.id)(j);pend.delete(j.id);}});
+await new Promise(r=>ws.addEventListener('open',r,{once:true}));
+const send=(m,q={})=>new Promise(r=>{const i=++id;pend.set(i,r);ws.send(JSON.stringify({id:i,method:m,params:q}));});
+const ev=async e=>(await send('Runtime.evaluate',{expression:e,returnByValue:true,awaitPromise:true})).result?.result?.value;
+await send('Runtime.enable'); await send('Page.enable');
+await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+const shot=async n=>{const r=await send('Page.captureScreenshot',{format:'png'}); writeFileSync(`${S}/shots/${n}.png`,Buffer.from(r.result.data,'base64')); console.log('shot',n);};
+const goto=async h=>{await send('Page.navigate',{url:'about:blank'}); await sleep(500); await send('Page.navigate',{url:BASE+'/'+h}); await sleep(5000);};
+await goto('#home'); await ev("localStorage.setItem('bna.dev','1')"); await goto('#home'); await shot('home'); await goto('#library'); await shot('library'); await goto('#lessons'); await shot('lessons');
+await goto('#jobs'); await ev("document.querySelector('#batches tbody tr')?.click()"); await sleep(1800); await shot('jobs');
+await ev("document.querySelector('#gal-view [data-v=review]')?.click()"); await sleep(2000); await shot('review');
+await goto('#create'); await shot('create');
+await goto('#lessons'); await ev("window.scrollTo(0,700)"); await sleep(500); await shot('lessons2');
+ws.close(); chrome.kill(); process.exit(0);
