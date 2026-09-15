@@ -128,3 +128,78 @@ def nudge(reason: str = "생성 완료") -> bool:
         _running = True
     threading.Thread(target=_worker, args=(reason,), daemon=True).start()
     return True
+
+
+# ── 진행 기록만 따로 (2026-09-15 티모, 빌디 제안 5번 · 성연서님 "진행해볼까?") ─────────────
+# 위 nudge 는 '완료 지점'에만 8~20초짜리 전체 올리기를 한다. 그래서 한 장이 그려지는 몇 분 동안
+# 클라우드 화면이 멈춰 보여 "멈춤 vs 그리는 중"을 못 가렸다(09-15 재부팅 1시간 무응답이 화면에 안 보임).
+# 이쪽은 **progress 요약 한 파일**만 PUT 1건으로 올린다 — 단계가 바뀔 때 PROG_MIN_INTERVAL 간격,
+# 변화가 없어도 Progress 가 HEARTBEAT_S 마다 부른다. 화면은 cloud/lib/liveprog.mjs 가 더 새 쪽을 고른다.
+# 원칙은 위와 같다 — 막지 않고(fire-and-forget), 겹치지 않고(배치별 leading+trailing), 같은 스위치로 꺼진다.
+PROG_SCRIPT = ROOT / "cloud" / "push-progress.mjs"
+PROG_MIN_INTERVAL = float(os.environ.get("BNA_PROGRESS_MIN_INTERVAL", "30"))
+HEARTBEAT_S = 60          # cloud/lib/liveprog.mjs 의 HEARTBEAT_S 와 한 쌍 (화면의 멈춤 판정 = 5번 놓침)
+_plock = threading.Lock()
+_pstate: dict = {}        # 배치 폴더 → {"running", "pending", "last"}
+
+
+def _progress_payload(batch_dir: Path):
+    """로컬 API 와 같은 요약(progress.read) + pushed_at 을 파일로 쓴다. 산식은 progress.py 가 정본."""
+    from . import progress as prog                   # 순환 import 회피(progress 가 이 모듈을 먼저 부른다)
+    d = prog.read(batch_dir)
+    if d is None:
+        return None
+    d["pushed_at"] = round(time.time(), 3)
+    out = batch_dir / "progress.push.json"
+    tmp = out.with_suffix(".json.tmp")
+    tmp.write_text(__import__("json").dumps(d, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, out)
+    return out
+
+
+def _run_progress_once(batch_dir: Path) -> None:
+    try:
+        f = _progress_payload(batch_dir)
+        if f is None:
+            return
+        p = subprocess.run([_node(), str(PROG_SCRIPT), str(f), batch_dir.name], cwd=str(ROOT),
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        # 성공은 적지 않는다 — 배치 하나에 수십 번이라 push.log 가 이것으로 덮인다. 실패만 남긴다.
+        if p.returncode != 0:
+            tail = (p.stderr or p.stdout or "").strip().splitlines()
+            _log(f"진행 올리기 {batch_dir.name} → exit {p.returncode} · {tail[-1] if tail else '(출력 없음)'}")
+    except Exception as e:                              # noqa: BLE001
+        _log(f"진행 올리기 {batch_dir.name} → 실패 {e!r}")
+
+
+def _progress_worker(key: str, batch_dir: Path) -> None:
+    while True:
+        with _plock:
+            wait = PROG_MIN_INTERVAL - (time.time() - _pstate[key]["last"])
+        if wait > 0:
+            time.sleep(wait)
+        with _plock:
+            _pstate[key]["last"] = time.time()
+            _pstate[key]["pending"] = False
+        _run_progress_once(batch_dir)
+        with _plock:
+            if not _pstate[key]["pending"]:
+                _pstate[key]["running"] = False
+                return
+
+
+def nudge_progress(batch_dir) -> bool:
+    """이 배치의 진행 요약을 올려라. 즉시 반환. 실제로 작업자를 띄웠으면 True(도는 중이면 '한 번 더'로 접고 False)."""
+    on, _why = enabled()
+    if not on or not PROG_SCRIPT.exists():
+        return False
+    batch_dir = Path(batch_dir)
+    key = str(batch_dir)
+    with _plock:
+        st = _pstate.setdefault(key, {"running": False, "pending": False, "last": 0.0})
+        if st["running"]:
+            st["pending"] = True
+            return False
+        st["running"] = True
+    threading.Thread(target=_progress_worker, args=(key, batch_dir), daemon=True).start()
+    return True

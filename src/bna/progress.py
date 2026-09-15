@@ -20,6 +20,16 @@ class Progress:
                                for i in range(planned)}}
         self._t0 = {}
         self._flush()
+        # 시작 순간 전체 한 번 — 스냅샷에 이 배치가 없으면 클라우드 목록에 안 떠서 진행 막대를 부를 자리조차 없다 (2026-09-15)
+        cloudpush.nudge("배치 시작")
+        cloudpush.nudge_progress(batch_dir)
+        # 심장박동 — 한 장이 몇 분씩 그려지는 동안에도 "살아 있다"를 보낸다(끊기면 화면이 멈춤으로 표시). 정본 간격=cloudpush.HEARTBEAT_S
+        self._done = threading.Event()
+        threading.Thread(target=self._heartbeat, daemon=True).start()
+
+    def _heartbeat(self):
+        while not self._done.wait(cloudpush.HEARTBEAT_S):
+            cloudpush.nudge_progress(self.path.parent)
 
     def set(self, item_id: str, stage: str, **kw):
         with self.lock:
@@ -34,6 +44,7 @@ class Progress:
         # 락 밖에서 부른다 — 훅은 즉시 반환하지만, 락 안에서 부르는 습관은 언젠가 생성을 멈춘다.
         if stage in ("passed", "failed"):
             cloudpush.nudge(f"사진 판정 {item_id} {stage}")
+        cloudpush.nudge_progress(self.path.parent)     # 단계마다 진행 요약만(30초 간격으로 접힌다)
 
     def finish(self, error=None, stopped=None):
         with self.lock:
@@ -41,7 +52,9 @@ class Progress:
                 if it["stage"] == "queued":
                     it["stage"] = "skipped"
             self.data["finished_at"] = time.time(); self.data["error"] = error; self.data["stopped"] = stopped; self._flush()
+        self._done.set()
         cloudpush.nudge("배치 종료")
+        cloudpush.nudge_progress(self.path.parent)     # 끝 상태도 실시간 쪽에 — 안 올리면 화면이 '진행 중'에 멈춘 채 멈춤 경고를 낸다
 
     def totals(self):
         with self.lock:

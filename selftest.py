@@ -1997,6 +1997,42 @@ ok(_OAI36.count("_StartGate(") == 1 and "_IMAGE_GATE = _StartGate(" in _OAI36,
    "_StartGate 는 한 곳(공용 _IMAGE_GATE)에서만 만든다")
 
 
+# ㊲ 진행 기록만 따로 올리기 (2026-09-15 빌디 제안 5번 · 성연서님 "진행해볼까?")
+#    빠지면 오류 없이 "몇 분씩 멈춰 보이는 화면"으로 되돌아간다 — 09-15 재부팅 1시간 무응답이 화면에 안 보인 구조.
+_PR37 = open("src/bna/progress.py", encoding="utf-8").read()
+ok(_PR37.count("cloudpush.nudge_progress(") >= 3 and "_heartbeat" in _PR37 and "self._done.set()" in _PR37,
+   "진행 요약은 시작·단계마다·끝에 올리고, 심장박동은 끝나면 멈춘다")
+ok('cloudpush.nudge("배치 시작")' in _PR37, "배치 시작에 전체 한 번 — 안 하면 클라우드 목록에 새 배치가 안 뜬다")
+from bna import cloudpush as _cp37
+ok(_cp37.HEARTBEAT_S == 60 and "HEARTBEAT_S = 60" in open("cloud/lib/liveprog.mjs", encoding="utf-8").read(),
+   "심장박동 간격은 PC(cloudpush)와 화면(liveprog)이 같은 값이다")
+if _shutil.which("node"):
+    _t37 = _Path(tempfile.mkdtemp()); _bd37 = _t37 / "20260915-120000-test"; _bd37.mkdir()
+    (_bd37 / "progress.json").write_text(json.dumps({"planned": 2, "started_at": time.time(), "finished_at": None, "error": None,
+        "items": {"0000": {"stage": "after", "attempt": 1, "passed": None, "fail_reasons": [], "updated_at": time.time(), "elapsed": 0}}}), encoding="utf-8")
+    _stub37, _runs37 = _t37 / "stub.mjs", _t37 / "runs.txt"
+    _stub37.write_text("import {appendFileSync, readFileSync} from 'node:fs';\n"
+                       "const j = JSON.parse(readFileSync(process.argv[2], 'utf8'));\n"
+                       f"appendFileSync('{_runs37.as_posix()}', process.argv[3] + '|' + j.summary.done + '/' + j.summary.planned + '|' + (j.pushed_at > 0) + '\\n');\n"
+                       "await new Promise(r => setTimeout(r, 300));\n", encoding="utf-8")
+    _save37 = (_cp37.SCRIPT, _cp37.ENVFILE, _cp37.LOG, _cp37.PROG_SCRIPT, _cp37.PROG_MIN_INTERVAL)
+    _cp37.SCRIPT, _cp37.ENVFILE, _cp37.LOG, _cp37.PROG_SCRIPT, _cp37.PROG_MIN_INTERVAL = _stub37, _stub37, _t37 / "push.log", _stub37, 0.5
+    _fired37 = [_cp37.nudge_progress(_bd37) for _ in range(10)]
+    _time.sleep(2.0)
+    _lines37 = _runs37.read_text(encoding="utf-8").splitlines() if _runs37.exists() else []
+    ok(_fired37[0] is True and not any(_fired37[1:]) and 1 <= len(_lines37) <= 2,
+       f"nudge_progress 10회는 업로드 1~2회로 접힌다 — 실제 {len(_lines37)}회")
+    ok(bool(_lines37) and _lines37[0] == "20260915-120000-test|0/2|true",
+       f"넘기는 파일은 progress.read 요약 + pushed_at, 인자는 배치 ID — {_lines37[:1]}")
+    _os.environ["BNA_AUTO_PUSH"] = "0"
+    ok(_cp37.nudge_progress(_bd37) is False, "BNA_AUTO_PUSH=0 이면 진행 올리기도 꺼진다(같은 스위치)")
+    _os.environ.pop("BNA_AUTO_PUSH")
+    _cp37.SCRIPT, _cp37.ENVFILE, _cp37.LOG, _cp37.PROG_SCRIPT, _cp37.PROG_MIN_INTERVAL = _save37
+    _shutil.rmtree(_t37, ignore_errors=True)
+else:
+    print("SKIP  node 없음 — 진행 올리기 접힘 검사 건너뜀")
+
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

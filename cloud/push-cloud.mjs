@@ -23,6 +23,8 @@ import { fileURLToPath } from 'node:url';
 import { del, list, put } from '@vercel/blob';
 import * as REV from './lib/reviews.mjs';
 import * as PRO from './lib/promote.mjs';
+import * as LIVE from './lib/liveprog.mjs';
+import { blobToken } from './lib/envtoken.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -35,16 +37,8 @@ const MANIFEST = path.join(HERE, '.push-manifest.json');
 
 let BASE = `http://127.0.0.1:${SPAWN_PORT}`;
 
-function token() {
-  const f = path.join(HERE, '.env.local');
-  if (!existsSync(f))
-    throw new Error('cloud/.env.local 이 없다. `cd cloud && npx vercel env pull` 을 먼저 돌려라.');
-  for (const line of readFileSync(f, 'utf8').split(/\r?\n/)) {
-    const m = /^BLOB_READ_WRITE_TOKEN\s*=\s*"?([^"\r\n]+)"?/.exec(line);
-    if (m) return m[1];
-  }
-  throw new Error('cloud/.env.local 에 BLOB_READ_WRITE_TOKEN 이 없다.');
-}
+// 토큰 읽기는 lib/envtoken.mjs 한 곳(push-progress.mjs 와 공유 — 2026-09-15)
+const token = blobToken;
 
 function python() {
   for (const p of ['.venv/Scripts/python.exe', '.venv/bin/python']) {
@@ -323,6 +317,14 @@ async function main() {
       allowOverwrite: true,
       contentType: 'application/json',
     });
+
+    // ── 4-2. 끝난 배치의 실시간 진행 파일은 지운다 — 스냅샷을 올린 **뒤**여야 화면이 옛 진행으로 안 되돌아간다 ──
+    // 판정은 lib/liveprog.mjs 의 prunable 하나(스냅샷이 '진행 중'이라 하는 배치 것은 남긴다). 실패해도 푸시는 성공이다.
+    try {
+      const page = await list({ token: TOKEN, prefix: LIVE.PREFIX, limit: 1000 });
+      const drop = new Set(LIVE.prunable(page.blobs.map((b) => b.pathname), progress));
+      for (const b of page.blobs.filter((x) => drop.has(x.pathname))) await del(b.url, { token: TOKEN });
+    } catch (e) { console.log('  실시간 진행 파일 정리 건너뜀 —', e.message); }
 
     // ── 5. 흡수한 검수만 지운다 — 스냅샷을 올린 **뒤**여야 화면이 안 되돌아간다 ──
     for (const b of absorbed.done) {

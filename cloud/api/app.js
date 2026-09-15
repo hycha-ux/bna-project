@@ -22,6 +22,7 @@ import * as REV from '../lib/reviews.mjs';
 import * as GEN from '../lib/genreq.mjs';
 import * as PRO from '../lib/promote.mjs';
 import { seedbankUi } from '../lib/seedbank-ui.mjs';
+import * as LIVE from '../lib/liveprog.mjs';
 import {
   COOKIE,
   ROLE_LABEL,
@@ -103,6 +104,23 @@ async function blobBytes(pathname) {
   const chunks = [];
   for await (const c of r.stream) chunks.push(Buffer.from(c));
   return { buf: Buffer.concat(chunks), contentType: r.contentType };
+}
+
+// 실시간 진행 파일(progress/<배치>.json) — 화면이 2초마다 부르므로 짧게 캐시한다(Blob 읽기 횟수 절약).
+// 없거나 못 읽으면 null(스냅샷으로 폴백) — 여기서 실패해도 진행 화면이 죽으면 안 된다. 근거=lib/liveprog.mjs 머리말.
+const LIVE_CACHE = new Map();
+const LIVE_TTL_MS = 3_000;
+async function liveProgress(id) {
+  if (!TOKEN || !LIVE.validId(id)) return null;
+  const hit = LIVE_CACHE.get(id);
+  if (hit && Date.now() - hit.at < LIVE_TTL_MS) return hit.v;
+  let v = null;
+  try {
+    const got = await blobBytes(LIVE.liveName(id));
+    v = got ? JSON.parse(got.buf.toString('utf8')) : null;
+  } catch { v = null; }
+  LIVE_CACHE.set(id, { at: Date.now(), v });
+  return v;
 }
 
 async function snapshot() {
@@ -637,7 +655,13 @@ export default async function handler(req, res) {
 
   // 아래부터는 검수 오버레이를 겹친다 — 방금 누른 판정이 10분 배치를 기다리지 않게.
   const ov = TOKEN ? await REV.overlay(TOKEN) : {};
-  if (p === '/api/batches') return json(res, 200, REV.applyToList(snap.batches, ov, snap.items));
+  if (p === '/api/batches') {
+    const list = REV.applyToList(snap.batches, ov, snap.items);
+    // 진행 중인 배치만 실시간 파일을 본다(끝난 배치까지 읽으면 목록 한 번에 Blob 읽기가 수십 건)
+    const running = list.filter((b) => b.progress?.running).map((b) => b.batch_id);
+    const lives = Object.fromEntries(await Promise.all(running.map(async (id) => [id, await liveProgress(id)])));
+    return json(res, 200, LIVE.mergeList(list, lives, Date.now() / 1000));
+  }
   if (p === '/api/library') return json(res, 200, REV.applyToLibrary(snap.library, ov, snap.items));
 
   // 학습 집계는 스냅샷 그대로. 승격(avoid.yaml 쓰기)은 PC 에서만 — 여기서 받으면 다음 스냅샷이 덮는다.
@@ -673,7 +697,8 @@ export default async function handler(req, res) {
 
   const mProg = /^\/api\/batches\/([^/]+)\/progress$/.exec(p);
   if (mProg) {
-    const v = (snap.progress || {})[mProg[1]];
+    // 스냅샷과 PC 가 따로 올린 실시간 파일 중 더 새 것 + 마지막 신호 나이(live.age_s·live.stale) — lib/liveprog.mjs
+    const v = LIVE.pickProgress((snap.progress || {})[mProg[1]], await liveProgress(mProg[1]), Date.now() / 1000);
     return v ? json(res, 200, v) : json(res, 404, { error: '없는 배치입니다.' });
   }
 
