@@ -1,0 +1,248 @@
+<title>After 위클리 — __WEEK__</title>
+<style>
+  :root {
+    --blue: #0708FF;
+    --blue-soft: #EDEEFF;
+    --ink: #181818;
+    --paper: #FFFFFF;
+    --panel: #F7F7FA;
+    --muted: #71737F;
+    --line: #E5E6EC;
+    --good: #1E7A46;
+    --warn: #C2410C;
+    --chip-blue-bg: #E8E9FF;
+    --chip-gray-bg: #EEEFF3;
+    --shadow: 0 1px 2px rgba(24,24,24,.05), 0 8px 24px rgba(24,24,24,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --blue: #4A50FF;
+      --blue-soft: #1B1D33;
+      --ink: #EDEDF2;
+      --paper: #101014;
+      --panel: #18181E;
+      --muted: #9A9CA8;
+      --line: #2A2B33;
+      --good: #4CC38A;
+      --warn: #F59E6B;
+      --chip-blue-bg: #23255C;
+      --chip-gray-bg: #24252C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"] {
+    --blue: #0708FF; --blue-soft: #EDEEFF; --ink: #181818; --paper: #FFFFFF;
+    --panel: #F7F7FA; --muted: #71737F; --line: #E5E6EC;
+    --good: #1E7A46; --warn: #C2410C;
+    --chip-blue-bg: #E8E9FF; --chip-gray-bg: #EEEFF3;
+    --shadow: 0 1px 2px rgba(24,24,24,.05), 0 8px 24px rgba(24,24,24,.06);
+  }
+  :root[data-theme="dark"] {
+    --blue: #4A50FF; --blue-soft: #1B1D33; --ink: #EDEDF2; --paper: #101014;
+    --panel: #18181E; --muted: #9A9CA8; --line: #2A2B33;
+    --good: #4CC38A; --warn: #F59E6B;
+    --chip-blue-bg: #23255C; --chip-gray-bg: #24252C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Pretendard, "Pretendard Variable", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    letter-spacing: -0.05em;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 52px 28px 80px; }
+
+  /* ── masthead ── */
+  .brandrow { display: flex; align-items: center; gap: 14px; }
+  .logo { height: 44px; width: auto; flex: none; display: block; color: var(--ink); }
+  .brandname { font-size: 13px; font-weight: 700; letter-spacing: -0.03em; }
+  .brandname span { color: var(--muted); font-weight: 500; }
+  h1 {
+    font-size: clamp(34px, 5.5vw, 54px);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 1.08;
+    margin: 26px 0 8px;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--blue); }
+  .weekmeta { color: var(--muted); font-size: 15px; }
+  .weekmeta b { color: var(--ink); font-weight: 600; }
+  .mock-note {
+    display: inline-block; margin-top: 14px;
+    font-size: 12px; color: var(--blue);
+    background: var(--blue-soft); border-radius: 4px;
+    padding: 4px 12px; letter-spacing: -0.03em; font-weight: 600;
+  }
+
+  /* ── section heads ── */
+  section { margin-top: 64px; }
+  .shead { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+  .sdot { width: 8px; height: 8px; border-radius: 2px; background: var(--blue); align-self: center; flex: none; }
+  .stitle { font-size: 19px; font-weight: 800; letter-spacing: -0.04em; }
+  .ssub { font-size: 13px; color: var(--muted); }
+  .shead .rule { flex: 1; height: 1px; background: var(--line); align-self: center; }
+
+  /* ── KR dashboard ── */
+  .kr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 640px) { .kr-grid { grid-template-columns: 1fr; } }
+  .kr {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 20px 20px 18px;
+  }
+  .kr .k-label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: -0.02em; }
+  .kr .k-label b { color: var(--blue); }
+  .kr .k-num {
+    font-size: 42px; font-weight: 800; line-height: 1.1; margin: 8px 0 2px;
+    letter-spacing: -0.05em; font-variant-numeric: tabular-nums;
+  }
+  .kr .k-num small { font-size: 18px; color: var(--muted); font-weight: 600; }
+  .kr .k-delta { font-size: 13px; }
+  .kr .up { color: var(--good); font-weight: 600; }
+  .kr .flat { color: var(--muted); }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; margin-top: 14px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
+
+  /* ── gallery ── */
+  .gal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .gal.g3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .gal, .gal.g3 { grid-template-columns: repeat(2, 1fr); } }
+  .art { display: flex; flex-direction: column; gap: 10px; }
+  .thumb {
+    border: 1px solid var(--line); border-radius: 8px;
+    overflow: hidden; box-shadow: var(--shadow);
+    background: #fff;
+  }
+  .thumb img { display: block; width: 100%; height: auto; }
+  .cap { font-size: 13px; line-height: 1.5; letter-spacing: -0.04em; }
+  .cap b { display: block; font-weight: 700; font-size: 14px; }
+  .cap span { color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .chip {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px;
+    letter-spacing: -0.02em; font-weight: 700;
+  }
+  .chip.b { background: var(--chip-blue-bg); color: var(--blue); }
+  .chip.g { background: var(--chip-gray-bg); color: var(--muted); }
+  .chip.ok { background: var(--chip-blue-bg); color: var(--good); }
+  .gh { font-size: 14px; font-weight: 700; margin: 26px 0 12px; letter-spacing: -0.04em; }
+  .gh span { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  .gh:first-of-type { margin-top: 0; }
+  .art.w2 { grid-column: span 2; }
+  .thumb.spread { aspect-ratio: 420/297; }
+
+  /* ── next week ── */
+  .plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .plan li {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 15px 18px; display: flex; gap: 14px; align-items: baseline;
+  }
+  .plan .no {
+    font-weight: 800; color: var(--blue); font-size: 14px; flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .plan .tx { font-size: 15px; }
+  .plan .tx b { font-weight: 700; }
+  .plan .src { font-style: normal; font-size: 12px; color: var(--blue); font-weight: 600; white-space: nowrap; }
+
+  /* ── retro KPT ── */
+  .retro { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 720px) { .retro { grid-template-columns: 1fr; } }
+  .r-card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 18px 20px;
+    border-top: 3px solid var(--line);
+  }
+  .r-card.keep { border-top-color: var(--good); }
+  .r-card.problem { border-top-color: var(--warn); }
+  .r-card.try { border-top-color: var(--blue); }
+  .r-card .r-tag { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .r-card.keep .r-tag { color: var(--good); }
+  .r-card.problem .r-tag { color: var(--warn); }
+  .r-card.try .r-tag { color: var(--blue); }
+  .r-card p { margin: 10px 0 0; font-size: 14px; line-height: 1.6; }
+
+  footer {
+    margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    letter-spacing: -0.03em;
+  }
+
+  /* ── this week (After) ── */
+  .done { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .done { grid-template-columns: 1fr; } }
+  .done .d { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .done .d b { display: block; font-size: 14px; margin-bottom: 4px; }
+  .done .d p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+  .thumb.shot { aspect-ratio: 16/10; background: var(--panel); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brandrow"><svg class="logo" role="img" aria-label="After by MediBuilder" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 204.6 105.34">
+  <g>
+    <g>
+      <path fill="currentColor" d="M160.79,52.91c-.37-.57-1-.92-1.68-.92h-.72c-.54,0-1.05.22-1.43.6-2.59,2.65-6.79,3.67-10.68,2.59-3.58-.99-6.37-3.53-7.89-7.12h20.43c.54,0,1.05-.21,1.42-.6.38-.38.58-.9.58-1.43-.19-14.07-7.14-20.91-21.23-20.91s-23.37,7.82-23.46,20.94c0,3.1.65,6.21,1.98,9.05-1.64,1.28-3.4,1.72-4.62,1.14-1.26-.6-1.99-2.37-1.99-4.86v-20.47h5.85c1.1,0,2-.9,2-2v-.94c0-1.1-.9-2-2-2h-5.85v-12.33c0-1-.74-1.84-1.72-1.98-.99-.13-1.93.48-2.2,1.44-2.8,9.87-6.64,12.88-16.44,12.88h-4.41v-7.86c0-.31,0-.61,0-.91,1.07,1.99,2.94,3.39,5.02,4.1,4.34,1.47,10.07.09,12.12-5.35,1.73-4.51.49-7.79-.86-9.75-2.67-3.89-8.25-6.21-14.9-6.21-5.86,0-23.67,0-23.67,21.23v4.77h-.88c-1.1,0-2,.9-2,2v.94c0,1.1.9,2,2,2h.88v24.07c0,3.15-.57,5.11-1.11,6.25-.98-1.23-2.5-3.43-4.47-7.24-3.99-7.77-21.07-40.72-21.24-41.05-.34-.66-1.03-1.08-1.78-1.08h-7.92c-.82,0-1.55.5-1.86,1.25-.07.18-7.32,18.18-11.94,29.06-4.16,9.85-8.18,16.01-13.44,20.58-.63.55-.85,1.43-.56,2.21.29.78,1.04,1.3,1.87,1.3h21.82c.96,0,1.79-.68,1.97-1.63.18-.94-.34-1.88-1.23-2.23-4.23-1.66-6.43-6.14-6.15-12.41h11.34c1,2.18,1.97,4.3,2.54,5.7,2.09,4.87.69,7.44.65,7.51-.39.62-.41,1.39-.06,2.03.35.64,1.02,1.03,1.75,1.03h28.87s.02,0,.03,0c.01,0,.02,0,.03,0h24.05c.88,0,1.69-.55,1.95-1.39.26-.84-.03-1.73-.76-2.22-.02-.02-2.06-1.73-2.06-7.68v-24.07h2.41v17.59c0,16.15,10.37,18.56,16.54,18.56,6.83,0,12.04-3.75,15.07-7.78,3.81,4.6,10.04,7.78,19,7.78,9.95-.08,17.66-4.55,21.17-12.26.28-.62.23-1.34-.14-1.91ZM141.89,43.13h-4.84c-1.18-6.48-.39-11.06,1.02-12.81.49-.61.9-.69,1.16-.69.24,0,.54.06.91.48,1.57,1.77,2.25,7.08,1.75,13.02ZM19.02,45c.37-1.68.87-3.38,1.49-5.08.85-2.29,1.55-4.09,2.1-5.48,1.32,2.84,3.13,6.77,4.87,10.56h-8.46Z"/>
+      <path fill="currentColor" d="M203.72,30.02c-2.03-4.85-7.52-7.04-13.32-5.32-3.85,1.07-6.29,3.74-7.93,6.9l-.65-3.93c-.16-.97-.99-1.67-1.97-1.67h-19.23c-.88,0-1.69.55-1.95,1.39-.26.84.03,1.73.76,2.22.02.02,2.07,1.74,2.07,7.75v17.64c0,5.88-2,7.63-2,7.63-.73.49-1.05,1.4-.79,2.24s1.03,1.42,1.91,1.42h24.05c.88,0,1.69-.55,1.95-1.39.26-.84-.03-1.73-.76-2.22-.02-.02-2.06-1.73-2.06-7.68v-9.29c0-3.06.45-5.76,1.33-8.07,1.41,2.8,4.33,6.93,11.18,6.16,2.98-.38,5.54-2.07,7.02-4.65,1.57-2.74,1.72-6.06.41-9.13Z"/>
+    </g>
+    <g>
+      <path d="M23.88,99.48l.02,1.19-3.53.05-.24-16.65,3.53-.05.09,6.22c.68-.94,1.78-1.49,3.31-1.51,3.33-.05,5.68,2.48,5.74,6,.05,3.53-2.23,6.12-5.56,6.17-1.53.02-2.64-.5-3.35-1.42ZM29.34,94.78c-.03-1.78-1.11-3.06-2.8-3.03-1.72.02-2.82,1.33-2.79,3.11.03,1.78,1.15,3.05,2.88,3.03,1.68-.02,2.74-1.33,2.71-3.11Z"/>
+      <path d="M45.04,88.75l-6.44,16.55-3.47.05,2.03-5.18-4.74-11.23,3.9-.06,2.62,7.14,2.43-7.21,3.67-.05Z"/>
+      <path d="M50.96,84.12l2.87-.04,5.7,8.96,5.44-9.12,2.87-.04.23,16.15-3.61.05-.13-8.86-3.66,6.26-2.18.03-3.83-6.15.13,8.86-3.61.05-.23-16.15Z"/>
+      <path d="M69.59,94.2c-.05-3.53,2.41-6.12,5.96-6.17,3.55-.05,6.08,2.45,6.13,6,0,.34,0,.71-.06,1.13l-8.5.12c.3,1.34,1.24,2.1,2.57,2.08,1.01-.01,1.84-.38,2.13-.94l3.55-.05c-.56,2.23-2.82,3.79-5.63,3.83-3.55.05-6.08-2.45-6.13-6ZM78.21,92.93c-.32-1.38-1.24-2.12-2.63-2.1-1.39.02-2.25.79-2.53,2.18l5.15-.07Z"/>
+      <path d="M82.59,94.02c-.05-3.53,2.23-6.12,5.56-6.17,1.53-.02,2.64.5,3.35,1.42l-.09-6.22,3.53-.05.24,16.65-3.53.05-.02-1.19c-.68.94-1.78,1.49-3.31,1.51-3.33.05-5.69-2.48-5.74-6ZM91.63,93.89c-.03-1.78-1.15-3.06-2.88-3.03-1.69.02-2.74,1.33-2.71,3.11.03,1.78,1.11,3.06,2.8,3.03,1.72-.02,2.82-1.33,2.79-3.11Z"/>
+      <path d="M100.97,84.5c.02,1.25-.88,2.17-2.13,2.19-1.25.02-2.17-.88-2.19-2.13s.88-2.17,2.13-2.19c1.25-.02,2.17.88,2.19,2.13ZM100.79,99.6l-3.53.05-.17-11.65,3.53-.05.17,11.65Z"/>
+      <path d="M102.74,83.38l7.02-.1c3.59-.05,5.64,1.78,5.68,4.74.02,1.15-.74,2.47-1.84,2.9,1.55.47,2.67,1.96,2.69,3.53.04,2.99-2.07,4.93-5.7,4.98l-7.61.11-.23-16.15ZM109.69,89.82c1.37-.02,2.15-.63,2.14-1.76-.02-1.13-.82-1.73-2.19-1.71l-3.25.05.05,3.47,3.25-.05ZM110.38,96.35c1.43-.02,2.31-.67,2.29-1.86s-.92-1.81-2.35-1.79l-3.84.05.05,3.65,3.84-.05Z"/>
+      <path d="M117.55,94.43l-.1-6.72,3.53-.05.09,6.12c.03,1.76.75,2.72,2.08,2.71,1.39-.02,2.2-1.12,2.18-2.92l-.09-5.97,3.53-.05.17,11.61-3.53.05-.02-1.19c-.68.94-1.74,1.49-3.23,1.51-2.7.04-4.57-1.9-4.61-5.11Z"/>
+      <path d="M134.73,84.01c.02,1.25-.88,2.17-2.13,2.19-1.25.02-2.17-.88-2.19-2.13s.88-2.17,2.13-2.19c1.25-.02,2.17.88,2.19,2.13ZM134.55,99.12l-3.53.05-.17-11.65,3.53-.05.17,11.65Z"/>
+      <path d="M140.16,99l-3.53.05-.24-16.65,3.53-.05.24,16.65Z"/>
+      <path d="M141.56,93.17c-.05-3.53,2.23-6.12,5.56-6.17,1.53-.02,2.64.5,3.35,1.42l-.09-6.22,3.53-.05.24,16.65-3.53.05-.02-1.19c-.68.94-1.78,1.49-3.31,1.51-3.33.05-5.69-2.48-5.74-6ZM150.6,93.04c-.03-1.78-1.15-3.06-2.88-3.03-1.68.02-2.74,1.33-2.71,3.11.03,1.78,1.11,3.06,2.8,3.03,1.72-.02,2.82-1.33,2.79-3.11Z"/>
+      <path d="M155.56,92.97c-.05-3.53,2.41-6.12,5.96-6.17,3.55-.05,6.08,2.45,6.13,6,0,.34,0,.71-.06,1.13l-8.5.12c.3,1.34,1.24,2.1,2.57,2.08,1.01-.01,1.84-.38,2.13-.94l3.55-.05c-.56,2.23-2.82,3.79-5.63,3.83-3.55.05-6.08-2.45-6.13-6ZM164.18,91.7c-.32-1.38-1.24-2.12-2.63-2.1-1.39.02-2.25.79-2.53,2.18l5.15-.07Z"/>
+      <path d="M169.07,86.97l3.53-.05.02,1.19c.68-.94,1.74-1.49,3.23-1.51.65,0,1.07.02,1.53.18l.09,3.31c-.5-.25-1.12-.38-1.81-.37-1.88.03-3,1.11-2.97,2.88l.09,5.95-3.53.05-.17-11.61Z"/>
+    </g>
+  </g>
+</svg><div class="brandname"><span>AI솔루션팀 디자인모듈</span></div></div>
+    <h1>시술 전후 이미지 자동화<br>Weekly <em>№ __NO__</em></h1>
+    <div class="weekmeta"><b>__WEEK__</b> · __RANGE__ · 온리프</div>
+    <div><span class="mock-note">__NOTE__</span></div>
+  </header>
+
+  <section>
+    <div class="shead"><span class="sdot"></span><span class="stitle">이번 주 숫자</span><span class="ssub">__KR_SUB__</span><span class="rule"></span></div>
+    <div class="kr-grid">__KR__</div>
+    <p style="font-size:12.5px; color:var(--muted); margin-top:12px;">__KR_NOTE__</p>
+  </section>
+
+  <section>
+    <div class="shead"><span class="sdot"></span><span class="stitle">이번 주 한 일</span><span class="ssub">커밋 __COMMITS__건 묶음</span><span class="rule"></span></div>
+    <div class="done">__DONE__</div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="sdot"></span><span class="stitle">이번 주 산출물</span><span class="ssub">드라이브 채택본 + 대시보드 화면</span><span class="rule"></span></div>
+    __GALLERY__
+    <p style="font-size:12.5px; color:var(--muted); margin-top:14px;">__GAL_NOTE__</p>
+  </section>
+
+  <section>
+    <div class="shead"><span class="sdot"></span><span class="stitle">다음 주 방향</span><span class="rule"></span></div>
+    <ul class="plan">__PLAN__</ul>
+  </section>
+
+  <section>
+    <div class="shead"><span class="sdot"></span><span class="stitle">회고</span><span class="ssub">Keep · Problem · Try — 초안, 검수 필요</span><span class="rule"></span></div>
+    <div class="retro">
+      <div class="r-card keep"><div class="r-tag">Keep</div><p>__KEEP__</p></div>
+      <div class="r-card problem"><div class="r-tag">Problem</div><p>__PROBLEM__</p></div>
+      <div class="r-card try"><div class="r-tag">Try</div><p>__TRY__</p></div>
+    </div>
+  </section>
+
+  <footer><span>After by MediBuilder · Weekly</span><span>초안 자동 생성 → 회고·검수만 사람이</span></footer>
+</div>
