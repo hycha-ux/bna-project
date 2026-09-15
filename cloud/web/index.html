@@ -127,6 +127,17 @@ select:focus, input:focus { border-color:var(--primary); background:#fff }
 input::placeholder { color:var(--ui-lo) }
 select { appearance:none; -webkit-appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center }
 .form { display:flex; flex-direction:column; gap:var(--sp-3) } .form-sep { height:1px; background:var(--ui-border); margin:var(--sp-1) 0 }
+/* 3단계 폼 */
+.form.steps { gap:var(--sp-2) } details.step { border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff }
+details.step > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:12px 14px; font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi) } details.step > summary::-webkit-details-marker { display:none }
+details.step > summary b { width:22px; height:22px; border-radius:50%; background:#191919; color:#fff; font-size:12px; display:inline-flex; align-items:center; justify-content:center; flex:none }
+details.step:not([open]) > summary b { background:#D3D1CB; color:#191919 } details.step > summary .muted { font-weight:var(--fw-r); font-size:var(--fs-sm); margin-left:auto; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60% }
+details.step > summary::after { content:"▾"; color:var(--ui-lo); font-size:12px; margin-left:6px } details.step:not([open]) > summary::after { content:"▸" }
+.step-body { padding:4px 14px 14px; display:flex; flex-direction:column; gap:var(--sp-3); border-top:1px solid var(--ui-border) } .step-body .form-sep { margin:0 }
+.form-actions { display:flex; flex-direction:column; gap:8px; padding-top:4px }
+/* 대기열 표 6열 기본 — 방식(5)·목표(7)·예상(8)·상한(9)·#(1) 숨김 */
+table.jobs.compact th:nth-child(1), table.jobs.compact td:nth-child(1), table.jobs.compact th:nth-child(5), table.jobs.compact td:nth-child(5), table.jobs.compact th:nth-child(7), table.jobs.compact td:nth-child(7), table.jobs.compact th:nth-child(8), table.jobs.compact td:nth-child(8), table.jobs.compact th:nth-child(9), table.jobs.compact td:nth-child(9) { display:none }
+#q-cols.on { background:#191919; color:#fff; border-color:#191919 }
 .fixgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px }
 .fixgrid label { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--ui-lo) }
 .fixgrid select { height:32px; font-size:12px; padding:0 22px 0 8px }
@@ -529,16 +540,15 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
       <div class="grid g-create">
         <div class="card">
           <div class="card-head"><h3>생성 조건</h3></div>
-          <div class="form">
-            <!-- 맨 위 = 사진 종류 (2026-09-09 성연서님: 가장 상위 선택이라 시술과 구분돼야 한다). 시술 칩은 고른 종류를 지원하는 것만 켜진다 -->
+          <div class="form steps">
+            <!-- 2026-09-15 3단계로 접음 (연서님 UX 검토 2번): 무엇을 → 얼마나 → 고급. 항목·id 는 그대로, 묶음만 바뀜 -->
+            <details class="step" open><summary><b>1</b> 무엇을 만들까 <span class="muted" id="step1-sum"></span></summary><div class="step-body">
             <div class="field"><span>사진 종류</span>
               <div class="modes" id="q-modes">
                 <button data-v="selfie" class="on"><b>셀카형</b><small>환자가 폰으로 찍은 후기 사진 느낌</small></button>
                 <button data-v="clinical"><b>임상형</b><small>병원 규격 촬영, 같은 조건에서 전·후 비교</small></button>
               </div></div>
-            <div class="form-sep"></div>
             <div class="field"><span>시술 <em class="muted" id="q-treat-hint"></em></span><div class="tags" id="q-treatments" style="margin:0"></div></div>
-            <div class="form-sep"></div>
             <!-- 사진 구성 (2026-09-09 성연서님): 전·후 2장 / 경과 시리즈(직후·2주 기본). 시리즈는 세트 단위로 채택한다 -->
             <div class="field"><span>사진 구성</span>
               <div class="modes" id="q-comp">
@@ -547,10 +557,12 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
               </div>
               <div class="tags" id="q-series" style="margin:6px 0 0" hidden></div>
             </div>
-            <div class="form-sep"></div>
+            </div></details>
+            <details class="step" open><summary><b>2</b> 얼마나 <span class="muted" id="step2-sum"></span></summary><div class="step-body">
             <div class="row"><label class="field" style="flex:1"><span>생성 장수</span><input type="number" id="count" value="3" min="1" max="500"></label><label class="field" style="flex:1"><span>목표 통과 장수</span><input type="number" id="q-target" placeholder="없음"></label></div>
             <div class="row"><label class="field" style="flex:1"><span>비용 상한 (USD)</span><input type="number" id="q-cap" placeholder="없음" step="0.5"></label><label class="field" style="flex:1"><span>실행 방식</span><select id="q-sim"><option value="0">실제 생성</option><option value="1">시뮬레이션</option></select></label></div>
-            <div class="form-sep"></div>
+            </div></details>
+            <details class="step"><summary><b>3</b> 고급 <span class="muted">조건 고정 · 시드 · AI 모델 · 테스트</span></summary><div class="step-body">
             <details class="opt"><summary>조건 고정</summary><div><div class="fixgrid" id="fixed"></div></div></details>
             <details class="opt"><summary>시드 · AI 모델</summary><div>
               <label class="field"><span>시드 (재현용)</span><input type="number" id="seed" placeholder="비우면 무작위"></label>
@@ -560,17 +572,19 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
               <label class="field"><span>검수 모델</span><select id="qa"><option value="">모드 기본값</option><option>openai</option><option>gemini</option></select></label>
             </div></details>
             <details class="opt"><summary>테스트</summary><div class="row"><button class="btn sm" id="btn-dry">프롬프트만 저장</button><button class="btn sm" id="btn-demo">샘플 결과 생성</button></div></details>
-            <div class="form-sep"></div>
+            </div></details>
+            <div class="form-actions">
             <div class="row"><button class="btn" id="btn-plan" style="flex:1">미리보기</button><button class="btn" id="btn-estimate" style="flex:1">비용 예상</button></div>
             <button class="btn primary" id="btn-run">생성 시작</button>
+            </div>
             <div class="msg" id="req-msg"></div>
           </div>
         </div>
         <div>
           <div class="card prog" id="prog-create" hidden></div>
           <div class="card" style="margin-top:0">
-            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
-            <div class="tbl-wrap"><table id="q-table" class="jobs"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th class="num" title="이 금액에 닿으면 배치가 멈춥니다(세트를 끝낸 뒤 재서 한 세트만큼 넘칠 수 있음)">상한</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
+            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><button class="b sm" id="q-cols" title="방식·목표·예상·상한 열을 보이거나 숨깁니다">열 더 보기</button><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
+            <div class="tbl-wrap"><table id="q-table" class="jobs compact"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th class="num" title="이 금액에 닿으면 배치가 멈춥니다(세트를 끝낸 뒤 재서 한 세트만큼 넘칠 수 있음)">상한</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
           <div id="plan-out" hidden style="margin-top:var(--gap)">
@@ -1113,6 +1127,19 @@ async function loadGenRequests() {
   tb.querySelectorAll('[data-gq=cancel]').forEach(b => b.onclick = async () => { try { await api('/api/gen_requests/cancel', {id: b.dataset.id}); loadGenRequests(); } catch (e) { msg('#req-msg', e.message, 'err'); } });
   tb.querySelectorAll('[data-q=open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.id); });
 }
+// 대기열 열 더 보기 (2026-09-15) — 기본은 6열, 켜면 12열
+let Q_COLS = false; try { Q_COLS = localStorage.getItem('bna.qcols') === '1'; } catch {}
+function applyQCols() { const t = $('#q-table'); if (t) t.classList.toggle('compact', !Q_COLS); const b = $('#q-cols'); if (b) { b.classList.toggle('on', Q_COLS); b.textContent = Q_COLS ? '열 줄이기' : '열 더 보기'; } }
+{ const b = $('#q-cols'); if (b) b.onclick = () => { Q_COLS = !Q_COLS; try { localStorage.setItem('bna.qcols', Q_COLS ? '1' : '0'); } catch {} applyQCols(); }; applyQCols(); }
+/** 접힌 단계 제목 옆에 현재 값 요약 — 접어도 뭘 골랐는지 보이게 */
+function updateStepSums() {
+  const m = $('#q-modes button.on b')?.textContent || ''; const ts = $$('#q-treatments button.on').map(b => b.textContent.trim()); const comp = $('#q-comp button.on b')?.textContent || '';
+  const s1 = $('#step1-sum'); if (s1) s1.textContent = [m, ts.length ? (ts.length > 2 ? `${ts[0]} 외 ${ts.length - 1}` : ts.join('·')) : '', comp].filter(Boolean).join(' · ');
+  const s2 = $('#step2-sum'); if (s2) { const c = $('#count')?.value, t = $('#q-target')?.value, cap = $('#q-cap')?.value, sim = $('#q-sim')?.selectedOptions?.[0]?.textContent; s2.textContent = [c ? `${c}장` : '', t ? `목표 ${t}` : '', cap ? `상한 $${cap}` : '', sim].filter(Boolean).join(' · '); }
+}
+document.addEventListener('click', e => { if (e.target.closest('#tab-create .form')) setTimeout(updateStepSums, 0); });
+document.addEventListener('input', e => { if (e.target.closest('#tab-create .form')) updateStepSums(); });
+setTimeout(updateStepSums, 800);
 async function loadQueue() {
   if (CFG && CFG.gen_request) return loadGenRequests();
   const q = await api('/api/queue'); const tb = $('#q-table tbody');
