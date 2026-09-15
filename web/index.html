@@ -143,7 +143,7 @@ details.step > summary::after { content:"▾"; color:var(--ui-lo); font-size:12p
 /* 대기열 표 6열 기본 — 방식(5)·목표(7)·예상(8)·상한(9)·#(1) 숨김 */
 table.jobs.compact th:nth-child(1), table.jobs.compact td:nth-child(1), table.jobs.compact th:nth-child(5), table.jobs.compact td:nth-child(5), table.jobs.compact th:nth-child(7), table.jobs.compact td:nth-child(7), table.jobs.compact th:nth-child(8), table.jobs.compact td:nth-child(8), table.jobs.compact th:nth-child(9), table.jobs.compact td:nth-child(9) { display:none }
 #q-cols.on { background:#191919; color:#fff; border-color:#191919 }
-table.jobs tr.day td { background:var(--ui-surface); font-size:var(--fs-xs); font-weight:var(--fw-m); color:var(--ui-hi); padding:6px 10px; border-top:1px solid var(--ui-border) } table.jobs.compact tr.day td { display:table-cell }
+.daynav { display:inline-flex; align-items:center; gap:2px } .daynav .b { min-width:30px; padding:0 8px } .daynav .b.day { min-width:96px; font-weight:var(--fw-m) } .daynav .b.day.on { background:#191919; color:#fff; border-color:#191919 } .daynav .b[disabled] { opacity:.35 }
 .fixgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px }
 .fixgrid label { display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--ui-lo) }
 .fixgrid select { height:32px; font-size:12px; padding:0 22px 0 8px }
@@ -589,7 +589,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
         <div>
           <div class="card prog" id="prog-create" hidden></div>
           <div class="card" style="margin-top:0">
-            <div class="card-head"><h3>대기열</h3><span class="muted" id="q-sum"></span><div class="tb-space"></div><select id="q-tr" class="hsel" title="시술로 걸러 봅니다"><option value="">전 시술</option></select><button class="b sm" id="q-cols" title="방식·목표·예상·상한 열을 보이거나 숨깁니다">열 더 보기</button><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
+            <div class="card-head"><h3>대기열</h3><div class="daynav" id="q-daynav" hidden></div><span class="muted" id="q-sum"></span><div class="tb-space"></div><select id="q-tr" class="hsel" title="시술로 걸러 봅니다"><option value="">전 시술</option></select><button class="b sm" id="q-cols" title="방식·목표·예상·상한 열을 보이거나 숨깁니다">열 더 보기</button><div class="pill" id="q-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="live">진행 중</button><button data-f="done">완료</button><button data-f="error">실패</button></div><button class="btn sm" id="q-pause">일시정지</button><button class="btn sm" id="q-clear">완료 항목 정리</button></div>
             <div class="tbl-wrap"><table id="q-table" class="jobs compact"><thead><tr><th>#</th><th>시간</th><th>시술</th><th>유형</th><th>방식</th><th class="num">장수</th><th class="num">목표</th><th class="num">예상</th><th class="num" title="이 금액에 닿으면 배치가 멈춥니다(세트를 끝낸 뒤 재서 한 세트만큼 넘칠 수 있음)">상한</th><th>상태</th><th>결과</th><th></th></tr></thead><tbody></tbody></table></div>
             <div class="empty" id="q-empty" hidden>대기열이 비어 있습니다</div>
           </div>
@@ -1113,13 +1113,24 @@ let Q_FILTER = ''; try { Q_FILTER = localStorage.getItem('bna.qfilter') || ''; }
 let Q_TR = '';   // 대기열 시술 필터 ('' = 전 시술)
 const DOW = ['일','월','화','수','목','금','토'];
 const toDate = t => { if (!t) return null; const d = typeof t === 'number' ? new Date(t * 1000) : new Date(t); return isNaN(d) ? null : d; };
-/** 최신이 위, 날짜가 바뀌는 자리에 "9/15 (월) · 3건" 머리 행. rows = [{t, html}] */
-function groupByDay(rows, ncol) {
+let Q_DAY = null;   // 보는 날 (Date.toDateString). null = 아직 안 정함 → 가장 최근 날. '' = 전체
+const dayKey = t => { const d = toDate(t); return d ? d.toDateString() : ''; };
+const dayLabel = k => { const d = new Date(k); return isNaN(d) ? '날짜 없음' : `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})`; };
+/** 하루씩 넘겨 본다 — 헤더의 ‹ 9/15 (월) › 로. rows = [{t, html}], 최신이 위 */
+function groupByDay(rows) {
   rows.sort((a, b) => (toDate(b.t)?.getTime() || 0) - (toDate(a.t)?.getTime() || 0));
-  const out = []; let key = null, n = 0, buf = [];
-  const flush = () => { if (buf.length) { const d = toDate(buf[0].t); out.push(`<tr class="day"><td colspan="${ncol}">${d ? `${d.getMonth()+1}/${d.getDate()} (${DOW[d.getDay()]})` : '날짜 없음'} <span class="muted">· ${buf.length}건</span></td></tr>`); out.push(...buf.map(r => r.html)); buf = []; } };
-  for (const r of rows) { const d = toDate(r.t); const k = d ? d.toDateString() : ''; if (k !== key) { flush(); key = k; } buf.push(r); }
-  flush(); return out.join('');
+  const days = [...new Set(rows.map(r => dayKey(r.t)))];   // 최신순
+  if (Q_DAY === null || (Q_DAY && !days.includes(Q_DAY))) Q_DAY = days[0] ?? '';
+  const i = days.indexOf(Q_DAY);
+  const nav = $('#q-daynav'); if (nav) {
+    nav.hidden = !days.length;
+    nav.innerHTML = `<button class="b sm" id="q-dprev" title="하루 전" ${Q_DAY === '' || i >= days.length - 1 ? 'disabled' : ''}>‹</button><button class="b sm day ${Q_DAY === '' ? '' : 'on'}" id="q-dcur" title="누르면 전체 ↔ 하루">${Q_DAY === '' ? '전체 기간' : dayLabel(Q_DAY)}</button><button class="b sm" id="q-dnext" title="하루 뒤" ${Q_DAY === '' || i <= 0 ? 'disabled' : ''}>›</button>`;
+    $('#q-dprev').onclick = () => { Q_DAY = days[Math.min(days.length - 1, i + 1)]; loadQueue(); };
+    $('#q-dnext').onclick = () => { Q_DAY = days[Math.max(0, i - 1)]; loadQueue(); };
+    $('#q-dcur').onclick = () => { Q_DAY = Q_DAY === '' ? (days[0] ?? '') : ''; loadQueue(); };
+  }
+  const shown = Q_DAY === '' ? rows : rows.filter(r => dayKey(r.t) === Q_DAY);
+  return {html: shown.map(r => r.html).join(''), n: shown.length};
 }
 function renderQTr(list) {
   const sel = $('#q-tr'); if (!sel) return;
@@ -1148,7 +1159,8 @@ async function loadGenRequests() {
     return `<tr><td class="muted">${i + 1}</td><td class="muted" style="white-space:nowrap" title="요청 ${esc(j.requested_at || '')}${j.accepted_at ? ' · 받음 ' + esc(j.accepted_at) : ''}${j.done_at ? ' · 끝 ' + esc(j.done_at) : ''}">${fmtWhen(j.requested_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode] || j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : '<span class="chip acc">실제</span>'}</td>
       <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num">—</td><td class="num">${j.cost_cap != null ? '$' + j.cost_cap : '<span class="muted">없음</span>'}</td>
       <td style="white-space:nowrap"><span class="chip ${cls[j.status] || ''}">${KO[j.status] || j.status}</span>${prog}</td><td style="white-space:nowrap">${res}</td>
-      <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; })()})), 12);
+      <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; })()}))).html;
+  $('#q-empty').hidden = tb.children.length > 0; if (!tb.children.length && reqs.length) $('#q-empty').textContent = '이 날의 요청이 없습니다';
   tb.querySelectorAll('[data-gq=cancel]').forEach(b => b.onclick = async () => { try { await api('/api/gen_requests/cancel', {id: b.dataset.id}); loadGenRequests(); } catch (e) { msg('#req-msg', e.message, 'err'); } });
   tb.querySelectorAll('[data-q=open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.id); });
 }
@@ -1186,7 +1198,8 @@ async function loadQueue() {
     return `<tr><td class="muted">${i+1}</td><td class="muted" style="white-space:nowrap">${fmtWhen(j.created_at)}</td><td>${tname(j.treatment)}</td><td>${MODE_KO[j.mode]||j.mode}</td><td>${j.simulate ? '<span class="chip">시뮬</span>' : `<span class="chip acc" title="${j.providers||''}">실제</span>`}</td>
       <td class="num" title="${(j.series||[]).length ? '경과 시리즈: ' + j.series.map(w => val('timeline', w)).join(' → ') : ''}">${j.count}${(j.series||[]).length ? `<span class="muted">×${j.series.length + 1}</span>` : ''}</td><td class="num">${j.target_pass ?? '—'}</td><td class="num">$${j.est_cost}</td><td class="num">${j.cost_cap != null ? '$' + j.cost_cap : '<span class="muted">없음</span>'}</td>
       <td style="white-space:nowrap">${stKo[j.status]}${prog}</td><td style="white-space:nowrap">${res}</td>
-      <td style="white-space:nowrap;text-align:right">${j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; })()})), 12);
+      <td style="white-space:nowrap;text-align:right">${j.batch_id ? `<button class="b sm" data-q="open" data-id="${j.batch_id}">결과</button> ` : ''}${ctl}</td></tr>`; })()}))).html;
+  $('#q-empty').hidden = tb.children.length > 0; if (!tb.children.length && jobs.length) $('#q-empty').textContent = '이 날의 작업이 없습니다';
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
     const a = b.dataset.q, id = b.dataset.id;
     if (a === 'open') { show('jobs'); openBatch(id); return; }
