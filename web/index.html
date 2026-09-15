@@ -156,6 +156,14 @@ a { color:var(--primary) }
 .ic-clip { -webkit-mask-image:url(/assets/icons2/clip.png); mask-image:url(/assets/icons2/clip.png) }
 .ic-more-v { -webkit-mask-image:url(/assets/icons2/more-v.png); mask-image:url(/assets/icons2/more-v.png) }
 .ic-more-h { -webkit-mask-image:url(/assets/icons2/more-h.png); mask-image:url(/assets/icons2/more-h.png) }
+/* 보조 문구는 화면에서 빼고 ⓘ 말풍선으로 (2026-09-15 연서님: 주석이 너무 많다). data-tip 이 있으면 호버·포커스에 풍선 */
+.tip { position:relative; cursor:help } .tip.ic-info { width:14px; height:14px; color:var(--ui-lo); vertical-align:-2px; margin-left:4px }
+.tip:hover, .tip:focus-visible { color:var(--ui-hi) }
+.tip::after { content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); background:#191919; color:#fff; font-size:12px; font-weight:500; line-height:1.45; padding:8px 10px; border-radius:6px; white-space:pre-line; width:max-content; max-width:260px; text-align:left; box-shadow:0 4px 14px rgba(0,0,0,.18); opacity:0; pointer-events:none; transition:opacity .12s; z-index:60; letter-spacing:0 }
+.tip::before { content:""; position:absolute; left:50%; bottom:calc(100% + 3px); transform:translateX(-50%); border:5px solid transparent; border-top-color:#191919; opacity:0; transition:opacity .12s; z-index:60 }
+.tip:hover::after, .tip:hover::before, .tip:focus-visible::after, .tip:focus-visible::before { opacity:1 }
+.tip.tip-right::after { left:auto; right:0; transform:none } .tip.tip-right::before { left:auto; right:6px; transform:none }
+.note-hidden { display:none !important }
 .nav-item svg { width:18px; height:18px; flex-shrink:0 }
 /* 손그림 아이콘 (2026-09-15 연서님 세트) — 기존 <use href="#i-x"> 를 PNG 마스크로 덮어 색은 currentColor 그대로 */
 svg:has(> use[href="#i-home"]), svg:has(> use[href="#i-plus"]), svg:has(> use[href="#i-list"]), svg:has(> use[href="#i-help"]), svg:has(> use[href="#i-lib"]), svg:has(> use[href="#i-gear"]), svg:has(> use[href="#i-user"]), svg:has(> use[href="#i-out"]), svg:has(> use[href="#i-bell"]), svg:has(> use[href="#i-search"]), svg:has(> use[href="#i-folder"]), svg:has(> use[href="#i-menu"]) { background:currentColor; -webkit-mask-position:center; mask-position:center; -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; border-radius:0 }
@@ -279,6 +287,9 @@ tr.click { cursor:pointer } tr.click:hover { background:var(--ui-surface) } tr.s
 #detail-summary { display:none !important }   /* 2026-09-15 연서님: 작업 요약 카드(진행·지표) 제거 — 사진 상세·학습 탭에 있는 정보 */
 tbody tr:last-child td { border-bottom:none }
 .tbl-wrap { overflow:auto } .tbl-wrap td { white-space:nowrap }
+.subtabs { display:flex; gap:2px; border-bottom:1px solid var(--ui-border); margin-top:var(--sp-2) } .subtabs button { background:none; border:0; border-bottom:2px solid transparent; margin-bottom:-1px; padding:8px 14px; font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer } .subtabs button:hover { color:var(--ui-hi) } .subtabs button.on { color:var(--ui-hi); border-bottom-color:var(--ui-hi) }
+#batches tr.grp td { background:var(--ui-surface); font-weight:var(--fw-b); color:var(--ui-hi); cursor:pointer; padding-top:9px; padding-bottom:9px } #batches tr.grp td::before { content:'▸'; display:inline-block; width:14px; color:var(--ui-lo); font-weight:400 } #batches tr.grp.open td::before { content:'▾' } #batches tr.grp .gm { font-weight:400; color:var(--ui-md); margin-left:10px; font-size:var(--fs-xs) } #batches tr.grp .gp { font-weight:var(--fw-m); color:var(--ui-hi); margin-left:8px; font-size:var(--fs-xs) }
+#batches tr.fold { display:none } #batches tr.more td { text-align:center; color:var(--ui-md); font-size:var(--fs-xs); cursor:pointer; padding:7px } #batches tr.more td:hover { color:var(--ui-hi) }
 .list { display:flex; flex-direction:column } .list-row { display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) 0; border-bottom:1px solid var(--ui-border); cursor:pointer } .list-row:last-child { border-bottom:0 }
 .list-row .n { width:18px; color:var(--ui-lo); font-size:12px } .list-row .thumb { width:40px; height:40px; border-radius:8px; background:var(--ui-surface); object-fit:cover; flex-shrink:0 }
 .list-row .t { flex:1; min-width:0 } .list-row .t b { display:block; font-size:var(--fs-md); font-weight:var(--fw-m); white-space:nowrap; overflow:hidden; text-overflow:ellipsis } .list-row .t span { font-size:var(--fs-xs); color:var(--ui-lo) }
@@ -350,7 +361,7 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .gates { display:flex; gap:6px; flex-wrap:wrap } .gate { display:inline-flex; align-items:center; gap:4px; font-size:var(--fs-xs); padding:3px 8px; border-radius:999px; border:1px solid var(--ui-border); background:#fff; color:var(--ui-md) }
 .gate.ok { background:#E9E9E7; border-color:#E9E9E7; color:#37352F } .gate.bad { background:#191919; border-color:#191919; color:#fff } .gate.warn { background:#D3D1CB; border-color:#D3D1CB; color:#191919 } .gate.na { border-style:dashed; color:var(--ui-lo) }
 .gate b { font-weight:var(--fw-m) }
-#batches-wrap { max-height:340px }
+#batches-wrap { max-height:340px } #batches-wrap.grouped { max-height:none }   /* 그룹 보기는 접힘이 높이를 잡아 주므로 안쪽 스크롤을 안 쓴다 — 그룹 머리가 스크롤 밑에 숨으면 의미가 없다 */
 /* 작업을 고르면 목록은 그대로 두고 상세로 스크롤한다 (2026-09-09: 접기는 '리스트가 사라지는' 느낌이라 뺐다). */
 .stats-fold > summary { cursor:pointer; list-style:none; font-size:var(--fs-sm); color:var(--ui-md);
   padding:8px 12px; border:1px solid var(--ui-border); border-radius:var(--r-md); background:#fff; width:fit-content }
@@ -721,6 +732,8 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-jobs">
       <div class="card">
         <div class="card-head"><h3>작업 목록</h3><span class="muted" id="jobs-tr-label"></span><select id="jobs-kind" class="hsel" hidden><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><div class="pill" id="jobs-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="running">실행 중</button><button data-f="pending">검수 대기</button><button data-f="reviewed">검수 끝</button></div><button class="btn sm" id="btn-refresh"><i class="ic ic-refresh"></i>새로고침</button></div>
+        <!-- 유형 서브탭(고정 2개) + 시술별 접힘 그룹 — 목록이 쌓여도 첫 화면은 시술 줄 수만큼만 (2026-09-15 성연서님 "양이 많아지면 계속 쌓일거라 구분을 줘야") -->
+        <div class="subtabs" id="jobs-mode"><button data-m="">전체</button><button data-m="selfie">셀카형</button><button data-m="clinical">임상형</button></div>
         <div class="tr-chips" id="sub-jobs"></div>
         <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
@@ -816,6 +829,27 @@ const SEED = {
     if (el.classList.contains('on')) { if (!el.hasAttribute('data-checked')) el.setAttribute('data-checked', ''); } else el.removeAttribute('data-checked');
   }
 };
+
+// ── 보조 문구 숨기기: 아래 자리의 회색 설명은 ⓘ 말풍선으로 옮긴다. 렌더마다 다시 훑는다(옵저버)
+const NOTE_SEL = '.kpi .t, .todo-row .k > span, .brow .s, .card-head > span.muted:not([id]), .card-head > .muted#home-board-sum, .card-head > .muted#les-window, .card-head > .muted#les-gate-sum, .step-body .field > span em';
+function tipify(root) {
+  if (!(root instanceof Element)) return;
+  const q = sel => [...(root.matches(sel) ? [root] : []), ...root.querySelectorAll(sel)];
+  q(NOTE_SEL).forEach(el => {
+    if (el.dataset.tipped) return;
+    const chips = el.querySelector('.tags-line');            // 칩 줄은 남기고 글만 숨긴다
+    const text = [...el.childNodes].filter(n => n.nodeType === 3 || (n.nodeType === 1 && !n.classList.contains('tags-line'))).map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+    el.dataset.tipped = '1';
+    if (!text) { if (!chips) el.classList.add('note-hidden'); return; }
+    const i = document.createElement('i'); i.className = 'ic ic-info tip'; i.dataset.tip = text; i.tabIndex = 0;
+    // ⓘ 는 제목 옆에: KPI 는 .l, 할 일은 b, 현황판은 이름 칸, 카드 머리는 h3, 폼은 라벨 span
+    const host = el.closest('.kpi')?.querySelector('.l') || el.closest('.todo-row')?.querySelector('.k b') || el.closest('.brow')?.querySelector('.n, .name, b') || el.closest('.card-head')?.querySelector('h3') || el.closest('.field')?.querySelector(':scope > span');
+    (host || el.parentElement).appendChild(i);
+    if (chips) { [...el.childNodes].forEach(n => { if (n !== chips) n.remove(); }); } else el.classList.add('note-hidden');
+  });
+}
+new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => tipify(n)))).observe(document.body, {childList:true, subtree:true});
+tipify(document.body);
 function seedify(root) {
   if (!(root instanceof Element)) return;
   const q = sel => [...(root.matches(sel) ? [root] : []), ...root.querySelectorAll(sel)];
@@ -1345,6 +1379,12 @@ function clearDetail() {
   $$('#batches tbody tr').forEach(tr => tr.classList.remove('sel'));
 }
 let JOBS_ST = ''; try { JOBS_ST = localStorage.getItem('bna.jobsfilter') || ''; } catch {}
+// 유형 서브탭(''·selfie·clinical)과 시술 그룹 접힘 상태. 그룹은 기본 접힘, 검수 대기가 있으면 펼침. 손으로 여닫은 건 기억한다.
+let JOBS_MODE = ''; try { JOBS_MODE = localStorage.getItem('bna.jobsmode') || ''; } catch {}
+let JOBS_GRP = {}; try { JOBS_GRP = JSON.parse(localStorage.getItem('bna.jobsgrp') || '{}') || {}; } catch {}
+const JOBS_MORE = new Set();                        // '더 보기'를 누른 그룹 — 새로고침하면 다시 5건
+const GRP_SHOW = 5;
+$$('#jobs-mode button').forEach(b => b.onclick = () => { JOBS_MODE = b.dataset.m; try { localStorage.setItem('bna.jobsmode', JOBS_MODE); } catch {} loadBatches(); });
 const JOBS_MATCH = { '': () => true, running: b => b.status === 'running', pending: b => (b.stats?.pending || 0) > 0, reviewed: b => b.status !== 'running' && (b.stats?.total || 0) > 0 && !(b.stats?.pending || 0) };
 $$('#jobs-filter button').forEach(b => b.onclick = () => { JOBS_ST = b.dataset.f; try { localStorage.setItem('bna.jobsfilter', JOBS_ST); } catch {} loadBatches(); });
 // 실패한 배치(오류·생성 0장)는 목록에서 뺀다 — 생성 자체가 안 된 거라 볼 게 없다(대기열에 실패로 남는다). 개발용 기록 보기를 켜면 보인다 (2026-09-14 성연서님)
@@ -1352,8 +1392,9 @@ const isFailed = b => b.kind !== 'dry_run' && (b.status === 'error' || (b.status
 async function loadBatches() {
   BATCHES = await api('/api/batches'); const kind = DEV_MODE ? $('#jobs-kind').value : 'run'; const q = SEARCH.toLowerCase();
   $$('#jobs-filter button').forEach(b => b.classList.toggle('on', b.dataset.f === JOBS_ST));
+  $$('#jobs-mode button').forEach(b => b.classList.toggle('on', b.dataset.m === JOBS_MODE));
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
-  const trOk = b => (!JOBS_TR || b.treatment === JOBS_TR) && (DEV_MODE || !isFailed(b)) && (JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b);
+  const trOk = b => (!JOBS_TR || b.treatment === JOBS_TR) && (!JOBS_MODE || b.mode === JOBS_MODE) && (DEV_MODE || !isFailed(b)) && (JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b);
   // 사이드바 시술마다 실제 배치 수 (검수 대기가 있으면 그 수를 먼저)
   Object.keys(CFG.treatments || {}).forEach(k => { const mine = BATCHES.filter(b => b.kind === 'run' && b.treatment === k); const pend = mine.reduce((a, b) => a + (b.stats?.pending || 0), 0);
     const el = $('#sub-n-' + k); if (el) { el.textContent = pend ? `${pend}` : (mine.length ? `${mine.length}` : ''); el.className = 'n' + (pend ? ' pend' : ''); el.title = pend ? `검수 대기 ${pend}장` : (mine.length ? `실제 생성 ${mine.length}건` : ''); } });
@@ -1366,14 +1407,35 @@ async function loadBatches() {
   const nTest = BATCHES.filter(b => b.kind !== 'run').length;
   $('#batches-empty').innerHTML = DEV_MODE && kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : (JOBS_TR ? `${esc(CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR)} 생성 기록이 없습니다` : '생성 기록이 없습니다');
   const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; loadBatches(); };
-  tb.innerHTML = list.map(b => { const s = b.stats || {};
+  const rowHtml = b => { const s = b.stats || {};
     const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.live?.stale ? ` <span class="chip bad" title="마지막 신호 ${fmtS(b.progress.live.age_s)} 전 — 사무실 PC 를 확인하세요">멈춤</span>` : ''}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : (!((b.stats || {}).total ?? 0) && b.kind !== 'dry_run') ? '<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽은 배치입니다. 사무실 PC 기록을 봐야 합니다">실패</span>' : '<span class="chip ok">완료</span>';
     const dry = b.kind === 'dry_run';
     return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}" title="${KIND_TIP[b.kind]||''}">${KIND_KO[b.kind]||b.kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td>
-      <td>${dry ? '—' : `${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span>`}</td><td>${st}</td></tr>`; }).join('');
-  tb.querySelectorAll('tr').forEach(tr => { const b = BATCHES.find(x => x.batch_id === tr.dataset.id); if (b && b.kind !== 'run') tr.classList.add('test-row'); });
-  tb.querySelectorAll('tr').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
+      <td>${dry ? '—' : `${s.reviewed||0} <span class="muted">(채택 ${s.picked||0} · 제외 ${s.rejected||0})</span>`}</td><td>${st}</td></tr>`; };
+  // 전 시술 보기 = 시술별 그룹. 시술을 골랐거나 검색·상태 필터가 있으면 그룹 없이 평면(이미 좁혀진 목록이라 접을 이유가 없다).
+  const flat = !!(JOBS_TR || q || JOBS_ST); $('#batches-wrap').classList.toggle('grouped', !flat);
+  if (flat) tb.innerHTML = list.map(rowHtml).join('');
+  else {
+    const groups = new Map(); list.forEach(b => { const k = b.treatment || '_'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(b); });
+    tb.innerHTML = [...groups.entries()].map(([k, rows]) => {
+      const pend = rows.reduce((a, b) => a + (b.stats?.pending || 0), 0), running = rows.filter(b => b.status === 'running').length;
+      const hasCur = CUR && rows.some(b => b.batch_id === CUR.batch_id);
+      const open = hasCur || (JOBS_GRP[k] ?? (pend > 0 || running > 0));
+      const curIdx = hasCur ? rows.findIndex(b => b.batch_id === CUR.batch_id) : -1;
+      const shown = JOBS_MORE.has(k) ? rows : rows.slice(0, Math.max(GRP_SHOW, curIdx + 1));   // 고른 작업은 5건 밖이어도 보인다
+      const last = rows[0] ? fmtBid(rows[0].batch_id) : '';
+      return `<tr class="grp ${open ? 'open' : ''}" data-grp="${esc(k)}"><td colspan="9">${esc(tname(k) || '시술 미지정')}<span class="gm">${rows.length}건 · 마지막 ${last}</span>${running ? `<span class="gp">실행 중 ${running}</span>` : ''}${pend ? `<span class="gp">검수 대기 ${pend}장</span>` : ''}</td></tr>`
+        + shown.map(b => rowHtml(b).replace('<tr class="', `<tr class="${open ? '' : 'fold '}`)).join('')
+        + (rows.length > shown.length ? `<tr class="more ${open ? '' : 'fold'}" data-more="${esc(k)}"><td colspan="9">이전 ${rows.length - shown.length}건 더 보기</td></tr>` : '');
+    }).join('');
+  }
+  tb.querySelectorAll('tr[data-id]').forEach(tr => { const b = BATCHES.find(x => x.batch_id === tr.dataset.id); if (b && b.kind !== 'run') tr.classList.add('test-row'); });
+  tb.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => openBatch(tr.dataset.id, true));
+  tb.querySelectorAll('tr.grp').forEach(tr => tr.onclick = () => { const k = tr.dataset.grp, open = !tr.classList.contains('open');
+    JOBS_GRP[k] = open; try { localStorage.setItem('bna.jobsgrp', JSON.stringify(JOBS_GRP)); } catch {}
+    tr.classList.toggle('open', open); let n = tr.nextElementSibling; while (n && !n.classList.contains('grp')) { n.classList.toggle('fold', !open); n = n.nextElementSibling; } });
+  tb.querySelectorAll('tr.more').forEach(tr => tr.onclick = () => { JOBS_MORE.add(tr.dataset.more); loadBatches(); });
   return BATCHES;
 }
 $('#btn-refresh').onclick = loadBatches;
