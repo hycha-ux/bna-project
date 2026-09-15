@@ -1419,8 +1419,9 @@ async function loadBatches() {
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
   const trOk = b => (!JOBS_TR || b.treatment === JOBS_TR) && (!JOBS_MODE || b.mode === JOBS_MODE) && (DEV_MODE || !isFailed(b)) && (JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b);
   // 사이드바 시술마다 실제 배치 수 (검수 대기가 있으면 그 수를 먼저)
-  Object.keys(CFG.treatments || {}).forEach(k => { const mine = BATCHES.filter(b => b.kind === 'run' && b.treatment === k); const pend = mine.reduce((a, b) => a + (b.stats?.pending || 0), 0);
-    const el = $('#sub-n-' + k); if (el) { el.textContent = pend ? `${pend}` : (mine.length ? `${mine.length}` : ''); el.className = 'n' + (pend ? ' has' : ''); el.title = pend ? `검수 대기 ${pend}장` : (mine.length ? `실제 생성 ${mine.length}건` : ''); } });
+  // 시술 칩 숫자 = 검수 대기 장수만 (2026-09-15 연서님: 생성 건수와 섞이면 뜻이 둘). 유형 서브탭을 따라간다 — 임상형 탭에서 셀카형 대기가 보이면 안 된다
+  Object.keys(CFG.treatments || {}).forEach(k => { const mine = BATCHES.filter(b => b.kind === 'run' && b.treatment === k && (!JOBS_MODE || b.mode === JOBS_MODE)); const pend = mine.reduce((a, b) => a + (b.stats?.pending || 0), 0);
+    const el = $('#sub-n-' + k); if (el) { el.textContent = pend ? `${pend}` : ''; el.className = 'n' + (pend ? ' has' : ''); el.title = pend ? `검수 대기 ${pend}장` : ''; } });
   $('#jobs-tr-label').textContent = JOBS_TR ? (CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR) : '전 시술';
   const list = BATCHES.filter(b => kindOk(b) && trOk(b) && (!q || [CFG.treatments[b.treatment]?.name_ko, b.treatment, MODE_KO[b.mode], b.mode, fmtBid(b.batch_id), b.batch_id, KIND_KO[b.kind]].join(' ').toLowerCase().includes(q)));
   const tb = $('#batches tbody'); $('#batches-empty').hidden = list.length > 0; $('#batches-empty').textContent = JOBS_ST && BATCHES.length ? '이 상태의 작업이 없습니다' : '생성 기록이 없습니다';
