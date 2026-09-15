@@ -161,7 +161,7 @@ a { color:var(--primary) }
 .tip:hover, .tip:focus-visible { color:var(--ui-hi) }
 .tip::after { content:attr(data-tip); position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); background:#191919; color:#fff; font-size:12px; font-weight:500; line-height:1.45; padding:8px 10px; border-radius:6px; white-space:pre-line; width:max-content; max-width:260px; text-align:left; box-shadow:0 4px 14px rgba(0,0,0,.18); opacity:0; pointer-events:none; transition:opacity .12s; z-index:60; letter-spacing:0 }
 .tip::before { content:""; position:absolute; left:50%; bottom:calc(100% + 3px); transform:translateX(-50%); border:5px solid transparent; border-top-color:#191919; opacity:0; transition:opacity .12s; z-index:60 }
-.tip:hover::after, .tip:hover::before, .tip:focus-visible::after, .tip:focus-visible::before { opacity:1 }
+.tip:hover::after, .tip:hover::before, .tip:focus-visible::after, .tip:focus-visible::before, .tip.open::after, .tip.open::before { opacity:1 }
 .tip.tip-right::after { left:auto; right:0; transform:none } .tip.tip-right::before { left:auto; right:6px; transform:none }
 .note-hidden { display:none !important }
 .nav-item svg { width:18px; height:18px; flex-shrink:0 }
@@ -506,7 +506,8 @@ details summary { cursor:pointer; color:var(--ui-lo); font-size:var(--fs-sm); fo
 .brow .m { height:8px; background:var(--ui-surface); border-radius:4px; overflow:hidden } .brow .m i { display:block; height:100%; background:#9B9A97; border-radius:4px } .brow.done .m i { background:#191919 }
 .brow .s { font-size:11px; color:var(--ui-lo) } .brow .s .pend { color:var(--warn) }
 /* 오늘 할 일: 모든 줄이 같은 3칸(글 | 숫자 | 버튼). 칸이 비어도 자리는 지킨다 — 숫자끼리·버튼끼리 세로로 맞는다 */
-.todo .todo-row { display:grid; grid-template-columns:minmax(0,1fr) 64px 92px; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--ui-border) } .todo .todo-row:first-child { padding-top:4px } .todo .todo-row:last-child { border-bottom:0; padding-bottom:4px }
+.todo .todo-row { display:grid; grid-template-columns:minmax(0,1fr) auto 18px; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid var(--ui-border) }
+.todo .todo-row.link { cursor:pointer; margin:0 -10px; padding-left:10px; padding-right:10px; border-radius:var(--r-sm) } .todo .todo-row.link:hover { background:var(--ui-surface) } .todo .todo-row .a .ic { color:var(--ui-lo); font-size:16px } .todo .todo-row:first-child { padding-top:4px } .todo .todo-row:last-child { border-bottom:0; padding-bottom:4px }
 .todo .todo-row .k { min-width:0; display:flex; flex-direction:column; gap:3px } .todo .todo-row .k b { font-size:var(--fs-md); font-weight:var(--fw-b); color:var(--ui-hi); line-height:1.3 } .todo .todo-row .k span { font-size:var(--fs-xs); color:var(--ui-lo); line-height:1.4 }
 .todo .todo-row .v { text-align:right; font-size:20px; font-weight:var(--fw-num); color:var(--ui-hi); font-variant-numeric:tabular-nums; letter-spacing:-.02em; line-height:1; white-space:nowrap } .todo .v.ok { color:var(--ui-lo) } .todo .v.plain, .todo .v.warn { color:var(--ui-hi); font-size:20px; font-weight:var(--fw-num) }
 .todo .todo-row .a { display:flex; justify-content:flex-end } .todo .todo-row .a .b { min-width:76px; height:32px }
@@ -854,6 +855,7 @@ new MutationObserver(ms => ms.forEach(m => {
   else if (t && !t._tip && t.dataset.tipped && !t.querySelector('.tags-line')) { const x = noteText(t); if (x) { delete t.dataset.tipped; t.classList.remove('note-hidden'); tipify(t); } }
 })).observe(document.body, {childList:true, subtree:true, characterData:true});
 tipify(document.body);
+document.addEventListener('click', e => { const t = e.target.closest('.tip'); $$('.tip.open').forEach(x => { if (x !== t) x.classList.remove('open'); }); if (t) { e.stopPropagation(); t.classList.toggle('open'); } });
 function seedify(root) {
   if (!(root instanceof Element)) return;
   const q = sel => [...(root.matches(sel) ? [root] : []), ...root.querySelectorAll(sel)];
@@ -1041,19 +1043,20 @@ function renderBoard() {
 function renderTodo() {
   const q = OV.queue, L = OV.lessons || {}, g = OV.gates || {};
   $('#home-today-date').textContent = new Date().toLocaleDateString('ko-KR', {month: 'long', day: 'numeric', weekday: 'short'});
-  const row = (k, sub, v, a) => `<div class="todo-row"><div class="k"><b>${k}</b>${sub ? `<span>${sub}</span>` : ''}</div><div class="v ${v?.cls || ''}">${v?.text ?? ''}</div><div class="a">${a || ''}</div></div>`;
-  const running = q.running ? row(`진행 중: ${tname(q.running.treatment)} ${MODE_KO[q.running.mode]||''}`, q.paused ? '일시정지' : '생성 중', {text: q.queued, cls: 'plain'}, `<button class="b sm" data-goto="create">대기열</button>`) : '';
+  const row = (k, sub, v, a) => `<div class="todo-row ${a ? 'link' : ''}" ${a ? `data-go="${a}" role="button" tabindex="0"` : ''}><div class="k"><b>${k}</b>${sub ? `<span>${sub}</span>` : ''}</div><div class="v ${v?.cls || ''}">${v?.text ?? ''}</div><div class="a">${a ? '<i class="ic ic-chevron-right"></i>' : ''}</div></div>`;
+  const running = q.running ? row(`진행 중: ${tname(q.running.treatment)} ${MODE_KO[q.running.mode]||''}`, q.paused ? '일시정지' : '생성 중', {text: q.queued, cls: 'plain'}, 'create') : '';
   const pending = row('검수 대기', OV.pending_total ? 'AI 통과한 사진을 채택/제외로 갈라 주세요' : '밀린 검수가 없습니다', {text: OV.pending_total, cls: OV.pending_total ? 'warn' : 'ok'},
-    OV.pending_total && OV.pending_batch ? `<button class="b sm primary" id="todo-review"><i class="ic ic-play"></i>검수 시작</button>` : '');
+    OV.pending_total && OV.pending_batch ? 'review' : 'jobs');
   const tags = (L.top_tags || []);
   const lessons = row('제외 사유 상위', `최근 ${L.window_days || 14}일 · 제외 ${L.rejected || 0}장` + (tags.length ? `<div class="tags-line">${tags.map(([t, n]) => `<span class="chip ${(L.active_tags||[]).includes(t) ? 'bad' : ''}" title="${(L.active_tags||[]).includes(t) ? '지금 프롬프트에 반영 중' : '2회부터 반영'}">${esc(t)} ${n}</span>`).join('')}</div>` : ''),
-    {text: L.rejected || 0, cls: L.rejected ? 'plain' : 'ok'}, `<button class="b sm" data-goto="lessons"><i class="ic ic-bulb"></i>학습</button>`);
+    {text: L.rejected || 0, cls: L.rejected ? 'plain' : 'ok'}, 'lessons');
   const idn = g.identity || {}, st = g.structure || {};
   const gate = row('자동 게이트 못 잰 비율', `동일인 ${idn.na_rate == null ? '—' : pct(idn.na_rate)} · 구조 ${st.na_rate == null ? '—' : pct(st.na_rate)}${(idn.na_rate || 0) > .3 ? ' · 부분 크롭이 많아 사람 검수 비중이 큽니다' : ''}`,
-    {text: idn.na_rate == null ? '—' : pct(idn.na_rate), cls: 'plain'}, '');
+    {text: idn.na_rate == null ? '—' : pct(idn.na_rate), cls: 'plain'}, 'lessons');
   $('#home-todo').innerHTML = running + pending + lessons + gate;
-  $('#home-todo').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
-  const rb = $('#todo-review'); if (rb) rb.onclick = async () => { show('jobs'); await openBatch(OV.pending_batch, true); $('#gal-view [data-v=review]')?.click(); };
+  // 행 전체를 누르면 이동 (2026-09-15 연서님: 버튼 대신). ⓘ 는 풍선만
+  $('#home-todo').querySelectorAll('.todo-row.link').forEach(r => { const go = async () => { const a = r.dataset.go; if (a === 'review') { show('jobs'); await openBatch(OV.pending_batch, true); $('#gal-view [data-v=review]')?.click(); } else show(a); };
+    r.onclick = e => { if (e.target.closest('.tip')) return; go(); }; r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; });
 }
 // ── SVG 헬퍼 ──
 const cw = (sel, fallback) => Math.max(200, Math.floor(document.querySelector(sel)?.clientWidth || fallback));
