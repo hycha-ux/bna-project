@@ -103,10 +103,13 @@ def sheet(item, meta, before, after, aligned, bx, row, out):
         x = i * (cw + gap)
         box = bx[n]
         for j, img in enumerate((before, aligned)):          # 위 = Before, 아래 = 맞춘 After (겹쳐 보는 자리 그대로)
+            # 칸을 **꽉 채우게**(cover) 키운 뒤 가운데를 자른다. 폭만 맞추면 가로로 긴 상자(눈·옷깃)는
+            # 높이가 칸보다 작아져 나머지가 검은 여백으로 칠해진다(2026-09-15 시험 렌더에서 크롭 대부분이 검정).
             c = img.crop(box)
-            c = c.resize((cw, int(c.height * cw / max(1, c.width)))) if c.width else c
-            c = c.crop((0, max(0, (c.height - crop_h) // 2), cw, max(0, (c.height - crop_h) // 2) + crop_h))
-            s.paste(c, (x, y0 + j * (crop_h + 4)))
+            k = max(cw / max(1, c.width), crop_h / max(1, c.height))
+            c = c.resize((max(cw, int(c.width * k + 0.5)), max(crop_h, int(c.height * k + 0.5))))
+            lx, ty = (c.width - cw) // 2, (c.height - crop_h) // 2
+            s.paste(c.crop((lx, ty, lx + cw, ty + crop_h)), (x, y0 + j * (crop_h + 4)))
         d.text((x + 4, y0 + crop_h * 2 + 10), f"{n} 변화 {fmt(row['regions'].get(n), 1)}", fill=(0, 0, 0), font=font(16))
     s.save(out, quality=88)
     return out
