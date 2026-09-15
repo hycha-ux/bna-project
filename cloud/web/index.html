@@ -198,7 +198,7 @@ button.b.on-pick::before { content:"✓ "; } button.b.on-reject { background:#E9
 .cmp figure { position:relative; margin:0; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--ui-surface,#F4F5F7); color:var(--ui-lo); font-size:12px }
 .cmp[data-mode=side] { display:grid; grid-template-columns:1fr 1fr; gap:2px; background:var(--ui-border) }
 .cmp[data-mode=side].series { grid-template-columns:repeat(var(--n,2),minmax(0,1fr)) }   /* 경과 시리즈: 전 1장 + 시점마다 후 1장을 한 줄에 */
-.cmp figure.when-cur { outline:2px solid #191919; outline-offset:-2px }
+.cmp figure.when-cur::after { content:""; position:absolute; inset:0; border:2px solid #191919; pointer-events:none; z-index:4 }   /* 테두리는 사진 위에 — 확대한 사진(transform 스택)이 outline 을 덮어 사라졌다 (2026-09-15) */
 .qreasons { display:flex; flex-wrap:wrap; gap:6px } .qreasons .rs { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid var(--ui-border); border-radius:6px; background:#fff; font-size:var(--fs-sm); cursor:pointer; color:var(--ui-hi) } .qreasons .rs.on { background:#191919; color:#fff; border-color:#191919 } .qreasons .rs.on kbd { background:#fff; color:#191919 }
 .rev-done { display:grid; justify-items:center; gap:6px; text-align:center; padding:48px 24px; background:#fff; border:1px solid var(--ui-border); border-radius:var(--r-md) } .rev-done img { width:140px; margin-bottom:8px } .rev-done b { font-size:var(--fs-xl) } .rev-done .row { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; justify-content:center }
 .rev-prog { height:4px; background:var(--ui-surface); border-radius:2px; overflow:hidden; margin:6px 0 2px } .rev-prog i { display:block; height:100%; background:#191919 }
