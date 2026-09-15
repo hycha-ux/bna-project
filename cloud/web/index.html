@@ -12,9 +12,10 @@
 <link rel="stylesheet" href="/vendor/seed/recipes.css">
 <style>
 :root, :root[data-seed][data-seed-color-mode] {
-  --primary:#1F3A5F; --pri-hov:#172C49; --pri-alpha:rgba(31,58,95,.08); --pri-border:rgba(31,58,95,.18); --brand-blue:#CCD8E8;
-  --ui-bg:#F4F5F7; --ui-panel:#fff; --ui-border:#EAECEF; --ui-hi:#191F28; --ui-md:#6B7684; --ui-lo:#8B95A1; --ui-surface:#F7F8FA;
-  --ok:#1F8F55; --ok-weak:#E3F5EA; --bad:#D64545; --bad-weak:#FBE5E5; --warn:#B87A00; --warn-weak:#FFF3D6;
+  /* 아프터 브랜드 시트 v0.4 — 블랙·그레이 스케일. 강조색 없음, 상태색만 예외 */
+  --primary:#191919; --pri-hov:#37352F; --pri-alpha:rgba(25,25,25,.06); --pri-border:rgba(25,25,25,.16); --brand-blue:#E9E9E7;
+  --ui-bg:#F7F7F5; --ui-panel:#fff; --ui-border:#E9E9E7; --ui-hi:#37352F; --ui-md:#6B6A66; --ui-lo:#9B9A97; --ui-surface:#F7F7F5;
+  --ok:#1C3829; --ok-weak:#DBEDDB; --bad:#A32D2D; --bad-weak:#FFE2DD; --warn:#7A5A00; --warn-weak:#FDECC8;
   --rail-w:72px; --side-w:240px; --top-h:68px; --r-sm:8px; --r-md:12px; --r-lg:16px; --gap:24px;
   --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-num:32px; --fs-num-sm:24px;
   --fw-r:400; --fw-m:600; --fw-b:700; --fw-num:800;
@@ -367,7 +368,7 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 /* 차트 (SVG) */
 .chart { display:block; max-width:100%; overflow:visible } 
 .chart .bar { fill:var(--primary); opacity:.85 } .chart .bar:hover { opacity:1 } .chart .bar2 { fill:var(--brand-blue) } .chart .lineok { fill:none; stroke:var(--ok); stroke-width:2.2 } .chart .ptok { fill:#fff; stroke:var(--ok); stroke-width:2 }
-.chart .st0{fill:var(--ok)} .chart .st1{fill:#D64545} .chart .st2{fill:#E98A2E} .chart .st3{fill:#8FA9C8} .chart .st4{fill:#B8A0D9} .chart .st5{fill:#C4C9D1} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:12px }
+.chart .st0{fill:var(--ok)} .chart .st1{fill:var(--bad)} .chart .st2{fill:#E98A2E} .chart .st3{fill:#8FA9C8} .chart .st4{fill:#B8A0D9} .chart .st5{fill:#C4C9D1} .chart .grid-line { stroke:var(--ui-border); stroke-width:1 } .chart .axis { fill:var(--ui-lo); font-size:12px }
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
 .chart .line2 { fill:none; stroke:#8FA9C8; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
@@ -1821,7 +1822,7 @@ function renderSettings() {
     <div class="list-row" style="cursor:default"><div class="t"><b>시술별 목표 장수</b><span>홈 현황판의 기준. 저장하면 모든 시술에 같은 값이 적용됩니다${(() => { const v = Object.values(GOALS?.per || {}); return v.length && new Set(v).size > 1 ? ` · 지금은 시술마다 다릅니다(${Math.min(...v)}~${Math.max(...v)})` : ''; })()}</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-default" min="1" style="width:80px" value="${(() => { const v = Object.values(GOALS?.per || {}); return v.length && new Set(v).size === 1 ? v[0] : (GOALS?.default ?? 30); })()}"><button class="b sm" id="goal-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>채택률 목표</b><span>홈 채택률 카드의 기준선. 사람이 채택한 비율이 여기 닿으면 검수를 줄일 근거가 됩니다 (2026-09-10 성연서님: 보수적으로 90%)</span></div><span style="display:flex;gap:6px;align-items:center"><input type="number" id="goal-rate" min="1" max="100" style="width:80px" value="${Math.round(((GOALS?.pick_rate ?? 0.9)) * 100)}">%<button class="b sm" id="goal-rate-save">저장</button></span></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>개발용 기록 보기</b><span>시뮬레이션·샘플·프롬프트만 기록을 작업 목록과 홈에 보입니다. 화면 확인용이라 평소엔 꺼 둡니다</span></div><label class="sim-toggle"><input type="checkbox" id="dev-mode" ${DEV_MODE ? 'checked' : ''}> 켜기</label></div>
-    <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #1F3A5F (온리프 네이비)</span></div></div>
+    <div class="list-row" style="cursor:default"><div class="t"><b>브랜드 색</b><span>--primary #191919 (아프터 블랙 · 그레이 스케일)</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>모드별 기본 AI 모델</b><span>${Object.entries(CFG.default_provider||{}).map(([m,d]) => `${MODE_KO[m]||m}: ${d.gen} / ${d.edit} / ${d.qa}`).join(' · ')}</span></div></div>
     <div class="list-row" style="cursor:default"><div class="t"><b>시술 ${Object.keys(CFG.treatments).length}종</b><span>${Object.values(CFG.treatments).map(t => t.name_ko).join(' · ')}</span></div></div></div>`;
   const dm = $('#dev-mode'); if (dm) dm.onchange = e => { DEV_MODE = e.target.checked; try { localStorage.setItem('bna.dev', DEV_MODE ? '1' : '0'); } catch {} applyDevMode(); };
