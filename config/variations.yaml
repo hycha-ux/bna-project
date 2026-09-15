@@ -294,7 +294,7 @@ expression_traits:
 # 모드별 사용 제약
 mode_rules:
   clinical:
-    extras: [none, glasses, glasses_thick, beard_light, beard_full, makeup_none, tired]  # 임상은 액세서리·화장 제외
+    extras: [none, beard_light, beard_full, makeup_none, tired]  # 임상은 액세서리·화장 제외. 안경도 뺌 — 촬영 때 벗기고 찍는다 (2026-09-15 연서님)
     hair_style: [ponytail, bun, short, buzz]                                             # 머리 묶음 규정
     background: [clinic]
     angle: [front, three_quarter, side]
