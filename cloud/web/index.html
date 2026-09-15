@@ -58,7 +58,7 @@ a { color:var(--primary) }
 .sub { display:flex; flex-direction:column; padding:2px 0 var(--sp-1) 30px } .sub button { border:0; background:none; text-align:left; padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-r); color:var(--ui-md); border-radius:6px; cursor:pointer } .sub button:hover { color:var(--ui-hi); background:var(--ui-surface) } .sub button.on { color:var(--primary); font-weight:var(--fw-b); background:var(--pri-alpha) } .nav-item.active.has-sub { background:none; color:var(--ui-hi) }
 .sub button { display:flex; align-items:center; gap:6px; line-height:18px } .sub button .n { margin-left:auto; min-width:22px; height:18px; line-height:18px; padding:0 6px; border-radius:999px; text-align:center; font-size:11px; color:var(--ui-lo); font-variant-numeric:tabular-nums; flex-shrink:0; position:relative; top:0 } .sub button .n.pend { color:#fff; background:var(--warn,#C98A1B); font-weight:600; top:3px }   /* 실측: 배지는 글자 중심보다 3px 위에 앉는다(2026-09-14) */
 .nav-item .caret { margin-left:auto; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; color:var(--ui-lo); flex-shrink:0 } .nav-item .caret svg { width:16px; height:16px; transition:transform .15s } .nav-item .caret:hover { background:var(--ui-surface); color:var(--ui-hi) } .nav-item .chip + .caret { margin-left:6px }
-.side.fold-jobs #sub-jobs, .side.fold-library #sub-library { display:none } .side.fold-jobs [data-fold=jobs] svg, .side.fold-library [data-fold=library] svg { transform:rotate(-90deg) }
+.tr-chips { display:flex; flex-wrap:wrap; gap:6px; padding:var(--sp-2) 0 var(--sp-1) } .tr-chips button { border:1px solid var(--ui-border); background:#fff; border-radius:999px; padding:4px 12px; font-size:var(--fs-sm); color:var(--ui-md); cursor:pointer; display:inline-flex; align-items:center; gap:6px } .tr-chips button:hover { color:var(--ui-hi); border-color:var(--ui-lo) } .tr-chips button.on { background:#191919; color:#fff; border-color:#191919 } .tr-chips button .n { font-size:11px; color:inherit; opacity:.7 } .tr-chips button .n:empty { display:none }
 .side .brand { font-size:var(--fs-lg); font-weight:var(--fw-b); color:var(--ui-hi); letter-spacing:-.3px; line-height:1.15; white-space:nowrap }
 .side .brand small { display:block; font-size:11px; font-weight:500; color:var(--ui-lo); margin-top:2px }
 .nav-item { width:100%; padding:var(--sp-2) var(--sp-2); border:0; border-radius:var(--r-sm); background:none; font-size:var(--fs-md); font-weight:var(--fw-m); color:var(--ui-md); cursor:pointer; display:flex; align-items:center; gap:var(--sp-2); text-align:left; margin-bottom:4px }
@@ -448,12 +448,12 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <div class="brand-row"><img class="logo" src="/assets/after-logo.svg" alt="After by MediBuilder"><img class="logo-mini" src="/assets/favicon-180.png" alt="After"><button class="toggle" id="side-toggle" title="사이드바 접기/펼치기"><svg><use href="#i-menu"/></svg></button></div>
     <button class="nav-item active" data-tab="home"><svg><use href="#i-home"/></svg><span class="lbl">홈</span></button>
     <button class="nav-item" data-tab="create"><svg><use href="#i-plus"/></svg><span class="lbl">생성</span><span id="q-badge" class="chip warn" hidden></span></button>
-    <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span><span class="caret" data-fold="jobs" title="시술 목록 접기/펼치기"><svg><use href="#i-chev"/></svg></span></button>
-    <!-- 작업 아래는 시술별 목록 (2026-09-10 성연서님 "전체·테스트 대신 카테고리별로"). 테스트 기록은 설정의 '개발용 기록 보기'를 켜야 보인다 -->
-    <div class="sub" id="sub-jobs"></div>
+    <button class="nav-item" data-tab="jobs" data-group="jobs"><svg><use href="#i-list"/></svg><span class="lbl">작업</span></button>
     <button class="nav-item" data-tab="lessons"><svg><use href="#i-help"/></svg><span class="lbl">학습</span><span id="les-badge" class="chip bad" hidden></span></button>
-    <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span><span class="caret" data-fold="library" title="종류 목록 접기/펼치기"><svg><use href="#i-chev"/></svg></span></button>
-    <div class="sub" id="sub-library"><button data-mode="">전체</button><button data-mode="selfie">셀카형</button><button data-mode="clinical">임상형</button></div>
+    <button class="nav-item" data-tab="library" data-group="library"><svg><use href="#i-lib"/></svg><span class="lbl">라이브러리</span><span id="lib-badge" class="chip ok" hidden></span></button>
+    <button class="nav-item" data-tab="settings"><svg><use href="#i-gear"/></svg><span class="lbl">설정</span></button>
+    <!-- 시술·종류 필터는 2026-09-15 사이드바에서 각 화면 상단 칩으로 옮겼다 (사이드바는 메뉴 6줄만). 아래 두 칸은 옛 JS 가 찾는 자리 -->
+    <div id="sub-library" hidden></div>
     <div class="foot" id="side-foot"></div>
   </nav>
 
@@ -571,6 +571,7 @@ dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo);
     <section class="page" id="tab-jobs">
       <div class="card">
         <div class="card-head"><h3>작업 목록</h3><span class="muted" id="jobs-tr-label"></span><select id="jobs-kind" class="hsel" hidden><option value="">전체</option><option value="run">실제 생성 — 돈 쓰고 만든 사진</option><option value="test">테스트 전체 — 확인용</option><option value="sim">　테스트 · 시뮬레이션 (진행 화면만 흉내)</option><option value="demo">　테스트 · 샘플 (자리표시 사진)</option><option value="dry_run">　테스트 · 프롬프트만 (사진 없음)</option></select><div class="tb-space"></div><div class="pill" id="jobs-filter" title="상태로 걸러 봅니다"><button data-f="">전체</button><button data-f="running">실행 중</button><button data-f="pending">검수 대기</button><button data-f="reviewed">검수 끝</button></div><button class="btn sm" id="btn-refresh">새로고침</button></div>
+        <div class="tr-chips" id="sub-jobs"></div>
         <!-- 열마다 값 하나씩 (2026-09-09 성연서님: 합쳐 놓은 게 더 뒤죽박죽). 장당 시도·비용만 뺐다 -->
         <div class="tbl-wrap" id="batches-wrap"><table id="batches"><thead><tr><th>생성 시간</th><th>시술</th><th>유형</th><th>방식</th><th>생성 장수</th><th>통과</th><th>통과율</th><th>검수</th><th>상태</th></tr></thead><tbody></tbody></table></div>
         <div class="empty" id="batches-empty" hidden>생성 기록이 없습니다</div>
@@ -753,7 +754,7 @@ const TITLES = {home:'홈', create:'생성', jobs:'작업', library:'라이브�
 function show(tab) {
   const prev = ($$('.page').find(p => p.classList.contains('active')) || {}).id;
   // 세부 항목(작업>팔자주름, 라이브러리>셀카형)이 눌려 있으면 큰 카테고리는 채우지 않는다 (2026-09-14 성연서님 "가장 큰 카테고리가 눌러져 있는 듯한 효과")
-  const subOn = tab === 'jobs' ? !!$('#sub-jobs button.on') : tab === 'library' ? !!$('#sub-library button.on') : false;
+  const subOn = false;   // 2026-09-15 시술·종류 필터가 사이드바 밖으로 나가 큰 메뉴는 항상 채운다
   $$('.nav-item').forEach(b => { b.classList.toggle('active', b.dataset.tab === tab); b.classList.toggle('has-sub', b.dataset.tab === tab && subOn); });
   $$('.page').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
   $('#page-h1').textContent = TITLES[tab] || tab; $('#menu').hidden = true; location.hash = tab;
@@ -767,7 +768,7 @@ function show(tab) {
   if (tab === 'lessons') loadLessons();
   if (tab === 'settings') loadGoals().then(renderSettings);
 }
-$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'library' && b.classList.contains('nav-item')) { $$('#sub-library button').forEach(x => x.classList.remove('on')); const lm = $('#lib-mode'); if (lm) lm.value = ''; } if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.remove('on')); } show(t); });
+$$('.nav-item, [data-goto], #menu [data-tab]').forEach(b => b.onclick = () => { const t = b.dataset.tab || b.dataset.goto; if (t === 'library' && b.classList.contains('nav-item')) { $$('#sub-library button').forEach(x => x.classList.remove('on')); const lm = $('#lib-mode'); if (lm) lm.value = ''; } if (t === 'jobs' && b.classList.contains('nav-item')) { leaveReview(); JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === '')); } show(t); });
 $$('.nav-item .caret[data-fold]').forEach(c => c.onclick = e => { e.stopPropagation(); const k = 'fold-' + c.dataset.fold; const on = $('.side').classList.toggle(k); try { localStorage.setItem('bna.' + k, on ? '1' : '0'); } catch {} });
 try { for (const k of ['fold-jobs', 'fold-library']) if (localStorage.getItem('bna.' + k) === '1') $('.side').classList.add(k); } catch {}
 $('#tb-menu').onclick = e => { e.stopPropagation(); $('#app').classList.toggle('side-open'); };
@@ -788,8 +789,8 @@ function applyDevMode() {
 }
 function renderSubJobs() {
   const trs = Object.entries(CFG.treatments || {});
-  $('#sub-jobs').innerHTML = trs.map(([k, t]) => `<button data-tr="${esc(k)}" class="${JOBS_TR === k ? 'on' : ''}">${esc(t.name_ko || k)}<span class="n" id="sub-n-${esc(k)}"></span></button>`).join('');
-  $$('#sub-jobs button').forEach(b => b.onclick = () => { leaveReview(); JOBS_TR = JOBS_TR === b.dataset.tr ? '' : b.dataset.tr; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === JOBS_TR)); show('jobs'); });
+  $('#sub-jobs').innerHTML = `<button data-tr="" class="${JOBS_TR ? '' : 'on'}">전 시술</button>` + trs.map(([k, t]) => `<button data-tr="${esc(k)}" class="${JOBS_TR === k ? 'on' : ''}">${esc(t.name_ko || k)}<span class="n" id="sub-n-${esc(k)}"></span></button>`).join('');
+  $$('#sub-jobs button').forEach(b => b.onclick = () => { leaveReview(); JOBS_TR = b.dataset.tr; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === JOBS_TR)); show('jobs'); });
 }
 $$('#sub-library button').forEach(b => b.onclick = () => { $$('#sub-library button').forEach(x => x.classList.toggle('on', x === b)); $('#lib-mode').value = b.dataset.mode; show('library'); });
 $('#tb-profile').onclick = e => { e.stopPropagation(); $('#menu').hidden = !$('#menu').hidden; };
