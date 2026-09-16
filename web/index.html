@@ -567,7 +567,7 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .chart .line2 { fill:none; stroke:#9B9A97; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
 /* 라이브러리 카드 (2026-09-16 연서님 '디벨롭'): 체크는 사진 위 오른쪽 동그라미, 머리는 날짜·번호 + 드라이브 상태 글, 밑줄은 [다운로드] + ··· (작업으로·채택 해제) */
-.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px }
+.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px }   /* 사진 더 크게 (2026-09-16 연서님) */
 .lib .item { position:relative; overflow:visible; transition:box-shadow .12s; display:flex; flex-direction:column }   /* 칩이 두 줄이면 카드가 길어져 옆 카드와 버튼 높이가 어긋났다 → 버튼은 늘 바닥에 (2026-09-16 연서님) */ .lib .item:hover { box-shadow:0 4px 16px rgba(25,31,40,.08) } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
 .lib .item .pair figure { border-radius:0 } .lib .item .pair figure:first-child { border-top-left-radius:calc(var(--r-md) - 1px) } .lib .item .pair figure:last-child { border-top-right-radius:calc(var(--r-md) - 1px) }
 .lib-check { position:absolute; right:8px; top:8px; z-index:3; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.92); box-shadow:0 1px 4px rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:transparent }
