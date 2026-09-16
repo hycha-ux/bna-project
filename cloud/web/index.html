@@ -584,13 +584,21 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .lib-more .dd-menu { left:auto; right:0; width:236px; grid-template-columns:1fr } .lib-more .dd-opt { border:0; background:none; width:100%; color:var(--ui-hi); font-size:var(--fs-sm); text-align:left } .lib-more .dd-opt .ic { font-size:15px; color:var(--ui-lo) } .lib-more .dd-opt.danger { color:#B42318 } .lib-more .dd-opt.danger .ic { color:#B42318 }
 /* ⚠ margin:auto 를 빼지 마라 — 리셋 CSS 의 `margin:0` 이 브라우저 기본 가운데 정렬을 지워
    모달이 좌상단에 붙는다(2026-09-08 실측 left 0·top 0). inset:0 과 한 쌍이다. */
-dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
+dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:1040px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
 dialog::backdrop { background:rgba(0,0,0,.4); backdrop-filter:blur(4px) } dialog .in { padding:24px 28px; overflow:auto; max-height:88vh } dialog h2 { font-size:var(--fs-xl); font-weight:var(--fw-b) }
-.dlg-pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 16px } .dlg-pair figure { margin:0; background:var(--ui-surface); border-radius:var(--r-sm); overflow:hidden }
-.dlg-pair img { width:100%; height:min(46vh, 420px); object-fit:contain; display:block; transform-origin:0 0; will-change:transform; user-select:none; -webkit-user-drag:none } .dlg-pair figcaption { font-size:var(--fs-xs); color:var(--ui-md); padding:4px 8px; position:relative; background:var(--ui-surface) }
+/* 사진 상세 (2026-09-16 연서님): 머리는 제목·메타·게이트 칩 왼쪽, 버튼·X 오른쪽. 사진은 크게, 전·후 라벨은 카드처럼 사진 위 배지. 조건 표는 2열 */
+.dlg-head { display:flex; align-items:flex-start; gap:16px; margin-bottom:14px } .dlg-title { min-width:0; flex:1 } .dlg-title h2 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 } .dlg-title h2 .chip { margin:0 }
+.dlg-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:6px; font-size:var(--fs-sm); color:var(--ui-md) } .dlg-meta .sep { color:var(--ui-border) } .dlg-meta .gates { display:inline-flex; gap:4px; margin-left:4px } .dlg-meta .gates .chip { margin:0 }
+.dlg-act { display:flex; align-items:center; gap:6px; flex-shrink:0 }
+.dlg-x { width:36px; height:36px; border:0; border-radius:50%; background:none; color:var(--ui-md); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; margin-left:4px } .dlg-x:hover { background:var(--ui-surface); color:var(--ui-hi) } .dlg-x .ic { font-size:18px }
+.dlg-pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 18px } .dlg-pair figure { margin:0; position:relative; background:#EDECE8; border-radius:var(--r-md); overflow:hidden }
+.dlg-pair img { width:100%; height:min(58vh, 560px); object-fit:contain; display:block; transform-origin:0 0; will-change:transform; user-select:none; -webkit-user-drag:none }
+.dlg-pair figcaption { position:absolute; left:10px; top:10px; z-index:2; background:rgba(25,31,40,.65); color:#fff; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; pointer-events:none }
 .dlg-pair { position:relative; cursor:zoom-in; touch-action:none } .dlg-pair.zoomed { cursor:grab } .dlg-pair.zoomed:active { cursor:grabbing }
-.dlg-pair .zoom-hint { grid-column:1 / -1; font-size:var(--fs-xs); color:var(--ui-lo); text-align:right; margin-bottom:-4px }
-dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-lo); margin-bottom:var(--sp-1) }
+.dlg-pair .zoom-hint { grid-column:1 / -1; font-size:var(--fs-xs); color:var(--ui-lo); text-align:right; margin-top:-2px }
+.dlg-cols { display:grid; grid-template-columns:1fr 1fr; gap:24px } @media (max-width:760px) { .dlg-cols { grid-template-columns:1fr } }
+dialog h3 { font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--ui-hi); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:6px } dialog h3 .muted { font-weight:var(--fw-r) }
+.dlg-cond td:first-child { color:var(--ui-lo); width:96px; white-space:nowrap } .dlg-cond td .chip { margin:0 0 0 2px }
 .toast { position:fixed; bottom:24px; left:50%; transform:translate(-50%,6px); background:var(--ui-hi); color:#fff; padding:var(--sp-2) var(--sp-4); border-radius:var(--r-md); font-size:var(--fs-md); font-weight:var(--fw-m); opacity:0; transition:.2s; pointer-events:none; z-index:500 }
 .toast.show { opacity:1; transform:translate(-50%,0) }
 @media (max-width:1280px) { .g-kpi { grid-template-columns:repeat(2,1fr) } .g-main, .g-create { grid-template-columns:1fr } }
@@ -1894,19 +1902,25 @@ async function save(it, prev) {
 // 라이브러리(채택본)에서도 같은 모달을 연다 — 그땐 CUR 이 없으니 항목과 배치 id 를 직접 넘긴다 (2026-09-10 성연서님 "확대하면 비교와 프롬프트")
 function detail(id, item = null, bid = null, extra = '') {
   const it = item || CUR.items.find(x => x.item_id === id), b = bid || CUR?.batch_id, v = it.variation||{}, av = it.after_variation||{};
-  const pair = b && (it.before_file || it.after_file) ? `<div class="dlg-pair"><div class="zoom-hint"></div>${it.before_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.before_file}"><figcaption>시술 전</figcaption></figure>` : ''}${it.after_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.after_file}"><figcaption>시술 후</figcaption></figure>` : ''}</div>` : '';
-  const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}</td><td>${av[k] && av[k].key !== v[k].key ? `<span class="chip acc">${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
+  const pair = b && (it.before_file || it.after_file) ? `<div class="dlg-pair">${it.before_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.before_file}"><figcaption>시술 전</figcaption></figure>` : ''}${it.after_file ? `<figure><img src="/files/${b}/${it.item_id}/${it.after_file}"><figcaption>시술 후</figcaption></figure>` : ''}<div class="zoom-hint"></div></div>` : '';
+  // 조건 표는 두 칸: 조건 / 값. 시술 후에 바뀐 값만 옆에 → 칩으로 — 세 번째 칸이 거의 비어 있었다 (2026-09-16 연서님)
+  const rows = Object.keys(v).map(k => `<tr><td>${AXIS_KO[k]||k}</td><td>${esc(val(k, v[k].key))}${av[k] && av[k].key !== v[k].key ? ` <span class="chip acc" title="시술 후 사진에서 바뀐 값">→ ${esc(val(k, av[k].key))}</span>` : ''}</td></tr>`).join('');
   // 점수는 {score, note} 객체다. note 는 AI 가 그렇게 준 이유라 같이 보여 준다(검수의 근거).
-  const scores = it.vision?.scores ? `<h3>AI 검수 점수 (10점 만점)</h3><div class="scores lg">${
+  const scores = it.vision?.scores ? `<h3>AI 검수 점수 <span class="muted">10점 만점</span></h3><div class="scores lg">${
     Object.entries(it.vision.scores).map(([k, v]) => { const n = scoreOf(v), why = noteOf(v);
       return `<div class="score"><span>${SCORE_KO[k]||k}</span><span class="t"><i class="${n != null && n < 5 ? 'bad' : ''}" style="width:${n == null ? 0 : n*10}%"></i></span><b class="${n != null && n < 5 ? 'bad' : ''}">${n == null ? '—' : n}</b></div>${
         why ? `<div class="score-why">${esc(why)}</div>` : ''}`; }).join('')}</div>` : '';
-  const chk = [it.structure && `얼굴 정렬: ${it.structure.passed ? '통과' : '불일치'}`, it.identity && `동일 인물: ${({ok:'통과', review:'사람 확인', fail:'불일치', 'n/a':'못 잼 · 사람 확인'})[idGate(it)] || '—'}`].filter(Boolean).join(' · ');
-  $('#dlg-in').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} · ${MODE_KO[it.mode]||it.mode}</h2><span style="display:flex;gap:6px;align-items:center">${extra}<button class="b" onclick="dlg.close()">닫기</button></span></div>
-    <p class="muted">시도 ${it.attempt||0} · $${(it.cost||0).toFixed(3)}${chk ? ' · ' + chk : ''}${it.prompt_version ? ' · 프롬프트 버전 ' + esc(vname(it.prompt_version)) : ''}</p>${pair}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><h3>생성 조건</h3><table><thead><tr><th>조건</th><th>시술 전</th><th>시술 후 변경</th></tr></thead><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
-    <h3 style="margin-top:14px">시술 전 프롬프트</h3>${promptLegend(it.before_parts)}${promptHtml(it.before_parts, it.before_prompt)}
-    <h3 style="margin-top:10px">시술 후 프롬프트</h3>${promptLegend(it.after_parts)}${promptHtml(it.after_parts, it.after_prompt)}`;
+  // 게이트 결과는 글 대신 칩: 통과는 회색, 불일치·사람 확인은 강조
+  const gate = (label, ok, text) => `<span class="chip ${ok ? '' : 'warn'}">${label} ${text}</span>`;
+  const chips = [it.structure && gate('얼굴 정렬', it.structure.passed, it.structure.passed ? '통과' : '불일치'),
+    it.identity && (g => gate('동일 인물', g === 'ok', ({ok:'통과', review:'사람 확인', fail:'불일치', 'n/a':'못 잼 · 사람 확인'})[g] || '—'))(idGate(it))].filter(Boolean).join('');
+  $('#dlg-in').innerHTML = `<div class="dlg-head"><div class="dlg-title"><h2>${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} <span class="chip">${MODE_KO[it.mode]||it.mode}</span></h2>
+      <div class="dlg-meta"><span>시도 ${it.attempt||0}</span><span class="sep">·</span><span>$${(it.cost||0).toFixed(3)}</span>${it.prompt_version ? `<span class="sep">·</span><span>프롬프트 ${esc(vname(it.prompt_version))}</span>` : ''}${chips ? `<span class="gates">${chips}</span>` : ''}</div></div>
+      <div class="dlg-act">${extra}<button type="button" class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기 (Esc)"><i class="ic ic-x"></i></button></div></div>
+    ${pair}
+    <div class="dlg-cols"><div><h3>생성 조건</h3><table class="dlg-cond"><tbody>${rows}</tbody></table></div><div>${scores}</div></div>
+    <h3 style="margin-top:18px">시술 전 프롬프트</h3>${promptLegend(it.before_parts)}${promptHtml(it.before_parts, it.before_prompt)}
+    <h3 style="margin-top:14px">시술 후 프롬프트</h3>${promptLegend(it.after_parts)}${promptHtml(it.after_parts, it.after_prompt)}`;
   $('#dlg').showModal();
   bindPairZoom($('#dlg-in .dlg-pair'));
 }
@@ -1949,7 +1963,7 @@ function renderLibrary() {
   $('#lib-groups').querySelectorAll('[data-zoom]').forEach(p => p.onclick = async () => {
     const [bid, iid] = p.dataset.zoom.split('/');
     try { LIB_DETAIL[bid] = LIB_DETAIL[bid] || await api('/api/batches/' + bid); const it = (LIB_DETAIL[bid].items || []).find(x => x.item_id === iid); const li = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
-      if (it) { detail(iid, it, bid, li ? `<button class="b sm" id="dlg-dl">다운로드</button>${driveBtn(li)}` : ''); const d = $('#dlg-dl'); if (d) d.onclick = () => downloadItem(bid, iid, li); } else toast('이 사진의 상세 정보를 찾지 못했습니다'); }
+      if (it) { detail(iid, it, bid, li ? `<button class="b sm" id="dlg-dl"><i class="ic ic-arrow-down"></i>다운로드</button>${driveBtn(li)}` : ''); const d = $('#dlg-dl'); if (d) d.onclick = () => downloadItem(bid, iid, li); } else toast('이 사진의 상세 정보를 찾지 못했습니다'); }
     catch (e) { toast('상세를 불러오지 못했습니다 — ' + e.message); } });
   $('#lib-groups').querySelectorAll('[data-unpick]').forEach(b => b.onclick = async () => { const [bid, iid] = b.dataset.unpick.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid);
     await api('/api/review', {batch: bid, item: iid, pick: null, tags: it.review.tags || [], note: it.review.note || ''}); toast('채택을 취소했습니다'); loadLibrary(); });
@@ -1961,8 +1975,8 @@ function renderLibSel() { const n = LIB_SEL.size; $('#lib-sel').hidden = !n; $('
 // 드라이브 버튼: 실제로 올라간 파일이 있을 때만 링크. 아니면 '저장 대기'로 비활성 (짐작하지 않는다 — 원장은 PC 의 manifest)
 function driveBtn(i) {
   const files = i.drive?.files || [];
-  if (files.length) { const f = files.find(x => /after/i.test(x.name)) || files[0]; return `<a class="b sm ghost" href="${esc(f.url)}" target="_blank" rel="noopener" title="드라이브 채택본에서 엽니다${files.length > 1 ? ` (${files.length}개 파일 중 시술 후)` : ''}">드라이브</a>`; }
-  return `<button class="b sm ghost" disabled title="${i.drive?.state === 'uploaded' ? '드라이브에 있지만 링크 정보가 아직 안 왔습니다' : '아직 드라이브에 올라가지 않았습니다 — 사무실 PC 가 올리면 열립니다'}">드라이브 · 대기</button>`;
+  if (files.length) { const f = files.find(x => /after/i.test(x.name)) || files[0]; return `<a class="b sm" href="${esc(f.url)}" target="_blank" rel="noopener" title="드라이브 채택본에서 엽니다${files.length > 1 ? ` (${files.length}개 파일 중 시술 후)` : ''}"><i class="ic ic-cloud"></i>드라이브</a>`; }
+  return `<button class="b sm" disabled title="${i.drive?.state === 'uploaded' ? '드라이브에 있지만 링크 정보가 아직 안 왔습니다' : '아직 드라이브에 올라가지 않았습니다 — 사무실 PC 가 올리면 열립니다'}"><i class="ic ic-cloud-up"></i>드라이브 · 저장 대기</button>`;
 }
 // 시술 전·후 원본을 그대로 내려받는다 — 같은 출처(/files/)라 인터넷 화면에서도 된다
 async function downloadItem(bid, iid, it) {
