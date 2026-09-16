@@ -466,6 +466,7 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .sync-line { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:var(--fs-sm); color:var(--ui-md); background:var(--ui-surface); border-radius:var(--r-md); padding:8px 14px; margin-bottom:var(--gap) }
 .sync-line b { color:var(--ui-hi) } .sync-line .cd { font-variant-numeric:tabular-nums; color:var(--primary) } .sync-line .sep { color:var(--ui-lo) } .sync-line .muted { font-size:var(--fs-xs) } .sync-line .b { margin-left:auto }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
+.pend .pend-why { display:block; font-size:var(--fs-xs); color:var(--ui-lo); margin-top:3px; white-space:normal }
 .pend { background:var(--ui-surface); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:6px; border-bottom:0; align-items:center } .pend .t { min-width:0 } .pend .t b { display:block; font-size:var(--fs-sm) } .pend .t .ell { display:block; font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px } .pend .chip { cursor:help } details.hrow > summary { list-style:none; cursor:pointer } details.hrow > summary::-webkit-details-marker { display:none } details.hrow > summary .pend { margin-bottom:0 } details.hrow > summary .pend b::before { content:'▸ '; color:var(--ui-lo); font-weight:400 } details.hrow[open] > summary .pend b::before { content:'▾ ' } details.hrow[open] > summary .pend { border-radius:var(--r-sm) var(--r-sm) 0 0 } .hbody { background:var(--ui-surface); border-radius:0 0 var(--r-sm) var(--r-sm); padding:0 14px 12px 30px; font-size:var(--fs-sm); color:var(--ui-md) } .hbody .en { margin-top:6px; padding:8px 10px; background:#fff; border:1px dashed var(--ui-border); border-radius:var(--r-sm); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; line-height:1.5; color:var(--ui-hi) } .pend .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:5px; animation:pulse 1.2s infinite; vertical-align:middle }
 .note-g .note-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap } .note-g .note-why { margin-top:4px; font-size:var(--fs-sm); color:var(--ui-hi); padding:6px 10px; background:var(--ui-surface); border-radius:var(--r-sm); border-left:3px solid var(--primary) } .note-g .note-why.muted { color:var(--ui-md); border-left-color:var(--ui-lo) } .note-g .note-in { margin-top:6px } .note-g .note-in input { width:100% } .note-g .note-in .hint { display:block; margin-top:3px; font-size:var(--fs-xs); color:var(--ui-lo) }
 /* 버전 표: 첫 칸(버전 제목)을 넓게 — 좁으면 제목이 5~8줄로 꺾여 한 줄이 130px 씩 먹고 5줄이 한 화면을 다 채웠다 (2026-09-16 연서님).
@@ -475,6 +476,11 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 #les-version td .sub { display:block; font-size:var(--fs-xs); color:var(--ui-lo); font-weight:400; margin-top:1px; white-space:nowrap }
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
+/* ② 오른쪽: 붙는 문장을 사유별 한 줄로 — 영어 벽 두 덩이는 어느 사유가 어느 문장인지 대응이 안 보였다 (2026-09-16 연서님). 원문은 접어 둔다 */
+.rule-row { display:grid; grid-template-columns:118px minmax(0,1fr); gap:6px 10px; padding:8px 0; border-bottom:1px solid var(--ui-border); align-items:start } .rule-row:last-child { border-bottom:0 }
+.rule-row .src { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-hi); line-height:1.4; word-break:keep-all } .rule-row .src small { display:block; font-weight:400; color:var(--ui-lo); font-size:var(--fs-xs) }
+.rule-row .en { font-size:var(--fs-sm); color:var(--ui-md); line-height:1.5; word-break:break-word } .rule-row .meta { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px } .rule-row .meta .chip { font-size:10px; padding:0 6px; height:18px; line-height:18px }
+.rule-h { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs); color:var(--ui-lo); margin:10px 0 2px } .rule-h b { color:var(--ui-md); font-weight:var(--fw-m) } .rule-h:first-child { margin-top:0 }
 /* 덜 뽑는 조건: 축별로 한 줄 — 칩 17개가 한 덩어리로 흩어지면 "거의 다 덜 뽑는다"로 읽힌다 (2026-09-16 연서님) */
 .aw-list { display:flex; flex-direction:column; gap:4px; margin-top:6px } .aw-row { display:flex; align-items:baseline; gap:8px; font-size:var(--fs-sm) } .aw-row .ax { min-width:76px; color:var(--ui-lo); font-size:var(--fs-xs) } .aw-row .chip { margin:1px 2px 1px 0 }
 details.aw > summary { cursor:pointer; font-size:var(--fs-sm); color:var(--ui-md); list-style:none; line-height:1.6 } details.aw > summary::-webkit-details-marker { display:none }
@@ -2074,12 +2080,22 @@ async function loadLessons() {
               <div class="aw-list">${W.map(([a, vs]) => `<div class="aw-row"><span class="ax">${AXIS_KO[a] || a}</span><span>${Object.keys(vs).map(k => `<span class="chip warn">${esc(val(a, k))}</span>`).join('')}</span></div>`).join('')}</div></details>`; })() : '')
     : `<div class="les-empty">아직 제외한 사진이 없습니다. 검수 모드에서 <b>제외</b>를 누르고 사유를 고르면 여기에 쌓입니다. ${goReview}</div>`;
   // 2-우: 실제로 붙는 문장 (before/after)
-  const pv = L.preview || {};
-  $('#les-preview').innerHTML = Object.keys(pv).length
-    ? Object.entries(pv).map(([w, t]) => `<div style="margin-bottom:8px"><b>${w === 'before' ? '시술 전 프롬프트 끝에' : '시술 후 프롬프트 끝에'}</b><div class="prompt"><span class="pk pk-avoid">${esc(t)}</span></div></div>`).join('')
-      + `<div class="muted" style="font-size:var(--fs-xs)">최대 ${(L.settings_top_n || 3)}개까지만 붙입니다. 안 겪은 실수까지 나열하면 프롬프트가 길어지고, 이미지 모델은 부정문의 단어에 끌립니다.</div>`
+  const pv = L.preview || {}, lines = st.lines || {}, notAt = st.not_at || {};
+  // 문장 하나 = 한 줄: 어느 사유(왼쪽 버튼)·어느 규칙(3번에서 올린 메모)에서 왔고, 전·후 어느 컷에 붙는지.
+  // 사유 문장은 avoid.yaml tags(from_tags 순), 규칙 문장은 custom(승격 순). 원문 두 덩이는 티모용으로 접어 둔다.
+  const whereOf = en => ['before', 'after'].filter(w => (lines[w] || []).includes(en));
+  const whereKo = ws => ws.length === 2 ? '전·후' : ws[0] === 'before' ? '전 컷만' : ws[0] === 'after' ? '후 컷만' : '';
+  const tagRows = (st.from_tags || []).map(t => ({label: t, sub: `제외 ${L.tags?.[t] || 0}회`, en: L.tag_rules?.[t] || '', where: whereOf(L.tag_rules?.[t] || '')}));
+  const ruleRows = (L.custom || []).filter(c => c.en && whereOf(c.en).length).map(c => ({label: c.from || c.en, sub: c.since ? `${c.since.slice(5).replace('-', '/')} 올림` : '', en: c.en, where: c.where || whereOf(c.en),
+    extra: [(c.treatment || []).length ? `<span class="chip" title="이 시술 배치에서만 붙습니다">${(c.treatment || []).map(tname).map(esc).join('·')}만</span>` : '',
+            (notAt[c.en] || c.not_at || []).length ? `<span class="chip" title="이 시점 컷에는 안 붙습니다 — 직후엔 패치·크림이 있는 게 맞아서">${(notAt[c.en] || c.not_at).map(w => val('timeline', w)).join('·')} 컷 제외</span>` : ''].join('')}));
+  const row = r => `<div class="rule-row"><div class="src">${esc(r.label)}${r.sub ? `<small>${esc(r.sub)}</small>` : ''}</div><div><div class="en">${esc(r.en)}</div><div class="meta"><span class="chip acc">${whereKo(r.where)}</span>${r.extra || ''}</div></div></div>`;
+  $('#les-preview').innerHTML = (tagRows.length || ruleRows.length)
+    ? `${tagRows.length ? `<div class="rule-h"><b>사유에서 자동으로</b>${tagRows.length}개 · 최대 ${L.settings_top_n || 3}개 <span title="안 겪은 실수까지 나열하면 프롬프트가 길어지고, 이미지 모델은 부정문의 단어에 끌립니다">ⓘ</span></div>${tagRows.map(row).join('')}` : ''}
+       ${ruleRows.length ? `<div class="rule-h"><b>메모에서 올린 규칙</b>${ruleRows.length}개 · 3번 카드에서 승격한 것</div>${ruleRows.map(row).join('')}` : ''}
+       <details class="aw" style="margin-top:10px"><summary><span class="lbl">실제로 붙는 원문 보기</span> <span class="muted">· 프롬프트 끝에 이 순서 그대로</span></summary>${
+         Object.entries(pv).map(([w, t]) => `<div style="margin-top:8px"><b style="font-size:var(--fs-xs)">${w === 'before' ? '시술 전 프롬프트 끝에' : '시술 후 프롬프트 끝에'}</b><div class="prompt"><span class="pk pk-avoid">${esc(t)}</span></div></div>`).join('')}</details>`
     : `<div class="les-empty">아직 붙는 문장이 없습니다. 왼쪽 사유가 ${minN}회 이상 쌓이면 여기에 문장이 생깁니다.</div>`;
-  $('#les-body').querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
   // 3: 승격
   // 같은 메모는 서버가 한 줄로 묶고(count·items), AI 초안(draft: why·en·kind·promotable)을 붙여 준다 (티모 notedraft).
   // 승격 버튼은 kind 가 아니라 promotable 로 — 이미 붙어 있는 문장을 또 올리면 프롬프트만 부푼다 (티모 요청).
@@ -2101,13 +2117,13 @@ async function loadLessons() {
         ${can || !d ? `<button class="b ${can ? 'primary' : ''}" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''} title="${can ? 'AI 가 규칙감으로 판정했고 아직 안 붙어 있는 문장입니다' : '초안 없이 올립니다 — 문장을 직접 확인하세요'}">규칙으로 승격</button>` : ''}
         <button class="b ${can ? 'ghost' : ''}" data-handoff="${i}" ${L.no_promote ? 'disabled' : ''} title="승격하지 않고 티모(프롬프트·검수기 담당)에게 넘깁니다. 이 목록에서 빠지고 '티모 확인' 칸으로 갑니다">티모에게 넘기기</button>
       </span>
-    </div>`; }).join('') : `<div class="les-empty">승격할 메모 없음 · 제외할 때 자유 메모를 적으면 여기 쌓입니다</div>`;
+    </div>`; }).join('') : `<div class="les-empty">승격할 메모 없음 · 검수에서 <b>제외</b>할 때 자유 메모를 적으면 여기 쌓입니다 ${goReview}</div>`;
   // 인터넷 화면에서 보낸 요청(사무실 PC 반영 전) — 목록 위에 '대기'로
   const pp = L.pending_promotions || [], ph = L.pending_handoffs || [];
   if ((pp.length || ph.length) && !(L.notes || []).length) $('#les-notes').innerHTML = '';   // 대기 줄이 있으면 '메모 없음' 상자는 군더더기
   if (pp.length || ph.length) $('#les-notes').insertAdjacentHTML('afterbegin',
-    pp.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.en)}">${esc(r.en)}</span></div><span class="chip warn" title="사무실 PC가 가져가면 규칙이 되고 여기서 사라집니다 (보통 15초, 늦어도 10분) · ${(r.where || []).length === 1 ? (r.where[0] === 'before' ? '시술 전 컷에만' : '시술 후 컷에만') : '전·후 컷 모두'} 붙습니다"><i class="dot"></i>승격 대기</span></div>`).join('')
-    + ph.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.why || r.en || '')}">${esc(r.why || r.en || '')}</span></div><span class="chip" title="프롬프트에는 안 붙습니다. 사무실 PC가 가져가면 아래 '티모 확인 대기'로 옮겨 갑니다"><i class="dot"></i>넘기기 대기</span></div>`).join(''));
+    pp.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.en)}">${esc(r.en)}</span><span class="pend-why">누를 건 없습니다 — 사무실 PC 가 가져가면(보통 15초, 늦어도 10분) 규칙이 되어 2번 카드 오른쪽으로 옮겨 갑니다 · ${(r.where || []).length === 1 ? (r.where[0] === 'before' ? '시술 전 컷에만' : '시술 후 컷에만') : '전·후 컷 모두'} 붙습니다</span></div><span class="chip warn"><i class="dot"></i>승격 대기</span></div>`).join('')
+    + ph.map(r => `<div class="list-row pend" style="cursor:default"><div class="t" style="flex:1"><b>${esc(r.note)}</b><span class="ell" title="${esc(r.why || r.en || '')}">${esc(r.why || r.en || '')}</span><span class="pend-why">누를 건 없습니다 — 프롬프트에는 안 붙고, 사무실 PC 가 가져가면 아래 '티모 확인 대기'로 옮겨 갑니다</span></div><span class="chip"><i class="dot"></i>넘기기 대기</span></div>`).join(''));
   // 티모 확인 목록 (PC 기록 파일 outputs/handoffs.jsonl) — 목록 아래
   const ho = L.handoffs || [];
   if (ho.length) { const kinds = {}; for (const r of ho) { const k = r.kind ? KIND_KO[r.kind] : null; const nm = k ? k[0] : '기타'; kinds[nm] = (kinds[nm] || 0) + 1; }
@@ -2115,6 +2131,7 @@ async function loadLessons() {
     $('#les-notes').insertAdjacentHTML('beforeend', `<details class="opt" id="les-handoffs" style="margin-top:12px" ${openFold ? 'open' : ''}><summary>티모 확인 대기 ${ho.length}건 <span class="muted" style="font-weight:400">· ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(' · ')}</span></summary><div>` +
     ho.map(r => { const k = r.kind ? KIND_KO[r.kind] : null; return `<details class="hrow"><summary><div class="list-row pend"><div class="t" style="flex:1"><b>${esc(r.note)}</b></div>${k ? `<span class="chip ${k[1]}" title="${esc(k[2])}">${k[0]}</span>` : ''}<span class="muted" style="font-size:var(--fs-xs)">${fmtDay(r.at)}</span></div></summary><div class="hbody">${r.why ? esc(r.why) : '<span class="muted">사유 메모 없음</span>'}${r.en ? `<div class="en">${esc(r.en)}</div>` : ''}</div></details>`; }).join('') + '</div></details>');
     $('#les-handoffs').ontoggle = e => { try { localStorage.setItem('bna.les.handoffs', e.target.open ? '1' : '0'); } catch {} }; }
+  $$('#les-body [data-goto], #les-notes [data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
   $('#les-notes').querySelectorAll('[data-promote]').forEach(b => b.onclick = async () => {
     const i = b.dataset.promote, en = ($('#les-en-' + i) || {}).value || '';
     if (!en.trim()) { msg('#les-msg', '영어 문장을 적어 주세요 — 이 문장이 그대로 프롬프트에 들어갑니다', 'err'); return; }
