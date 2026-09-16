@@ -477,10 +477,14 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
 /* ② 오른쪽: 붙는 문장을 사유별 한 줄로 — 영어 벽 두 덩이는 어느 사유가 어느 문장인지 대응이 안 보였다 (2026-09-16 연서님). 원문은 접어 둔다 */
-.rule-row { display:grid; grid-template-columns:118px minmax(0,1fr); gap:6px 10px; padding:8px 0; border-bottom:1px solid var(--ui-border); align-items:start } .rule-row:last-child { border-bottom:0 }
-.rule-row .src { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-hi); line-height:1.4; word-break:keep-all } .rule-row .src small { display:block; font-weight:400; color:var(--ui-lo); font-size:var(--fs-xs) }
-.rule-row .en { font-size:var(--fs-sm); color:var(--ui-md); line-height:1.5; word-break:break-word } .rule-row .meta { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px } .rule-row .meta .chip { font-size:10px; padding:0 6px; height:18px; line-height:18px }
-.rule-h { display:flex; align-items:center; gap:8px; font-size:var(--fs-xs); color:var(--ui-lo); margin:10px 0 2px } .rule-h b { color:var(--ui-md); font-weight:var(--fw-m) } .rule-h:first-child { margin-top:0 }
+/* 붙는 문장: 묶음마다 테두리 상자 + 머리띠(제목·개수·ⓘ), 줄은 여백 넉넉히 — 두 묶음이 한 덩이로 보였다 (2026-09-16 연서님) */
+.rule-grp { border:1px solid var(--ui-border); border-radius:var(--r-md); overflow:hidden; margin-top:14px; background:#fff } .rule-grp:first-child { margin-top:0 }
+.rule-h { display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--ui-surface); border-bottom:1px solid var(--ui-border); font-size:var(--fs-sm); color:var(--ui-lo); margin:0 } .rule-h b { color:var(--ui-hi); font-weight:var(--fw-b) } .rule-h .chip { margin:0 } .rule-h .tip { margin-left:auto }
+.rule-row { display:grid; grid-template-columns:128px minmax(0,1fr); gap:6px 16px; padding:14px; border-bottom:1px solid var(--ui-border); align-items:start } .rule-row:last-child { border-bottom:0 }
+.rule-row .src { font-size:var(--fs-sm); font-weight:var(--fw-m); color:var(--ui-hi); line-height:1.45; word-break:keep-all } .rule-row .src small { display:block; margin-top:3px; font-weight:400; color:var(--ui-lo); font-size:var(--fs-xs) }
+.rule-row .en { font-size:var(--fs-sm); color:var(--ui-md); line-height:1.6; word-break:break-word } .rule-row .meta { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px } .rule-row .meta .chip { font-size:10px; padding:0 6px; height:18px; line-height:18px; margin:0 }
+.rule-raw { margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap } .rule-raw .muted { font-size:var(--fs-xs) }
+.rule-raw-body { margin-top:10px; display:flex; flex-direction:column; gap:10px } .rule-raw-body > div > b { display:block; font-size:var(--fs-xs); color:var(--ui-lo); margin-bottom:4px }
 /* 덜 뽑는 조건: 축별로 한 줄 — 칩 17개가 한 덩어리로 흩어지면 "거의 다 덜 뽑는다"로 읽힌다 (2026-09-16 연서님) */
 .aw-list { display:flex; flex-direction:column; gap:4px; margin-top:6px } .aw-row { display:flex; align-items:baseline; gap:8px; font-size:var(--fs-sm) } .aw-row .ax { min-width:76px; color:var(--ui-lo); font-size:var(--fs-xs) } .aw-row .chip { margin:1px 2px 1px 0 }
 details.aw > summary { cursor:pointer; font-size:var(--fs-sm); color:var(--ui-md); list-style:none; line-height:1.6 } details.aw > summary::-webkit-details-marker { display:none }
@@ -2090,12 +2094,16 @@ async function loadLessons() {
     extra: [(c.treatment || []).length ? `<span class="chip" title="이 시술 배치에서만 붙습니다">${(c.treatment || []).map(tname).map(esc).join('·')}만</span>` : '',
             (notAt[c.en] || c.not_at || []).length ? `<span class="chip" title="이 시점 컷에는 안 붙습니다 — 직후엔 패치·크림이 있는 게 맞아서">${(notAt[c.en] || c.not_at).map(w => val('timeline', w)).join('·')} 컷 제외</span>` : ''].join('')}));
   const row = r => `<div class="rule-row"><div class="src">${esc(r.label)}${r.sub ? `<small>${esc(r.sub)}</small>` : ''}</div><div><div class="en">${esc(r.en)}</div><div class="meta"><span class="chip acc">${whereKo(r.where)}</span>${r.extra || ''}</div></div></div>`;
+  const tipBtn = t => `<button type="button" class="tip" data-tip="${esc(t)}" aria-label="설명"><i class="ic ic-info"></i></button>`;
+  const grp = (title, n, sub, tip, rows) => `<div class="rule-grp"><div class="rule-h"><b>${title}</b><span class="chip">${n}개</span>${sub ? `<span>${sub}</span>` : ''}${tip ? tipBtn(tip) : ''}</div>${rows.map(row).join('')}</div>`;
   $('#les-preview').innerHTML = (tagRows.length || ruleRows.length)
-    ? `${tagRows.length ? `<div class="rule-h"><b>사유에서 자동으로</b>${tagRows.length}개 · 최대 ${L.settings_top_n || 3}개 <span title="안 겪은 실수까지 나열하면 프롬프트가 길어지고, 이미지 모델은 부정문의 단어에 끌립니다">ⓘ</span></div>${tagRows.map(row).join('')}` : ''}
-       ${ruleRows.length ? `<div class="rule-h"><b>메모에서 올린 규칙</b>${ruleRows.length}개 · 3번 카드에서 승격한 것</div>${ruleRows.map(row).join('')}` : ''}
-       <details class="aw" style="margin-top:10px"><summary><span class="lbl">실제로 붙는 원문 보기</span> <span class="muted">· 프롬프트 끝에 이 순서 그대로</span></summary>${
-         Object.entries(pv).map(([w, t]) => `<div style="margin-top:8px"><b style="font-size:var(--fs-xs)">${w === 'before' ? '시술 전 프롬프트 끝에' : '시술 후 프롬프트 끝에'}</b><div class="prompt"><span class="pk pk-avoid">${esc(t)}</span></div></div>`).join('')}</details>`
+    ? `${tagRows.length ? grp('사유에서 자동으로', tagRows.length, `최대 ${L.settings_top_n || 3}개`, '제외 사유 중 많이 걸린 순으로 위 몇 개만 붙입니다. 안 겪은 실수까지 나열하면 프롬프트가 길어지고, 이미지 모델은 부정문의 단어에 끌립니다.', tagRows) : ''}
+       ${ruleRows.length ? grp('메모에서 올린 규칙', ruleRows.length, '3번 카드에서 승격한 것', '검수 때 적은 자유 메모를 영어 한 문장으로 다듬어 올린 규칙입니다. 자동으로는 안 들어가고, 3번 카드에서 올려야 붙습니다.', ruleRows) : ''}
+       <div class="rule-raw"><button type="button" class="b sm" data-raw-toggle>실제로 붙는 원문 보기</button><span class="muted">프롬프트 끝에 이 순서 그대로 붙습니다</span></div>
+       <div class="rule-raw-body" hidden>${Object.entries(pv).map(([w, t]) => `<div><b>${w === 'before' ? '시술 전 프롬프트 끝에' : '시술 후 프롬프트 끝에'}</b><div class="prompt"><span class="pk pk-avoid">${esc(t)}</span></div></div>`).join('')}</div>`
     : `<div class="les-empty">아직 붙는 문장이 없습니다. 왼쪽 사유가 ${minN}회 이상 쌓이면 여기에 문장이 생깁니다.</div>`;
+  { const tg = $('#les-preview [data-raw-toggle]'), body = $('#les-preview .rule-raw-body');
+    if (tg) tg.onclick = () => { body.hidden = !body.hidden; tg.textContent = body.hidden ? '실제로 붙는 원문 보기' : '원문 닫기'; }; }
   // 3: 승격
   // 같은 메모는 서버가 한 줄로 묶고(count·items), AI 초안(draft: why·en·kind·promotable)을 붙여 준다 (티모 notedraft).
   // 승격 버튼은 kind 가 아니라 promotable 로 — 이미 붙어 있는 문장을 또 올리면 프롬프트만 부푼다 (티모 요청).
