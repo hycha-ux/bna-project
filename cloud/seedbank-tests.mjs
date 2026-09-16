@@ -16,7 +16,7 @@ const ok = (cond, label) => {
 // ── config/seedbank.yaml 의 banks ─────────────────────────────────────────
 const banks = readBanks();
 ok(banks.pilot && banks.nasolabial, 'banks 에 pilot(0909 KOS)·nasolabial(원내 팔자) 둘이 있다');
-ok(banks.nasolabial.name_ko === '팔자필러', '팔자 은행 이름이 화면에 그대로 뜬다');
+ok(banks.nasolabial.name_ko === '팔자주름', '팔자 은행 이름은 treatments.yaml 과 같은 정식 이름');
 ok(/^C:\//.test(banks.nasolabial.raw) && !/bna/.test(banks.nasolabial.raw), '원본 폴더는 리포 밖(티모 PC)');
 ok(banks.pilot.derived === 'C:/Users/medib/teemo-raw/derived', 'pilot 은 옛 pool_dir 과 같은 곳(자[尺]를 잃지 않는다)');
 const yaml = 'banks:\n  a:\n    name_ko: 가   # 주석\n    seeds: C:/x/seeds\n  b:\n    name_ko: 나\npool_dir: C:/old\n';
@@ -59,7 +59,7 @@ ok(raw.by_used['사용전'] === 1 && raw.by_used['사용완료'] === 1, '묶음�
 ok(raw.skipped['AI 생성물'] === 2 && raw.skipped['셀카 묶음'] === 1, '제외 사유별 장수(왜 빠졌는지가 남는다)');
 
 const ready = bankEntry('nasolabial', banks.nasolabial, { derivedFiles: ['seed-0001_kin.jpg'], prep, meas, manifest });
-ok(ready.status === 'ready' && ready.key === 'nasolabial' && ready.name_ko === '팔자필러', '판정 파일이 있으면 ready');
+ok(ready.status === 'ready' && ready.key === 'nasolabial' && ready.name_ko === '팔자주름', '판정 파일이 있으면 ready');
 ok(ready.seeds[0].who && ready.seeds[0].who.batch === '260623' && ready.seeds[0].who.side === '전' && ready.seeds[0].who.partial === true, '씨앗에 묶음·전후·눈 가림이 manifest 에서 붙는다');
 ok(!('person' in ready.seeds[0].who) && !JSON.stringify(ready).includes('정인좌'), '실명은 클라우드 목록에 싣지 않는다(얼굴 옆에 이름이 붙으면 안 된다)');
 ok(!ready.seeds[1].who, '원본 경로가 없는 씨앗엔 안 붙는다(억지로 안 맞춘다)');
@@ -72,7 +72,7 @@ ok(empty.status === 'empty' && empty.seeds.length === 0, '아무것도 없으면
 
 // ── 업로드본(강남언니 실제 게시분) ─────────────────────────────────────────
 const ups = readUploads();
-ok(ups.gangnamunni && ups.gangnamunni.name_ko === '강남언니 업로드본' && /drive\.google\.com/.test(ups.gangnamunni.drive), 'uploads.gangnamunni 가 드라이브 폴더를 가리킨다');
+ok(ups.gangnamunni && ups.gangnamunni.name_ko === '강남언니' && /drive\.google\.com/.test(ups.gangnamunni.drive), 'uploads.gangnamunni 가 드라이브 폴더를 가리킨다');
 ok(ups.gangnamunni.product_map['팔자온볼라썸'] === 'nasolabial' && ups.gangnamunni.product_map['턱선 3종 패키지'] === 'lifting', 'product_map: 상품(띄어쓰기 포함) → 시술 키');
 const sec = readSection('a:\n  x: 1\nuploads:\n  g:\n    name_ko: 이름  # 주석\n    map:\n      팔자 패키지: nasolabial\n      필러: nasolabial\n    raw: C:/r\nb: 2\n', 'uploads');
 ok(sec.g.name_ko === '이름' && sec.g.map['팔자 패키지'] === 'nasolabial' && sec.g.raw === 'C:/r' && !sec.b, '들여쓰기 세 단·주석·다음 최상위 키 처리');

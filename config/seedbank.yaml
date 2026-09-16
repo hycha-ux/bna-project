@@ -21,7 +21,7 @@ banks:
     measure: C:/Users/medib/teemo/out/seed-measure.json
     attrs: C:/Users/medib/teemo/out/seed-attrs.json
   nasolabial:
-    name_ko: 팔자필러
+    name_ko: 팔자주름                                    # treatments.yaml 과 같은 정식 이름(화면 칩은 그쪽을 쓴다)
     source: 원내 보관 B&A (노션) — tools/notion_ba_pull.py 로 받는다
     round: 2026-09-16 원내 사진
     raw: C:/Users/medib/teemo-raw/raw/nasolabial          # notion_ba_pull.py --out 자리. manifest.json 이 여기
@@ -43,7 +43,7 @@ attrs: C:/Users/medib/teemo/out/seed-attrs.json   # tools/seedbank_attrs.py 가 
 # 받기 = tools/drive_ba_pull.py (index.csv 가 정본). 상품 → 우리 시술 키 대응은 product_map — 없는 상품은 '기타'에 상품명 그대로.
 uploads:
   gangnamunni:
-    name_ko: 강남언니 업로드본
+    name_ko: 강남언니
     drive: https://drive.google.com/drive/folders/1Gph2oD8osGmjQIel-qap0ys2aM8kANDo
     raw: C:/Users/medib/teemo-raw/uploads/gangnamunni      # drive_ba_pull.py --out 자리. manifest.json 이 여기
     # 상품(강남언니 상품명) → treatments.yaml 키. 2026-09-16 빌디 초안 — 부위가 같은 것만 잇고 나머지는 비워 둠(연서님 확인).

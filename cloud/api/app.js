@@ -615,7 +615,7 @@ export default async function handler(req, res) {
       const got = await blobBytes('seedbank/index.json');
       if (!got)
         return json(res, 503, {
-          error: '아직 씨앗 은행이 올라오지 않았습니다 (push-seedbank 미실행).',
+          error: '아직 실사진이 올라오지 않았습니다 (push-seedbank 미실행).',
         });
       return json(res, 200, JSON.parse(got.buf.toString('utf8')));
     }
