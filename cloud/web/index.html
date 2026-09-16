@@ -568,17 +568,17 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
 /* 라이브러리 카드 (2026-09-16 연서님 '디벨롭'): 체크는 사진 위 오른쪽 동그라미, 머리는 날짜·번호 + 드라이브 상태 글, 밑줄은 [다운로드] + ··· (작업으로·채택 해제) */
 .lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px }
-.lib .item { position:relative; overflow:visible; transition:box-shadow .12s } .lib .item:hover { box-shadow:0 4px 16px rgba(25,31,40,.08) } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
+.lib .item { position:relative; overflow:visible; transition:box-shadow .12s; display:flex; flex-direction:column }   /* 칩이 두 줄이면 카드가 길어져 옆 카드와 버튼 높이가 어긋났다 → 버튼은 늘 바닥에 (2026-09-16 연서님) */ .lib .item:hover { box-shadow:0 4px 16px rgba(25,31,40,.08) } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
 .lib .item .pair figure { border-radius:0 } .lib .item .pair figure:first-child { border-top-left-radius:calc(var(--r-md) - 1px) } .lib .item .pair figure:last-child { border-top-right-radius:calc(var(--r-md) - 1px) }
 .lib-check { position:absolute; right:8px; top:8px; z-index:3; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.92); box-shadow:0 1px 4px rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:transparent }
 .lib-check input { position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; width:100%; height:100% } .lib-check .ic { font-size:18px; pointer-events:none }
 .lib-check:hover { color:var(--ui-lo) } .lib-check:has(input:checked) { background:var(--primary); color:#fff; box-shadow:0 0 0 2px #fff, 0 1px 4px rgba(0,0,0,.25) }
-.lib .item .body { padding:10px 12px 10px; display:flex; flex-direction:column; gap:8px }
+.lib .item .body { padding:10px 12px 10px; display:flex; flex-direction:column; gap:8px; flex:1 }
 .lib .item .head { display:flex; align-items:center; gap:8px; margin:0 } .lib .item .head .id { font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--ui-hi); white-space:nowrap }
 .lib-drive { margin-left:auto; display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--ui-lo); white-space:nowrap; text-decoration:none } .lib-drive .ic { font-size:13px } .lib-drive.on { color:var(--ui-md) } .lib-drive.on:hover { color:var(--ui-hi); text-decoration:underline }
 .lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0; margin:0 } .lib .item .body .tags:empty { display:none }
 .lib-note { font-size:var(--fs-xs); color:var(--ui-md); line-height:1.5; padding:6px 8px; background:var(--ui-surface); border-radius:var(--r-sm) }
-.lib-act { display:flex; align-items:center; gap:6px; padding-top:10px; border-top:1px solid var(--ui-border) } .lib-act > .b { flex:1 }
+.lib-act { display:flex; align-items:center; gap:6px; padding-top:10px; border-top:1px solid var(--ui-border); margin-top:auto } .lib-act > .b { flex:1 }
 .lib-more { margin:0; flex:none } .lib-more > summary { list-style:none; width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--ui-border); border-radius:8px; background:#fff; color:var(--ui-md); cursor:pointer } .lib-more > summary:hover, .lib-more[open] > summary { background:var(--ui-surface); color:var(--ui-hi) } .lib-more > summary::-webkit-details-marker { display:none } .lib-more > summary .ic { margin:0; font-size:16px }
 .lib-more .dd-menu { left:auto; right:0; width:236px; grid-template-columns:1fr } .lib-more .dd-opt { border:0; background:none; width:100%; color:var(--ui-hi); font-size:var(--fs-sm); text-align:left } .lib-more .dd-opt .ic { font-size:15px; color:var(--ui-lo) } .lib-more .dd-opt.danger { color:#B42318 } .lib-more .dd-opt.danger .ic { color:#B42318 }
 /* ⚠ margin:auto 를 빼지 마라 — 리셋 CSS 의 `margin:0` 이 브라우저 기본 가운데 정렬을 지워
