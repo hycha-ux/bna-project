@@ -468,8 +468,17 @@ button.b { cursor:pointer } button.b:disabled { opacity:.5 }
 /* 첫 검수 안내 — 검수 0건일 때만. 고리의 네 칸이 "내가 누른 것"에서 시작해 "프롬프트 끝 문장"까지 실물로 이어지게 (2026-09-10) */
 .pend { background:var(--ui-surface); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:6px; border-bottom:0; align-items:center } .pend .t { min-width:0 } .pend .t b { display:block; font-size:var(--fs-sm) } .pend .t .ell { display:block; font-size:var(--fs-xs); color:var(--ui-lo); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px } .pend .chip { cursor:help } details.hrow > summary { list-style:none; cursor:pointer } details.hrow > summary::-webkit-details-marker { display:none } details.hrow > summary .pend { margin-bottom:0 } details.hrow > summary .pend b::before { content:'▸ '; color:var(--ui-lo); font-weight:400 } details.hrow[open] > summary .pend b::before { content:'▾ ' } details.hrow[open] > summary .pend { border-radius:var(--r-sm) var(--r-sm) 0 0 } .hbody { background:var(--ui-surface); border-radius:0 0 var(--r-sm) var(--r-sm); padding:0 14px 12px 30px; font-size:var(--fs-sm); color:var(--ui-md) } .hbody .en { margin-top:6px; padding:8px 10px; background:#fff; border:1px dashed var(--ui-border); border-radius:var(--r-sm); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; line-height:1.5; color:var(--ui-hi) } .pend .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:5px; animation:pulse 1.2s infinite; vertical-align:middle }
 .note-g .note-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap } .note-g .note-why { margin-top:4px; font-size:var(--fs-sm); color:var(--ui-hi); padding:6px 10px; background:var(--ui-surface); border-radius:var(--r-sm); border-left:3px solid var(--primary) } .note-g .note-why.muted { color:var(--ui-md); border-left-color:var(--ui-lo) } .note-g .note-in { margin-top:6px } .note-g .note-in input { width:100% } .note-g .note-in .hint { display:block; margin-top:3px; font-size:var(--fs-xs); color:var(--ui-lo) }
+/* 버전 표: 첫 칸(버전 제목)을 넓게 — 좁으면 제목이 5~8줄로 꺾여 한 줄이 130px 씩 먹고 5줄이 한 화면을 다 채웠다 (2026-09-16 연서님).
+   제목은 표 폭의 1/3, 숫자 칸은 nowrap 로 좁게. 표본 부족·장당 시도는 숫자 밑 작은 글씨로 내려 열을 줄였다. */
+#les-version th:first-child, #les-version td:first-child { width:36%; min-width:220px; white-space:normal }   /* .tbl-wrap 의 nowrap 을 첫 칸만 되돌린다 — 좁은 창에선 표가 가로 스크롤 */
+#les-version td:not(:first-child), #les-version th:not(:first-child) { white-space:nowrap } #les-version td:last-child { white-space:normal; min-width:120px }
+#les-version td .sub { display:block; font-size:var(--fs-xs); color:var(--ui-lo); font-weight:400; margin-top:1px; white-space:nowrap }
 .vcell { display:flex; flex-direction:column; gap:2px; align-items:flex-start } .vcell b { font-size:var(--fs-md) }
 .vtitle { font-weight:var(--fw-m); color:var(--ui-hi) } .vcell b { white-space:normal }
+/* 덜 뽑는 조건: 축별로 한 줄 — 칩 17개가 한 덩어리로 흩어지면 "거의 다 덜 뽑는다"로 읽힌다 (2026-09-16 연서님) */
+.aw-list { display:flex; flex-direction:column; gap:4px; margin-top:6px } .aw-row { display:flex; align-items:baseline; gap:8px; font-size:var(--fs-sm) } .aw-row .ax { min-width:76px; color:var(--ui-lo); font-size:var(--fs-xs) } .aw-row .chip { margin:1px 2px 1px 0 }
+details.aw > summary { cursor:pointer; font-size:var(--fs-sm); color:var(--ui-md); list-style:none; line-height:1.6 } details.aw > summary::-webkit-details-marker { display:none }
+details.aw > summary::before { content:'›'; display:inline-block; margin-right:6px; transition:transform .15s; color:var(--ui-lo) } details.aw[open] > summary::before { transform:rotate(90deg) } details.aw > summary .lbl { white-space:nowrap }
 .vhash { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:10px; color:var(--ui-lo); letter-spacing:0 }
 .vnote-txt { font-size:var(--fs-xs); color:var(--ui-md); cursor:text; border-bottom:1px dashed transparent } .vnote-txt[data-vedit]:hover { border-bottom-color:var(--ui-lo) }
 .vnote-add { font-size:var(--fs-xs); color:var(--ui-lo); cursor:pointer; opacity:0; transition:opacity .15s } tr:hover .vnote-add { opacity:1 }
@@ -926,6 +935,7 @@ const SCORE_KO = {hands_absent:'손 없음', skin_texture:'피부 질감', hair:
 const scoreOf = v => { const n = (v && typeof v === 'object') ? v.score : v; return typeof n === 'number' && isFinite(n) ? n : null; };
 const noteOf = v => (v && typeof v === 'object' && typeof v.note === 'string') ? v.note : '';
 const VAL_KO = {
+  rig:{grey_studio:'회색 배경·스튜디오', blue_backdrop:'파란 배경·병원 플래시', clinic_wall:'병원 벽·천장등'},   // config/clinical_rig.yaml label 과 맞춘다 (2026-09-16: 원본 키가 그대로 보였음)
   country:{korea:'한국인', japan:'일본인', china:'중국인', sea:'동남아', west:'서양인'}, age:{late_teens:'10대 후반', early_20s:'20대 초', late_20s:'20대 후', '30s':'30대', '40s':'40대', '50s':'50대', '60s':'60대'}, gender:{female:'여성', male:'남성'},
   face_shape:{oval:'계란형', round:'둥근형', square:'각진형', long:'긴형', heart:'하트형'}, skin_tone:{fair:'아주 밝은 피부', light:'밝은 피부', medium:'중간 피부', tan:'그을린 피부', deep:'어두운 피부'},
   skin_condition:{clear:'깨끗한 피부', freckles:'주근깨', moles:'점', acne_marks:'여드름 자국', redness:'홍조', oily:'지성'}, body_type:{slim:'마른 편', average:'보통', full:'통통한 편'},
@@ -944,7 +954,7 @@ const val = (axis, k) => (VAL_KO[axis] && VAL_KO[axis][k]) || k;
 // 시리즈(직후·2주…) 배치는 사유에 '@시점' 꼬리가 붙는다(batch.py) — 어느 컷에서 떨어졌는지가 원인 분석의 핵심이라 같이 보여 준다
 const failKo = r => { const [k, w] = String(r).split('@'); return (FAIL_KO[k] || k) + (w ? ` · ${val('timeline', w)}` : ''); };
 let POLL = null;
-const AXIS_KO = {country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', expression:'표정', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
+const AXIS_KO = {rig:'촬영 리그', country:'국적', age:'연령', gender:'성별', face_shape:'얼굴형', skin_tone:'피부톤', skin_condition:'피부 상태', body_type:'체형', hair_style:'헤어스타일', hair_color:'머리색', eyes:'눈', extras:'기타', background:'배경', angle:'각도', framing:'프레이밍', context:'상황·복장', lighting:'조명', color:'색감', quality:'화질', expression:'표정', before_severity:'시술 전 정도', effect_level:'효과 강도', timeline:'경과 시점'};
 const TAGS = ['손가락','피부 질감','머리카락','동일 인물 아님','AI 티','효과 과함','효과 없음','장면 부자연','각도','시술 위치'];
 // 검수 버튼 문구 정본 한 곳.
 // ⚠ 내부 값(pick/reject)은 그대로다 — 바꾸면 저장된 review.json·통계 축이 갈린다.
@@ -2055,8 +2065,13 @@ async function loadLessons() {
         return `<div class="tag-row"><span style="min-width:96px">${esc(t)}</span><span class="meter"><i style="width:${(n / maxN * 100).toFixed(0)}%"></i></span><span class="n">${n}</span>
           <span class="st ${on ? 'on' : 'off'}" title="${on ? '지금 프롬프트에 금지문으로 붙어 있습니다' : `같은 사유가 ${minN}회 이상 쌓이면 자동으로 붙습니다`}">${on ? '반영 중' : `${minN}회부터 반영`}</span></div>`; }).join('')
       + (Object.keys(st.weights || {}).length
-        ? `<div style="margin-top:10px"><div class="rev-h">덜 뽑는 조건</div><div class="muted" style="font-size:var(--fs-xs);margin-bottom:4px">제외가 몰린 조건값은 추첨 확률을 낮춥니다(빼지는 않음 — 다시 좋아졌는지 확인하려면 남겨야 합니다)</div>${
-            Object.entries(st.weights).map(([a, vs]) => Object.keys(vs).map(k => `<span class="chip warn">${AXIS_KO[a] || a} · ${esc(val(a, k))}</span>`).join(' ')).join(' ')}</div>` : '')
+        ? (() => { const W = Object.entries(st.weights), nW = W.reduce((a, [, vs]) => a + Object.keys(vs).length, 0);
+            // 축별 한 줄로 묶고 기본은 접는다 — 칩 17개가 한 덩어리로 흩어지면 "거의 다 덜 뽑는다"로 읽힌다.
+            // 실제로는 그 값의 제외율이 평균의 1.3배 이상일 때만 걸린다(lessons.py axis_rate_margin) — 그 기준을 글로 적어 둔다 (2026-09-16 연서님)
+            const S = L.settings || {};
+            return `<details class="aw" style="margin-top:12px"><summary><span class="lbl">덜 뽑는 조건 <b>${nW}개</b></span> <span class="muted">· ${W.map(([a]) => AXIS_KO[a] || a).join(' · ')}</span></summary>
+              <div class="muted" style="font-size:var(--fs-xs);margin:6px 0 2px">그 조건값의 제외율이 전체 평균의 ${S.axis_rate_margin ?? 1.3}배를 넘을 때만 걸립니다. 걸리면 뽑힐 확률을 ${Math.round((S.axis_weight ?? 0.25) * 100)}%로 낮추되 빼지는 않습니다 — 다시 좋아졌는지 확인하려면 남겨야 합니다.</div>
+              <div class="aw-list">${W.map(([a, vs]) => `<div class="aw-row"><span class="ax">${AXIS_KO[a] || a}</span><span>${Object.keys(vs).map(k => `<span class="chip warn">${esc(val(a, k))}</span>`).join('')}</span></div>`).join('')}</div></details>`; })() : '')
     : `<div class="les-empty">아직 제외한 사진이 없습니다. 검수 모드에서 <b>제외</b>를 누르고 사유를 고르면 여기에 쌓입니다. ${goReview}</div>`;
   // 2-우: 실제로 붙는 문장 (before/after)
   const pv = L.preview || {};
@@ -2130,22 +2145,22 @@ async function loadLessons() {
   const vs = L.by_version || [], real = vs.filter(r => r.real), cur = vs.find(r => r.version === L.current_version), prev = real.find(r => r.version !== L.current_version);
   const delta = (cur && prev && cur.reject_rate != null && prev.reject_rate != null) ? cur.reject_rate - prev.reject_rate : null;
   $('#les-cur-sum').innerHTML = cur ? `이 버전: 생성 ${cur.n}장 · 검수 ${cur.reviewed}장 · 제외율 ${cur.reject_rate == null ? '—' : pct(cur.reject_rate)}${delta != null ? ` <span class="delta ${delta > 0 ? 'up' : 'down'}">(이전 버전 대비 ${delta > 0 ? '+' : ''}${(delta * 100).toFixed(0)}%p)</span>` : ''}` : '이 버전으로 생성한 사진이 아직 없습니다';
-  $('#les-version').innerHTML = vs.length ? `<table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th>생성</th><th>AI 통과율</th><th title="사진 1장을 얻기까지 평균 몇 번 그렸나. 프롬프트를 느슨하게 풀면 여기가 먼저 오릅니다">장당 시도</th><th title="동일인 검사를 기계가 못 잰 비율(전체 장수 기준). 통과율·제외율 어디에도 안 잡혀서 전용 칸이 필요합니다 — 목표 10% 아래">못 잼</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
+  $('#les-version').innerHTML = vs.length ? `<div class="tbl-wrap"><table><thead><tr><th>버전</th><th>모델</th><th>기간</th><th title="생성한 장수. 밑의 작은 글씨는 사진 1장을 얻기까지 평균 몇 번 그렸나 — 프롬프트를 느슨하게 풀면 여기가 먼저 오릅니다">생성</th><th>AI 통과율</th><th title="동일인 검사를 기계가 못 잰 비율(전체 장수 기준). 통과율·제외율 어디에도 안 잡혀서 전용 칸이 필요합니다 — 목표 10% 아래. 24장 미만은 흐리게(표본 부족)">못 잼</th><th>사람 검수</th><th>제외율</th><th>제외 사유 상위</th></tr></thead><tbody>${
     vs.map((r, i) => `<tr class="${r.version === L.current_version ? 'sel' : ''}${i >= LES_VER_SHOW && !LES_VER_ALL && r.version !== L.current_version ? ' vfold' : ''}"><td>${r.real
         ? `<div class="vcell"><b>${esc(r.alias || 'v?')}${r.title ? ` <span class="vtitle">${esc(r.title)}</span>` : ''}</b>${r.version === L.current_version ? ' <span class="chip acc">현재</span>' : ''}<span class="vhash" title="설정 파일 전체의 지문 — 빌디·티모와 이야기할 땐 이걸로">${esc(r.version)}</span>${
             r.note ? `<span class="vnote-txt" ${L.no_promote ? '' : `data-vedit="${esc(r.version)}" title="누르면 고칠 수 있습니다"`}>${esc(r.note)}</span>`
             : (L.no_promote ? '' : `<a class="vnote-add" data-vedit="${esc(r.version)}">+ 메모</a>`)}</div>`
         : `<span class="chip">${esc(r.version === 'sim' ? '시뮬레이션' : r.version === 'demo' ? '샘플' : r.version)}</span>`}</td>` +
-      `<td>${Object.keys(r.providers || {}).length ? Object.entries(r.providers).map(([k, n]) => `${esc(k)} ${n}`).join(' · ') : '<span class="muted">—</span>'}${r.provider_mixed ? ' <span class="chip warn" title="한 버전 줄에 두 모델이 섞였습니다 — 줄끼리 비교가 무의미해집니다">섞임</span>' : ''}</td>` +
-      `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td><td>${r.n}</td><td>${pct(r.ai_pass_rate)}</td>` +
-      // 장당 시도 = 재시도 비용. 괄호는 '같은 사람인지 애매해 다시 그린' 비율(잰 것 중에서만 — 못 잰 건 분모 밖).
-      `<td>${r.attempts_per_item == null ? '—' : `${r.attempts_per_item}회${r.id_review_rate ? ` <span class="muted" title="동일인 확인 구간(0.35~0.45)이라 다시 그린 비율">(닮음 재확인 ${pct(r.id_review_rate)})</span>` : ''}`}</td>` +
+      `<td>${Object.keys(r.providers || {}).length ? Object.entries(r.providers).map(([k, n]) => r.provider_mixed ? `${esc(k)} ${n}` : esc(k)).join(' · ') : '<span class="muted">—</span>'}${r.provider_mixed ? ' <span class="chip warn" title="한 버전 줄에 두 모델이 섞였습니다 — 줄끼리 비교가 무의미해집니다">섞임</span>' : ''}</td>` +
+      `<td>${fmtDay(r.first)}${fmtDay(r.first) !== fmtDay(r.last) ? ' ~ ' + fmtDay(r.last) : ''}</td>` +
+      // 장당 시도 = 재시도 비용 — 생성 장수 밑 작은 글씨로(열 하나를 줄였다). 괄호는 '같은 사람인지 애매해 다시 그린' 비율(잰 것 중에서만 — 못 잰 건 분모 밖).
+      `<td>${r.n}${r.attempts_per_item == null ? '' : `<span class="sub" title="사진 1장을 얻기까지 평균 몇 번 그렸나${r.id_review_rate ? ` · 동일인 확인 구간(0.35~0.45)이라 다시 그린 비율 ${pct(r.id_review_rate)}` : ''}">${r.attempts_per_item}회/장</span>`}</td><td>${pct(r.ai_pass_rate)}</td>` +
       // 못 잼 = 기계가 동일인을 못 잰 비율(분모는 전체 장수). 통과율에도 제외율에도 안 나타나는 값이라 전용 칸 (2026-09-11 티모 a269b50)
       // ⚠ 8장 배치는 사진 한 장이 12.5%p 다 — 한 회차로 "예상 8.1%가 맞았다/틀렸다"를 판정하지 마라 (티모 00bab7e: 지난 버전 예상↔실측 차이 중앙값 7.4%p·최대 30.1%p). 3회차(24장)부터 읽는다.
-      `<td>${r.id_na_rate == null ? '—' : `<span class="chip ${r.id_na_rate >= .3 ? 'bad' : r.id_na_rate > .1 ? 'warn' : 'ok'}" title="${r.n < 24 ? `표본 ${r.n}장 — 사진 한 장이 ${(100 / r.n).toFixed(1)}%p라 아직 판정 못 합니다. 24장(3회차)부터 읽어 주세요` : '동일인 검사를 기계가 못 잰 비율(전체 장수 기준)'}">${pct(r.id_na_rate)}</span>${r.n < 24 ? `<span class="muted" style="font-size:var(--fs-xs)"> 표본 부족</span>` : ''}`}</td>` +
+      `<td>${r.id_na_rate == null ? '—' : `<span class="chip ${r.id_na_rate >= .3 ? 'bad' : r.id_na_rate > .1 ? 'warn' : 'ok'}" style="${r.n < 24 ? 'opacity:.45' : ''}" title="${r.n < 24 ? `표본 부족 — ${r.n}장이라 사진 한 장이 ${(100 / r.n).toFixed(1)}%p입니다. 24장(3회차)부터 읽어 주세요` : '동일인 검사를 기계가 못 잰 비율(전체 장수 기준)'}">${pct(r.id_na_rate)}</span>`}</td>` +
       `<td>${r.reviewed}</td>` +
       `<td>${r.reject_rate == null ? '—' : pct(r.reject_rate)}</td>` +
-      `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table>${vs.length > LES_VER_SHOW ? `<button class="b sm vfold-btn" id="les-ver-more">${LES_VER_ALL ? '접기' : `이전 버전 ${vs.length - LES_VER_SHOW}개 더 보기`}</button>` : ''}
+      `<td>${r.top_tags.length ? r.top_tags.map(([t, n]) => `<span class="chip bad">${esc(t)} ${n}</span>`).join(' ') : '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table></div>${vs.length > LES_VER_SHOW ? `<button class="b sm vfold-btn" id="les-ver-more">${LES_VER_ALL ? '접기' : `이전 버전 ${vs.length - LES_VER_SHOW}개 더 보기`}</button>` : ''}
     <div class="muted" style="margin-top:8px;font-size:var(--fs-xs)">v1·v2… 는 처음 쓴 순서, 뒤 제목은 "어떤 시술을 만들었고 이전 버전에서 무엇이 바뀌었나"를 자동으로 적은 것입니다. 번호끼리 제외율을 비교하면 고친 효과가 보입니다. 메모는 사람이 덧붙이는 한 줄입니다.</div>`
     : `<div class="les-empty">아직 생성된 배치가 없습니다.</div>`;
   // 버전 표는 최근 5개만 펼치고 나머지는 접는다 — 버전이 쌓일수록 표가 화면을 다 먹었다 (2026-09-15 성연서님 "너무 많이 쌓인다 한 5개?")
