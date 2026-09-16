@@ -2078,7 +2078,7 @@ async function loadLessons() {
             return `<details class="aw" style="margin-top:12px"><summary><span class="lbl">덜 뽑는 조건 <b>${nW}개</b></span> <span class="muted">· ${W.map(([a]) => AXIS_KO[a] || a).join(' · ')}</span></summary>
               <div class="muted" style="font-size:var(--fs-xs);margin:6px 0 2px">그 조건값의 제외율이 전체 평균의 ${S.axis_rate_margin ?? 1.3}배를 넘을 때만 걸립니다. 걸리면 뽑힐 확률을 ${Math.round((S.axis_weight ?? 0.25) * 100)}%로 낮추되 빼지는 않습니다 — 다시 좋아졌는지 확인하려면 남겨야 합니다.</div>
               <div class="aw-list">${W.map(([a, vs]) => `<div class="aw-row"><span class="ax">${AXIS_KO[a] || a}</span><span>${Object.keys(vs).map(k => `<span class="chip warn">${esc(val(a, k))}</span>`).join('')}</span></div>`).join('')}</div></details>`; })() : '')
-    : `<div class="les-empty">아직 제외한 사진이 없습니다. 검수 모드에서 <b>제외</b>를 누르고 사유를 고르면 여기에 쌓입니다. ${goReview}</div>`;
+    : `<div class="les-empty"><span>아직 제외한 사진이 없습니다. 검수 모드에서 <b>제외</b>를 누르고 사유를 고르면 여기에 쌓입니다.</span>${goReview}</div>`;
   // 2-우: 실제로 붙는 문장 (before/after)
   const pv = L.preview || {}, lines = st.lines || {}, notAt = st.not_at || {};
   // 문장 하나 = 한 줄: 어느 사유(왼쪽 버튼)·어느 규칙(3번에서 올린 메모)에서 왔고, 전·후 어느 컷에 붙는지.
@@ -2117,7 +2117,7 @@ async function loadLessons() {
         ${can || !d ? `<button class="b ${can ? 'primary' : ''}" data-promote="${i}" ${L.no_promote ? `disabled title="${esc(L.cloud_msg || '')}"` : ''} title="${can ? 'AI 가 규칙감으로 판정했고 아직 안 붙어 있는 문장입니다' : '초안 없이 올립니다 — 문장을 직접 확인하세요'}">규칙으로 승격</button>` : ''}
         <button class="b ${can ? 'ghost' : ''}" data-handoff="${i}" ${L.no_promote ? 'disabled' : ''} title="승격하지 않고 티모(프롬프트·검수기 담당)에게 넘깁니다. 이 목록에서 빠지고 '티모 확인' 칸으로 갑니다">티모에게 넘기기</button>
       </span>
-    </div>`; }).join('') : `<div class="les-empty">승격할 메모 없음 · 검수에서 <b>제외</b>할 때 자유 메모를 적으면 여기 쌓입니다 ${goReview}</div>`;
+    </div>`; }).join('') : `<div class="les-empty"><span>승격할 메모 없음 · 검수에서 <b>제외</b>할 때 자유 메모를 적으면 여기 쌓입니다</span>${goReview}</div>`;
   // 인터넷 화면에서 보낸 요청(사무실 PC 반영 전) — 목록 위에 '대기'로
   const pp = L.pending_promotions || [], ph = L.pending_handoffs || [];
   if ((pp.length || ph.length) && !(L.notes || []).length) $('#les-notes').innerHTML = '';   // 대기 줄이 있으면 '메모 없음' 상자는 군더더기
