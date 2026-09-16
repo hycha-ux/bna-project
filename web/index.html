@@ -510,8 +510,6 @@ details.aw > summary::before { content:'›'; display:inline-block; margin-right
 .pk-legend span:hover { border-color:var(--ui-lo) } .pk-legend span.on { border-color:var(--primary); color:var(--primary); font-weight:600 }
 .prompt.focus .pk:not(.hit) { background:transparent !important; outline:0; color:var(--ui-lo); opacity:.55 } .prompt.focus .pk.hit { box-shadow:0 0 0 1.5px var(--primary) }
 .prompt-tools { display:flex; align-items:center; gap:8px; margin-top:8px } .prompt-tools .muted { font-size:var(--fs-xs) }
-.lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0; margin-top:4px }
-.lib .item .head { margin-bottom:4px } .lib .item .head .head-r { margin-left:auto; display:flex; gap:2px }
 /* 필터 카드: 내보낸 결과·메시지가 없으면 그 자리도 없다 (빈 여백이 카드 절반이었다) */
 #tab-library .toolbar { margin-bottom:0; padding-bottom:0; border-bottom:0 } #lib-exports:empty, #lib-msg:empty { display:none } #lib-exports:not(:empty) { margin-top:var(--sp-3); padding-top:var(--sp-3); border-top:1px solid var(--ui-border) }
 .mono { font-family:ui-monospace,Menlo,monospace; font-size:var(--fs-xs); white-space:pre-wrap; word-break:break-word; background:var(--ui-surface); border-radius:var(--r-sm); padding:10px; color:var(--ui-md); margin-top:6px }
@@ -568,11 +566,21 @@ table.jobs td:first-child { white-space:nowrap; width:84px } table.jobs td:last-
 .chart .line { fill:none; stroke:var(--primary); stroke-width:2.5; stroke-linejoin:round } .chart .area { fill:url(#gradA) } .chart .pt { fill:#fff; stroke:var(--primary); stroke-width:2 }
 .chart .line2 { fill:none; stroke:#9B9A97; stroke-width:2.5 }
 .lib-group { margin-bottom:22px } .lib-group h3 { font-size:var(--fs-lg); font-weight:var(--fw-b); margin-bottom:var(--sp-2); display:flex; align-items:center; gap:8px }
-.lib .item { position:relative } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
-.lib-check { display:flex; align-items:center; cursor:pointer; margin-right:2px } .lib-check input { width:16px; height:16px; margin:0; cursor:pointer; accent-color:var(--primary) }
-.lib .item .head { flex-wrap:wrap; row-gap:4px } .lib .item .head .id { white-space:nowrap } .lib .item .head .head-r { flex-basis:100%; margin-left:0; justify-content:flex-start; gap:4px } .lib .item .head .head-r .b { padding:2px 8px; font-size:11px }
-.lib-sel { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-sm); color:var(--ui-md) } .lib-sel b { color:var(--primary) }
-.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px } .lib .item .body { padding:8px 10px 10px } .lib .item .id { font-size:12px }
+/* 라이브러리 카드 (2026-09-16 연서님 '디벨롭'): 체크는 사진 위 오른쪽 동그라미, 머리는 날짜·번호 + 드라이브 상태 글, 밑줄은 [다운로드] + ··· (작업으로·채택 해제) */
+.lib { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px }
+.lib .item { position:relative; overflow:visible; transition:box-shadow .12s } .lib .item:hover { box-shadow:0 4px 16px rgba(25,31,40,.08) } .lib .item.sel { outline:2px solid var(--primary); outline-offset:-1px }
+.lib .item .pair figure { border-radius:0 } .lib .item .pair figure:first-child { border-top-left-radius:calc(var(--r-md) - 1px) } .lib .item .pair figure:last-child { border-top-right-radius:calc(var(--r-md) - 1px) }
+.lib-check { position:absolute; right:8px; top:8px; z-index:3; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.92); box-shadow:0 1px 4px rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; cursor:pointer; color:transparent }
+.lib-check input { position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; width:100%; height:100% } .lib-check .ic { font-size:18px; pointer-events:none }
+.lib-check:hover { color:var(--ui-lo) } .lib-check:has(input:checked) { background:var(--primary); color:#fff; box-shadow:0 0 0 2px #fff, 0 1px 4px rgba(0,0,0,.25) }
+.lib .item .body { padding:10px 12px 10px; display:flex; flex-direction:column; gap:8px }
+.lib .item .head { display:flex; align-items:center; gap:8px; margin:0 } .lib .item .head .id { font-size:var(--fs-sm); font-weight:var(--fw-b); color:var(--ui-hi); white-space:nowrap }
+.lib-drive { margin-left:auto; display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--ui-lo); white-space:nowrap; text-decoration:none } .lib-drive .ic { font-size:13px } .lib-drive.on { color:var(--ui-md) } .lib-drive.on:hover { color:var(--ui-hi); text-decoration:underline }
+.lib .item .body .tags { display:flex; flex-wrap:wrap; gap:0; margin:0 } .lib .item .body .tags:empty { display:none }
+.lib-note { font-size:var(--fs-xs); color:var(--ui-md); line-height:1.5; padding:6px 8px; background:var(--ui-surface); border-radius:var(--r-sm) }
+.lib-act { display:flex; align-items:center; gap:6px; padding-top:10px; border-top:1px solid var(--ui-border) } .lib-act > .b { flex:1 }
+.lib-more { margin:0; flex:none } .lib-more > summary { list-style:none; width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--ui-border); border-radius:8px; background:#fff; color:var(--ui-md); cursor:pointer } .lib-more > summary:hover, .lib-more[open] > summary { background:var(--ui-surface); color:var(--ui-hi) } .lib-more > summary::-webkit-details-marker { display:none } .lib-more > summary .ic { margin:0; font-size:16px }
+.lib-more .dd-menu { left:auto; right:0; width:236px; grid-template-columns:1fr } .lib-more .dd-opt { border:0; background:none; width:100%; color:var(--ui-hi); font-size:var(--fs-sm); text-align:left } .lib-more .dd-opt .ic { font-size:15px; color:var(--ui-lo) } .lib-more .dd-opt.danger { color:#B42318 } .lib-more .dd-opt.danger .ic { color:#B42318 }
 /* ⚠ margin:auto 를 빼지 마라 — 리셋 CSS 의 `margin:0` 이 브라우저 기본 가운데 정렬을 지워
    모달이 좌상단에 붙는다(2026-09-08 실측 left 0·top 0). inset:0 과 한 쌍이다. */
 dialog { border:0; border-radius:var(--r-lg); padding:0; max-width:900px; width:92vw; max-height:90vh; background:var(--ui-panel); color:var(--ui-hi); box-shadow:0 24px 60px rgba(0,0,0,.18); inset:0; margin:auto }
@@ -1966,10 +1974,21 @@ async function downloadItem(bid, iid, it) {
 function libCard(i) {
   const v = i.variation || {}; const img = (f, cap) => f ? `<figure><img loading="lazy" src="/files/${i.batch_id}/${i.item_id}/${f}"><figcaption>${cap}</figcaption></figure>` : `<figure>이미지 없음<figcaption>${cap}</figcaption></figure>`;
   const badges = (i.orig_treatment && i.orig_treatment !== i.treatment ? `<span class="chip acc" title="원래 ${esc(tname(i.orig_treatment))} 배치에서 나온 사진입니다">원래 ${esc(tname(i.orig_treatment))}</span>` : '') + ['country','age','gender','angle','framing'].filter(k => v[k]).map(k => `<span class="chip" title="${AXIS_KO[k]}">${esc(val(k, v[k].key))}</span>`).join('');
-  const key = `${i.batch_id}/${i.item_id}`;
-  return `<div class="item ${LIB_SEL.has(key) ? 'sel' : ''}"><div class="pair" data-zoom="${i.batch_id}/${i.item_id}" title="누르면 크게 비교하고 프롬프트를 봅니다">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div><div class="body">
-    <div class="head"><label class="lib-check" title="선택해서 여러 장을 한 번에 내려받거나 내보냅니다"><input type="checkbox" data-sel="${key}" ${LIB_SEL.has(key) ? 'checked' : ''}></label><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span><span class="head-r"><button class="b sm ghost" data-dl="${i.batch_id}/${i.item_id}" title="시술 전·후 원본 파일을 내려받습니다">다운로드</button>${driveBtn(i)}<button class="b sm ghost" data-open="${i.batch_id}" title="이 사진이 나온 작업으로">작업</button><button class="b sm ghost" data-unpick="${i.batch_id}/${i.item_id}" title="채택을 풀고 드라이브에서 내립니다">해제</button></span></div>
-    <div class="tags">${badges}</div>${i.review.note ? `<div class="muted" style="margin-top:4px">${esc(i.review.note)}</div>` : ''}</div></div>`;
+  const key = `${i.batch_id}/${i.item_id}`, id = `${i.batch_id}/${i.item_id}`;
+  // 드라이브 상태는 버튼이 아니라 상태 글로: 저장됐으면 링크, 아니면 '저장 대기' (원장은 PC 의 manifest — 짐작하지 않는다)
+  const files = i.drive?.files || [], df = files.find(x => /after/i.test(x.name)) || files[0];
+  const drive = df ? `<a class="lib-drive on" href="${esc(df.url)}" target="_blank" rel="noopener" title="드라이브 채택본에서 엽니다${files.length > 1 ? ` (${files.length}개 파일 중 시술 후)` : ''}"><i class="ic ic-cloud"></i>드라이브</a>`
+    : `<span class="lib-drive" title="${i.drive?.state === 'uploaded' ? '드라이브에 있지만 링크 정보가 아직 안 왔습니다' : '아직 드라이브에 올라가지 않았습니다 — 사무실 PC 가 올리면 열립니다'}"><i class="ic ic-cloud-up"></i>저장 대기</span>`;
+  // 자주 쓰는 것(다운로드·드라이브)만 밖에, 가끔 쓰는 것(작업으로·채택 해제)은 ··· 안에 — 네 글자 버튼이 한 줄에 늘어서 다 같아 보였다 (2026-09-16 연서님)
+  return `<div class="item ${LIB_SEL.has(key) ? 'sel' : ''}"><div class="pair" data-zoom="${id}" title="누르면 크게 비교하고 프롬프트를 봅니다">${img(i.before_file,'시술 전')}${img(i.after_file,'시술 후')}</div>
+    <label class="lib-check" title="선택해서 여러 장을 한 번에 내려받거나 내보냅니다"><input type="checkbox" data-sel="${key}" ${LIB_SEL.has(key) ? 'checked' : ''}><i class="ic ic-check-circle"></i></label>
+    <div class="body">
+    <div class="head"><span class="id">${fmtBid(i.batch_id)} · ${+i.item_id+1}번</span>${drive}</div>
+    <div class="tags">${badges}</div>${i.review.note ? `<div class="lib-note">${esc(i.review.note)}</div>` : ''}
+    <div class="lib-act"><button class="b sm" data-dl="${id}" title="시술 전·후 원본 파일을 내려받습니다"><i class="ic ic-arrow-down"></i>다운로드</button>
+      <details class="dd lib-more"><summary title="더 보기"><i class="ic ic-more-h"></i></summary><div class="dd-menu">
+        <button type="button" class="dd-opt" data-open="${i.batch_id}"><i class="ic ic-list"></i>이 사진이 나온 작업으로</button>
+        <button type="button" class="dd-opt danger" data-unpick="${id}"><i class="ic ic-x-circle"></i>채택 해제 — 드라이브에서도 내림</button></div></details></div></div></div>`;
 }
 $('#lib-treatment').onchange = renderLibrary; $('#lib-mode').onchange = renderLibrary;
 $('#btn-sel-clear').onclick = () => { LIB_SEL.clear(); renderLibrary(); };
