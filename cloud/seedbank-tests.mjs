@@ -5,7 +5,7 @@
  * 왜: 은행이 갈리면서 사진 주소가 `img/<은행>/<파일>` 로 바뀌었다 — 옛 주소로 그리면 전부 404 인데
  *     화면은 빈 격자를 조용히 보여 준다. 그런 조용한 고장은 회귀로만 잡는다.
  */
-import { bankEntry, buildIndex, rawSummary, readBanks } from './push-seedbank.mjs';
+import { bankEntry, buildIndex, rawSummary, readBanks, readSection, readUploads, uploadsEntry } from './push-seedbank.mjs';
 
 const fails = [];
 const ok = (cond, label) => {
@@ -69,6 +69,36 @@ const rawOnly = bankEntry('nasolabial', banks.nasolabial, { manifest });
 ok(rawOnly.status === 'raw' && rawOnly.counts.raw === 3 && rawOnly.seeds.length === 0, '판정 파일이 없고 manifest 만 있으면 raw(정제 전)');
 const empty = bankEntry('lifting', { name_ko: '리프팅' }, {});
 ok(empty.status === 'empty' && empty.seeds.length === 0, '아무것도 없으면 empty — 던지지 않는다');
+
+// ── 업로드본(강남언니 실제 게시분) ─────────────────────────────────────────
+const ups = readUploads();
+ok(ups.gangnamunni && ups.gangnamunni.name_ko === '강남언니 업로드본' && /drive\.google\.com/.test(ups.gangnamunni.drive), 'uploads.gangnamunni 가 드라이브 폴더를 가리킨다');
+ok(ups.gangnamunni.product_map['팔자온볼라썸'] === 'nasolabial' && ups.gangnamunni.product_map['턱선 3종 패키지'] === 'lifting', 'product_map: 상품(띄어쓰기 포함) → 시술 키');
+const sec = readSection('a:\n  x: 1\nuploads:\n  g:\n    name_ko: 이름  # 주석\n    map:\n      팔자 패키지: nasolabial\n      필러: nasolabial\n    raw: C:/r\nb: 2\n', 'uploads');
+ok(sec.g.name_ko === '이름' && sec.g.map['팔자 패키지'] === 'nasolabial' && sec.g.raw === 'C:/r' && !sec.b, '들여쓰기 세 단·주석·다음 최상위 키 처리');
+
+const umf = {
+  pulled_at: '2026-09-16T15:00:00+09:00',
+  rows: [
+    { 번호: '1', 상품: '팔자온볼라썸', 상태: '게시중', 제목: '콜라겐 팔자', 시술: '팔자주름필러|콜라겐주사', 성별: '여', 연령: '30대초', '파일(전)': '001_a_전.jpg', '파일(후)': '001_a_후_D+0.jpg', 경과일: '0' },
+    { 번호: '2', 상품: '기타', 상태: '중단', 제목: '', 시술: '', 성별: '', 연령: '', '파일(전)': '', '파일(후)': '', 경과일: '' },
+    { 번호: '3', 상품: '반영구(아트메이크)', 상태: '중단', 제목: '눈썹', 시술: '눈썹반영구', 성별: '', 연령: '', '파일(전)': '003_b_전.jpg', '파일(후)': '003_b_후_D+14.jpg', 경과일: '14' },
+    { 번호: '4', 상품: '팔자온볼라썸', 상태: '게시중', 제목: '콜라겐 팔자2', 시술: '팔자주름필러', 성별: '', 연령: '', '파일(전)': '004_c_전.jpg', '파일(후)': '004_c_후_D+7.jpg', 경과일: '7' },
+  ],
+  files: [
+    { file: '팔자온볼라썸/001_a_전.jpg' }, { file: '팔자온볼라썸/001_a_후_D+0.jpg' },
+    { file: '반영구(아트메이크)/003_b_전.jpg' }, { file: '반영구(아트메이크)/003_b_후_D+14.jpg' },
+    { file: '팔자온볼라썸/004_c_전.jpg' },   // 후는 못 받았다
+  ],
+};
+const ue = uploadsEntry('gangnamunni', ups.gangnamunni, umf);
+ok(ue.status === 'ready' && ue.counts.cases === 3 && ue.counts.files === 5 && ue.counts.live === 2 && ue.counts.stopped === 1, '사진 없는 줄은 빼고 케이스·장수·게시중/중단을 센다');
+ok(ue.products[0].product === '팔자온볼라썸' && ue.products[0].treatment === 'nasolabial' && ue.products[0].cases.length === 2, '상품은 케이스 많은 순, product_map 으로 시술 키가 붙는다');
+ok(ue.products[1].treatment === null, '대응 없는 상품은 treatment null(화면의 기타 칩)');
+const c4 = ue.products[0].cases.find((c) => c.no === '4');
+ok(c4.before === '004_c_전.jpg' && c4.after === null && c4.days === 7, '못 받은 사진은 null — 있는 척 안 한다. 경과일은 숫자');
+ok(ue.products[0].cases[0].tags.length === 2 && ue.products[0].cases[0].gender === '여', '시술 태그·성별·연령이 실린다');
+ok(uploadsEntry('gangnamunni', ups.gangnamunni, null).status === 'empty', 'manifest 없으면 empty — 던지지 않는다');
 
 console.log(fails.length ? `\n실패 ${fails.length}건` : '\n전부 통과');
 process.exit(fails.length ? 1 : 0);

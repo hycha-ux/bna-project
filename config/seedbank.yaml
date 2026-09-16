@@ -36,3 +36,35 @@ pool_dir: C:/Users/medib/teemo-raw/derived        # 리포 밖 — 얼굴 사진
 measure: C:/Users/medib/teemo/out/seed-measure.json
 prep: C:/Users/medib/teemo/out/seed-prep.json
 attrs: C:/Users/medib/teemo/out/seed-attrs.json   # tools/seedbank_attrs.py 가 쓴다 (숫자·익명 파일명만)
+
+# ── 업로드본(실제 게시된 전후) ─────────────────────────────────────────────
+# 2026-09-16 연서님: "강남언니에 실제로 업로드된 사진 — 이걸 바탕으로 학습할 거야". 씨앗(얼굴 파생용)과 목적이 달라
+# 은행이 아니라 `uploads` 로 따로 둔다. 화면에선 시술 칩 밑에 '강남언니 업로드본'으로 붙는다.
+# 받기 = tools/drive_ba_pull.py (index.csv 가 정본). 상품 → 우리 시술 키 대응은 product_map — 없는 상품은 '기타'에 상품명 그대로.
+uploads:
+  gangnamunni:
+    name_ko: 강남언니 업로드본
+    drive: https://drive.google.com/drive/folders/1Gph2oD8osGmjQIel-qap0ys2aM8kANDo
+    raw: C:/Users/medib/teemo-raw/uploads/gangnamunni      # drive_ba_pull.py --out 자리. manifest.json 이 여기
+    # 상품(강남언니 상품명) → treatments.yaml 키. 2026-09-16 빌디 초안 — 부위가 같은 것만 잇고 나머지는 비워 둠(연서님 확인).
+    product_map:
+      팔자온볼라썸: nasolabial
+      팔자패키지: nasolabial
+      필러: nasolabial            # 볼·팔자·턱끝·이마 필러 묶음 — 팔자 태그가 있어 일단 팔자로
+      실리프팅: lifting
+      온다리프팅: lifting
+      슈링크: lifting
+      울쎄라: lifting
+      인모드: lifting
+      올타이트: lifting
+      써펙트리프팅: lifting
+      4D미니리프팅: lifting
+      이중턱착붙패키지: lifting
+      턱선 3종 패키지: lifting
+      윤곽주사: lifting
+      수면 리투오: lifting
+      코코주사: nose_lifting
+      퀵코프팅: nose_lifting
+      모공흉터: skin_pores
+      목주름리프팅: filler_neck    # 시술은 다르지만 부위(목주름)가 같다
+      나노빔 눈밑리프팅: filler_eyelid   # 눈밑 꺼짐 부위

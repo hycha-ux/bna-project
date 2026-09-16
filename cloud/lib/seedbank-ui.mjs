@@ -13,6 +13,8 @@
  *   status 'ready' = 씨앗·파생·판정이 있음 / 'raw' = 사진은 받았는데 정제 전(장수·명수만) /
  *   'empty' = 아직 아무것도 없음. 옛 index(banks 없이 seeds 만)는 pilot 하나로 감싼다 —
  *   push-seedbank 를 새로 돌리기 전 배포가 깨지지 않게.
+ * 업로드본(index.uploads, 강남언니에 실제 게시된 전후 쌍): 시술 칩 밑에 '강남언니 업로드본'으로 붙는다
+ *   (product_map 으로 이어진 상품만). 우리 시술에 안 이어진 상품은 '강남언니 · 기타' 칩에서 상품을 골라 본다.
  */
 
 export function seedbankUi() {
@@ -59,6 +61,18 @@ css.textContent=
 +'#tab-seedbank .sb-chip.on{background:var(--primary,#1F3A5F);color:#fff;border-color:transparent}'
 +'#tab-seedbank .sb-chip.on .n{color:rgba(255,255,255,.75)}'
 +'#tab-seedbank .sb-who{font-size:11px;color:var(--ui-md);padding:0 10px 8px;line-height:1.4}'
++'#tab-seedbank .sb-sec{display:flex;align-items:baseline;gap:8px;margin:22px 0 10px;font-size:14px;font-weight:700}'
++'#tab-seedbank .sb-sec .m{font-weight:400;font-size:12px;color:var(--ui-md)}'
++'#tab-seedbank .sb-pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}'
++'#tab-seedbank .sb-pair{border:1px solid var(--ui-border);border-radius:var(--r-md,10px);overflow:hidden;background:#fff}'
++'#tab-seedbank .sb-pair .im{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--ui-border)}'
++'#tab-seedbank .sb-pair .im img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--ui-surface);cursor:zoom-in}'
++'#tab-seedbank .sb-pair .im .no{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ui-lo,#98A2B3);background:var(--ui-surface)}'
++'#tab-seedbank .sb-pair .cap{padding:8px 10px;font-size:12px;line-height:1.45}'
++'#tab-seedbank .sb-pair .cap b{font-size:13px}'
++'#tab-seedbank .sb-pair .cap .t{color:var(--ui-md);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
++'#tab-seedbank .sb-tag.off{background:var(--ui-surface,#F2F4F7);color:var(--ui-lo,#98A2B3)}'
++'#tab-seedbank .sb-sel{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--ui-border);border-radius:8px;background:#fff;margin-bottom:12px}'
 +'#sb-lb{position:fixed;inset:0;z-index:9998;background:rgba(15,20,28,.86);display:flex;'
 +'align-items:center;justify-content:center;cursor:zoom-out}'
 +'#sb-lb img{max-width:92vw;max-height:88vh;border-radius:8px}';
@@ -91,15 +105,61 @@ function derCard(bank,d,ctrl){
     +'원본과 '+num(d.sim_own)+' · 남과 '+num(d.sim_other_max)+'</figcaption></figure>';
 }
 
-var BANKS=[], CUR=null;
+var BANKS=[], CUR=null, UPS={}, OTHER='uploads:other', OTHER_PRODUCT=null;
 function seedUrl(bank,name){ return '/seedfiles/'+encodeURIComponent(bank)+'/'+encodeURIComponent(name); }
 
+function upProducts(treat){   // treat=null 이면 우리 시술에 안 이어진 상품들
+  var out=[];
+  Object.keys(UPS).forEach(function(k){ var u=UPS[k]; if(u.status!=='ready') return;
+    (u.products||[]).forEach(function(p){ if((treat?p.treatment===treat:!p.treatment)) out.push({src:u,p:p}); }); });
+  return out;
+}
 function chips(){
+  var other=upProducts(null), on=other.reduce(function(a,x){return a+x.p.cases.length;},0);
+  var srcName=Object.keys(UPS).map(function(k){return UPS[k].name_ko;}).join('·')||'업로드본';
   return '<div class="sb-chips">'+BANKS.map(function(b){
     var n=b.status==='ready'?('씨앗 '+b.counts.seeds+'장'):(b.status==='raw'?('받음 '+b.raw.files+'장 · 정제 전'):'비어 있음');
     return '<button type="button" class="sb-chip'+(b.key===CUR?' on':'')+'" data-bank="'+esc(b.key)+'">'
       +esc(b.name_ko)+'<span class="n">'+esc(n)+'</span></button>';
-  }).join('')+'</div>';
+  }).join('')
+  +(other.length?'<button type="button" class="sb-chip'+(CUR===OTHER?' on':'')+'" data-bank="'+OTHER+'">'
+      +esc(srcName)+' · 기타<span class="n">'+other.length+'개 상품 · '+on+'건</span></button>':'')
+  +'</div>';
+}
+
+function pairCard(c){
+  var img=function(name,side){ return name
+    ? '<img src="'+seedUrl('uploads',name)+'" loading="lazy" alt="" data-full="'+seedUrl('uploads',name)+'" data-cap="'+esc('#'+c.no+' '+side+(c.days!=null&&side==='후'?' D+'+c.days:''))+'">'
+    : '<div class="no">'+side+' 없음</div>'; };
+  var who=[c.gender,c.age].filter(Boolean).join(' ');
+  return '<div class="sb-pair"><div class="im">'+img(c.before,'전')+img(c.after,'후')+'</div>'
+    +'<div class="cap"><b>#'+esc(c.no)+'</b> '+(c.days!=null?'전 → 후 <b>D+'+c.days+'</b>':'경과일 미상')
+    +' <span class="sb-tag '+(c.status==='게시중'?'ok':'off')+'">'+esc(c.status||'?')+'</span>'
+    +(who?' <span class="sb-tag eye">'+esc(who)+'</span>':'')
+    +'<span class="t" title="'+esc(c.tags.join(', '))+'">'+esc(c.title||'')+'</span></div></div>';
+}
+function uploadsSection(treat){
+  var list=upProducts(treat); if(!list.length) return '';
+  var n=list.reduce(function(a,x){return a+x.p.cases.length;},0);
+  var live=list.reduce(function(a,x){return a+x.p.cases.filter(function(c){return c.status==='게시중';}).length;},0);
+  return list.map(function(x){
+    return '<div class="sb-sec">'+esc(x.src.name_ko)+' · '+esc(x.p.product)
+      +'<span class="m">실제 게시된 전후 '+x.p.cases.length+'건 · 게시중 '+x.p.cases.filter(function(c){return c.status==='게시중';}).length+'</span></div>'
+      +'<div class="sb-pairs">'+x.p.cases.map(pairCard).join('')+'</div>';
+  }).join('')
+  +'<div style="font-size:11px;color:var(--ui-md);margin-top:8px">이 시술에 이어진 상품 '+list.length+'개 · '+n+'건(게시중 '+live+'). 상품 ↔ 시술 대응은 config/seedbank.yaml product_map.</div>';
+}
+function drawOther(){
+  var list=upProducts(null);
+  if(!OTHER_PRODUCT||!list.some(function(x){return x.p.product===OTHER_PRODUCT;})) OTHER_PRODUCT=list[0]?list[0].p.product:null;
+  var x=list.filter(function(y){return y.p.product===OTHER_PRODUCT;})[0];
+  var sel='<select class="sb-sel" id="sb-other">'+list.map(function(y){
+    return '<option value="'+esc(y.p.product)+'"'+(y.p.product===OTHER_PRODUCT?' selected':'')+'>'+esc(y.p.product)+' ('+y.p.cases.length+'건)</option>';}).join('')+'</select>';
+  return '<div class="card" style="padding:14px 16px;margin-bottom:14px">'
+    +'<div style="font-size:15px;font-weight:700;margin-bottom:6px">우리 시술에 안 이어진 상품</div>'
+    +'<div style="font-size:13px;color:var(--ui-md);line-height:1.65">강남언니에 올라간 전후 중 아직 B&A 시술 키에 대응하지 않은 상품입니다. '
+    +'대응을 정하면(config/seedbank.yaml product_map) 그 시술 칩 밑으로 옮겨 갑니다.</div></div>'
+    +sel+(x?'<div class="sb-pairs">'+x.p.cases.map(pairCard).join('')+'</div>':'');
 }
 
 function whoLine(w){
@@ -123,7 +183,7 @@ function drawBank(D){
       : '아직 이 시술의 사진이 없습니다. <code>tools/notion_ba_pull.py</code> 로 받거나 KOS 에서 골라 넣으면 여기 잡힙니다.';
     return '<div class="card" style="padding:14px 16px;margin-bottom:14px">'
       +'<div style="font-size:15px;font-weight:700;margin-bottom:6px">'+esc(D.name_ko)+'</div>'+srcLine
-      +'<div style="font-size:13px;color:var(--ui-md);line-height:1.65">'+body+'</div></div>';
+      +'<div style="font-size:13px;color:var(--ui-md);line-height:1.65">'+body+'</div></div>'+uploadsSection(D.key);
   }
   var dupN=D.seeds.filter(function(s){return s.dup.length;}).length;
   var head=
@@ -160,12 +220,14 @@ function drawBank(D){
       +'<div class="sb-h">'+esc(s.id)+dup+'<span class="m">'+esc(s.size)+'</span></div>'
       +whoLine(s.who)+der+'</div>';
   }).join('');
-  return head+'<div class="sb-grid">'+cards+'</div>';
+  return head+'<div class="sb-grid">'+cards+'</div>'+uploadsSection(D.key);
 }
 
 function draw(){
   var D=BANKS.filter(function(b){return b.key===CUR;})[0];
-  $('#sb-body').outerHTML='<div id="sb-body">'+chips()+(D?drawBank(D):'<div class="card" style="padding:16px">은행이 없습니다.</div>')+'</div>';
+  var body=CUR===OTHER?drawOther():(D?drawBank(D):'<div class="card" style="padding:16px">은행이 없습니다.</div>');
+  $('#sb-body').outerHTML='<div id="sb-body">'+chips()+body+'</div>';
+  var sel=$('#sb-other'); if(sel) sel.onchange=function(){ OTHER_PRODUCT=sel.value; draw(); };
 }
 page.addEventListener('click',function(e){
   var ch=e.target.closest('.sb-chip'); if(!ch) return;
@@ -182,8 +244,9 @@ function load(){
      // 옛 모양(banks 없음) → pilot 하나로 감싼다. 사진 주소는 /seedfiles/pilot/<파일> 이고 서버가 옛 자리로도 찾는다.
      BANKS=Array.isArray(J.banks)?J.banks:[{key:'pilot',name_ko:'1차 파일럿',source:'KOS 실사진 (시술 미구분)',round:J.round||'',status:'ready',
        counts:J.counts,exif:J.exif,control:J.control,strength:J.strength,face_found:J.face_found,seeds:J.seeds||[],raw:null}];
+     UPS=(J.uploads&&typeof J.uploads==='object')?J.uploads:{};
      var want=null; try{ want=localStorage.getItem('sb-bank'); }catch(e){}   // 마지막에 보던 시술
-     CUR=(BANKS.filter(function(b){return b.key===want;})[0]||BANKS.filter(function(b){return b.status==='ready';})[0]||BANKS[0]||{}).key||null;
+     CUR=want===OTHER&&upProducts(null).length?OTHER:((BANKS.filter(function(b){return b.key===want;})[0]||BANKS.filter(function(b){return b.status==='ready';})[0]||BANKS[0]||{}).key||null);
      draw();
    }).catch(function(e){ LOADED=false; $('#sb-body').textContent='불러오지 못했습니다 — '+e.message; });
 }

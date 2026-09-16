@@ -14,6 +14,8 @@
  *
  *   node cloud/push-seedbank.mjs [--dry]              # 은행 전부 올린다 / 무엇을 올릴지만 본다
  *   node cloud/push-seedbank.mjs --bank nasolabial    # 한 은행만(다른 은행의 사진·목록은 그대로)
+ *   node cloud/push-seedbank.mjs --uploads [--raw <폴더>]   # 강남언니 업로드본만(은행 목록은 올라간 것 그대로).
+ *                                                     #   --raw = 이 PC 의 받은 폴더(config 의 raw 가 다른 PC 경로일 때)
  *   node cloud/push-seedbank.mjs --remove             # 올린 것을 전부 내린다(되돌리기)
  *
  * 원본 대신 **축소본**(긴 변 1024)을 올린다 — `ops/seedbank-view.py`.
@@ -24,11 +26,15 @@
  * '정제 전'으로만 목록에 남긴다(사진 0장) — 화면이 그 시술을 비어 있는 채로라도 보여 줘야
  * "어디까지 왔나"가 보인다. 정제 전이라도 `raw/manifest.json`(notion_ba_pull.py)이 있으면 받은 장수·명수는 센다.
  *
+ * 업로드본(2026-09-16 연서님 "강남언니에 실제로 올라간 사진, 이걸 바탕으로 학습"): `config/seedbank.yaml` 의 `uploads:`.
+ * 씨앗이 아니라 **게시된 전후 쌍**이라 은행과 따로 `index.uploads` 에 싣고, 사진은 `seedbank/img/uploads/<파일>`.
+ * 상품 → 우리 시술 키는 `product_map` — 화면이 시술 칩 밑에 붙일 때 쓴다.
+ *
  * 토큰은 `bna-project/cloud/.env.local` 의 BLOB_READ_WRITE_TOKEN 을 읽는다(값 미출력).
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { del, get, list, put } from '@vercel/blob';
 
@@ -40,6 +46,29 @@ const PREFIX = 'seedbank/';
 const DRY = process.argv.includes('--dry');
 const REMOVE = process.argv.includes('--remove');
 const ONLY = (() => { const i = process.argv.indexOf('--bank'); return i > 0 ? process.argv[i + 1] : null; })();
+const UPLOADS_ONLY = process.argv.includes('--uploads');
+const RAW_OVERRIDE = (() => { const i = process.argv.indexOf('--raw'); return i > 0 ? process.argv[i + 1] : null; })();
+
+/** yaml 의 한 최상위 키 밑을 들여쓰기로 읽는다 — 값은 문자열뿐, 목록 없음(이 파일이 그 모양이다). yaml 의존성 없음. */
+export function readSection(text, key) {
+  const root = {};
+  const stack = [[-1, root]];
+  let inside = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\s+#.*$/, '').replace(/^\s*#.*$/, '').trimEnd();
+    if (!line.trim()) continue;
+    const indent = line.match(/^\s*/)[0].length;
+    if (!inside) { if (indent === 0 && line.trim() === key + ':') inside = true; continue; }
+    if (indent === 0) break;
+    const m = /^\s*([^:]+?):\s*(.*)$/.exec(line);
+    if (!m) continue;
+    while (stack.length > 1 && stack.at(-1)[0] >= indent) stack.pop();
+    const parent = stack.at(-1)[1];
+    const k = m[1].trim(), v = m[2].trim().replace(/^["']|["']$/g, '');
+    if (v === '') { parent[k] = {}; stack.push([indent, parent[k]]); } else parent[k] = v;
+  }
+  return root;
+}
 
 /** config/seedbank.yaml 의 `banks:` — yaml 의존성 없이 들여쓰기 두 단만 읽는다(drive-backup 과 같은 방식). */
 export function readBanks(text = readFileSync(path.join(ROOT, 'config', 'seedbank.yaml'), 'utf8')) {
@@ -59,6 +88,10 @@ export function readBanks(text = readFileSync(path.join(ROOT, 'config', 'seedban
   return banks;
 }
 
+export function readUploads(text = readFileSync(path.join(ROOT, 'config', 'seedbank.yaml'), 'utf8')) {
+  return readSection(text, 'uploads');
+}
+
 function token() {
   if (!existsSync(ENVFILE)) throw new Error(`${ENVFILE} 이 없다 — cloud 에서 vercel env pull 먼저.`);
   for (const line of readFileSync(ENVFILE, 'utf8').split(/\r?\n/)) {
@@ -75,7 +108,7 @@ function shrink(dir, view, names) {
   if (!names.length) return;
   const py = ['.venv/Scripts/python.exe', '.venv/bin/python']
     .map((p) => path.join(ROOT, p))
-    .find(existsSync) || 'python';
+    .find(existsSync) || (process.platform === 'win32' ? 'python' : 'python3');
   const r = spawnSync(py, [path.join(ROOT, 'ops/seedbank-view.py'), dir, view, ...names], {
     encoding: 'utf8',
   });
@@ -178,6 +211,36 @@ export function bankEntry(key, b, { derivedFiles, prep, meas, manifest } = {}) {
   return { ...base, status: 'ready', raw: raw ? rawLite : null, ...idx };
 }
 
+/** drive_ba_pull.py 의 manifest(index.csv 그대로) → 상품별 케이스 목록. 사진 이름은 번호가 앞에 있어 폴더 없이도 안 겹친다. */
+export function uploadsEntry(key, u, manifest) {
+  const base = { key, name_ko: u.name_ko || key, drive: u.drive || '' };
+  if (!manifest) return { ...base, status: 'empty', counts: { cases: 0, files: 0, live: 0, stopped: 0 }, products: [] };
+  const map = u.product_map || {};
+  const fileOf = new Map((manifest.files || []).map((f) => [f.file.split('/').pop(), f]));
+  const products = new Map();
+  let files = 0, live = 0, stopped = 0;
+  for (const r of manifest.rows || []) {
+    const before = (r['파일(전)'] || '').trim(), after = (r['파일(후)'] || '').trim();
+    if (!before && !after) continue;                                    // 사진 없는 줄(중단·기타)
+    const product = r['상품'] || '기타';
+    if (!products.has(product)) products.set(product, { product, treatment: map[product] || null, cases: [] });
+    const c = {
+      no: r['번호'], title: r['제목'] || '', status: r['상태'] || '', tags: (r['시술'] || '').split('|').filter(Boolean),
+      gender: r['성별'] || '', age: r['연령'] || '', days: r['경과일'] === '' ? null : Number(r['경과일']),
+      before: before && fileOf.has(before) ? before : null, after: after && fileOf.has(after) ? after : null,
+    };
+    products.get(product).cases.push(c);
+    files += (c.before ? 1 : 0) + (c.after ? 1 : 0);
+    if (c.status === '게시중') live++; else stopped++;
+  }
+  const list = [...products.values()].sort((a, b) => b.cases.length - a.cases.length || a.product.localeCompare(b.product, 'ko'));
+  return {
+    ...base, status: 'ready', pulled_at: manifest.pulled_at || null,
+    counts: { cases: list.reduce((a, p) => a + p.cases.length, 0), files, live, stopped },
+    products: list,
+  };
+}
+
 function loadBank(key, b) {
   const has = (p) => p && existsSync(p);
   const prep = has(b.prep) ? readJson(b.prep) : null;
@@ -205,26 +268,33 @@ async function main() {
   }
 
   const banks = readBanks();
+  const uploadsCfg = readUploads();
   if (ONLY && !banks[ONLY]) throw new Error(`config/seedbank.yaml banks 에 '${ONLY}' 가 없다 (있는 것: ${Object.keys(banks).join(', ')})`);
 
-  // 한 은행만 올릴 때 나머지는 올라가 있는 목록에서 그대로 가져온다 — 남의 은행 사진을 다시 안 올린다.
-  let prev = [];
-  if (ONLY) {
+  // 일부만 올릴 때 나머지는 올라가 있는 목록에서 그대로 가져온다 — 남의 사진을 다시 안 올린다.
+  let prev = [], prevUploads = {};
+  if (ONLY || UPLOADS_ONLY) {
     try {
       const r = await get(`${PREFIX}index.json`, { access: 'private', token: TOKEN });
       if (r && r.statusCode === 200 && r.stream) {
         const chunks = [];
         for await (const c of r.stream) chunks.push(Buffer.from(c));
-        prev = JSON.parse(Buffer.concat(chunks).toString('utf8')).banks || [];
+        const old = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        prev = old.banks || [];
+        prevUploads = old.uploads || {};
+        // 은행 나누기 전 모양(seeds 가 맨 위) → pilot 하나로 감싼다. 사진은 옛 자리에 있고 서버가 거기서도 찾는다.
+        if (!old.banks && Array.isArray(old.seeds))
+          prev = [{ key: 'pilot', name_ko: banks.pilot?.name_ko || '1차 파일럿', source: banks.pilot?.source || '', round: old.round || '',
+            status: 'ready', counts: old.counts, exif: old.exif, control: old.control, strength: old.strength, face_found: old.face_found, seeds: old.seeds, raw: null }];
       }
     } catch { prev = []; }
-    if (!prev.length) console.log('올라가 있는 목록이 없거나 옛 모양 — 다른 은행은 이번 목록에서 빠진다(전체로 다시 올리면 돌아온다).');
+    if (!prev.length) console.log('올라가 있는 은행 목록이 없다 — 은행은 이번 목록에서 빠진다(전체로 다시 올리면 돌아온다).');
   }
 
   const entries = [];
   const uploads = [];   // {key, abs}
   for (const [key, b] of Object.entries(banks)) {
-    if (ONLY && key !== ONLY) { const p = prev.find((x) => x.key === key); if (p) entries.push(p); continue; }
+    if ((ONLY && key !== ONLY) || UPLOADS_ONLY) { const p = prev.find((x) => x.key === key); if (p) entries.push(p); continue; }
     const e = loadBank(key, b);
     entries.push(e);
     if (e.status !== 'ready') {
@@ -248,12 +318,40 @@ async function main() {
     for (const n of [...seedNames, ...derivNames]) uploads.push({ key: `${PREFIX}img/${key}/${n}`, abs: path.join(view, n) });
   }
 
+  // 업로드본 — 은행과 별개. --bank 로 은행 하나만 올릴 땐 올라간 것을 그대로 둔다.
+  const ups = {};
+  for (let [key, u] of Object.entries(uploadsCfg)) {
+    if (ONLY && !UPLOADS_ONLY) { if (prevUploads[key]) ups[key] = prevUploads[key]; continue; }
+    if (RAW_OVERRIDE) u = { ...u, raw: RAW_OVERRIDE };
+    const mf = u.raw && existsSync(path.join(u.raw, 'manifest.json')) ? readJson(path.join(u.raw, 'manifest.json')) : null;
+    const e = uploadsEntry(key, u, mf);
+    ups[key] = e;
+    if (e.status !== 'ready') { console.log(`${key}(${e.name_ko}): 아직 받은 것 없음(${u.raw || '경로 없음'}/manifest.json) · 업로드 0`); continue; }
+    const names = e.products.flatMap((p) => p.cases.flatMap((c) => [c.before, c.after].filter(Boolean)));
+    const byName = new Map((mf.files || []).map((f) => [f.file.split('/').pop(), f.file]));
+    const gone = names.filter((n) => !existsSync(path.join(u.raw, byName.get(n))));
+    if (gone.length) throw new Error(`${key}: 사진이 없다: ${gone.slice(0, 5).join(', ')}${gone.length > 5 ? ' …' : ''}`);
+    const mb = names.reduce((a, n) => a + statSync(path.join(u.raw, byName.get(n))).size, 0) / 1024 / 1024;
+    console.log(`${key}(${e.name_ko}): 케이스 ${e.counts.cases}건(게시중 ${e.counts.live}) · 사진 ${names.length}장(원본 ${mb.toFixed(1)}MB → 축소본)`);
+    if (DRY) continue;
+    // 상품 폴더별로 축소본을 만든다(축소 스크립트는 폴더 하나씩 받는다) → 한 폴더로 모아 올린다
+    const view = path.join(u.raw, '_view');
+    const byDir = new Map();
+    for (const n of names) { const d = path.dirname(byName.get(n)); if (!byDir.has(d)) byDir.set(d, []); byDir.get(d).push(n); }
+    for (const [d, ns] of byDir) shrink(path.join(u.raw, d), view, ns);
+    for (const n of names) uploads.push({ key: `${PREFIX}img/uploads/${n}`, abs: path.join(view, n) });
+  }
+
+  const pilot = entries.find((e) => e.key === 'pilot' && e.status === 'ready');
   const index = {
     generated_at: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false }),
     banks: entries,
+    uploads: ups,
+    // 은행 나누기 전 화면(배포 전 창)도 깨지지 않게 pilot 을 옛 자리(맨 위)에도 둔다. 새 화면은 banks 만 본다.
+    ...(pilot ? { round: pilot.round, counts: pilot.counts, exif: pilot.exif, control: pilot.control, strength: pilot.strength, face_found: pilot.face_found, seeds: pilot.seeds } : {}),
   };
   if (DRY) {
-    console.log(`[dry] 은행 ${entries.length}개(${entries.map((e) => `${e.key}:${e.status}`).join(', ')}) · 업로드 0건`);
+    console.log(`[dry] 은행 ${entries.length}개(${entries.map((e) => `${e.key}:${e.status}`).join(', ')}) · 업로드본 ${Object.keys(ups).length}개 · 업로드 0건`);
     return;
   }
 
@@ -274,10 +372,11 @@ async function main() {
     allowOverwrite: true,
     contentType: 'application/json',
   });
-  console.log(`씨앗 은행 열람분 올림 · 은행 ${entries.length}개 · 사진 ${uploads.length}장(${mb.toFixed(1)}MB) · 기준 ${index.generated_at}`);
+  console.log(`씨앗 은행 열람분 올림 · 은행 ${entries.length}개 · 업로드본 ${Object.keys(ups).length}개 · 사진 ${uploads.length}장(${mb.toFixed(1)}MB) · 기준 ${index.generated_at}`);
 }
 
-if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`) {
+// 윈도우(C:/…)와 맥(/Users/…) 둘 다 — 손으로 file:/// 를 붙이면 맥에서 슬래시가 하나 남아 main 이 조용히 안 돈다(0916 실측)
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
     console.error('실패:', e.message);
     process.exit(1);
