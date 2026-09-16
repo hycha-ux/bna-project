@@ -619,8 +619,13 @@ export default async function handler(req, res) {
         });
       return json(res, 200, JSON.parse(got.buf.toString('utf8')));
     }
-    const name = path.basename(p);   // 폴더를 거슬러 올라가지 못하게 이름만 취한다
-    const got = await blobBytes('seedbank/img/' + name);
+    // /seedfiles/<은행>/<파일> — 은행이 시술별로 갈렸다(2026-09-16). 은행 키는 영숫자·밑줄만,
+    // 파일은 이름만 취한다 — 둘 다 폴더를 거슬러 올라가지 못하게. 옛 주소(/seedfiles/<파일>)는 pilot 로 본다.
+    const parts = p.slice('/seedfiles/'.length).split('/').filter(Boolean);
+    const bank = parts.length > 1 && /^[A-Za-z0-9_]+$/.test(parts[0]) ? parts[0] : 'pilot';
+    const name = path.basename(parts.at(-1) || '');
+    let got = name ? await blobBytes(`seedbank/img/${bank}/${name}`) : null;
+    if (!got && name && bank === 'pilot') got = await blobBytes('seedbank/img/' + name);   // 은행 나누기 전 올린 사진
     if (!got) {
       res.statusCode = 404;
       return res.end('not found');

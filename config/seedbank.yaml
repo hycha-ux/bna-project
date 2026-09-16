@@ -2,6 +2,36 @@
 # ⚠ 켜면 파생 얼굴(가공 인물)이 OpenAI 로 올라간다 — 회수 불가. 씨앗(실제 환자 정제본)은 이 배선이 쓰지 않는다.
 # ⚠ 이 파일은 config/ 아래라 프롬프트 버전 해시에 들어간다 — 켜고 끄면 번호가 바뀌는 게 맞다(생성 결과가 달라진다).
 clinical_before_person_ref: false                 # 첫 켜기는 그날 돌던 임상 배치가 끝난 뒤 (도는 배치에 섞이지 않게)
+
+# ── 은행(시술별) ─────────────────────────────────────────────────────────────
+# 2026-09-16 연서님: "씨앗은행 시술별로 다르게 볼 수 있도록" — 은행을 시술 단위로 나눈다.
+# 키 = config/treatments.yaml 의 시술 키(팔자 = nasolabial). 1차 파일럿은 KOS 사진을 시술 구분 없이
+# 받은 회차라 `pilot` 으로 따로 둔다(옛 회차를 지우지 않는다 — 숫자의 자[尺]가 거기 있다).
+# 폴더는 전부 리포 밖 — 얼굴 사진은 리포에 두지 않는다. 경로는 티모 PC 기준.
+# 각 은행의 prep/measure/attrs 는 같은 모양(1차 파일럿과 동일 스크립트가 굽는다). 파일이 없으면 그 은행은
+# 화면에 '아직 정제 전'으로만 뜨고 인물 참조 후보에서도 빠진다(fail-open).
+banks:
+  pilot:
+    name_ko: 1차 파일럿
+    source: KOS 실사진 (시술 미구분)
+    round: 2026-09-09 1차 파일럿
+    seeds: C:/Users/medib/teemo-raw/seeds
+    derived: C:/Users/medib/teemo-raw/derived
+    prep: C:/Users/medib/teemo/out/seed-prep.json
+    measure: C:/Users/medib/teemo/out/seed-measure.json
+    attrs: C:/Users/medib/teemo/out/seed-attrs.json
+  nasolabial:
+    name_ko: 팔자필러
+    source: 원내 보관 B&A (노션) — tools/notion_ba_pull.py 로 받는다
+    round: 2026-09-16 원내 사진
+    raw: C:/Users/medib/teemo-raw/raw/nasolabial          # notion_ba_pull.py --out 자리. manifest.json 이 여기
+    seeds: C:/Users/medib/teemo-raw/nasolabial/seeds
+    derived: C:/Users/medib/teemo-raw/nasolabial/derived
+    prep: C:/Users/medib/teemo/out/nasolabial/seed-prep.json
+    measure: C:/Users/medib/teemo/out/nasolabial/seed-measure.json
+    attrs: C:/Users/medib/teemo/out/nasolabial/seed-attrs.json
+
+# 옛 키 — banks.pilot 과 같은 곳을 가리킨다. tools/seedbank_attrs.py 가 아직 이 키를 읽는다(은행 하나짜리).
 pool_dir: C:/Users/medib/teemo-raw/derived        # 리포 밖 — 얼굴 사진은 리포에 두지 않는다
 measure: C:/Users/medib/teemo/out/seed-measure.json
 prep: C:/Users/medib/teemo/out/seed-prep.json

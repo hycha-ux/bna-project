@@ -35,14 +35,27 @@ def enabled() -> bool:
     return bool(_cfg().get("clinical_before_person_ref"))
 
 
-def pool() -> list:
-    """쓸 수 있는 파생 얼굴 [{file, gender, age_bucket, own_sim, …}]. 속성표·파일이 없으면 빈 목록(fail-open)."""
+def banks() -> dict:
+    """{키: {name_ko, derived, attrs, …}}. `banks` 가 없으면 옛 키(pool_dir/attrs) 하나를 pilot 으로 본다."""
     c = _cfg()
-    attrs, pdir = Path(c.get("attrs") or ""), Path(c.get("pool_dir") or "")
-    if not c.get("attrs") or not attrs.is_file():
-        return []
-    rows = json.loads(attrs.read_text(encoding="utf-8")).get("pool") or []
-    return [r for r in rows if r.get("passed") and (pdir / r["file"]).is_file()]
+    b = c.get("banks")
+    if isinstance(b, dict) and b:
+        return b
+    return {"pilot": {"derived": c.get("pool_dir"), "attrs": c.get("attrs")}}
+
+
+def pool() -> list:
+    """쓸 수 있는 파생 얼굴 [{file, bank, gender, age_bucket, own_sim, …}] — 은행 전부를 합친다.
+    속성표·파일이 없는 은행은 조용히 빠진다(fail-open). file 은 은행 폴더 기준 이름, bank 로 폴더를 찾는다."""
+    rows = []
+    for key, b in banks().items():
+        attrs, pdir = Path(b.get("attrs") or ""), Path(b.get("derived") or "")
+        if not b.get("attrs") or not attrs.is_file():
+            continue
+        for r in json.loads(attrs.read_text(encoding="utf-8")).get("pool") or []:
+            if r.get("passed") and (pdir / r["file"]).is_file():
+                rows.append({**r, "bank": key})
+    return rows
 
 
 def candidates(variation: dict, rows: list) -> list:
@@ -63,8 +76,8 @@ def pick(variation: dict, key: str):
     if not cand:
         return None, None
     cand.sort(key=lambda r: hashlib.sha1(f"{key}|{r['file']}".encode("utf-8")).hexdigest())
-    f = cand[0]["file"]
-    return (Path(_cfg()["pool_dir"]) / f).read_bytes(), f
+    f, bank = cand[0]["file"], cand[0]["bank"]
+    return (Path(banks()[bank]["derived"]) / f).read_bytes(), f
 
 
 def prompt_line() -> str:

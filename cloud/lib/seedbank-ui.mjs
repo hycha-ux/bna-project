@@ -8,6 +8,11 @@
  *
  * ⚠ 화면에서 숨기는 건 방어가 아니다 — 실제 차단은 `/api/seedbank`·`/seedfiles/`
  *   의 관리자 판정이다(app.js 정본). 여기 숨김은 '안 보이게'까지다.
+ *
+ * 시술별 은행(2026-09-16 연서님): index.json 의 `banks[]` 를 칩으로 두고 하나씩 그린다.
+ *   status 'ready' = 씨앗·파생·판정이 있음 / 'raw' = 사진은 받았는데 정제 전(장수·명수만) /
+ *   'empty' = 아직 아무것도 없음. 옛 index(banks 없이 seeds 만)는 pilot 하나로 감싼다 —
+ *   push-seedbank 를 새로 돌리기 전 배포가 깨지지 않게.
  */
 
 export function seedbankUi() {
@@ -47,6 +52,13 @@ css.textContent=
 +'#tab-seedbank .sb-tag.ok{background:var(--ok-weak,#E3F5EA);color:var(--ok,#1F8F55)}'
 +'#tab-seedbank .sb-tag.warn{background:var(--warn-weak,#FFF3D6);color:var(--warn,#B87A00)}'
 +'#tab-seedbank .sb-tag.bad{background:var(--bad-weak,#FBE5E5);color:var(--bad,#D64545)}'
++'#tab-seedbank .sb-tag.eye{background:var(--ui-surface,#F2F4F7);color:var(--ui-md);border:1px solid var(--ui-border)}'
++'#tab-seedbank .sb-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}'
++'#tab-seedbank .sb-chip{border:1px solid var(--ui-border);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}'
++'#tab-seedbank .sb-chip .n{font-size:11px;color:var(--ui-md)}'
++'#tab-seedbank .sb-chip.on{background:var(--primary,#1F3A5F);color:#fff;border-color:transparent}'
++'#tab-seedbank .sb-chip.on .n{color:rgba(255,255,255,.75)}'
++'#tab-seedbank .sb-who{font-size:11px;color:var(--ui-md);padding:0 10px 8px;line-height:1.4}'
 +'#sb-lb{position:fixed;inset:0;z-index:9998;background:rgba(15,20,28,.86);display:flex;'
 +'align-items:center;justify-content:center;cursor:zoom-out}'
 +'#sb-lb img{max-width:92vw;max-height:88vh;border-radius:8px}';
@@ -69,33 +81,66 @@ page.addEventListener('click',function(e){
 var LOADED=false;
 var num=function(v){return v==null?'—':v.toFixed(3);};
 
-function derCard(d,ctrl){
+function derCard(bank,d,ctrl){
   var over=d.over_max?'bad':(d.over_p90?'warn':'ok');
   var word=d.over_max?'원본이 새어 나옴':(d.over_p90?'조금 닮음':'남남');
   var name=d.strength==='kin'?'닮은꼴':'새 얼굴';
-  return '<figure><img src="/seedfiles/'+encodeURIComponent(d.img)+'" loading="lazy" alt=""'
-    +' data-full="/seedfiles/'+encodeURIComponent(d.img)+'" data-cap="'+esc(d.img)+'">'
+  return '<figure><img src="'+seedUrl(bank,d.img)+'" loading="lazy" alt=""'
+    +' data-full="'+seedUrl(bank,d.img)+'" data-cap="'+esc(d.img)+'">'
     +'<figcaption><b>'+name+'</b> <span class="sb-tag '+over+'">'+word+'</span><br>'
     +'원본과 '+num(d.sim_own)+' · 남과 '+num(d.sim_other_max)+'</figcaption></figure>';
 }
 
-function draw(D){
-  var c=D.counts, ex=D.exif||{}, ctrl=D.control||{};
+var BANKS=[], CUR=null;
+function seedUrl(bank,name){ return '/seedfiles/'+encodeURIComponent(bank)+'/'+encodeURIComponent(name); }
+
+function chips(){
+  return '<div class="sb-chips">'+BANKS.map(function(b){
+    var n=b.status==='ready'?('씨앗 '+b.counts.seeds+'장'):(b.status==='raw'?('받음 '+b.raw.files+'장 · 정제 전'):'비어 있음');
+    return '<button type="button" class="sb-chip'+(b.key===CUR?' on':'')+'" data-bank="'+esc(b.key)+'">'
+      +esc(b.name_ko)+'<span class="n">'+esc(n)+'</span></button>';
+  }).join('')+'</div>';
+}
+
+function whoLine(w){
+  if(!w) return '';
+  var t=(w.used||'')+(w.batch&&w.batch!=='-'?' · '+w.batch:'')+(w.shot==='selfie'?' · 셀카':(w.shot==='medical'?' · 메디컬포토':''))
+    +(w.side?' · '+w.side+(w.angle!=null?'('+w.angle+')':''):'');
+  return '<div class="sb-who">'+esc(t)+(w.partial?' <span class="sb-tag eye">눈 가리고 사용</span>':'')+'</div>';
+}
+
+function drawBank(D){
+  var c=D.counts||{}, ex=D.exif||{}, ctrl=D.control||{}, R=D.raw;
+  var srcLine='<div style="font-size:12px;color:var(--ui-md);margin-bottom:8px">출처 · '+esc(D.source||'—')
+    +(D.round?' · '+esc(D.round):'')+'</div>';
+  if(D.status!=='ready'){
+    var body= D.status==='raw'
+      ? '사진은 받았고 <b>정제 전</b>입니다 — 받은 사진 <b>'+R.files+'장</b>, <b>'+R.people+'명</b>'
+        +(R.partial_people?' (그중 눈 가리고 써야 하는 분 '+R.partial_people+'명)':'')+'.<br>'
+        +'묶음별 인원: '+esc(Object.keys(R.by_used||{}).map(function(k){return k+' '+R.by_used[k]+'명';}).join(' · ')||'—')
+        +(Object.keys(R.skipped||{}).length?'<br>제외: '+esc(Object.keys(R.skipped).map(function(k){return k+' '+R.skipped[k]+'장';}).join(' · ')):'')
+        +'<br>다음 단계(정제 → 씨앗 → 파생 → 측정)는 사무실 PC 에서 돌립니다. 끝나면 여기에 씨앗이 뜹니다.'
+      : '아직 이 시술의 사진이 없습니다. <code>tools/notion_ba_pull.py</code> 로 받거나 KOS 에서 골라 넣으면 여기 잡힙니다.';
+    return '<div class="card" style="padding:14px 16px;margin-bottom:14px">'
+      +'<div style="font-size:15px;font-weight:700;margin-bottom:6px">'+esc(D.name_ko)+'</div>'+srcLine
+      +'<div style="font-size:13px;color:var(--ui-md);line-height:1.65">'+body+'</div></div>';
+  }
   var dupN=D.seeds.filter(function(s){return s.dup.length;}).length;
   var head=
    '<div class="card" style="padding:14px 16px;margin-bottom:14px">'
-  +'<div style="font-size:15px;font-weight:700;margin-bottom:6px">씨앗 은행 — '+esc(D.round)+'</div>'
+  +'<div style="font-size:15px;font-weight:700;margin-bottom:6px">'+esc(D.name_ko)+'</div>'+srcLine
   +'<div style="font-size:13px;color:var(--ui-md);line-height:1.65">'
   +'실제 환자 사진 <b>'+c.raw+'장</b>을 받아 얼굴 없는 '+c.no_face+'장을 빼고 <b>씨앗 '+c.seeds+'장</b>을 만들었습니다. '
-  +'그중 6장으로 <b>파생 얼굴 '+c.derived+'장</b>을 시험 생성했습니다.<br>'
+  +(c.derived?'그중 일부로 <b>파생 얼굴 '+c.derived+'장</b>을 생성했습니다.':'파생 얼굴은 아직 없습니다.')+'<br>'
   +'위치정보(GPS)는 원본 '+(ex['위치(GPS)']||0)+'장에 있었고 <b>씨앗에는 '+(ex['씨앗잔존']===0?'0장':'남아 있음')+'</b>입니다. '
   +'같은 사람으로 보이는 씨앗이 <b>'+dupN+'장</b> 섞여 있습니다(빨간 딱지).'
+  +(R&&R.partial_people?' 눈 가리고 써야 하는 분이 <b>'+R.partial_people+'명</b> 있습니다(회색 딱지).':'')
   +'</div>'
   +'<div style="margin-top:10px;font-size:12px;color:var(--ui-md);background:var(--ui-surface);'
   +'border-radius:8px;padding:9px 11px;line-height:1.6">'
   +'<b>숫자 읽는 법</b> — 0에 가까울수록 남남입니다. 서로 다른 실제 환자끼리도 평균 '
   +num(ctrl['평균'])+', 최대 '+num(ctrl['최대'])+'까지 나옵니다(그게 자[尺]입니다). '
-  +'파생이 그 최대를 넘으면 원본이 새어 나온 것이라 버립니다 — 이번 회차는 0장입니다.'
+  +'파생이 그 최대를 넘으면 원본이 새어 나온 것이라 버립니다.'
   +'</div>'
   +'<div style="margin-top:8px;font-size:12px;color:var(--bad,#D92D20)">'
   +'⚠ 이 탭의 씨앗은 <b>실제 환자 얼굴</b>입니다. 관리자에게만 보이며, 내려받거나 밖으로 옮기지 마세요. '
@@ -107,24 +152,39 @@ function draw(D){
       ? '<span class="sb-tag bad" title="'+esc(s.dup.map(function(d){return d.with+' '+d.sim;}).join(', '))+'">중복 인물</span>'
       : '';
     var der=s.derived.length
-      ? '<div class="sb-der">'+s.derived.map(function(d){return derCard(d,ctrl);}).join('')+'</div>'
-      : '<div class="sb-none">파생 시험 대상 아님(파일럿은 6장만)</div>';
+      ? '<div class="sb-der">'+s.derived.map(function(d){return derCard(D.key,d,ctrl);}).join('')+'</div>'
+      : '<div class="sb-none">파생 시험 대상 아님</div>';
     return '<div class="sb-card">'
-      +'<img class="sb-seed" loading="lazy" src="/seedfiles/'+encodeURIComponent(s.img)+'" alt=""'
-      +' data-full="/seedfiles/'+encodeURIComponent(s.img)+'" data-cap="'+esc(s.id)+' · '+esc(s.size)+'">'
+      +'<img class="sb-seed" loading="lazy" src="'+seedUrl(D.key,s.img)+'" alt=""'
+      +' data-full="'+seedUrl(D.key,s.img)+'" data-cap="'+esc(s.id)+' · '+esc(s.size)+'">'
       +'<div class="sb-h">'+esc(s.id)+dup+'<span class="m">'+esc(s.size)+'</span></div>'
-      +der+'</div>';
+      +whoLine(s.who)+der+'</div>';
   }).join('');
-
-  $('#sb-body').outerHTML=head+'<div class="sb-grid" id="sb-body">'+cards+'</div>';
+  return head+'<div class="sb-grid">'+cards+'</div>';
 }
+
+function draw(){
+  var D=BANKS.filter(function(b){return b.key===CUR;})[0];
+  $('#sb-body').outerHTML='<div id="sb-body">'+chips()+(D?drawBank(D):'<div class="card" style="padding:16px">은행이 없습니다.</div>')+'</div>';
+}
+page.addEventListener('click',function(e){
+  var ch=e.target.closest('.sb-chip'); if(!ch) return;
+  CUR=ch.dataset.bank; try{ localStorage.setItem('sb-bank',CUR); }catch(x){}
+  draw();
+});
 
 function load(){
   if(LOADED) return; LOADED=true;
   fetch('/api/seedbank').then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
    .then(function(x){
      if(!x.ok){ LOADED=false; $('#sb-body').textContent=x.j.error||'불러오지 못했습니다.'; return; }
-     draw(x.j);
+     var J=x.j;
+     // 옛 모양(banks 없음) → pilot 하나로 감싼다. 사진 주소는 /seedfiles/pilot/<파일> 이고 서버가 옛 자리로도 찾는다.
+     BANKS=Array.isArray(J.banks)?J.banks:[{key:'pilot',name_ko:'1차 파일럿',source:'KOS 실사진 (시술 미구분)',round:J.round||'',status:'ready',
+       counts:J.counts,exif:J.exif,control:J.control,strength:J.strength,face_found:J.face_found,seeds:J.seeds||[],raw:null}];
+     var want=null; try{ want=localStorage.getItem('sb-bank'); }catch(e){}   // 마지막에 보던 시술
+     CUR=(BANKS.filter(function(b){return b.key===want;})[0]||BANKS.filter(function(b){return b.status==='ready';})[0]||BANKS[0]||{}).key||null;
+     draw();
    }).catch(function(e){ LOADED=false; $('#sb-body').textContent='불러오지 못했습니다 — '+e.message; });
 }
 

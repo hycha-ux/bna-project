@@ -3,7 +3,7 @@
 통과 = measure.py 의 `제씨앗과` 유사도 ≤ 대조군(서로 다른 실제 환자끼리) p90 ∧ 씨앗이 '같은 사람 의심' 묶음에 없음 ∧ 얼굴이 잡힘.
   p90 은 seed-measure.json 에서 읽는다(2026-09-09 실측 0.168) — 숫자를 코드에 박지 않는다.
 산출: config/seedbank.yaml 의 `attrs` 경로(teemo/out/seed-attrs.json) — 숫자·익명 파일명만. 얼굴은 teemo-raw 밖으로 안 나간다.
-사용: .venv/Scripts/python.exe tools/seedbank_attrs.py
+사용: .venv/Scripts/python.exe tools/seedbank_attrs.py [은행키]      # 기본 pilot. 2026-09-16 은행이 시술별로 갈려 키를 받는다
 """
 import json
 import sys
@@ -21,7 +21,13 @@ from bna.spec import load  # noqa: E402
 
 
 def main():
-    c = load("seedbank.yaml")
+    key = sys.argv[1] if len(sys.argv) > 1 else "pilot"
+    c = dict(load("seedbank.yaml"))
+    b = (c.get("banks") or {}).get(key)
+    if b:                                          # 은행별 경로가 옛 키(pool_dir/attrs)를 대신한다
+        c.update({"pool_dir": b["derived"], "measure": b["measure"], "prep": b["prep"], "attrs": b["attrs"]})
+    elif key != "pilot":
+        sys.exit(f"config/seedbank.yaml banks 에 '{key}' 가 없다")
     meas = json.loads(Path(c["measure"]).read_text(encoding="utf-8"))
     prep = json.loads(Path(c["prep"]).read_text(encoding="utf-8"))
     p90 = meas["대조군_씨앗끼리(서로 다른 실제 사람)"]["p90"]
