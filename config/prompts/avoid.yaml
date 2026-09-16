@@ -102,3 +102,9 @@ custom:
   - nasolabial
   from: 시술 직후 - 듀오덤 패치 위치 이상, 2주 뒤 - 중앙만 보정이 들어가서 어색함
   since: '2026-09-14'
+- en: In the after photo the person must have the same beard or facial hair level as in the before photo, without any new or suddenly thicker beard growth.
+  where:
+  - before
+  - after
+  from: 동일인으로 보이나 수염이 갑작스럽게 생김
+  since: '2026-09-16'
