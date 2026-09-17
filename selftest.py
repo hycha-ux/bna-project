@@ -772,6 +772,32 @@ for _w in ("dressing", "hydrocolloid", "tape", "sticker"):
 ok(not any(w in _pn["afters"][0]["after_prompt"] for w in ("cotton pad", "ointment", "bandage", "gauze")),
    "직후 금지는 품목을 나열하지 않는다 — 적으면 모델이 그린다(0910 마취크림 5/5)")
 
+# ㉒-c 팔자 + 마리오네트 (2026-09-17 연서님 "마리오네트 부위도 함께 시술 변화가 있었으면")
+#    실사진(온볼라썸 #1·#117·#118) 태그가 전부 팔자+마리오네트다. 네 칸(부위·마스크·Before·After)이 같이 넓어야 한다 —
+#    마스크만 옛 폴리곤이면 셀카 모드에서 마리오네트 변화·직후 패치가 composite_outside_mask 로 Before 픽셀에 덮여 사라진다.
+from bna.qa import landmarks as _LM
+from bna.qa import structure as _ST
+_nl = _tr_all["nasolabial"]
+ok(_nl["mask_region"] == "nasolabial_marionette" and _nl["mask_region"] in _LM.REGIONS,
+   "팔자 마스크는 팔자+마리오네트 합성 부위여야 한다")
+_mar = set(_LM.REGIONS["marionette_l"]) | set(_LM.REGIONS["marionette_r"])
+_LIPS = {61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 0, 267, 37, 39, 40, 185, 409, 270, 269, 13, 14}
+ok(not (_mar & _LIPS) and 152 not in _mar,
+   f"마리오네트 폴리곤에 입술·턱 끝 점이 들어가면 안 된다(입술 모양·턱이 편집 허용이 된다) — 실제 {sorted(_mar & _LIPS)}")
+ok({57, 212, 192, 172}.issubset(set(_LM.REGIONS["marionette_l"])) and {287, 432, 416, 397}.issubset(set(_LM.REGIONS["marionette_r"])),
+   "마리오네트 폴리곤은 입꼬리(57/287)에서 시작해 입꼬리 높이 바깥 볼(192/416, 직후 패치 자리)·턱선(172/397)까지 닿아야 한다")
+import numpy as _np
+_fake = _np.zeros((478, 2))
+_rp = _ST.region_points(_fake, "nasolabial_marionette")
+ok(_rp is not None and len(_rp) == len(_LM.REGIONS["nasolabial"]) + len(_LM.REGIONS["marionette_l"]) + len(_LM.REGIONS["marionette_r"]),
+   "구조 검사가 세 폴리곤 합성 표기를 전부 푼다(안 풀면 region_in_frame 게이트를 조용히 안 탄다 — 0914 skin_pores 사고)")
+ok("marionette" in _nl["after_change"] and "corner of the mouth" in _nl["after_change"],
+   "팔자 After 문장이 마리오네트(입꼬리→턱 쪽)도 같이 얕아진다고 말해야 한다")
+ok(all("marionette" in _nl["before_condition"][k] for k in ("moderate", "marked")),
+   "팔자 Before(moderate·marked)가 마리오네트 주름을 말해야 한다 — Before 에 없는 주름은 After 에서 좋아질 수 없다")
+ok("chin shape" in _nl["must_not_change"] and "corners of the mouth stay" in _nl["must_not_change"],
+   "마스크가 턱선까지 닿으므로 턱 모양·입꼬리 높이는 글로 잠가야 한다")
+
 # ㉑ 사실 카드 ↔ 금지문 충돌 (2026-09-11 실사고: 직후 컷이 테이프를 '그려라'와 '그리지 마라'를 동시에 받았다)
 import yaml as _yaml
 _av_cfg = _yaml.safe_load((_P(__file__).parent / "config" / "prompts" / "avoid.yaml").read_text(encoding="utf-8"))

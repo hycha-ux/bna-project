@@ -38,10 +38,13 @@
 
 nasolabial:
   name_ko: 팔자주름
-  region: nasolabial folds (both sides)
+  # 2026-09-17 연서님 "마리오네트 부위도 함께 시술 변화가 있었으면" — 실사진(온볼라썸 #1·#117·#118) 태그가 전부
+  #   팔자주름필러 + 마리오네트필러다. 부위·마스크·Before·After 네 칸을 같이 넓혔다(한 칸만 넓히면 셀카 모드에서
+  #   마스크 밖 변화가 Before 픽셀로 덮여 사라진다 — batch.composite_outside_mask).
+  region: nasolabial folds and marionette lines (both sides)
   modes: [clinical, selfie]
   angles_clinical: [front, three_quarter]
-  mask_region: nasolabial
+  mask_region: nasolabial_marionette
   timeline: [immediate, 1w, 2w]
   # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
   #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
@@ -54,17 +57,19 @@ nasolabial:
     mild: >
       This person has never had any aesthetic treatment. The skin is generally fine, but a faint
       nasolabial line is starting to show on each side: a soft crease from the nose toward the
-      mouth, visible in this light but not deep. Do not make the face look younger or more
-      polished than this; do not exaggerate the line either.
+      mouth, visible in this light but not deep, and a barely-there hint of a line just below each
+      corner of the mouth. Do not make the face look younger or more polished than this; do not
+      exaggerate the lines either.
     moderate: >
       This person has never had any aesthetic treatment and the face shows honest age: clearly
       visible nasolabial folds from the sides of the nose to the corners of the mouth with a light
-      shadow in the crease, slight loss of mid-face volume. Otherwise ordinary, healthy skin.
+      shadow in the crease, and a shallow marionette line running from each corner of the mouth
+      down toward the chin, slight loss of mid-face volume. Otherwise ordinary, healthy skin.
       Do not make the face look younger, rested or more attractive than described.
     marked: >
       This person has never had any aesthetic treatment. Pronounced, deep nasolabial folds casting
-      a clear shadow, a slightly sagging front cheek, faint marionette lines and a tired under-eye
-      area. Do not make the face look younger, rested or more attractive than described.
+      a clear shadow, a slightly sagging front cheek, distinct marionette lines from the corners of
+      the mouth down toward the chin with their own shadow, and a tired under-eye area. Do not make the face look younger, rested or more attractive than described.
   # 범위 문장 추가(2026-09-11 빌디/성연서님 검수): 종전엔 "softer and shallower" 까지만 말해 **범위를 안 정했고**,
   #   09:49 배치에서 주름 중앙만 지워지고 콧볼 쪽·입꼬리 쪽은 그대로 남았다. 09-10 메모 "시술 부위 중앙이
   #   잘려서"도 같은 현상이다(그땐 프레이밍 문제로 읽었다). 한 토막만 지워진 주름은 시술이 아니라 지우개로 보인다.
@@ -72,10 +77,13 @@ nasolabial:
     the nasolabial folds are softer and shallower than in the reference, the shadow inside the
     crease is lighter, the skin beside the mouth sits a little smoother; the softening runs along
     the entire length of the fold, from beside the nostril down to the corner of the mouth, evenly
-    on both sides, with no single segment left unchanged and no segment erased more than the rest;
-    same facial structure.
+    on both sides, with no single segment left unchanged and no segment erased more than the rest.
+    The marionette lines are treated the same way: the line running from each corner of the mouth
+    down toward the chin is shallower and its shadow lighter, the skin just outside and below the
+    mouth corner sits smoother and a little fuller, on both sides evenly; same facial structure.
   must_not_change: >
-    Do not change lip shape, lip volume, mouth width, nose, or jawline width. The cheeks and
+    Do not change lip shape, lip volume, mouth width, nose, chin shape, or jawline width. The
+    corners of the mouth stay at the same height and angle; the expression does not change. The cheeks and
     cheekbones stay exactly as in the reference: no added volume, no lifting, no change to the
     front cheek or under-eye area. Do not smooth, brighten or tighten any other part of the face.
   # ⚠ 볼 문장은 2026-09-15 저녁 첫 실회차(연서님: "왜 볼쪽에 시술이 받아져 있지?")에서 넣었다 —
@@ -86,7 +94,7 @@ nasolabial:
     onset: >
       주입 직후부터 결과가 보인다 (연서님 09-11 "필러는 시술 직후 즉각 나타나는 게 장점인 시술").
       그래서 위 immediate_level 이 final 이다.
-    extent: 콧볼 옆에서 입꼬리까지 주름 전 길이, 양쪽 고르게. 프롬프트 축은 위 after_change
+    extent: 콧볼 옆에서 입꼬리까지 주름 전 길이 + 입꼬리에서 턱 쪽 마리오네트, 양쪽 고르게(2026-09-17 연서님). 프롬프트 축은 위 after_change
     # ⚠ 이 칸은 하루에 두 번 뒤집혔다. 아래가 **실사진 기준**이고 앞의 두 판은 전부 추정이었다.
     #   ① 티모 0907 초안 — 패치를 '입꼬리 바로 옆'에. 근거 없음(추정).
     #   ② 2026-09-11 오전, 성연서님 "패치 위치가 이상하다 — 입술과 가까이 붙여 나오진 않는다" →
