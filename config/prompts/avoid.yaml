@@ -103,8 +103,9 @@ custom:
   from: 시술 직후 - 듀오덤 패치 위치 이상, 2주 뒤 - 중앙만 보정이 들어가서 어색함
   since: '2026-09-14'
 - en: In the after photo the person must have the same beard or facial hair level as in the before photo, without any new or suddenly thicker beard growth.
+  # ⚠ 2026-09-17: where 에서 before 를 뺐다 — 위 팔자 규칙(09-15)과 같은 사고. "In the after photo" 문장이 Before 에 붙으면
+  #   Before 프롬프트가 '후 사진'을 말해 2단 콜라주가 나온다. 수염이 '갑자기 생기는' 건 After 에서만 일어나므로 after 로 충분하다.
   where:
-  - before
   - after
   from: 동일인으로 보이나 수염이 갑작스럽게 생김
   since: '2026-09-16'
