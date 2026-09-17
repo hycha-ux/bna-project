@@ -119,6 +119,11 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     gates = v.get("age_gates", {}).get(axis) or {}
     if gates and keys.get("age"):                     # 그 값이 어울리는 나이에만 (새치는 40대~)
         allowed = [k for k in allowed if keys["age"] in [str(a) for a in gates.get(k, [keys["age"]])]] or allowed
+    # 미모 게이트 (2026-09-17): 노션 AI 셀카 장면은 looks=attractive 에만. looks 가 아직 안 뽑혔거나(옛 계획)
+    #   ordinary 면 그 값은 빠진다 — 게이트 값은 '적힌 looks 에서만'이라 모르면 막는 쪽(fail-closed)이다.
+    lg = v.get("looks_gates", {}).get(axis) or {}
+    if lg:
+        allowed = [k for k in allowed if k not in lg or keys.get("looks") in lg[k]] or allowed
     if axis == "lighting":
         compat = v.get("background_lighting", {}).get(keys.get("background"))
         if compat:

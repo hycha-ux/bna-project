@@ -2233,6 +2233,33 @@ else:
     print("SKIP  node 없음 — 진행 올리기 접힘 검사 건너뜀")
 
 
+# ㊱ 미모 셀카 장면 (2026-09-17 성연서님 "노션 AI 셀카를 베이스로" 1·2단계)
+#    ① 노션 셀카 30세트에서 뽑은 배경·옷·빛은 looks=attractive 에서만 ② 얼굴 없는 배경 크롭 참조는
+#    미모 · 전 컷 · 그 배경일 때만. 한 곳이라도 새면 보통 인물이 인플루언서 사진이 되거나 욕실 컷에 카페가 붙는다.
+from bna import refs as _rf36
+from bna.planner import plan_batch as _pb36
+_NEW36 = {"cafe_window", "terrace_golden", "park_green", "knit_cardigan", "white_blouse", "fitted_black_top", "golden_hour"}
+_leak36, _hit36, _refbad36, _refhit36 = [], 0, [], 0
+for _s36 in range(4):
+    for _p36 in _pb36("selfie", 40, 3600 + _s36, {}, treatment="nasolabial"):
+        _lk36 = _p36["looks"]["key"]
+        _vals36 = {_p36[a]["key"] for a in ("background", "context", "lighting")}
+        if _lk36 != "attractive" and _vals36 & _NEW36:
+            _leak36.append((_lk36, sorted(_vals36 & _NEW36)))
+        _hit36 += bool(_lk36 == "attractive" and _vals36 & _NEW36)
+        _fb36 = _rf36.pick_files("selfie", _p36, treatment="nasolabial")
+        _bg36 = [f for f in _fb36 if "attractive_bg" in f]
+        _refhit36 += bool(_bg36)
+        if _bg36 and (_lk36 != "attractive" or _p36["background"]["key"] not in {"cafe_window", "terrace_golden", "outdoor", "cafe"}):
+            _refbad36.append((_lk36, _p36["background"]["key"], _bg36))
+        for _w36 in ("immediate", "2w"):
+            if any("attractive_bg" in f for f in _rf36.pick_files("selfie", _p36, treatment="nasolabial", when=_w36)):
+                _refbad36.append(("after", _w36))
+ok(not _leak36 and _hit36 > 0, f"노션 장면 값은 미모 셀카에서만 뽑힌다(보통 누수 0, 미모 적중 {_hit36}) — 누수 {_leak36[:3]}")
+ok(not _refbad36 and _refhit36 > 0, f"배경 크롭 참조는 미모·전 컷·맞는 배경에만 붙는다(적중 {_refhit36}) — 위반 {_refbad36[:3]}")
+_nob36 = _rf36.pick_files("selfie", {"looks": {"key": "attractive"}, "background": {"key": "bathroom"}}, treatment="nasolabial")
+ok(not [f for f in _nob36 if "attractive_bg" in f], f"욕실 컷엔 카페·테라스 크롭이 안 붙는다 — {_nob36}")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

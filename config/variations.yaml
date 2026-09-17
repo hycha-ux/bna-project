@@ -119,6 +119,15 @@ age_gates:
   hair_color: {grey: ["40s", "50s", "60s"]}
   extras: {tired: [late_20s, "30s", "40s", "50s", "60s"]}
 
+# 미모 게이트: 그 값은 적힌 looks 에서만 뽑힌다 (2026-09-17 성연서님 "노션 AI 셀카를 베이스로" 1단계).
+#   노션 셀카 30세트의 장면(창가 카페·노을 테라스·공원·니트/흰 셔츠/검은 상의·늦은 오후 햇빛)은 '미모 셀카' 분위기라
+#   보통 인물에 붙으면 인플루언서 사진이 된다. 판정 = spec.allowed_values 의 looks_gates 한 곳.
+#   ⚠ 새 값은 mode_rules.selfie(화이트리스트)·background_lighting·context_allow 에도 같이 들어가야 뽑힌다 — 한 곳만 넣으면 조용히 0.
+looks_gates:
+  background: {cafe_window: [attractive], terrace_golden: [attractive], park_green: [attractive]}
+  context: {knit_cardigan: [attractive], white_blouse: [attractive], fitted_black_top: [attractive]}
+  lighting: {golden_hour: [attractive]}
+
 background:
   clinic: "plain light clinic wall"
   home: "living room at home, slightly cluttered"
@@ -126,6 +135,12 @@ background:
   outdoor: "outdoor street, daytime"
   car: "inside a car, seat visible"
   bathroom: "bathroom mirror, tiles and shelf visible"
+  # ── 미모 셀카 전용 (looks_gates) — 2026-09-17 성연서님 노션 'AI' 토글 셀카 30세트에서 뽑은 장면 ──
+  #   얼굴이 아니라 **장면만** 빌린다(docs/notion-ai-selfie-refs-0917.md, teemo 리포). 30세트 배경 실측:
+  #   카페(창가·원목·조명) 다수 · 노을 무렵 테라스/루프톱 · 나무·꽃 있는 야외 · 차 안.
+  cafe_window: "seat by a large cafe window, warm wood interior and pendant lights softly blurred behind"
+  terrace_golden: "outdoor cafe terrace or rooftop in the late afternoon, city buildings softly blurred behind"
+  park_green: "outdoor path with trees and a few flowers, soft green bokeh behind"
   # ── 시술 직후 After 전용 (after_immediate 로만 진입) ──
   clinic_waiting: "clinic waiting room, sofa and reception desk blurred behind"
   clinic_mirror: "mirror selfie in a clinic restroom or elevator, mirror frame visible"
@@ -223,6 +238,10 @@ context:
   #   직후 흔적은 배경(clinic_*)·머리(clinic_headband·hair_flat_after)로만 낸다.
   #   되살리려면 after_immediate.selfie.context 와 context_allow 4줄에 같이 넣어라(한쪽만이면 안 뽑힌다).
   cotton_pad: "a small cotton pad or dot of ointment still on the treated area"
+  # ── 미모 셀카 전용 옷 (looks_gates, 2026-09-17 노션 AI 셀카 30세트 실측: 크림 니트 가디건·흰 셔츠·검은 슬림 상의가 대부분) ──
+  knit_cardigan: "wearing a soft cream knit cardigan over a plain top"
+  white_blouse: "wearing a simple white cotton blouse, collar open"
+  fitted_black_top: "wearing a fitted plain black top with a thin necklace"
 
 lighting:
   ring: "ring light, even soft frontal light with catchlights"
@@ -237,6 +256,8 @@ lighting:
   #   ⚠ 둘은 짝이다 — flash 만 넣고 window_soft 를 빼면 '전보다 나빠 보이는 후'가 나온다.
   flash: "direct phone flash in a dim room, hard flat frontal light, sharp shadow outline behind the head, shiny oily highlights, every pore and flake raised by the light"
   window_soft: "soft diffused daylight through a curtain, gentle even light with a smooth sheen on the cheekbones, no hard shadows"
+  # 미모 셀카 전용 (looks_gates, 2026-09-17 노션 AI 셀카 — 늦은 오후 옆빛이 가장 흔했다). ⚠ 팔자 scene_allow 엔 없어 팔자엔 안 붙는다
+  golden_hour: "warm late-afternoon sunlight from one side, a soft glow along the hair and cheek"
 
 color:
   neutral: "neutral color balance"
@@ -322,16 +343,16 @@ mode_rules:
     expression: [neutral_closed]
     looks: [ordinary]     # 병원 기록 사진은 미모를 고르지 않는다 (2026-09-17)
   selfie:
-    background: [home, cafe, outdoor, car, bathroom]
+    background: [home, cafe, outdoor, car, bathroom, cafe_window, terrace_golden, park_green]   # 뒤 셋은 미모 전용(looks_gates)
     # ⚠ context 화이트리스트가 없으면 전량 허용이라 "시술 직후 After 전용" 맥락 4종
     #   (outing_top·clinic_headband·hair_flat_after·cotton_pad)이 **Before** 에 붙는다.
     #   2026-09-08 실측: 400 표본 중 35.8% — cotton_pad 는 시술 전 사진에 시술 흔적이다.
     #   After 는 after_immediate 가 따로 강제하므로 여기서 빼도 직후 컷은 그대로다.
     #   회귀: selftest.py ⑥. (배경×맥락·프레이밍×맥락 표는 별건 — 리뷰 문서 §2-4)
     # finger_on_cheek 제거(2026-09-10 성연서님) — 손을 화면에 들이는 유일한 맥락이라 손 등장의 뿌리였다
-    context: [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face]
+    context: [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face, knit_cardigan, white_blouse, fitted_black_top]   # 뒤 셋은 미모 전용
     angle: [selfie_3q, selfie_side, chin_up, tilted, selfie_high, selfie_low, front]
-    lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed, flash, window_soft]   # 링라이트 제외 (스튜디오 느낌). flash·window_soft = 0914 조명 호
+    lighting: [window, fluorescent, night, backlit, ceiling_harsh, mixed, flash, window_soft, golden_hour]   # golden_hour = 미모 전용. 링라이트 제외 (스튜디오 느낌). flash·window_soft = 0914 조명 호
     color: [neutral, warm, cool, iphone, galaxy]                             # 뷰티필터 제외
     quality: [mid, old, front_cam, app_upload]                               # flagship 제외
     # ⚠ 이 줄은 화이트리스트다 — expression 축에 칸을 만들어도 여기 안 적으면 **한 번도 안 뽑힌다**
@@ -347,8 +368,11 @@ mode_rules:
 #   조명이 그대로 남는다(종전 잠금과 같은 동작). 사실이 아닌 곳에 빛을 만들어 넣지 않으려는 것이다.
 background_lighting:
   home: [window, fluorescent, night, ring, ceiling_harsh, mixed, flash, window_soft]
-  cafe: [window, fluorescent, backlit, mixed, window_soft]
-  outdoor: [window, backlit]
+  cafe: [window, fluorescent, backlit, mixed, window_soft, golden_hour]
+  outdoor: [window, backlit, golden_hour]
+  cafe_window: [window, backlit, window_soft, golden_hour]
+  terrace_golden: [golden_hour, backlit]
+  park_green: [window, backlit, golden_hour]
   car: [window, backlit, night, mixed, flash, window_soft]
   bathroom: [fluorescent, ring, ceiling_harsh, flash]
   clinic_waiting: [fluorescent, window, mixed]
@@ -361,9 +385,12 @@ background_lighting:
 context_allow:
   home:           [none, pajamas, home_tee, towel_headband, cap, necklace, hair_in_face]
   bathroom:       [none, pajamas, home_tee, towel_headband, hair_in_face]
-  cafe:           [none, cap, necklace, hair_in_face, outing_top]
-  outdoor:        [none, cap, necklace, hair_in_face, outing_top]
-  car:            [none, cap, necklace, hair_in_face, outing_top]
+  cafe:           [none, cap, necklace, hair_in_face, outing_top, knit_cardigan, white_blouse, fitted_black_top]
+  outdoor:        [none, cap, necklace, hair_in_face, outing_top, knit_cardigan, white_blouse, fitted_black_top]
+  car:            [none, cap, necklace, hair_in_face, outing_top, knit_cardigan, white_blouse, fitted_black_top]
+  cafe_window:    [none, necklace, hair_in_face, knit_cardigan, white_blouse, fitted_black_top]
+  terrace_golden: [none, necklace, hair_in_face, knit_cardigan, white_blouse, fitted_black_top]
+  park_green:     [none, cap, necklace, hair_in_face, knit_cardigan, white_blouse, fitted_black_top]
   clinic_waiting: [none, outing_top, clinic_headband, hair_flat_after]
   clinic_mirror:  [none, outing_top, clinic_headband, hair_flat_after]
   clinic_bed:     [none, clinic_headband, hair_flat_after]
@@ -373,7 +400,7 @@ context_allow:
 framing_ban:
   forehead_cut: [cap]
   lower_face:   [cap, towel_headband, clinic_headband]
-  one_cheek:    [cap, towel_headband, clinic_headband, necklace]
+  one_cheek:    [cap, towel_headband, clinic_headband, necklace, knit_cardigan, white_blouse, fitted_black_top]   # 옷깃이 안 보이는 컷
   nose_to_neck: [cap, towel_headband, clinic_headband]
   neck_only:    [cap, towel_headband, clinic_headband, hair_in_face, finger_on_cheek, hair_flat_after]
 

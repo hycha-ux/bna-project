@@ -42,6 +42,9 @@ def check_index() -> list:
         bad = _as_set(r.get("timeline")) - (set(TIMELINE_ORDER) | {"before"})   # before = 시술 전 컷 전용 (2026-09-14)
         if bad:
             raise ValueError(f"{where}: 없는 시점 {sorted(bad)} (가능: {TIMELINE_ORDER})")
+        bad = _as_set(r.get("looks")) - set(load("variations.yaml").get("looks") or {})   # looks = 미모 축 (2026-09-17)
+        if bad:
+            raise ValueError(f"{where}: 없는 looks {sorted(bad)} (가능: {sorted(load('variations.yaml').get('looks') or {})})")
         if r.get("rig") is not None and str(r["rig"]) not in load("clinical_rig.yaml")["rigs"]:
             raise ValueError(f"{where}: 없는 리그 {r['rig']!r} (가능: {sorted(load('clinical_rig.yaml')['rigs'])})")
         if not (REF_DIR / r["file"]).exists():
@@ -50,7 +53,8 @@ def check_index() -> list:
     return out
 
 
-def candidates(mode: str, treatment: str = None, when: str = None, rig: str = None) -> list:
+def candidates(mode: str, treatment: str = None, when: str = None, rig: str = None, looks: str = None,
+               background: str = None) -> list:
     """이 컷에 써도 되는 참조만. `when=None` = 시술 전(Before) 컷.
     `rig` = 이 세트가 뽑은 촬영 리그(임상). 리그 태그가 있는 참조는 **같은 리그일 때만** 쓴다 — 점수가 아니라
     필터다. 참조는 그림체(배경·조명)도 옮기므로 다른 리그 사진이 붙으면 '세트마다 리그 고정'이 깨진다
@@ -64,6 +68,17 @@ def candidates(mode: str, treatment: str = None, when: str = None, rig: str = No
             continue
         tr = _as_set(r.get("treatment"))
         if tr and treatment is not None and treatment not in tr:
+            continue
+        # looks 태그 참조는 **그 looks 인 세트에만** (2026-09-17 노션 AI 셀카 배경 크롭 = 미모 전용).
+        #   looks 를 모르면(옛 계획·임상) 붙이지 않는다 — treatment 와 달리 필터 쪽으로 닫는다: 보통 인물에
+        #   인플루언서 장면이 붙으면 그게 곧 결함이다.
+        lk = _as_set(r.get("looks"))
+        if lk and looks not in lk:
+            continue
+        # only_background = 장면 참조는 **그 배경이 뽑힌 컷에만** (2026-09-17). 배경 태그는 점수축이라
+        #   '집 욕실' 컷에 카페 창가 사진이 붙을 수 있었다 — 장면을 옮기는 참조에선 그게 곧 충돌이다.
+        ob = _as_set(r.get("only_background"))
+        if ob and background not in ob:
             continue
         tl = _as_set(r.get("timeline"))
         if "before" in tl:
@@ -100,13 +115,15 @@ def _rank(refs: list, variation: dict, when, treatment: str = None) -> list:
     return sorted(shuffled, key=score)
 
 
+def _key(variation: dict, axis: str):
+    return (variation.get(axis) or {}).get("key") if isinstance(variation.get(axis), dict) else None
+
+
 def pick(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
-    rig = (variation.get("rig") or {}).get("key") if isinstance(variation.get("rig"), dict) else None
-    return [(REF_DIR / r["file"]).read_bytes()
-            for r in _rank(candidates(mode, treatment, when, rig), variation, when, treatment)[:k]]
+    return [(REF_DIR / f).read_bytes() for f in pick_files(mode, variation, k, treatment, when)]
 
 
 def pick_files(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
-    """pick 과 같은 선택, 파일 이름만 (검사·화면용)."""
-    rig = (variation.get("rig") or {}).get("key") if isinstance(variation.get("rig"), dict) else None
-    return [r["file"] for r in _rank(candidates(mode, treatment, when, rig), variation, when, treatment)[:k]]
+    """pick 과 같은 선택, 파일 이름만 (검사·화면용). pick 은 이걸 읽는다 — 고르는 규칙은 한 벌."""
+    cands = candidates(mode, treatment, when, _key(variation, "rig"), _key(variation, "looks"), _key(variation, "background"))
+    return [r["file"] for r in _rank(cands, variation, when, treatment)[:k]]

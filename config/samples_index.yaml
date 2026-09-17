@@ -41,6 +41,45 @@ refs:
     입꼬리 바깥쪽 볼(팔자 아래 끝)과 입가 주름(턱선 쪽)에 하나씩, 볼 넓게 홍조 + 주사 자국 점점이.
     After(직후) 컷 전용 — Before 나 다른 시점에 쓰면 안 된다.
 
+# ── 미모 셀카 장면 참조 (2026-09-17 성연서님 "노션 AI 셀카 사용해도 되는 사진, 1·2 순서 진행") ──
+#   원천 = 성연서님 노션 '온볼라썸 BA 모음' > AI 토글 셀카 30세트(사용 허락받음). **얼굴·손·팔을 잘라낸 배경 띠만** 쓴다 —
+#   세트끼리 얼굴이 닮아(0.5↑ 40/820쌍) 얼굴째 참고하면 결과가 한 얼굴로 모인다. 만드는 법 = teemo 리포 tools/notion-bg-crops.py.
+#   `looks: attractive` = 미모 세트에만(refs.candidates 가 거른다). `timeline: before` = 전 컷에만 — 직후 컷은 병원 배경이라 충돌.
+#   `only_background` = 그 배경이 뽑힌 컷에만(필터). 욕실 컷에 카페 창가 사진이 붙으면 장면이 부딪힌다.
+#   ⚠ 팔자 한정으로 시작한다(2세트 비교 전). 다른 시술로 넓히려면 treatment 줄만 지워라 — 피부 3종은 전용 참조가 +2 라 섞여 붙는다.
+- file: selfie/attractive_bg_01.jpg
+  mode: selfie
+  treatment: nasolabial
+  timeline: before
+  looks: attractive
+  only_background: [terrace_golden, outdoor]
+  tags: {lighting: golden_hour, quality: mid, background: terrace_golden}
+  note: 루프톱 노을 무렵 도시 전경(노션 AI 0908_17 전, 사람 없음)
+- file: selfie/attractive_bg_02.jpg
+  mode: selfie
+  treatment: nasolabial
+  timeline: before
+  looks: attractive
+  only_background: [terrace_golden, outdoor, cafe]
+  tags: {lighting: golden_hour, quality: mid, background: terrace_golden}
+  note: 카페 테라스 차양·펜던트 조명·나무(노션 AI 0915_19 전, 아래 손 잘라냄 — 멀리 흐린 손님 작게 남음)
+- file: selfie/attractive_bg_03.jpg
+  mode: selfie
+  treatment: nasolabial
+  timeline: before
+  looks: attractive
+  only_background: [cafe_window, cafe]
+  tags: {lighting: window, quality: mid, background: cafe_window}
+  note: 원목 카페 내부·창틀(노션 AI 0915_22 전, 위쪽 손님·아래 소매 잘라냄)
+- file: selfie/attractive_bg_04.jpg
+  mode: selfie
+  treatment: nasolabial
+  timeline: before
+  looks: attractive
+  only_background: [cafe_window]
+  tags: {lighting: window, quality: mid, background: cafe_window}
+  note: 큰 창 너머 도시·흰 창틀(노션 AI 0915_4 전, 아래 맨팔 잘라냄)
+
 # ── 피부 3종 (2026-09-14 성연서님 제공 5장 → 전·후로 잘라 10장, 그중 포텐자 01 쌍은 후가 모공이 더 또렷해 보여 뺐다 → 8장). 출처는 여신티켓·블로그 후기라 **내부 참조 전용**,
 #    외부 노출 금지. 원본 합성본(제목·라벨 포함)은 리포 밖. 1단계 6장이 "얼굴 전체·같은 조명·피부 결함 없음"으로
 #    AI 티가 났던 것에 대한 답 — 실제 후기는 볼 한쪽 확대 + 전은 센 빛에 모공 그림자, 후는 부드러운 빛에 물광.
