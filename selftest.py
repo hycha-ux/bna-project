@@ -1423,10 +1423,15 @@ for _t in ("philtrum", "filler_eyelid"):
 _im = _immediate_after("nasolabial", 7)
 # ⚠ 'beside the nostril' 단독으로 재지 마라 — after_change 가 주름 *길이*를 말할 때 같은 말을 쓴다
 #   (콧볼 옆에서 입꼬리까지). 금지 대상은 패치를 거기 앉히는 문장 하나다.
-ok("patch sitting high" not in _im and "patches sitting high" not in _im and "nowhere near the nose" in _im,
-   "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 실사진은 입꼬리 높이 바깥 볼")
-ok("level of the corner of the mouth" in _im and "centimetres outside it" in _im,
-   "패치 자리를 '입꼬리 높이 + 바깥으로 몇 cm' 로 못 박아야 한다 — '입꼬리 옆'으로만 적으면 09-07 초안(입술 바로 옆)으로 돌아간다")
+ok("patch sitting high" not in _im and "patches sitting high" not in _im and "far from the nose" in _im,
+   "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 주름 아래 끝")
+# 09-17 저녁 성연서님 "볼이 아니라 팔자 끝나는 아래 지점에 양쪽 두 개씩" — cm·볼 서술이 돌아오면 모델이 볼 한복판·귀 쪽에 흩는다
+ok("lower end of the nasolabial fold" in _im and "on both sides" in _im and "two small round" in _im
+   and "centimetres" not in _im and "low on the cheek" not in _im,
+   "패치 자리는 '팔자 아래 끝 · 양쪽 둘씩' 이어야 한다 — cm·볼 서술 금지(09-17 저녁 검수)")
+# 같은 날 "얼굴 크기가 다른데 패치 크기가 똑같다 = 합성 티" — 실측 얼굴 2.25배 vs 패치 1.45배. 절대 크기(cm) 대신 홍채에 묶는다
+ok("iris" in _im and "one centimetre" not in _im,
+   "패치 크기는 얼굴 안의 기준(홍채)에 묶어야 한다 — '1cm' 는 사진에 자가 없어 고정 픽셀로 찍힌다")
 ok("clear hydrocolloid" in _im and "colourless" in _im and "glossy circular rim" in _im,
    "패치는 투명이고, 왜 안 보이는지(색 없음·링만 반짝)까지 적어야 한다 — '거의 안 보임'만 적으면 티나게 그린다(09-11 실측)")
 ok("flushed pink" not in _im and "scattered" not in _im and "same ordinary, even tone" in _im,
