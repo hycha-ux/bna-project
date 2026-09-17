@@ -9,10 +9,34 @@ clinical: >
 skin_read:
   selfie: >
     Skin reads matte and unflattering in this shot: no dewy sheen, no healthy glow, no highlighter-like radiance - any oiliness must look like dull, greasy T-zone shine, never like glass skin. The skin here looks plainer and more tired than it would on a good day.
+  # 바스트 컷: 얼굴이 작아 모공·솜털은 안 보이고, '피곤하고 못 나온 사진' 압력은 일상 셀카와 안 맞는다 — 무보정만 지킨다.
+  selfie_by_framing:
+    head_to_bust: >
+      At this distance the skin reads as it does in a normal phone selfie: real and unfiltered, uneven
+      tone and the lines of the face showing as they are; no dewy glow, no beauty-filter smoothness.
   clinical: >
     Under this flat clinic light the skin reads plain and honest: no dewy sheen, no healthy glow,
     no highlighter-like radiance, and any oiliness is a dull shine on the forehead and nose. Fine lines,
     uneven tone and small marks show as they are.
+# 머리~바스트 셀카 (2026-09-17 연서님 "클로즈업 말고 전체 셀카도" — 09-16 회의 "전신 아님, 머리~바스트 셀카 형태").
+#   아래 `selfie` 문장은 '문제 부위를 렌즈에 바짝 들이댄 상담용 스냅'이라 바스트 컷과 정면충돌한다(부위를 바짝 ↔ 얼굴이 작게).
+#   이 컷은 **보통 사람이 찍어 올리는 일상 셀카**다: 팔 길이, 어깨·가슴 윗부분까지, 자기 마음에 드는 각도 — 그래도 무보정.
+#   손·폰은 여전히 화면 밖(09-10 기준): 폰 든 팔은 화면 밖으로 빠진다. spec.build_prompts 가 프레이밍 키로 고른다.
+#   Before 본문(selfie_by_framing)·Before 피부 읽힘(skin_read.selfie_by_framing)·After(selfie_after_by_framing) 세 벌이 한 쌍이다 —
+#   한 벌만 바꾸면 Before 는 바스트인데 After 가 "부위를 렌즈에 바짝"을 다시 말한다.
+selfie_by_framing:
+  head_to_bust: >
+    This is an ordinary everyday selfie the person took of themselves at arm's length, the kind
+    people post or send to friends: head, shoulders and the top of the chest are in the frame, the
+    face sits in the upper middle of the picture with room around it, the arm holding the phone and
+    both hands are out of frame. They picked an angle they like and stood in reasonable light, but
+    it is a straight phone photo with no filter and no retouching; the whole face, the hair and the
+    clothes read at once.
+selfie_after_by_framing:
+  head_to_bust: >
+    Like the reference, this is an ordinary arm's-length selfie the person took of themselves:
+    head, shoulders and the top of the chest in the frame, the phone arm and both hands out of
+    frame and the phone is not visible in the picture, no filter and no retouching.
 selfie: >
   This is a photo a patient took of themselves to send to a clinic and show a skin concern,
   the kind of single snapshot a patient sends a clinic in a chat. It was not taken to look good: no posing

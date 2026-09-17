@@ -471,6 +471,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     check_treatment_facts(treatment)
     rng = random.Random(seed)
     mode_extra = load("prompts/mode_extra.yaml")[mode].strip()
+    # 프레이밍별 본문 (2026-09-17): 머리~바스트 셀카는 '부위를 렌즈에 바짝'이 아니라 일상 셀카다. 표에 없는 프레이밍은 종전 문장.
+    _mxf = load("prompts/mode_extra.yaml").get(f"{mode}_by_framing") or {}
+    if variation.get("framing", {}).get("key") in _mxf:
+        mode_extra = " ".join(str(_mxf[variation["framing"]["key"]]).split())
     if "expression" not in variation:                # 예전 계획(표정 축 없던 시절)도 조립되게
         ek = "neutral_closed"; variation = {**variation, "expression": {"key": ek, "text": load("variations.yaml")["expression"][ek]}}
     tr = treatment_rules(treatment, mode)
@@ -489,6 +493,9 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         scene = selfie_scene(fields)
     # Before 의 피부 읽힘 한 줄은 모드별 (셀카 = 종전 before.md 문장 그대로, 임상 = 병원 조명용)
     skin_read = " ".join(str(load("prompts/mode_extra.yaml")["skin_read"][mode]).split())
+    _srf = (load("prompts/mode_extra.yaml")["skin_read"].get(f"{mode}_by_framing") or {})
+    if variation.get("framing", {}).get("key") in _srf:
+        skin_read = " ".join(str(_srf[variation["framing"]["key"]]).split())
     sevs = t.get("before_severity", ["moderate"])
     # Before 강도는 **가중 추첨**이다 (2026-09-14). 종전 균등 추첨은 피부 3종에서 절반이 mild 로 떨어졌고,
     #   mild 는 effect_by_severity 상 subtle 하고만 짝지어진다 — 즉 "거의 없는 문제 → 은은한 개선"이라
@@ -668,6 +675,9 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 expression_line = (f'Expression: {a["expression"]}, clearly different from the reference. '
                                    + RESHOT_LINE)
             which = "same" if w == "immediate" else "different"
+            # After 본문도 **After 의** 프레이밍으로 고른다 — 이웃 이동으로 얼굴 전체 ↔ 바스트가 바뀔 수 있다.
+            _saf = mx.get("selfie_after_by_framing") or {}
+            selfie_after = " ".join(str(_saf.get(a_var["framing"]["key"], mx.get("selfie_after", ""))).split())
             # ── 마감(after_finish): '피부가 빛을 어떻게 받는가' (2026-09-14 밤 연서님 "후 사진은 광이 좀 더
             #    돌아야 하는데 매트한 느낌이 든다"). 시술마다 다른 값이라 treatments.yaml 에 두고, 없으면 빈 칸이다.
             #    ⚠ 여기가 필요한 이유: After 프롬프트에 매트 쪽 압력이 **세 곳**(참조로 넘기는 Before 의 무광
@@ -681,12 +691,12 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
                 identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
                 after_finish=finish,
-                expression_line=expression_line, mode_extra=str(mx.get("selfie_after", "")).strip(),
+                expression_line=expression_line, mode_extra=selfie_after,
                 after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
             spans = [("identity", ident), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
                      ("must_not", t.get("must_not_change") or ""), ("finish", finish)] + fact_spans(w) + [("avoid", avoid_after),
                      ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
-                     ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", mx.get("selfie_after", ""))]
+                     ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", selfie_after)]
         return {"when": w, "effect_level": lv, "effect_lowered": lowered,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}

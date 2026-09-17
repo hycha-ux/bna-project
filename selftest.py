@@ -316,7 +316,7 @@ ok(not _viol, f"시술 9종 × 120 표본에서 제약 위반이 0 이어야 한
 #   ① identity_exempt 가 문구라 잠금 파일 3벌 중 한 벌에서만 먹었다 (리프팅 82/120·인중 79/120 미적용)
 #   ② 좁은 Before + 넓은 After 에 크롭 지시가 붙어 같은 프롬프트의 장면문과 충돌 (360건 중 36건)
 #   ③ 목 잠금의 "목을 더 어려 보이게 하지 마라" 가 목주름 시술 자체를 부정 (neck_only 58/58)
-_WIDE = {"full_face", "forehead_cut"}
+_WIDE = {"head_to_bust", "full_face", "forehead_cut"}
 _seen, _bad = set(), {}
 for _t in _T:
     if "selfie" not in _T[_t]["modes"]:
@@ -772,6 +772,32 @@ for _w in ("dressing", "hydrocolloid", "tape", "sticker"):
 ok(not any(w in _pn["afters"][0]["after_prompt"] for w in ("cotton pad", "ointment", "bandage", "gauze")),
    "직후 금지는 품목을 나열하지 않는다 — 적으면 모델이 그린다(0910 마취크림 5/5)")
 
+# ㉒-d 머리~바스트 셀카 (2026-09-17 연서님 "클로즈업 말고 전체 셀카도" — 09-16 회의 "전신 아님, 머리~바스트 셀카 형태")
+#    프레이밍 한 칸이 아니라 **본문 세 벌**(Before 본문·Before 피부 읽힘·After 본문)이 같이 바뀌어야 한다 —
+#    종전 셀카 본문은 "문제 부위를 렌즈에 바짝"이라 바스트 컷과 정면충돌한다. 한 벌만 바뀌면 전은 바스트, 후는 클로즈업 지시가 된다.
+_vb = load("variations.yaml")
+ok("head_to_bust" in _vb["framing"] and _vb["identity_lock_by_framing"].get("head_to_bust") == "identity_lock.md"
+   and _vb["identity_lock_order"][0] == "head_to_bust",
+   "머리~바스트는 프레이밍 표·동일인 잠금 표(눈 있음 = 전체 잠금)·넓이 순서(가장 넓음)에 다 있어야 한다")
+ok("head_to_bust" in _tr_all["nasolabial"]["framing_allow"]
+   and not any("head_to_bust" in (_tr_all[k].get("framing_allow") or []) for k in _tr_all if k != "nasolabial"),
+   "머리~바스트는 팔자에만 열린다(메인 시술부터 소량 재보기) — 다른 시술 framing_allow 엔 없어야 한다")
+_vbf = dict(_v); _vbf["framing"] = {"key": "head_to_bust", "text": _vb["framing"]["head_to_bust"]}
+_pbust = build_prompts("nasolabial", "selfie", _vbf, 17, series=["immediate", "2w"])
+ok("arm's length" in _pbust["before_prompt"] and "pushed close to the lens" not in _pbust["before_prompt"],
+   "바스트 Before 본문은 일상 셀카 문장이고 '부위를 렌즈에 바짝' 문장이 없어야 한다")
+ok("plainer and more tired" not in _pbust["before_prompt"] and "normal phone selfie" in _pbust["before_prompt"],
+   "바스트 Before 피부 읽힘은 '피곤하고 못 나온 사진' 압력 대신 무보정만 지킨다")
+ok("both hands are out of frame" in _pbust["before_prompt"],
+   "바스트 컷도 손·폰은 화면 밖(09-10 기준) — 문장이 직접 말해야 한다")
+for _ab in _pbust["afters"]:
+    if _ab["after_variation"]["framing"]["key"] == "head_to_bust":
+        ok("the phone is not visible" in _ab["after_prompt"] and "close to the lens" not in _ab["after_prompt"],
+           f"바스트 After({_ab['when']}) 본문도 바스트 문장이어야 한다 — '부위를 렌즈에 바짝' 금지")
+_pnorm = build_prompts("nasolabial", "selfie", _v, 17, series=["2w"])
+ok("arm's length" not in _pnorm["before_prompt"] and "pushed close to the lens" in _pnorm["before_prompt"],
+   "다른 프레이밍의 Before 본문은 종전 문장 그대로다")
+
 # ㉒-c 팔자 + 마리오네트 (2026-09-17 연서님 "마리오네트 부위도 함께 시술 변화가 있었으면")
 #    실사진(온볼라썸 #1·#117·#118) 태그가 전부 팔자+마리오네트다. 네 칸(부위·마스크·Before·After)이 같이 넓어야 한다 —
 #    마스크만 옛 폴리곤이면 셀카 모드에서 마리오네트 변화·직후 패치가 composite_outside_mask 로 Before 픽셀에 덮여 사라진다.
@@ -1193,7 +1219,8 @@ from bna.planner import plan_batch as _pb18
 # 프레이밍별 실측 못 잼률(2026-09-11, demo 제외 46장). 표본이 작으니 값이 아니라 **순서**가 요점이다.
 # 새로 재려면 tools/framing_na_forecast.py — 이 상수는 그때 같이 갱신하고 근거(장수)를 남겨라.
 _NA18 = {"one_cheek": 1.00, "neck_only": 0.75, "lower_face": 0.50,
-         "nose_to_neck": 0.125, "forehead_cut": 0.0, "full_face": 0.0}
+         "nose_to_neck": 0.125, "forehead_cut": 0.0, "full_face": 0.0,
+         "head_to_bust": 0.0}     # 눈이 프레임 안 — 실측 전 가정(2026-09-17). 얼굴이 작아 다른 이유로 못 잴 수 있다 → 첫 소량 회차 뒤 갱신
 # 상한표의 정본은 bna.spec.NA_LIMIT 하나다 (2026-09-14) — 이 회귀와 tools/framing_na_forecast.py 가
 #   같이 읽는다. 종전엔 회귀에 10%, 도구에 10% 가 따로 박혀 있어 한쪽만 고치면 조용히 갈렸다.
 from bna.spec import NA_LIMIT as _LIM18, NA_LIMIT_DEFAULT as _LIMD18
@@ -1538,7 +1565,7 @@ for _t26 in _SKIN26:
 ok(not _bad26, f"피부 3종: Before 는 센 빛 · After 프레이밍은 이웃까지 — 위반 {_bad26[:4]} ({len(_bad26)}건)")
 # ㉘ 2026-09-14 오후 연서님 검수 (모공 2세트 실물): "전·후가 같은 사람의 2주 뒤로 안 읽힌다".
 #    원인 세 가지를 각각 시료로 박는다 — 셋 다 오류 없이 통과하던 값들이라 눈으로만 보면 또 샌다.
-_EYES28 = {"full_face": True, "forehead_cut": True,
+_EYES28 = {"head_to_bust": True, "full_face": True, "forehead_cut": True,
            "lower_face": False, "one_cheek": False, "nose_to_neck": False, "neck_only": False}
 _hair28, _beard28, _eye28, _n28 = [], [], [], 0
 for _t28 in _SKIN26:

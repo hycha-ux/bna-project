@@ -147,6 +147,10 @@ angle_neighbors:
 
 # 프레이밍: 화면에 얼굴이 얼마나·어디가 들어오나 (셀카 전용 축. 임상은 full_face 고정)
 framing:
+  # 머리~바스트 (2026-09-17 연서님 "클로즈업 말고 전체 셀카도" — 09-16 회의 "전신 아님, 머리부터 바스트까지 셀카 형태").
+  #   얼굴이 작아지므로 동일인 게이트·효과 판정 정확도가 떨어질 수 있다 → 09-16 합의대로 **소량 먼저 재본다**(가중 2).
+  #   손·폰은 여전히 화면 밖(09-10 기준) — 폰 든 팔이 화면 밖으로 빠지는 팔 길이 셀카다. 팔자만 허용(framing_allow).
+  head_to_bust: "an arm's-length selfie framed from the top of the head down to the upper chest, shoulders in the frame, the face in the upper middle of the picture with room around it"
   full_face: "the whole face fills the frame"
   forehead_cut: "very close, forehead cut off by the top edge, chin near the bottom edge"
   lower_face: "only the lower half of the face is in frame: nose, cheeks, mouth and chin, eyes out of frame"
@@ -157,13 +161,14 @@ framing:
 # 프레이밍별 동일인 잠금 문장 (config/prompts/identity_lock*.md). 눈이 프레임 밖인 컷에 "same eyes" 를 요구하면
 # 모델이 눈을 프레임 안으로 끌고 들어온다 (티모 0908 실측, Gemini B After). Before·After 중 더 좁은 쪽을 따른다.
 identity_lock_by_framing:
+  head_to_bust: identity_lock.md
   full_face: identity_lock.md
   forehead_cut: identity_lock.md
   lower_face: identity_lock_lower.md
   one_cheek: identity_lock_lower.md
   nose_to_neck: identity_lock_lower.md
   neck_only: identity_lock_neck.md
-identity_lock_order: [full_face, forehead_cut, lower_face, one_cheek, nose_to_neck, neck_only]   # 뒤로 갈수록 좁다
+identity_lock_order: [head_to_bust, full_face, forehead_cut, lower_face, one_cheek, nose_to_neck, neck_only]   # 뒤로 갈수록 좁다
 
 # 프레이밍 이웃표 (2026-09-14). After 프레이밍이 바뀔 때 **한 칸 옆 거리로만** 옮긴다.
 # 각도(angle_neighbors)·머리(hair_style_neighbors)와 같은 방식이고 이유도 같다: 자유 재추첨은
@@ -177,7 +182,8 @@ identity_lock_order: [full_face, forehead_cut, lower_face, one_cheek, nose_to_ne
 #   얼굴 검출이 안 돼 조용히 꺼진다. 거리만 재고 '무엇이 화면에서 없어지는지'를 안 본 표였다.
 #   확대 컷 비중은 그대로다 — 전이 확대면 후도 확대 안에서 움직인다(그룹 안 이동은 계속 열려 있다).
 framing_neighbors:
-  full_face: [forehead_cut]          # 눈 있음 그룹
+  head_to_bust: [full_face]          # 눈 있음 그룹 — 바스트 ↔ 얼굴 전체는 한 칸(둘 다 눈·얼굴 전체가 있다)
+  full_face: [forehead_cut, head_to_bust]
   forehead_cut: [full_face]
   lower_face: [one_cheek, nose_to_neck]   # 눈 없음 그룹
   one_cheek: [lower_face]
@@ -419,7 +425,7 @@ weights:
   # ⚠ forehead_cut 을 제일 높였다 — '아주 가까운 셀카'인데 눈이 프레임 안이라, 리얼리티와 검사 가능성을 동시에 만족하는 유일한 칸이다.
   # ⚠ 최소 1 rep 이라 실효 하한은 0.25 다(planner.WEIGHT_SCALE=4). 더 줄이려면 framing_allow 에서 빼라.
   # 재계산·검증 = tools/framing_na_forecast.py (실측률을 원장에서 다시 읽어 예상 못 잼을 낸다)
-  framing: {full_face: 3, forehead_cut: 6, lower_face: 0.5, one_cheek: 0.25, nose_to_neck: 1.5, neck_only: 0.25}
+  framing: {head_to_bust: 2, full_face: 3, forehead_cut: 6, lower_face: 0.5, one_cheek: 0.25, nose_to_neck: 1.5, neck_only: 0.25}
   # 상담용 사진은 대부분 무표정이다 — 무표정을 줄이는 게 아니라 **무표정의 결을 늘린다**(2026-09-11).
   # 합이 무표정 계열 : 미소 1 이라 "상담 사진 같음"은 그대로고, 같은 얼굴이 반복되는 느낌만 흩어진다.
   # ⚠ 이 표는 '표정 이름'이 아니라 **입 상태**로 읽어라 (2026-09-11 오후) — 이름을 8종으로 늘려도
