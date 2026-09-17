@@ -759,16 +759,16 @@ ok("entire length of the fold" in _tr_all["nasolabial"]["after_change"],
    "팔자 시술 문장이 콧볼~입꼬리 전 구간을 못 박는다")
 # 살아 있는 카드(팔자 필러)가 실제 프롬프트에 실리는가
 _pn = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
-ok("broadly flushed pink" in _pn["afters"][0]["after_prompt"]
-   and "broadly flushed pink" not in _pn["afters"][1]["after_prompt"],
-   "팔자 직후 컷에만 홍조·주사자국이 실린다(2주 컷에 남으면 그게 더 큰 사고)")
-# 2026-09-11 저녁 성연서님 "패치가 너무 티나게 붙어 있어서 더 AI 같다 — 아예 없거나 거의 안 보이게".
-#   *약하게 적기*로는 안 된다 — 모델은 적으면 그린다(0910 마취크림 5/5). 그래서 **말을 안 한다**.
-#   금지문으로 적는 것도 같은 이유로 금지다. 어느 컷에도 이 단어들이 없어야 한다.
+ok("hydrocolloid dressings" in _pn["afters"][0]["after_prompt"]
+   and "hydrocolloid" not in _pn["afters"][1]["after_prompt"],
+   "팔자 직후 컷에만 패치·바늘 자국이 실린다(2주 컷에 남으면 그게 더 큰 사고)")
+# 2026-09-11 저녁엔 패치를 통째로 뺐었다("티나게 붙어 더 AI 같다"). 2026-09-17 성연서님이 실사진 탭
+#   강남언니 #118(정면 D+0)을 보고 뒤집었다 — "투명한 패치가 있어, 시술 직후는 보여야 해, 그 병원에서
+#   시술한 모습이니까". 이제 직후 컷엔 패치가 **있어야** 하고, 2주 컷엔 여전히 없어야 한다.
 #   ⚠ 'patch' 단독으로 재지 마라 — 피부 연속성 문장이 잡티를 셀 때 'dry patch'(각질)를 쓴다.
 for _w in ("dressing", "hydrocolloid", "tape", "sticker"):
-    ok(not any(_w in _a["after_prompt"] for _a in _pn["afters"]),
-       f"팔자 프롬프트 어느 컷에도 '{_w}' 가 없어야 한다 — 적으면 그려지고, 그리면 AI 티가 난다")
+    ok(_w not in _pn["afters"][1]["after_prompt"],
+       f"팔자 2주 컷에 '{_w}' 가 있으면 안 된다 — 패치는 직후에만")
 ok(not any(w in _pn["afters"][0]["after_prompt"] for w in ("cotton pad", "ointment", "bandage", "gauze")),
    "직후 금지는 품목을 나열하지 않는다 — 적으면 모델이 그린다(0910 마취크림 5/5)")
 
@@ -1346,21 +1346,24 @@ for _t in ("philtrum", "filler_eyelid"):
     ok(not (_MOUTH_MOVING & set(_expr_dist(_t))),
        f"{_t}: 입·눈이 판정 부위인 시술에 입 변주가 들어가면 안 된다 — 실제 {sorted(_MOUTH_MOVING & set(_expr_dist(_t)))}")
 
-# ㉒ 팔자 직후 패치 자리·재질 (2026-09-11 오후, 온리프 실제 촬영본으로 확정)
-#    같은 날 오전엔 정반대('콧볼 옆')를 여기서 지키고 있었다 — 둘 다 사진 없이 한 추정이었다.
-#    이제 기준은 실사진 하나다: 패치는 **아래쪽**(입꼬리 바깥 볼·마리오네트)이고 **투명**이다.
+# ㉒ 팔자 직후 패치 자리·재질 (2026-09-17, 실사진 탭 강남언니 #118 정면 D+0·#117 3/4 D+0 으로 확정)
+#    09-11 오전 '콧볼 옆' → 오후 '아래쪽'(3/4 사진 1장) → 저녁 '통째로 뺌'을 거쳐, 09-17 성연서님이
+#    정면 실사진을 보고 되살렸다. 기준은 그 사진: 패치는 **입꼬리 높이 바깥 볼**(입꼬리에서 3~4cm), 한쪽에
+#    둘, 지름 1cm **투명** 원형이고, 홍조는 볼 전체로 넓지 **않다**(피부톤 그대로 + 패치 밑 붉은 점 하나씩).
 _im = _immediate_after("nasolabial", 7)
 # ⚠ 'beside the nostril' 단독으로 재지 마라 — after_change 가 주름 *길이*를 말할 때 같은 말을 쓴다
 #   (콧볼 옆에서 입꼬리까지). 금지 대상은 패치를 거기 앉히는 문장 하나다.
-ok("patch sitting high" not in _im and "patches sitting high" not in _im,
-   "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 실사진은 아래쪽")
-ok("The injections go in low" in _im, "주입점이 아래쪽이라고 말해야 한다(실사진)")
-ok("faint pink dot" not in _im and "flushed pink" in _im,
-   "홍조는 '점 하나'가 아니라 볼 전체로 넓어야 한다(실사진)")
-ok("scattered across it" in _im,
-   "주사 자국도 주름 둘레가 아니라 볼 전체에 흩어져야 한다(실사진)")
-# 패치는 2026-09-11 저녁에 통째로 뺐다(성연서님). 실사엔 있지만 그리면 가짜로 보인다 — 위 ㉑ 블록이
-# 어느 컷에도 patch·tape 단어가 없는지 본다. 여기선 '직후 신호'가 남아 있는지만 확인한다.
+ok("patch sitting high" not in _im and "patches sitting high" not in _im and "nowhere near the nose" in _im,
+   "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 실사진은 입꼬리 높이 바깥 볼")
+ok("level of the corner of the mouth" in _im and "centimetres outside it" in _im,
+   "패치 자리를 '입꼬리 높이 + 바깥으로 몇 cm' 로 못 박아야 한다 — '입꼬리 옆'으로만 적으면 09-07 초안(입술 바로 옆)으로 돌아간다")
+ok("clear hydrocolloid" in _im and "colourless" in _im and "glossy circular rim" in _im,
+   "패치는 투명이고, 왜 안 보이는지(색 없음·링만 반짝)까지 적어야 한다 — '거의 안 보임'만 적으면 티나게 그린다(09-11 실측)")
+ok("flushed pink" not in _im and "scattered" not in _im and "same ordinary, even tone" in _im,
+   "볼 전체 홍조·흩뿌린 주사자국은 실사진에 없다 — 피부톤 그대로 + 패치 밑 점 하나씩")
+_imk = " ".join(str(_tr_all["nasolabial"]["facts"]["immediate_marks"]).split())
+ok(" no " not in f" {_imk} " and "not " not in _imk.replace("nowhere", ""),
+   "직후 흔적 카드는 긍정형이어야 한다 — 금지 품목을 적으면 모델이 그린다(0910 마취크림 5/5)")
 
 # ㉒-b 끊긴 배치 자동 종결 (2026-09-14 성연서님 "종결 처리 할 수 없나") — 진행 기록이 30분 넘게 멈췄고 이 서버가 돌리는 게 아니면 닫는다
 import bna.progress as _prog_mod
