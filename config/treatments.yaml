@@ -159,9 +159,27 @@ nasolabial:
     #   2026-09-10 실측에서 **금지 품목을 적으면 모델이 그걸 그렸다**(마취크림 5/5). 같은 일을
     #   막는 긍정문("시술 설명이 말하는 것만 피부에 있다")이 mode_extra 기본값으로 이미 붙는다.
     later: 1~2주 컷은 테이프 제거 상태, 효과 강도는 직후와 같다. 주입부 작은 멍 가능 여부는 미확인(의료진 확인 대기)
-  effect_by_severity: {mild: [subtle], moderate: [subtle, moderate], marked: [moderate]}
+  # 2026-09-18: moderate 에서 subtle 을 뺐다. subtle 문구는 "문제가 아직 남아 있고 나란히 놓고 비교할 때나
+  #   눈에 띈다"라서, 필러가 직후부터 최종 강도인 시술인데도 2주 컷이 판정선(6) 아래로 떨어졌다
+  #   (09-17 실측: 6세트 중 5세트가 subtle, 2주 effect_visible 2.0·3.0·3.0). moderate 문구 자체가
+  #   "한 번의 시술이 실제로 하는 범위 안, 완벽해 보이지 않게"로 과장을 막고 있다.
+  #   ⚠ mild 는 그대로 subtle 이다 — 연한 주름을 또렷이 펴면 그건 과장이다(위 severity_weights 로 빈도를 낮췄다).
+  #   ⚠ 이 판단은 팔자(필러)에만 적용한다. 스킨부스터·모공·홍조는 정말로 변화가 은은해서 같이 올리면 과장이 된다.
+  effect_by_severity: {mild: [subtle], moderate: [moderate], marked: [moderate]}
   expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
   drift_lock: [expression, angle]
+  # 2026-09-18 연서님 검수 ③ "전·직후·2주 세 장의 표정·입모양·구도·카메라 각도가 똑같다".
+  #   위 잠금 둘 + SERIES_LOCK{framing} 이 겹쳐 셀카를 '다른 사진'으로 만드는 축 셋이 전부 잠겨 있었고,
+  #   09-17 6세트 전수에서 after_changed_axes 에 이 셋이 한 번도 없었다(바뀐 건 배경·조명·옷·머리뿐).
+  #   → 시리즈 컷에서만 **이웃 한 칸** 푼다(자유 재추첨 아님, 상세=spec.drift_after 머리말).
+  #   ⚠ 되돌릴 땐 축을 하나씩 빼라. 위험 순서는 framing > angle > expression 이다 —
+  #     framing 은 부위가 프레임 밖으로 밀릴 수 있고(0911 사고, region_in_frame 게이트가 받는다),
+  #     expression 은 입 상태가 묶여 있어 주름에 영향이 없다.
+  series_relax: [expression, angle, framing]
+  # 2026-09-18: mild Before + subtle 효과는 "거의 없는 문제 → 은은한 개선"이라 눈으로 구별이 안 된다.
+  #   09-17 6세트 중 mild 가 3건이었고 2주 컷 effect_visible 이 2.0~3.0 으로 떨어졌다(컷 6).
+  #   0 은 쓰지 않는다 — mild 도 실제 고객군이라 표본을 아예 없애면 다시 좋아졌는지 확인할 길이 사라진다.
+  severity_weights: {mild: 0.4, moderate: 2.5, marked: 1.5}
   scene_allow:
     # 미소 제외(웃으면 시술 없이도 주름이 달라진다). 대신 **눈·시선 변주**를 열었다 —
     # 입은 그대로라 주름 판정에 영향이 없고, 무표정 한 가지만 반복되는 AI 티는 여기서 흩어진다(2026-09-11).

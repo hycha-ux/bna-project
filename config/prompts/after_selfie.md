@@ -1,6 +1,6 @@
 Generate a new photo of the same person as the reference. {identity_lock}
 {after_day}
-Scene: {after_scene}
+Scene: {after_scene} {relight}
 Hair: {after_hair}. {expression_line}
 {skin_state}
 The treatment result is now visible: {after_change}

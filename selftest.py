@@ -1353,8 +1353,48 @@ for _s in range(60):
         for _ax in _drift_axes:
             if _a["after_variation"][_ax]["key"] != _v[_ax]["key"]:
                 _drift_axes[_ax] += 1
-ok(_drift_axes["framing"] == 0, f"시리즈 컷은 Before 의 구도를 그대로 써야 한다 — 실제 {_drift_axes['framing']}건 어긋남")
+# ⚠ 2026-09-18 개정: 구도 '완전 잠금'은 `series_relax` 로 **이웃 한 칸**이 됐다 (연서님 검수 ③
+#   "전·직후·2주 세 장의 표정·입모양·구도·카메라 각도가 똑같다"). 지킬 것은 '안 바뀐다'가 아니라
+#   **멀리 안 뛴다**다 — 0911 사고는 '얼굴 전체 → 하관만' 점프였고 이웃 한 칸은 그 점프를 못 만든다.
+_V18 = load("variations.yaml")
+_far = []
+for _s in range(60):
+    _v = sample_variation("selfie", _s)
+    for _a in build_prompts("nasolabial", "selfie", _v, _s, series=_SER)["afters"]:
+        _k0, _k1 = _v["framing"]["key"], _a["after_variation"]["framing"]["key"]
+        if _k1 != _k0 and _k1 not in (_V18.get("framing_neighbors", {}).get(_k0) or []):
+            _far.append((_k0, _k1))
+ok(not _far, f"시리즈 구도는 이웃 한 칸까지만 옮겨야 한다(먼 점프 금지) — 실제 {_far[:3]}")
+ok(_drift_axes["framing"] > 0, "시리즈 컷 구도가 한 건도 안 움직이면 세 장이 같은 사진처럼 보인다(series_relax 가 죽었나)")
 ok(_drift_axes["extras"] == 0, f"시리즈 컷에서 안경·모자가 붙었다 떨어지면 안 된다 — 실제 {_drift_axes['extras']}건")
+# ⑲-2 완화가 '가짜 효과'를 만들지 않는가 (2026-09-18). 입을 벌리면 그것만으로 팔자가 펴진다 →
+#   표정은 바뀌어도 **입 상태(다문/벌린)는 Before 와 같아야** 한다. 각도도 이웃 한 칸까지다.
+_tb18 = _V18.get("expression_traits", {})
+_mouth_bad, _ang_bad, _same_all = [], [], 0
+for _s in range(60):
+    _v = sample_variation("selfie", _s)
+    _as = build_prompts("nasolabial", "selfie", _v, _s, series=_SER)["afters"]
+    for _a in _as:
+        _av = _a["after_variation"]
+        if _tb18.get(_av["expression"]["key"], {}).get("mouth") != _tb18.get(_v["expression"]["key"], {}).get("mouth"):
+            _mouth_bad.append((_v["expression"]["key"], _av["expression"]["key"]))
+        _ka, _kb = _v["angle"]["key"], _av["angle"]["key"]
+        if _ka != _kb and _kb not in (_V18.get("angle_neighbors", {}).get(_ka) or []):
+            _ang_bad.append((_ka, _kb))
+    if all(_a["after_variation"][_x]["key"] == _v[_x]["key"]
+           for _a in _as for _x in ("expression", "angle", "framing")):
+        _same_all += 1
+ok(not _mouth_bad, f"시리즈 표정 완화가 입 상태를 바꾸면 안 된다(벌린 입은 주름을 펴서 가짜 효과) — 실제 {_mouth_bad[:3]}")
+ok(not _ang_bad, f"시리즈 각도는 이웃 한 칸까지만 — 실제 {_ang_bad[:3]}")
+ok(_same_all <= 6, f"세 축이 전부 Before 와 같은 세트가 60개 중 {_same_all}개 — 완화가 사실상 안 걸렸다")
+# ⑲-3 완화는 `series_relax` 를 적은 시술에만 (전역 누수 금지) — 리프팅은 종전대로 완전 잠금이다.
+_leak = [(_x, _a["after_variation"][_x]["key"], _v0[_x]["key"])
+         for _s in range(40)
+         for _v0 in [sample_variation("selfie", _s, treatment="lifting")]
+         for _a in build_prompts("lifting", "selfie", _v0, _s, series=["2w", "4w"])["afters"]
+         for _x in ("expression", "angle", "framing")
+         if _a["after_variation"][_x]["key"] != _v0[_x]["key"]]
+ok(not _leak, f"series_relax 를 안 적은 시술(리프팅)은 표정·각도·구도가 그대로여야 한다 — 실제 {_leak[:3]}")
 # ⚠ 잠근 건 둘뿐이다. 배경·조명까지 굳으면 '같은 사진을 복사한 티'가 나서 시리즈의 목적이 뒤집힌다.
 ok(_drift_axes["background"] > 0 and _drift_axes["lighting"] > 0,
    f"배경·조명은 시리즈에서도 계속 달라져야 한다 — 실제 배경 {_drift_axes['background']}건·조명 {_drift_axes['lighting']}건")

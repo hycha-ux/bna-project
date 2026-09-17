@@ -63,10 +63,14 @@ def treatment_rules(treatment: str, mode: str) -> dict:
                         경우를 절반쯤 만든다 — 호는 한 방향으로만 간다(2026-09-14 연서님 검수).
     severity_weights: Before 강도 추첨 가중. 안 적으면 종전대로 균등이다.
                       ⚠ 0 은 쓰지 마라 — '안 뽑기'는 before_severity 목록이 할 일이다.
+    series_relax    : 경과 시리즈 컷에서 **잠금을 한 칸만 푸는** 축 목록 (2026-09-18).
+                      drift_lock·SERIES_LOCK 을 이 축에서 벗기되 자유 재추첨이 아니라 이웃 한 칸이다
+                      (expression 은 '입 상태 유지 + 다른 키', angle·framing 은 neighbors 표).
+                      안 적으면 종전대로 완전 잠금이라 다른 시술은 하나도 안 움직인다.
     treatment 이 None 이면 빈 규칙 (예전 호출·테스트가 그대로 돈다)."""
     r = {"allow": {}, "ban": {}, "age_weights": {}, "framing_weights": {}, "drift_lock": [],
          "framing_ban_by_angle": {}, "expression_policy": "free", "lighting_arc": {},
-         "severity_weights": {}}
+         "severity_weights": {}, "series_relax": []}
     if not treatment:
         return r
     t = load("treatments.yaml").get(treatment)
@@ -75,6 +79,7 @@ def treatment_rules(treatment: str, mode: str) -> dict:
     r["age_weights"] = {str(k): float(v) for k, v in (t.get("age_weights") or {}).items()}
     r["severity_weights"] = {str(k): float(v) for k, v in (t.get("severity_weights") or {}).items()}
     r["drift_lock"] = list(t.get("drift_lock") or [])
+    r["series_relax"] = list(t.get("series_relax") or [])
     r["expression_policy"] = t.get("expression_policy", "free")
     if r["expression_policy"] == "lock" and "expression" not in r["drift_lock"]:
         r["drift_lock"].append("expression")
@@ -241,7 +246,8 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
 SERIES_LOCK = {"framing", "extras"}
 
 
-def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False) -> dict:
+def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False,
+                seen: dict = None) -> dict:
     """셀카 모드: After 촬영 상황을 확률적으로 바꾼다 (이목구비 축은 절대 건드리지 않음).
     timeline 이 immediate 면 같은 날(옷·머리 고정), 그 외는 다른 날(옷·머리·배경 대부분 교체).
     treatment 의 drift_lock 축(표정·각도·화질…)은 건너뛴다 — 그 축이 바뀌면 시술이 아니라 촬영 차이가 B&A 로 둔갑한다.
@@ -257,10 +263,26 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
       · 자유 재추첨 = '전 얼굴 전체 → 후 한쪽 볼' 점프 → 전후 비교가 물리적으로 성립 안 함(0911 사고)
       · 완전 잠금  = 여섯 장이 같은 구도 → 복붙처럼 보임(0914 아침 v10)
       그래서 `framing_neighbors` 로 **한 칸 옆 거리까지만** 옮긴다. 각도·머리와 같은 방식이다.
-      시리즈 컷은 SERIES_LOCK 이 여전히 완전 잠금이다(한 사람의 여러 시점은 같은 구도여야 한다)."""
+      시리즈 컷은 SERIES_LOCK 이 여전히 완전 잠금이다(한 사람의 여러 시점은 같은 구도여야 한다).
+
+    2026-09-18 (연서님 검수 "전·직후·2주 세 장의 표정·입모양·구도·카메라 각도가 똑같다", 09-17 6세트 실측):
+      팔자는 drift_lock[expression, angle] + SERIES_LOCK{framing} 이라 **셀카를 다른 사진으로 만드는 축
+      셋이 한꺼번에 잠겨** 있었다 — 6세트 전부 after_changed_axes 에 이 셋이 한 번도 없다. 그래서 After
+      장면 문장이 Before 와 글자 그대로 같고, 2주 컷은 모델이 참조를 베끼는 게 가장 싼 길이 된다
+      (실측: 2주 컷 표정차 0.0027~0.0066 vs 직후 0.0063~0.0179, 복붙 탈락도 2주에서만 났다).
+      → `series_relax` 에 적힌 축만 **이웃 한 칸**으로 푼다(자유 재추첨이 아니다).
+      · expression : Before 의 **입 상태(다문/벌린)는 그대로** 두고 키만 바꾼다 — 벌린 입은 주름을 펴서
+        시술 없이도 후가 좋아 보이고(가짜 효과), 다문 채로도 jaw_loose·lip_asym·시선·눈썹은 눈에 보이게
+        달라진다. '웃음 금지'는 scene_allow 가 이미 한다.
+      · angle·framing : neighbors 표 한 칸. 이웃이 없으면 **안 바뀐다**(자유 폴백 금지 — 각도가 멀리
+        뛰면 주름 그림자가 달라져 촬영 차이가 효과로 둔갑한다).
+      · seen : 앞 시점이 쓴 키를 피한다 — 안 피하면 직후·2주가 서로 같은 값을 뽑아 '세 장 똑같다'가
+        Before 쪽만 풀린 채로 남는다."""
     v = load("variations.yaml")
     tr = treatment_rules(treatment, mode)
-    lock = set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())
+    relax = set(tr.get("series_relax") or []) if series else set()
+    lock = (set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
+    seen = seen or {}
     probs = v.get("after_drift", {}).get(mode, {})
     if "immediate" in probs or "later" in probs:
         probs = probs.get("immediate" if timeline == "immediate" else "later", {})
@@ -281,7 +303,9 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
         if axis == "angle":                                 # 각도는 이웃 각도로만 (비슷하되 동일하지 않게)
             nb = v.get("angle_neighbors", {}).get(variation["angle"]["key"])
             if nb:
-                allowed = [k for k in allowed if k in nb] or allowed
+                nxt = [k for k in allowed if k in nb]
+                # 시리즈 완화 축은 폴백 없음 — 이웃이 없으면 안 바꾼다(위 머리말: 멀리 뛰면 가짜 효과).
+                allowed = nxt if (nxt or axis in relax) else allowed
         if axis == "expression":
             # 표정은 '키가 다르다'가 아니라 '사람 눈에 다르다'여야 한다 (2026-09-14 밤 연서님 검수).
             # neutral_closed → slight_smile 은 키가 바뀌어도 입은 다문 채, 눈은 렌즈 — 실측 450세트에서
@@ -289,14 +313,21 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
             # (연서님 "'무조건'이라는 단어로 너무 막아두지 말자" — 30%는 여전히 같은 표정으로 남는다).
             tb = v.get("expression_traits", {})
             cur_tr = tb.get(variation["expression"]["key"], {})
-            vis = [k for k in allowed
-                   if any(tb.get(k, {}).get(f) != cur_tr.get(f) for f in ("mouth", "eyes"))]
-            allowed = vis or allowed                        # 고를 게 없으면 종전대로 (fail-open)
+            if axis in relax:
+                # 시리즈 완화: 입 상태는 Before 와 같게 묶고 키만 바꾼다 (2026-09-18 머리말 참조).
+                keep = [k for k in allowed if tb.get(k, {}).get("mouth") == cur_tr.get("mouth")]
+                allowed = keep or []                        # 같은 입 상태가 하나도 없으면 안 바꾼다
+            else:
+                vis = [k for k in allowed
+                       if any(tb.get(k, {}).get(f) != cur_tr.get(f) for f in ("mouth", "eyes"))]
+                allowed = vis or allowed                    # 고를 게 없으면 종전대로 (fail-open)
         if axis == "hair_style":                            # 머리는 2주 안에 될 수 있는 모양으로만 (포니테일→삭발 금지)
             nb = v.get("hair_style_neighbors", {}).get(variation["hair_style"]["key"])
             if nb is not None:
                 allowed = [k for k in allowed if k in nb]   # 빈 목록이면 안 바뀐다
         opts = [k for k in allowed if k != variation[axis]["key"]]
+        if axis in relax and len(opts) > 1:                 # 앞 시점이 쓴 값은 피한다 (없으면 종전대로)
+            opts = [k for k in opts if k not in (seen.get(axis) or set())] or opts
         if opts:
             k = rng.choice(opts); after[axis] = {"key": k, "text": v[axis][k]}; keys[axis] = k
     # ── 조명 호가 있는 시술은 **배경보다 조명이 먼저다** (2026-09-14 오후 연서님 검수) ──
@@ -448,11 +479,25 @@ def check_avoid_vs_facts(treatment: str, when: str, fact_texts: list, avoid_line
 # "다시 찍은 사진"임을 말하는 공통 문장 (2026-09-10·09-11 성연서님 "로봇이야" → 2026-09-14 공통화).
 # ⚠ 이 문장이 없으면 참조로 넘긴 Before 가 포즈·눈 뜬 정도·입 벌림까지 그대로 복제된다.
 #   표정 축을 다시 뽑아도 소용없다 — 설정보다 참조 이미지가 세다(같은 구조: 물광은 빛이 만든다).
-RESHOT_LINE = (
+RESHOT_BASE = (
     'This is a second, separate photo of the same person, not the reference photo edited: the phone was put '
     'down and picked up again, so the arm is at a different distance and height, the head sits at a different '
-    'tilt and rotation, the face is not in the same spot in the frame, the eyes are open a different amount and '
-    'the mouth is open a different amount. Do not copy the pose, the gaze or the mouth shape of the reference. ')
+    'tilt and rotation, the face is not in the same spot in the frame, the eyes are open a different amount')
+RESHOT_LINE = (RESHOT_BASE + ' and the mouth is open a different amount. Do not copy the pose, the gaze or the '
+               'mouth shape of the reference. ')
+# 표정이 잠긴 시술(주름 필러)용 변형 — 입을 *벌리라*고 하면 그것만으로 주름이 펴져 가짜 효과가 된다.
+# 그래서 '입 상태는 같게, 입 선은 복사 금지'로 갈라 적는다 (2026-09-18 연서님 검수 ③).
+# 새 장면의 빛이 얼굴에도 오는가 (2026-09-18 연서님 검수 ② "합성 티"). 얼굴은 참조에서 거의 그대로
+# 가져오고 배경·옷만 갈아 끼우면, 모자·다른 방인데 얼굴 밝기·그림자 방향이 전과 같아 **오려 붙인 것처럼**
+# 보인다. 장면을 바꾸라는 말은 이미 있었고 '그 빛이 얼굴에도 떨어진다'는 말이 없었다.
+RELIGHT_LINE = (
+    'The light on the face belongs to this new scene: the direction, height and softness of the light falling on '
+    'the face, and the shadows it casts beside the nose, on the cheeks and under the chin, follow the light source '
+    'described in this scene and not the lighting of the reference photo.')
+RESHOT_HELD = (RESHOT_BASE + '. The mouth stays in the same state as in the reference — lips closed stay closed, '
+               'lips parted stay parted — because opening or stretching the mouth would change the folds being '
+               'treated on its own; its exact line is still not copied, the jaw hangs a little differently and '
+               'the corners rest a little differently. Do not copy the pose or the gaze of the reference. ')
 
 def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None,
                   avoid_not_at=None) -> dict:
@@ -628,6 +673,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         keys = FACT_KEYS_PROMPT if w == "immediate" else (FACT_KEYS_AFTER if mode == "selfie" else ())
         return [("facts", " ".join(str(f[k]).split())) for k in keys if f.get(k)]
 
+    series_seen = {}            # 시리즈 컷들이 이미 쓴 값 {축: {키…}} — drift_after 의 seen (2026-09-18)
+
     def build_after(w, chg, lv, lowered):
         """시점 하나의 After. 시리즈든 아니든 같은 길 — 동일인 기준은 항상 Before 사진이다(After 를 다음 After 의 기준으로 쓰면 얼굴이 흘러간다)."""
         # 금지문은 컷마다 다르다(not_at). 직후 컷은 카드가 흔적을 그리라고 하므로 흔적 금지가 빠진다.
@@ -647,7 +694,12 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             spans = [("identity", identity), ("retake", retake), ("drift", micro), ("change", t["after_change"]),
                      ("effect", eff["effect_levels"][lv]), ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after)]
         else:
-            a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment, series=bool(pts))
+            a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment, series=bool(pts),
+                                seen=series_seen)
+            # 앞 시점이 쓴 값을 기록한다 — 다음 시점이 그걸 피해야 '세 장이 서로도 다른' 시리즈가 된다.
+            for _ax in (tr.get("series_relax") or []):
+                if _ax in a_var:
+                    series_seen.setdefault(_ax, set()).add(a_var[_ax]["key"])
             a = {k: val["text"] for k, val in a_var.items()}
             ident = identity_for(variation["framing"]["key"], a_var["framing"]["key"])
             a_scene = dict(a); a_scene.pop("expression", None)          # 표정은 아래 expression_line 이 맡는다
@@ -665,10 +717,16 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 #   *정도* 만 말해서, 각도 축이 잠긴 시술에선 모델이 같은 프레임을 그대로 복사했다.
                 #   ⚠ 각도 축 자체는 여전히 잠근다 — 각도가 바뀌면 주름 그림자가 달라져 촬영 차이가
                 #     시술 효과로 둔갑한다. 푸는 건 '몇 도'이지 '어느 각도'가 아니다.
+                # ⚠ 2026-09-18 (연서님 검수 ③ "표정·입모양·구도·카메라 각도가 똑같다"): 종전 첫 문장은
+                #   "The expression is the same as in the reference: …" 였다. 바로 뒤 RESHOT_LINE 이
+                #   "포즈·시선·입모양을 베끼지 마라"라고 말하니 **한 프롬프트가 서로 반대를 지시**했고,
+                #   참조 이미지를 같이 넘기는 구조에서 모델은 늘 복사 쪽을 골랐다(09-17 6세트 전수).
+                #   → 뽑힌 표정을 그대로 서술하고(시리즈면 컷마다 다르다 — series_relax), 지킬 것은
+                #   '웃음·입꼬리 당김 금지' 하나로 좁힌다. 같은 표정이 뽑힌 회차에도 모순이 없다.
                 expression_line = (
-                    f'The expression is the same as in the reference: {variation["expression"]["text"]}. '
-                    'Do not smile and do not tense the mouth or cheeks, since that alone would change the '
-                    'folds being treated. ' + RESHOT_LINE +
+                    f'Expression in this photo: {a["expression"]}. '
+                    'Do not smile and do not tense or lift the corners of the mouth or the cheeks, since that '
+                    'alone would change the folds being treated. ' + RESHOT_HELD +
                     'These differences must be visible at a glance when the two photos sit side by side, while '
                     'still reading as the same pose.')
             else:
@@ -697,12 +755,13 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             finish = "" if w == "immediate" else " ".join(str(t.get("after_finish") or "").split())
             txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
                 identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
-                after_finish=finish,
+                after_finish=finish, relight=RELIGHT_LINE,
                 expression_line=expression_line, mode_extra=selfie_after,
                 after_day=mx["after_day"][which].strip(), skin_state=mx["skin_state"][which].strip(), avoid=avoid_after)
             spans = [("identity", ident), ("change", t["after_change"]), ("effect", eff["effect_levels"][lv]),
                      ("must_not", t.get("must_not_change") or ""), ("finish", finish)] + fact_spans(w) + [("avoid", avoid_after),
-                     ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
+                     ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", RELIGHT_LINE),
+                     ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
                      ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", selfie_after)]
         return {"when": w, "effect_level": lv, "effect_lowered": lowered,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,

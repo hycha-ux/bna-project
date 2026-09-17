@@ -302,6 +302,17 @@ class Batch:
                     r["fail_reasons"] += [f"vision:{k}" for k in vs["failed_items"]]
                 meta["after_results"][when] = r
                 meta["fail_reasons"] += [f if len(outs) == 1 else f"{f}@{when}" for f in r["fail_reasons"]]
+            # ④-2 시점끼리 복붙 계측 (2026-09-18, **기록 전용 · 탈락 사유 아님**)
+            #   종전 복붙 게이트는 Before↔After 만 잰다 — 직후↔2주 끼리 같은 그림인지는 아무도 안 봤고
+            #   연서님 검수 ③("세 장이 똑같다")이 바로 그 구간이다. 여기서 바로 게이트로 쓰지 않는 이유:
+            #   09-17 6세트 실측에서 **사람이 채택한 세트**도 Before↔2주 head_diff 가 0.0086 이라,
+            #   같은 자를 시점끼리 걸면 통과분까지 죽는다(임계는 '걸린 것 중 사람이 reject 했던 비율'로
+            #   고른다 — 09-14 교훈). 먼저 값만 모으고 분포를 본 뒤 정한다. 추가 API 호출 0(랜드마크는 로컬).
+            if len(outs) >= 2 and self.mode == "selfie":
+                meta["series_copy"] = {}
+                for (w0, _b0, img0, _u0), (w1, _b1, img1, _u1) in zip(outs, outs[1:]):
+                    p0, p1 = landmarks.detect(img0), landmarks.detect(img1)
+                    meta["series_copy"][f"{w0}->{w1}"] = structure.copy_check(p0, p1, self.mode)
             # 대표(마지막 시점) 결과는 종전 키에도 — 화면·통계가 그대로 읽게
             last = meta["after_results"][outs[-1][0]]
             meta["structure"], meta["identity"] = last["structure"], last["identity"]
