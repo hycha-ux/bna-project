@@ -62,24 +62,24 @@ nasolabial:
       exaggerate the lines either.
     moderate: >
       This person has never had any aesthetic treatment and the face shows honest age: clearly
-      visible nasolabial folds from the sides of the nose to the corners of the mouth with a light
+      visible nasolabial folds from the sides of the nose to just above and outside the corners of the mouth with a light
       shadow in the crease, and a shallow marionette line running from each corner of the mouth
-      down toward the chin, slight loss of mid-face volume. Otherwise ordinary, healthy skin.
+      down and slightly outward toward the jawline, slight loss of mid-face volume. Otherwise ordinary, healthy skin.
       Do not make the face look younger, rested or more attractive than described.
     marked: >
       This person has never had any aesthetic treatment. Pronounced, deep nasolabial folds casting
       a clear shadow, a slightly sagging front cheek, distinct marionette lines from the corners of
-      the mouth down toward the chin with their own shadow, and a tired under-eye area. Do not make the face look younger, rested or more attractive than described.
+      the mouth down and slightly outward toward the jawline with their own shadow, and a tired under-eye area. Do not make the face look younger, rested or more attractive than described.
   # 범위 문장 추가(2026-09-11 빌디/성연서님 검수): 종전엔 "softer and shallower" 까지만 말해 **범위를 안 정했고**,
   #   09:49 배치에서 주름 중앙만 지워지고 콧볼 쪽·입꼬리 쪽은 그대로 남았다. 09-10 메모 "시술 부위 중앙이
   #   잘려서"도 같은 현상이다(그땐 프레이밍 문제로 읽었다). 한 토막만 지워진 주름은 시술이 아니라 지우개로 보인다.
   after_change: >
     the nasolabial folds are softer and shallower than in the reference, the shadow inside the
     crease is lighter, the skin beside the mouth sits a little smoother; the softening runs along
-    the entire length of the fold, from beside the nostril down to the corner of the mouth, evenly
+    the entire length of the fold, from beside the nostril down to where it ends just above and outside the corner of the mouth, evenly
     on both sides, with no single segment left unchanged and no segment erased more than the rest.
     The marionette lines are treated the same way: the line running from each corner of the mouth
-    down toward the chin is shallower and its shadow lighter, the skin just outside and below the
+    down and slightly outward toward the jawline is shallower and its shadow lighter, the skin just outside and below the
     mouth corner sits smoother and a little fuller, on both sides evenly; same facial structure.
   must_not_change: >
     Do not change lip shape, lip volume, mouth width, nose, chin shape, or jawline width. The
@@ -134,12 +134,21 @@ nasolabial:
     #        패치 지름 약 33px vs 48px(1.45배) — 얼굴을 안 따라가고 **일정한 픽셀 크기로 찍어 붙이는 쪽**으로 쏠렸다.
     #        '1cm' 는 사진 안에 자가 없어 절대 크기로 읽힌다 → **홍채 지름**(누구나 약 1.2cm, 사진마다 같이 커지고 작아진다)에 묶었다.
     #        두 장이 도장처럼 같은 것도 티라, 서로 조금 다르게(크기·들뜬 가장자리·점 위치)를 적었다. 여전히 긍정형만.
+    #   ⑧ 같은 날 성연서님이 실사진 #118(D+0 정면)에 직접 표시해 보냈다(빨간선=시술 부위, 파란 체크=패치).
+    #      읽은 것: 빨간선은 팔자(콧볼 옆→입꼬리보다 조금 위·바깥)와 마리오네트(입꼬리→턱 쪽) 두 줄씩.
+    #      파란 체크는 **선의 아래 끝**에 있다 — 한쪽에 셋: 팔자 끝 바로 그 자리 1 + 그 바로 바깥·조금 위 볼 1 +
+    #      마리오네트 끝(턱 가까이) 1. 좌우 같다. ⑦의 '팔자 끝 둘(하나는 더 아래)'은 '하나는 바깥·위'로,
+    #      마리오네트 끝 하나를 더했다. ⚠ 한쪽 셋은 사진 판독이다 — 연서님이 둘이라고 하면 마리오네트 끝을 빼라.
+    #      같은 표시로 선 모양도 맞췄다(before_condition·after_change): 팔자는 입꼬리 '까지'가 아니라 입꼬리 조금 위·바깥에서
+    #      끝나고, 마리오네트는 턱 '가운데'가 아니라 입꼬리에서 아래·살짝 바깥 턱선 쪽으로 내려간다.
     immediate_marks: >
       Right after the injections the skin tone of the cheeks is the same ordinary, even tone as in the
-      reference. The only traces of the procedure are these: on both sides of the face, right where the
-      lower end of the nasolabial fold finishes, just outside and slightly below the corner of the mouth,
-      clear of the lips and far from the nose, sit two small round clear hydrocolloid dressings per side,
-      one directly under the end of the fold and the other a little lower. Their size follows this
+      reference. The only traces of the procedure are small round clear hydrocolloid dressings sitting
+      at the lower ends of the treated lines, the same on both sides of the face, three per side: one
+      exactly where the lower end of the nasolabial fold finishes, a little above and outside the corner
+      of the mouth; a second just beside it, slightly further out and a little higher on the cheek; and a
+      third at the lower end of the marionette line, below and outside the corner of the mouth, close to
+      the jawline. All of them are clear of the lips and far from the nose. Their size follows this
       person's face in this photo: each dressing is about as wide as the iris of their eye, so the
       dressings look small when the face is small in the frame and larger when the face fills the frame.
       The dressings differ slightly from each other, one a touch smaller, one with an edge faintly lifted,

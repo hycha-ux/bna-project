@@ -1426,9 +1426,12 @@ _im = _immediate_after("nasolabial", 7)
 ok("patch sitting high" not in _im and "patches sitting high" not in _im and "far from the nose" in _im,
    "직후 패치를 콧볼 옆(주름 위쪽)에 붙이면 안 된다 — 주름 아래 끝")
 # 09-17 저녁 성연서님 "볼이 아니라 팔자 끝나는 아래 지점에 양쪽 두 개씩" — cm·볼 서술이 돌아오면 모델이 볼 한복판·귀 쪽에 흩는다
-ok("lower end of the nasolabial fold" in _im and "on both sides" in _im and "two small round" in _im
+ok("lower end of the nasolabial fold" in _im and "on both sides" in _im
    and "centimetres" not in _im and "low on the cheek" not in _im,
-   "패치 자리는 '팔자 아래 끝 · 양쪽 둘씩' 이어야 한다 — cm·볼 서술 금지(09-17 저녁 검수)")
+   "패치 자리는 '팔자 아래 끝 · 양쪽' 이어야 한다 — cm·볼 서술 금지(09-17 저녁 검수)")
+# 같은 날 #118 실사진 표시(파란 체크 = 선의 아래 끝, 한쪽 셋) — 마리오네트 끝 패치가 빠지면 표시와 다르다
+ok("three per side" in _im and "lower end of the marionette line" in _im,
+   "패치는 한쪽 셋: 팔자 끝 둘 + 마리오네트 끝 하나(09-17 #118 표시)")
 # 같은 날 "얼굴 크기가 다른데 패치 크기가 똑같다 = 합성 티" — 실측 얼굴 2.25배 vs 패치 1.45배. 절대 크기(cm) 대신 홍채에 묶는다
 ok("iris" in _im and "one centimetre" not in _im,
    "패치 크기는 얼굴 안의 기준(홍채)에 묶어야 한다 — '1cm' 는 사진에 자가 없어 고정 픽셀로 찍힌다")
