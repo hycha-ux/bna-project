@@ -33,7 +33,7 @@ def defaults_for(mode: str) -> dict:
 
 
 PERSON_AXES = ["country", "age", "gender", "face_shape", "skin_tone", "skin_condition", "body_type",
-               "hair_style", "hair_color", "eyes", "extras"]
+               "hair_style", "hair_color", "eyes", "looks", "extras"]   # looks = 미모 축 (2026-09-17), 옛 계획엔 없어 build_prompts 가 ordinary 로 채운다
 SCENE_AXES = ["background", "angle", "framing", "context", "lighting", "color", "quality", "expression"]
 
 # 시술별 '못 잼(동일인 게이트가 얼굴을 못 찾음)' 상한. 정본은 여기 하나다 —
@@ -183,9 +183,9 @@ def _drop_identity_items(text: str, keywords: list) -> tuple:
     return text[:i + 2] + ", ".join(kept) + text[j:], len(items) - len(kept)
 
 def person_description(variation: dict) -> str:
-    f = {k: variation[k]["text"] for k in PERSON_AXES}
+    f = {k: (variation.get(k) or {}).get("text", "") for k in PERSON_AXES}
     parts = [f"{f['country']} {f['gender']} {f['age']}", f["face_shape"], f["skin_tone"], f["skin_condition"],
-             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["extras"]]
+             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["looks"], f["extras"]]
     return ", ".join(p for p in parts if p)
 
 
@@ -477,6 +477,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         mode_extra = " ".join(str(_mxf[variation["framing"]["key"]]).split())
     if "expression" not in variation:                # 예전 계획(표정 축 없던 시절)도 조립되게
         ek = "neutral_closed"; variation = {**variation, "expression": {"key": ek, "text": load("variations.yaml")["expression"][ek]}}
+    if "looks" not in variation:                     # 예전 계획(미모 축 없던 시절, ~2026-09-17) = 보통
+        variation = {**variation, "looks": {"key": "ordinary", "text": ""}}
     tr = treatment_rules(treatment, mode)
     fields = {k: v["text"] for k, v in variation.items()}
     rig = None

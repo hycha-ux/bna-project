@@ -73,6 +73,15 @@ eyes:
   hooded: "hooded eyes"
   deep_set: "deep-set eyes"
 
+# 미모 (2026-09-17 연서님 "미모도 프롬프트 축으로" — 09-16 회의 "미모 셀카형이 6:4 정도로 섞여 노출되게").
+#   ordinary 는 빈 문장이다 — 종전 프롬프트가 글자 하나 안 바뀐다(기존 회차와 비교가 끊기지 않는다). attractive 만 문장을 얹는다.
+#   ⚠ 이 축은 '예쁘게 그려라'가 아니라 **원래 그렇게 생긴 사람**이다 — 피부·주름·리얼리티 규정은 그대로 다 붙는다.
+#     Before 의 "described 보다 더 예쁘게 만들지 마라"와 충돌하지 않는 이유: 여기 적힌 것까지가 'described' 다.
+#   임상은 ordinary 고정(mode_rules) — 병원 기록 사진은 미모를 고르지 않는다. 6:4 는 셀카 가중(weights.looks).
+looks:
+  ordinary: ""
+  attractive: "naturally good-looking, with well-balanced, harmonious features and a face that photographs well - a real person who happens to be attractive, not a model or an idealized face"
+
 extras:
   none: ""
   glasses: "wearing thin-frame glasses"
@@ -311,6 +320,7 @@ mode_rules:
     framing: [full_face]
     context: [none]
     expression: [neutral_closed]
+    looks: [ordinary]     # 병원 기록 사진은 미모를 고르지 않는다 (2026-09-17)
   selfie:
     background: [home, cafe, outdoor, car, bathroom]
     # ⚠ context 화이트리스트가 없으면 전량 허용이라 "시술 직후 After 전용" 맥락 4종
@@ -412,6 +422,7 @@ after_immediate:
 weights:
   country: {korea: 5, japan: 1, china: 1, sea: 1, west: 1}       # 한국 ≈ 55%
   gender: {female: 3, male: 1}                                   # 여성 75%
+  looks: {attractive: 6, ordinary: 4}                            # 미모 6 : 보통 4 (09-16 회의, 셀카만 — 임상은 mode_rules 가 ordinary 고정)
   age: {late_teens: 1, early_20s: 2, late_20s: 3, "30s": 3, "40s": 3, "50s": 2, "60s": 1}
   # 셀카: 정면은 드물게, 부분 크롭 우세 (레퍼런스 후기 사진 비율 반영)
   # 임상 각도 three_quarter·side 는 임상 전용 값이라 셀카에 영향 없다. 레퍼런스 3장 전부 정면 → 정면 ≈ 50% (2026-09-15)

@@ -603,8 +603,8 @@ ok(len(_c) == 8, "과거 조합을 피하느라 배치 장수가 줄면 안 된�
 # 조합이 말랐을 때: 배치가 조용히 비는 게 아니라 배치 안 중복 금지만 남기고 채운다(fail-open)
 _one = {k: v for k, v in zip(
     ["country", "age", "gender", "face_shape", "skin_tone", "skin_condition", "body_type",
-     "hair_style", "hair_color", "eyes", "extras"],
-    ["korea", "30s", "female", "oval", "fair", "clear", "slim", "bob", "black", "double", "none"])}
+     "hair_style", "hair_color", "eyes", "looks", "extras"],
+    ["korea", "30s", "female", "oval", "fair", "clear", "slim", "bob", "black", "double", "ordinary", "none"])}
 _d = _pb("selfie", 4, 1, fixed=_one, treatment="nasolabial")
 _e = _pb("selfie", 4, 1, fixed=_one, treatment="nasolabial", avoid_sigs={_sig(p) for p in _d})
 ok(len(_e) == 1, "가능한 조합이 1개뿐이면 과거에 썼더라도 그 1개를 낸다 (fail-open)")
@@ -797,6 +797,23 @@ for _ab in _pbust["afters"]:
 _pnorm = build_prompts("nasolabial", "selfie", _v, 17, series=["2w"])
 ok("arm's length" not in _pnorm["before_prompt"] and "pushed close to the lens" in _pnorm["before_prompt"],
    "다른 프레이밍의 Before 본문은 종전 문장 그대로다")
+
+# ㉒-e 미모 축 (2026-09-17 연서님 "미모도 프롬프트 축으로" — 09-16 회의 "미모 셀카형 6:4")
+from collections import Counter as _Clk
+from bna.planner import plan_batch as _pblk
+_lk = _Clk(p["looks"]["key"] for p in _pblk("selfie", 1000, seed=17, treatment="nasolabial"))
+ok(0.5 <= _lk["attractive"] / 1000 <= 0.7, f"셀카 미모 비율은 6:4 근처여야 한다 — 실제 {_lk['attractive']/10:.0f}%")
+_lkc = _Clk(p["looks"]["key"] for p in _pblk("clinical", 200, seed=17, treatment="nasolabial"))
+ok(set(_lkc) == {"ordinary"}, f"임상은 미모를 고르지 않는다(ordinary 고정) — 실제 {dict(_lkc)}")
+ok(load("variations.yaml")["looks"]["ordinary"] == "",
+   "'보통'은 빈 문장이어야 한다 — 종전 프롬프트가 글자 하나 안 바뀌어야 옛 회차와 비교가 이어진다")
+_vo = dict(_v); _vo.pop("looks", None)
+ok("looks" in build_prompts("nasolabial", "selfie", _vo, 5)["variation"],
+   "미모 축이 없는 옛 계획도 조립돼야 한다(ordinary 로 채움)")
+_va = dict(_v); _va["looks"] = {"key": "attractive", "text": load("variations.yaml")["looks"]["attractive"]}
+_pa = build_prompts("nasolabial", "selfie", _va, 5)
+ok("naturally good-looking" in _pa["before_prompt"] and "not a model" in _pa["before_prompt"],
+   "미모 문장은 '원래 그렇게 생긴 실제 사람'이라고 못 박아야 한다 — 모델·이상화된 얼굴은 AI 티")
 
 # ㉒-c 팔자 + 마리오네트 (2026-09-17 연서님 "마리오네트 부위도 함께 시술 변화가 있었으면")
 #    실사진(온볼라썸 #1·#117·#118) 태그가 전부 팔자+마리오네트다. 네 칸(부위·마스크·Before·After)이 같이 넓어야 한다 —
@@ -1038,7 +1055,7 @@ ok(len(_pb("selfie", 6, seed=23, treatment="nasolabial", avoid_scene_sigs=_all))
    "구도가 말라도 배치 개수는 채워야 한다(말없이 줄지 않는다)")
 # 인물 서명에 장면을 섞지 않았는가 — 섞으면 회피가 오히려 약해진다
 from bna.planner import signature as _sg
-ok(len(_sg(_p0[0])) == 11, f"인물 서명은 인물 축 11개만이어야 한다 — {len(_sg(_p0[0]))}")
+ok(len(_sg(_p0[0])) == 12, f"인물 서명은 인물 축 12개만이어야 한다(미모 축 포함, 2026-09-17) — {len(_sg(_p0[0]))}")
 
 # 구도가 마르면 회피를 접어야 한다 — 안 접으면 남은 20n 번을 전부 거절로 헛돈다.
 # 2026-09-10 실측: 이 가드가 없을 때 n=400 계획이 분 단위로 늘어 회귀가 2분 → 7분이 됐다.
