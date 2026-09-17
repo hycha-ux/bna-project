@@ -649,6 +649,17 @@ ok(_sr3["afters"][0]["effect_lowered"] is True and _sr3["afters"][1]["effect_low
 ok(all(a["effect_lowered"] is False for a in _sr["afters"]),
    "필러(팔자)는 직후부터 최종 강도라 낮춘 시점이 하나도 없다")
 ok(_pl["afters"][0]["effect_lowered"] is False, "시리즈가 아니면 낮추지 않으므로 종전대로 effect_visible 을 건다")
+# ⑳-2b 직후 컷의 면제는 강도와 별개다 (2026-09-18, 배치 20260918-084112-2fae 실측)
+#   필러 직후는 최종 강도(=effect_lowered False)인데 프롬프트가 흔적·붓기를 시키므로 심사가
+#   "자국은 보이지만 분명한 개선은 없다"로 3.0 을 준다 — 직후 4컷 전부 탈락, 같은 세트 2주는 8.0 통과.
+#   → 판정 플래그를 `effect_ungated` 로 갈랐다(면제는 넓히고 '강도를 낮췄나'는 그대로 보고에 남긴다).
+ok(_sr["afters"][0]["when"] == "immediate" and _sr["afters"][0]["effect_ungated"] is True,
+   "시리즈의 직후 컷은 강도를 안 낮췄어도 effect_visible 로 떨어지지 않는다")
+ok(_sr["afters"][-1]["effect_ungated"] is False,
+   "가라앉은 뒤 컷은 반드시 효과 판정을 받는다 — 여기까지 면제하면 아무도 효과를 안 본다")
+_pl_i = build_prompts("nasolabial", "selfie", sample_variation("selfie", 5), 5)
+ok(all(a["effect_ungated"] is False for a in _pl_i["afters"]),
+   "시리즈가 아닌 한 장짜리는 면제하지 않는다(그 세트엔 효과를 볼 다른 컷이 없다)")
 
 
 class _QaStub:
@@ -666,8 +677,8 @@ ok(_vu["failed_items"] == [] and _vu["passed"] and _vu["ungated"] == ["effect_vi
 ok(_vu["scores"]["effect_visible"]["score"] == 3.0,
    "점수는 그대로 남긴다(안 묻는 게 아니라 안 거는 것 — 직후 컷이 정말 변화가 적었나를 나중에 검산한다)")
 _batch_src2 = (_Path(__file__).resolve().parent / "src" / "bna" / "batch.py").read_text(encoding="utf-8")
-ok('af.get("effect_lowered")' in _batch_src2 and '"immediate"' not in _batch_src2,
-   "배치는 시점 이름을 다시 보지 말고 spec 이 실어 보낸 effect_lowered 하나만 봐야 한다(규칙 두 벌 금지)")
+ok('af.get("effect_ungated")' in _batch_src2 and '"immediate"' not in _batch_src2,
+   "배치는 시점 이름을 다시 보지 말고 spec 이 실어 보낸 effect_ungated 하나만 봐야 한다(규칙 두 벌 금지)")
 
 
 # ⑳-3 시술별 직후 강도 + 사실 카드 (2026-09-11 빌디 지적 3건)

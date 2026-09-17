@@ -763,7 +763,18 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                      ("day", mx["after_day"][which]), ("scene", after_scene), ("scene", RELIGHT_LINE),
                      ("scene", f"Hair: {after_hair}."), ("expression", expression_line),
                      ("skin", mx["skin_state"][which]), ("timeline", eff["timeline"][w].capitalize()), ("mode_extra", selfie_after)]
-        return {"when": w, "effect_level": lv, "effect_lowered": lowered,
+        # ── effect_visible 을 탈락 사유로 쓰지 않는 컷 (2026-09-18) ────────────────────────────
+        # 종전 규칙은 '강도를 낮춘 컷'만 면제였다(09-11): 프롬프트가 "거의 안 보이게" 시켜 놓고 검수가
+        # "눈에 띄어야 한다"로 재면 지시를 지킬수록 떨어진다. **직후 컷도 같은 모양인데 면제가 없었다** —
+        # 필러 직후는 최종 강도(면제 아님)인데 프롬프트가 흔적(투명 패치)과 "주름이 살짝 붓는다"를 같이
+        # 시키므로, 심사는 "동그란 자국은 보이지만 분명한 개선은 없다"고 읽는다.
+        #   09-18 실측(배치 20260918-084112-2fae): 직후 4컷 전부 effect_visible 3.0 으로 탈락,
+        #   같은 세트의 2주 컷은 8.0 통과. 재시도가 원리적으로 무의미한 자리에서 3회차까지 돌았다.
+        # → 시리즈에서 **직후 컷은 계측만** 하고(meta 에 점수는 그대로 남는다) 효과 판정은 가라앉은 뒤
+        #   컷이 한다. ⚠ 시리즈가 아닐 때(직후 한 장짜리)는 면제하지 않는다 — 그 세트엔 효과를 볼
+        #   다른 컷이 없어서, 면제하면 아무도 효과를 안 보게 된다.
+        ungated = lowered or (bool(pts) and w == "immediate")
+        return {"when": w, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}
 

@@ -265,8 +265,10 @@ class Batch:
                 ab = postprocess.apply(after, q_after, self.mode, pp_seed)
                 # 강도를 낮춘 시점(직후·1주)은 `effect_visible` 을 묻긴 하되 **탈락 사유로 쓰지 않는다** —
                 # 프롬프트가 "거의 안 보이게" 시켜 놓고 검수가 "눈에 띄어야 한다"로 재면 지시를 지킬수록 떨어진다.
-                # 판정은 spec 이 만들 때 실어 보낸 `effect_lowered` 하나다(여기서 시점 이름을 다시 보지 마라).
-                ungate = ("effect_visible",) if af.get("effect_lowered") else ()
+                # 판정은 spec 이 만들 때 실어 보낸 `effect_ungated` 하나다(여기서 시점 이름을 다시 보지 마라).
+                # 2026-09-18: 종전엔 `effect_lowered`(강도를 낮춘 컷)만 봤다 — 직후 컷은 최종 강도인데
+                # 프롬프트가 흔적·붓기를 시켜서 같은 모양으로 떨어졌다. 사유·근거는 spec.build_after 주석.
+                ungate = ("effect_visible",) if af.get("effect_ungated") else ()
                 outs.append((when, ab, Image.open(io.BytesIO(ab)), ungate))
 
             # ④ 검수 3단 — After 마다. 세트는 전부 통과해야 통과. 시점별 결과는 meta["after_results"][when] 에 남긴다
