@@ -16,6 +16,7 @@
   「규칙으로 승격」을 눌러야 산다(오타·모순·환자 정보·프롬프트 인젝션 차단).
 """
 import json
+import re
 import time
 from pathlib import Path
 
@@ -391,13 +392,32 @@ def _git_commit_avoid(rule: dict) -> dict:
         return {"ok": False, "why": str(e)[:200]}
 
 
+_AFTER_PHOTO = re.compile(r"\bafter[- ](?:photo|image|picture|shot|pic)s?\b", re.I)
+
+
+def _narrow_where(en: str, where) -> tuple:
+    """문장이 '후 사진'을 말하면 Before 자리에서 뺀다 → (자리, 좁혔나).
+
+    ⚠ 화면의 승격 버튼은 자리를 늘 `['before','after']` 로 보낸다(web/index.html). 그래서
+    "In the after photo …" 문장이 Before 프롬프트에 붙어 **Before 가 '후 사진'을 말했다** —
+    09-15 팔자 규칙(콜라주 사고)·09-17 수염 규칙 두 번, 둘 다 selftest ㉞ 가 뒤늦게 잡았다
+    (2026-09-17 빌디 제안, 티모 반영). 사람이 자리를 고르는 칸이 없으니 문장에서 읽는다.
+    'before photo' 는 좁히지 않는다 — After 가 "전 사진과 같은 수염"처럼 비교로 말하는 건 정상이다.
+    """
+    where = list(where or ["after"])
+    if _AFTER_PHOTO.search(en or "") and where != ["after"]:
+        return ["after"], True
+    return where, False
+
+
 def promote(note: str, en: str, where=None) -> dict:
     """메모 한 줄을 규칙으로 승격. avoid.yaml 의 custom 에 붙는다(사람 확인 후에만)."""
     from .spec import CFG
     p = CFG / "prompts" / "avoid.yaml"
     src = p.read_text(encoding="utf-8")
     cfg = yaml.safe_load(src) or {}
-    rule = {"en": en.strip(), "where": where or ["after"], "from": (note or "").strip(),
+    where, narrowed = _narrow_where(en, where)
+    rule = {"en": en.strip(), "where": where, "from": (note or "").strip(),
             "since": time.strftime("%Y-%m-%d")}
     cfg.setdefault("custom", [])
     if any((c or {}).get("en") == rule["en"] for c in cfg["custom"]):
@@ -433,7 +453,7 @@ def promote(note: str, en: str, where=None) -> dict:
             names_set(out, nv, f"규칙 추가: {(note or en).strip()}", cat="검수")
     except Exception:                                   # noqa: BLE001
         pass
-    return {"ok": True, "rule": rule, "count": want, "kept_comments": kept,
+    return {"ok": True, "rule": rule, "count": want, "kept_comments": kept, "where_narrowed": narrowed,
             "commit": _git_commit_avoid(rule)}
 
 

@@ -1894,14 +1894,14 @@ def _mkcfg34(body: str, tmp):
     return d / "avoid.yaml"
 
 
-def _promote34(body: str, en: str, note: str = "메모", root=None):
+def _promote34(body: str, en: str, note: str = "메모", root=None, where=None):
     """진짜 promote() 를 임시 트리에서 돌린다(CFG·ROOT 만 갈아 끼운다)."""
     _cfg0, _root0 = _S34.CFG, _S34.ROOT
     tmp = root or _tf34.mkdtemp()
     try:
         p = _mkcfg34(body, tmp)
         _S34.CFG, _S34.ROOT = _P34(tmp) / "config", _P34(tmp)
-        r = _L34.promote(note, en)
+        r = _L34.promote(note, en, where)
         return r, p.read_text(encoding="utf-8")
     finally:
         _S34.CFG, _S34.ROOT = _cfg0, _root0
@@ -1931,6 +1931,18 @@ ok((_yml34.safe_load(_txt34c).get("custom") or [{}])[0].get("en") == "lonely rul
 # 같은 문장은 두 번 안 들어간다(종전 규칙 유지)
 _r34d, _ = _promote34(_HEAD34, "first rule")
 ok(not _r34d.get("ok") and "이미" in (_r34d.get("error") or ""), "같은 en 은 거부한다")
+
+# 'after photo' 문장은 화면이 전·후를 보내도 After 에만 붙는다(09-15 팔자·09-17 수염 — Before 가 '후 사진'을 말한 사고 2회)
+_BEARD34 = "In the after photo the person must have the same beard as in the before photo."
+_r34w, _txt34w = _promote34(_HEAD34, _BEARD34, where=["before", "after"])
+ok(_r34w.get("where_narrowed") and _yml34.safe_load(_txt34w)["custom"][-1]["where"] == ["after"],
+   f"'after photo' 문장은 before 자리를 뺀다 — {_r34w.get('rule', {}).get('where')}")
+ok(_L34._narrow_where("no visible pores on the cheek", ["before", "after"]) == (["before", "after"], False),
+   "'after photo' 가 없으면 자리를 안 건드린다")
+ok(_L34._narrow_where("same tone as the before photo", ["after"]) == (["after"], False),
+   "After 가 '전 사진'과 비교하는 문장은 좁히지 않는다")
+ok(_L34._narrow_where("the After-Photo keeps lighting", ["before"]) == (["after"], True),
+   "대소문자·하이픈 표기도 잡는다")
 
 # ── 자동 커밋 ────────────────────────────────────────────────────────────────
 _git34 = _sh34.which("git")

@@ -2184,7 +2184,7 @@ async function loadLessons() {
       if (r.error) throw new Error(r.error);
       // 커밋 결과를 같이 낸다 — 커밋이 안 되면 다음 git 한 번에 규칙이 조용히 사라진다(09-14 실사고).
       // 응답에만 싣고 화면이 안 읽으면 그건 없는 것과 같다.
-      const cm = r.commit || {}, tail = r.queued ? '' : (cm.ok ? ` · 커밋 ${cm.sha}` : ` · ⚠ 커밋 안 됨(${cm.why || '사유 불명'}) — 손으로 커밋해 주세요`);
+      const cm = r.commit || {}, tail = r.queued ? '' : (r.where_narrowed ? ' · "after photo" 문장이라 시술 후 컷에만' : '') + (cm.ok ? ` · 커밋 ${cm.sha}` : ` · ⚠ 커밋 안 됨(${cm.why || '사유 불명'}) — 손으로 커밋해 주세요`);
       msg('#les-msg', r.queued ? (r.message || '승격 요청을 보냈습니다') : `규칙 ${r.count}개 — 다음 생성부터 붙습니다${tail}`, r.queued || cm.ok ? 'on' : 'err'); loadLessons(); }
     catch (e) { msg('#les-msg', e.message, 'err'); }
   });
