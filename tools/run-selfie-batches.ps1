@@ -42,6 +42,14 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $py = Join-Path $root '.venv\Scripts\python.exe'
+# 2026-09-17: the new server (A7_Max) has no .venv - deps live in the system Python. Start-Process then
+# failed silently: every batch logged "done exit=" with an empty code in the same second and spent $0.
+# Same fallback as ops/gen-poller.mjs python().
+if (-not (Test-Path $py)) {
+  $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+  if (-not $cmd) { throw 'no .venv and no python.exe on PATH' }
+  $py = $cmd.Source
+}
 
 # Keys never touch the log or the command line - they go straight into this process env.
 if (-not (Test-Path $KeysFile)) { throw "keys file not found: $KeysFile" }
