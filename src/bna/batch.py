@@ -237,18 +237,30 @@ class Batch:
                         #   그려진 패치가 계산 자리(허용 = 홍채 지름 1개)에 없으면 **이 직후 컷만** 다시 그린다 — 세트 재시도로
                         #   넘기면 Before·2주까지 다시 사서 비용이 3배다. 스위치·횟수 = treatments.yaml `patch_gate` → spec 의 af["patch_gate"](없으면 끔).
                         #   None(못 잼)은 재생성 사유가 아니다(patchgate 머리말). 원장 = meta["patch_gate"][시점] = 회차별 결과 목록.
+                        #   09-18 오후 연서님: 재시도 최대 3번(yaml), 다 떨어져도 **버리지 않는다** — 그린 컷 중 계산 자리에
+                        #   가장 가까운 것(patchgate.closeness)을 남기고 meta["patch_gate_final"][시점].passed=False 로
+                        #   검수 화면에 '위치 게이트 미통과'를 띄운다. 세트 탈락 사유(fail_reasons)엔 넣지 않는다 — 사람이 판단한다.
                         tries = int(af.get("patch_gate") or 0)          # spec 이 직후 컷에만 실어 보낸다
                         if tries:
                             glog = meta.setdefault("patch_gate", {}).setdefault(af["when"], [])
+                            best = None                                 # (closeness, try, 컷, 결과)
                             for g in range(tries + 1):
                                 gr = await loop.run_in_executor(None, patchgate.check, after, self.p_qa)
                                 cost += self.pricing[self.p_qa.name]["qa"]
-                                glog.append({"attempt": attempt, "try": g, **{k: gr.get(k) for k in ("passed", "n", "inside", "outside", "note")}})
+                                glog.append({"attempt": attempt, "try": g, **{k: gr.get(k) for k in ("passed", "reasons", "n", "inside", "outside", "note")}})
+                                if best is None or patchgate.closeness(gr) > best[0]:
+                                    best = (patchgate.closeness(gr), g, after, gr)
                                 if gr.get("passed") is not False or g == tries:
                                     break
                                 after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
                                 after = Image.open(io.BytesIO(after_b))
                                 cost += self.pricing[self.p_edit.name]["generate"]
+                            if gr.get("passed") is False:               # 끝까지 떨어짐 → 가장 가까운 컷으로 되돌린다
+                                after, gr = best[2], best[3]
+                            meta.setdefault("patch_gate_final", {})[af["when"]] = {
+                                "attempt": attempt, "passed": gr.get("passed"), "reasons": gr.get("reasons") or [],
+                                "kept_try": best[1] if gr is best[3] else g, "draws": g + 1,
+                                "inside": gr.get("inside"), "n": gr.get("n"), "outside": gr.get("outside")}
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
             #   나머지 시점은 취소도 안 된 채 계속 도는데, 그 장들은 **이미 돈을 쓴 호출**이라 meta["cost"] 에

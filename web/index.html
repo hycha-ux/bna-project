@@ -1646,6 +1646,12 @@ const CMP_KO = {side:'나란히', wipe:'슬라이더', flip:'깜빡이'};
 const idGate = it => { const idn = it.identity || {}; return idn.gate || (idn.hard_fail ? 'fail' : idn.measured === false ? 'n/a' : null); };
 // '사람이 봐야 하는' 컷 = 기계가 못 쟀거나(n/a) 애매한(review) 것. 다른 사람(fail)은 이미 기계가 걸렀다.
 const idNeedsHuman = it => ['n/a', 'review'].includes(idGate(it));
+// 직후 패치 위치 게이트 (2026-09-18 오후 연서님) — 재시도 3번이 다 떨어지면 버리지 않고 계산 자리에 가장 가까운 컷을 남긴다.
+//   그 컷은 AI 통과로 보여도 사람이 패치 자리를 봐야 한다. 사유 둘: count=원 밖 여분 / position=자리 오차 (patchgate.REASON_KO 와 한 벌)
+const PG_KO = {count: '원 밖 여분', position: '자리 오차'};
+const posGateFail = it => Object.entries(it.patch_gate_final || {}).filter(([, r]) => r && r.passed === false)
+  .map(([w, r]) => ({when: w, why: (r.reasons || []).map(k => PG_KO[k] || k).join('·'), r}));
+const posGateChip = it => posGateFail(it).map(f => `<span class="gate warn" title="${esc(val('timeline', f.when))} 컷: 직후 패치가 계산 자리(허용 홍채 지름 1.5개)에 안 앉았습니다 — ${esc(f.why)} · 원 안 ${f.r.inside ?? '?'}/${f.r.n ?? '?'} · 원 밖 ${f.r.outside ?? '?'} · ${f.r.draws}장 중 가장 가까운 컷을 남겼습니다. 패치 자리를 직접 봐 주세요">위치 게이트 <b>미통과</b></span>`).join('');
 function gateChips(it) {
   const idn = it.identity || {}, st = it.structure || {};
   const g = idGate(it);
@@ -1659,7 +1665,7 @@ function gateChips(it) {
   const stc = sp === true ? `<span class="gate ok" title="정렬·크기·밝기·부위 프레임 안">구조 <b>통과</b></span>`
     : sp === false ? `<span class="gate bad" title="${esc(st.region_in_frame === false ? '시술 부위가 프레임 밖' : '정렬·크기·밝기 차이 초과')}">구조 <b>탈락</b></span>`
     : sp === null ? `<span class="gate na" title="얼굴을 못 찾아 못 쟀습니다">구조 <b>못 잼</b></span>` : `<span class="gate na">구조 <b>—</b></span>`;
-  return `<div class="gates">${id}${stc}</div>`;
+  return `<div class="gates">${id}${stc}${posGateChip(it)}</div>`;
 }
 /** 다 판정했을 때 — 손그림 컷 + 집계. 브랜드 시트 v0.6 '끝났어요' 화면 */
 function renderDone() {
@@ -1856,7 +1862,7 @@ function itemCard(it) {
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
     <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, seriesN > 1 ? `시술 후 · ${val('timeline', Object.keys(afs).at(-1))}` : '시술 후')}${seriesN > 1 ? `<span class="series-badge" title="경과 시리즈 ${Object.keys(afs).map(w => val('timeline', w)).join(' → ')}">${seriesN}시점</span>` : ''}</div>
     <div class="body">
-      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}${idBadge}${movedChip}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}${idBadge}${posGateChip(it)}${movedChip}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
       <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
       <div class="act">
         <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn}</button>
@@ -1930,7 +1936,8 @@ function detail(id, item = null, bid = null, extra = '') {
   // 게이트 결과는 글 대신 칩: 통과는 회색, 불일치·사람 확인은 강조
   const gate = (label, ok, text) => `<span class="chip ${ok ? '' : 'warn'}">${label} ${text}</span>`;
   const chips = [it.structure && gate('얼굴 정렬', it.structure.passed, it.structure.passed ? '통과' : '불일치'),
-    it.identity && (g => gate('동일 인물', g === 'ok', ({ok:'통과', review:'사람 확인', fail:'불일치', 'n/a':'못 잼 · 사람 확인'})[g] || '—'))(idGate(it))].filter(Boolean).join('');
+    it.identity && (g => gate('동일 인물', g === 'ok', ({ok:'통과', review:'사람 확인', fail:'불일치', 'n/a':'못 잼 · 사람 확인'})[g] || '—'))(idGate(it)),
+    ...posGateFail(it).map(f => gate('위치 게이트', false, `미통과 · ${f.why}`))].filter(Boolean).join('');
   $('#dlg-in').innerHTML = `<div class="dlg-head"><div class="dlg-title"><h2>${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} <span class="chip">${MODE_KO[it.mode]||it.mode}</span></h2>
       <div class="dlg-meta"><span>시도 ${it.attempt||0}</span><span class="sep">·</span><span>$${(it.cost||0).toFixed(3)}</span>${it.prompt_version ? `<span class="sep">·</span><span>프롬프트 ${esc(vname(it.prompt_version))}</span>` : ''}${chips ? `<span class="gates">${chips}</span>` : ''}</div></div>
       <div class="dlg-act">${extra}<button type="button" class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기 (Esc)"><i class="ic ic-x"></i></button></div></div>

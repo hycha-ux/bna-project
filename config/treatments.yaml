@@ -144,12 +144,13 @@ nasolabial:
     immediate_marks: >
       Right after the injections the skin tone of the cheeks is the same ordinary, even tone as in the
       reference. The only traces of the procedure are small round clear hydrocolloid dressings sitting
-      at the lower ends of the treated lines, the same on both sides of the face, three per side: one
+      at the lower ends of the treated lines, the same on both sides of the face, exactly three per side: one
       exactly where the lower end of the nasolabial fold finishes, on the cheek just beside the corner of
       the mouth, a little above and outside it; a second just beside that one, slightly further out on the
       cheek and a little lower; and a third sitting right on the jawline, directly below and a little
       outside the corner of the mouth, where the marionette line meets the jaw. All of them are clear of
-      the lips and far from the nose. Their size follows this
+      the lips and far from the nose. These six dressings, three on each side, are the only dressings
+      anywhere on the face; all the rest of the skin is bare. Their size follows this
       person's face in this photo: each dressing is about as wide as the iris of their eye, so the
       dressings look small when the face is small in the frame and larger when the face fills the frame.
       The dressings differ slightly from each other, one a touch smaller, one with an edge faintly lifted,
@@ -166,7 +167,12 @@ nasolabial:
   #   문장이 가리키는 자리와 계산 자리가 갈리면 게이트가 매번 떨어뜨린다(한쪽만 고치지 마라).
   #   ⑨ 2026-09-18 연서님 "마리오네트 패치는 턱 라인, 팔자 패치는 입 쪽으로 살짝": 팔자 끝 = 입꼬리 바로 옆 볼,
   #      옆 패치 = 조금 더 바깥·조금 아래(계산 자리 실측이 아래였다), 마리오네트 = 턱선 위.
-  patch_gate: 2
+  #   ⑩ 2026-09-18 오후 연서님 (C안 1세트: 직후 8장 중 1장 통과 13%) — 원인 둘을 갈랐다.
+  #      · 원 밖 여분 패치 = **개수** 문제 → 게이트는 그대로, 문장에 "정확히 한쪽 셋, 이 여섯이 얼굴의 전부"를 더했다.
+  #        금지 자리를 나열하지 않았다(09-10 교훈: 적으면 그린다) — 긍정형 '나머지 피부는 비어 있다'로만.
+  #      · 자리 오차 → 허용 반경 홍채 지름 1.0 → 1.5개(patchgate.TOL_IRIS). 사유는 count / position 으로 갈라 적는다.
+  #      · 재시도 최대 3번(2→3). 다 떨어져도 버리지 않고 계산 자리에 가장 가까운 컷을 남겨 '위치 게이트 미통과'로 표시.
+  patch_gate: 3
   # 2026-09-18: moderate 에서 subtle 을 뺐다. subtle 문구는 "문제가 아직 남아 있고 나란히 놓고 비교할 때나
   #   눈에 띈다"라서, 필러가 직후부터 최종 강도인 시술인데도 2주 컷이 판정선(6) 아래로 떨어졌다
   #   (09-17 실측: 6세트 중 5세트가 subtle, 2주 effect_visible 2.0·3.0·3.0). moderate 문구 자체가

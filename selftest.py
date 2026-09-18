@@ -1487,7 +1487,40 @@ ok("three per side" in _im and "right on the jawline" in _im and "marionette lin
 from bna.spec import build_prompts as _bp_pg
 _pg_afters = [a for a in _bp_pg("nasolabial", "selfie", sample_variation("selfie", 7, treatment="nasolabial"), 7,
                                  series=["immediate", "2w"])["afters"]]
-ok([a["patch_gate"] for a in _pg_afters] == [2, 0], f"패치 위치 게이트는 직후 컷에만 2회 — 실제 {[a['patch_gate'] for a in _pg_afters]}")
+ok([a["patch_gate"] for a in _pg_afters] == [3, 0], f"패치 위치 게이트는 직후 컷에만 3회(09-18 오후 연서님 상한) — 실제 {[a['patch_gate'] for a in _pg_afters]}")
+# 09-18 오후 연서님: 여분 패치는 '개수' 문제 — 문장이 한쪽 정확히 셋 + 여섯이 전부라고 말해야 한다(금지 자리 나열 없이)
+ok("exactly three per side" in _im and "only dressings" in _im and "forehead" not in _im,
+   "직후 패치 개수 문장: '정확히 한쪽 셋 · 이 여섯이 전부' 긍정형(금지 자리 나열 금지 — 09-10 교훈)")
+# 게이트 사유 두 갈래 + 허용 1.5 + '가장 가까운 컷' 고르기 — 비전 호출 없이 가짜 채점기로
+from bna.qa import patchgate as _pgm, landmarks as _lmm
+ok(_pgm.TOL_IRIS == 1.5, f"위치 게이트 허용 = 홍채 지름 1.5개 — 실제 {_pgm.TOL_IRIS}")
+class _FakeQA:
+    def __init__(self, data): self.data = data
+    def chat_json(self, *a, **k): return {"data": self.data}
+_orig_detect, _orig_spots = _lmm.detect, _lmm.patch_spots
+_lmm.detect = lambda img: "pts"
+_lmm.patch_spots = lambda pts, strict=True: [{"side": "L", "name": n, "x": 100 + 30 * i, "y": 100, "r": 5} for i, n in enumerate(["a", "b", "c"])]
+from PIL import Image as _PImg
+_blank = _PImg.new("RGB", (400, 300))
+_g_ok = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": True, "3": True}, "outside": 0}))
+_g_cnt = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": True, "3": True}, "outside": 2}))
+_g_pos = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": False, "3": True}, "outside": 0}))
+_g_both = _pgm.check(_blank, _FakeQA({"rings": {"1": False, "2": False, "3": True}, "outside": 1}))
+_lmm.detect, _lmm.patch_spots = _orig_detect, _orig_spots
+ok(_g_ok["passed"] is True and _g_ok["reasons"] == [], f"게이트 통과 — {_g_ok}")
+ok(_g_cnt["passed"] is False and _g_cnt["reasons"] == ["count"], f"원 밖 여분만 = count — {_g_cnt.get('reasons')}")
+ok(_g_pos["passed"] is False and _g_pos["reasons"] == ["position"], f"원 빔만 = position — {_g_pos.get('reasons')}")
+ok(_g_both["reasons"] == ["position", "count"], f"둘 다 = 두 사유 — {_g_both.get('reasons')}")
+ok(max([_g_both, _g_cnt, _g_pos], key=_pgm.closeness) is _g_cnt
+   and _pgm.closeness({"inside": None}) < _pgm.closeness(_g_both),
+   "다 떨어지면 남길 컷 = 원 안 많을수록 → 원 밖 적을수록, 못 잰 컷은 맨 뒤")
+import inspect as _insp_pg
+from bna import batch as _bt_pg
+_bsrc = _insp_pg.getsource(_bt_pg)
+ok("patch_gate_final" in _bsrc and "patchgate.closeness" in _bsrc,
+   "배치: 끝까지 떨어진 직후 컷은 버리지 않고 가장 가까운 컷 + patch_gate_final 표시")
+_wsrc = (__import__("pathlib").Path(__file__).parent / "web" / "index.html").read_text(encoding="utf-8")
+ok("posGateChip(it)" in _wsrc and "위치 게이트 <b>미통과</b>" in _wsrc, "검수 화면에 '위치 게이트 미통과' 표시")
 # 같은 날 "얼굴 크기가 다른데 패치 크기가 똑같다 = 합성 티" — 실측 얼굴 2.25배 vs 패치 1.45배. 절대 크기(cm) 대신 홍채에 묶는다
 ok("iris" in _im and "one centimetre" not in _im,
    "패치 크기는 얼굴 안의 기준(홍채)에 묶어야 한다 — '1cm' 는 사진에 자가 없어 고정 픽셀로 찍힌다")

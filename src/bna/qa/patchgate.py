@@ -15,7 +15,23 @@ from PIL import Image, ImageDraw
 
 from . import landmarks
 
-TOL_IRIS = 1.0      # 허용 반경 = 홍채 지름 × 이 값 (빌디 "홍채 지름 1개 정도로 시작"). 원 반지름 r 은 홍채 반지름이라 2r×TOL
+TOL_IRIS = 1.5      # 허용 반경 = 홍채 지름 × 이 값. 원 반지름 r 은 홍채 반지름이라 2r×TOL
+                    #   1.0(빌디 "홍채 지름 1개로 시작") → 1.5 (09-18 오후 연서님 "실사진도 그 정도는 흔들린다").
+                    #   ⚠ 여분 패치(개수)는 이걸 넓혀도 안 풀린다 — 그건 REASON 'count' 로 따로 센다.
+
+# 탈락 사유 두 갈래 (09-18 오후 연서님 "원 밖 여분과 자리 오차가 갈라져 보이게").
+#   count    = 원 밖에 떨어진 패치가 있다(개수가 많다) — 프롬프트(개수 문장)로 고칠 일
+#   position = 반드시 있어야 할 원이 비었다(자리가 틀렸거나 빠졌다) — 허용 반경·위치 문장으로 고칠 일
+#   둘 다일 수 있다(자리가 밀려 원 밖에 앉으면 원 하나가 비고 밖에 하나가 생긴다).
+REASON_KO = {"count": "원 밖 여분", "position": "자리 오차"}
+
+
+def closeness(gr: dict) -> tuple:
+    """재시도가 다 떨어졌을 때 남길 컷을 고르는 키 — 클수록 계산 자리에 가깝다.
+    원 안에 앉은 패치 수가 많을수록, 그다음 원 밖 여분이 적을수록. 못 잰 컷(None)은 맨 뒤."""
+    if gr.get("inside") is None:
+        return (-1, 0)
+    return (gr["inside"], -(gr.get("outside") or 0))
 CROP_PAD = 3.0      # 채점용 확대 조각 = 자리들을 감싸고 r × 이만큼 여유
 
 PROMPT = (
@@ -71,6 +87,7 @@ def check(img: Image.Image, p_qa) -> dict:
         outside = int(data.get("outside") or 0)
     except (TypeError, ValueError):
         outside = None
-    return {"passed": (inside == len(need) and outside == 0) if outside is not None else None,
+    reasons = [] if outside is None else (["position"] if inside < len(need) else []) + (["count"] if outside > 0 else [])
+    return {"passed": (not reasons) if outside is not None else None, "reasons": reasons,
             "n": len(need), "inside": inside, "outside": outside, "optional": len(extra),
             "spots": [s["side"] + ":" + s["name"] for s in spots], "note": str(data.get("note", ""))[:200]}
