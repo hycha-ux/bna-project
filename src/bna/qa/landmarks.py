@@ -87,6 +87,8 @@ NASO_PULL = 0.015          # 팔자 두 패치를 입꼬리 쪽으로 당기는 
 MARIO_DIR = (0.35, -1.0)   # 마리오네트 패치: 입꼬리에서 (바깥, 위) 방향으로 내려가 턱선과 만나는 점
 MARIO_INSET = 0.35         # 턱선에서 입꼬리 쪽으로 들이는 양 (패치 반지름 배수) — 1.0 이면 턱선 위 볼로 떠 보였다(09-18 눈 확인)
 SIDE_MIN_RATIO = 0.30      # 코끝→양쪽 얼굴 끝 거리 비가 이보다 작으면 그쪽은 돌아가 안 보인다 → 패치 안 붙임
+SQUASH_NEAR = 0.35         # 가까운 쪽 볼 타원 눌림 계수 (turn=0.6 이면 가로 0.79배)
+SQUASH_FAR = 0.9           # 먼 쪽 볼 (turn=0.3 이면 0.73배)
 FAR_SIDE_RATIO = 0.75     # 이보다 짧은 쪽 = 카메라에서 돌아간 쪽(마리오네트 턱선 패치도 윤곽 검사)
 FACE_RING_MIN = 8          # 패치 테두리 12점 중 얼굴 윤곽 안이어야 하는 개수 (아래 patch_spots 주석)
 IRIS_FALLBACK = 0.088      # 홍채 점(468~477)이 없을 때 홍채 지름 = 얼굴 폭 × 이 값 (09-18 실측 0.089·0.095)
@@ -131,6 +133,15 @@ def patch_spots(pts: np.ndarray) -> list:
     irises = [float(np.linalg.norm(pts[a] - pts[b])) for s in _SIDE.values() for a, b in [s["iris"]] if len(pts) > max(a, b)]
     diam = max(irises) if irises else W * IRIS_FALLBACK     # 먼 쪽 눈은 옆으로 눌려 작게 잡힌다 → 큰 쪽
     r = diam / 2
+    # 타원 (2026-09-18 빌디 제안 "3/4 컷은 옆으로 눌린 타원이 자연스럽다") — 볼은 얼굴이 돌아간 만큼 가로로 눌려 보인다.
+    #   sx = 얼굴 가로축(across) 방향 배율, ang = 그 축의 기울기(도). 돌아간 정도 = 양쪽 코끝→얼굴 끝 거리의 비.
+    #   가까운 쪽 볼은 카메라를 비스듬히 보므로 조금(SQUASH_NEAR), 먼 쪽은 많이 눌린다. 정면이면 둘 다 ≈1.
+    turn = 1 - min(reach.values()) / max(reach.values())
+    ang = float(np.degrees(np.arctan2(across[1], across[0])))
+    near = max(reach, key=reach.get)
+    def _squash(side):
+        k = SQUASH_NEAR if side == near else SQUASH_FAR
+        return {"sx": float(max(0.45, 1 - k * turn)), "ang": ang}
     out = []
     for side, s in _SIDE.items():
         if reach[side] < SIDE_MIN_RATIO * max(reach.values()):
@@ -139,12 +150,12 @@ def patch_spots(pts: np.ndarray) -> list:
         c = pts[s["corner"]]
         for name, (ox, oy) in PATCH_SPOTS.items():
             p = c + ((ox - NASO_PULL) * o + oy * up) * W
-            out.append({"side": side, "name": name, "x": float(p[0]), "y": float(p[1]), "r": r})
+            out.append({"side": side, "name": name, "x": float(p[0]), "y": float(p[1]), "r": r, **_squash(side)})
         d = MARIO_DIR[0] * o + MARIO_DIR[1] * up; d /= np.linalg.norm(d)
         hit = _jaw_hit(pts, c, d)
         if hit is not None:
             p = hit - d * r * MARIO_INSET          # 턱선에서 입꼬리 쪽으로 반지름×INSET
-            out.append({"side": side, "name": "mario_end", "x": float(p[0]), "y": float(p[1]), "r": r})
+            out.append({"side": side, "name": "mario_end", "x": float(p[0]), "y": float(p[1]), "r": r, **_squash(side)})
     # 얼굴 윤곽 밖으로 걸치는 자리는 뺀다 (09-18 눈 확인: 옆으로 살짝 돈 정면 컷에서 먼 쪽 '옆' 패치가 배경에 떴다).
     #   윤곽 = full_face_skin 폴리곤. 중심만 보면 반쪽 패치가 허공에 뜬다.
     face = [tuple(map(float, pts[i])) for i in REGIONS["full_face_skin"]]
@@ -163,11 +174,13 @@ def patch_spots(pts: np.ndarray) -> list:
 def spots_mask(size, spots: list, grow: float = 1.35, feather: int = 3) -> Image.Image:
     """패치 자리 원 마스크 (L, 흰색=편집 허용). grow = 패치보다 조금 넓게 열어 모델이 가장자리를 그릴 틈을 준다."""
     from PIL import ImageFilter
-    m = Image.new("L", size, 0)
-    d = ImageDraw.Draw(m)
+    import cv2
+    a = np.zeros((size[1], size[0]), np.uint8)
     for s in spots:
         rr = s["r"] * grow
-        d.ellipse([s["x"] - rr, s["y"] - rr, s["x"] + rr, s["y"] + rr], fill=255)
+        cv2.ellipse(a, (int(round(s["x"])), int(round(s["y"]))), (max(1, int(rr * s.get("sx", 1.0))), int(rr)),
+                    s.get("ang", 0.0), 0, 360, 255, -1)       # 타원: 가로축=얼굴 across 방향 × sx
+    m = Image.fromarray(a)
     return m.filter(ImageFilter.GaussianBlur(feather)) if feather else m
 
 
