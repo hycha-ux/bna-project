@@ -246,8 +246,8 @@ class Batch:
                             best = None                                 # (closeness, try, 컷, 결과)
                             for g in range(tries + 1):
                                 gr = await loop.run_in_executor(None, patchgate.check, after, self.p_qa)
-                                cost += patchgate.DETECT_COST            # 09-18 저녁부터 짚기는 Gemini(p_qa 아님)
-                                glog.append({"attempt": attempt, "try": g, **{k: gr.get(k) for k in ("passed", "reasons", "n", "inside", "outside", "total", "offsets", "note")}})
+                                cost += patchgate.DETECT_COST * (gr.get("calls") or 1)   # 짚기는 Gemini(p_qa 아님), 09-18 밤부터 좌우 조각 따로
+                                glog.append({"attempt": attempt, "try": g, **{k: gr.get(k) for k in ("passed", "reasons", "n", "inside", "outside", "total", "unmeasured", "scale", "offsets", "note")}})
                                 if best is None or patchgate.closeness(gr) > best[0]:
                                     best = (patchgate.closeness(gr), g, after, gr)
                                 if gr.get("passed") is not False or g == tries:
@@ -261,7 +261,8 @@ class Batch:
                                 "attempt": attempt, "passed": gr.get("passed"), "reasons": gr.get("reasons") or [],
                                 "kept_try": best[1] if gr is best[3] else g, "draws": g + 1,
                                 "inside": gr.get("inside"), "n": gr.get("n"), "outside": gr.get("outside"),
-                                "total": gr.get("total"), "offsets": gr.get("offsets")}
+                                "total": gr.get("total"), "unmeasured": gr.get("unmeasured"), "scale": gr.get("scale"),
+                                "offsets": gr.get("offsets")}
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
             #   나머지 시점은 취소도 안 된 채 계속 도는데, 그 장들은 **이미 돈을 쓴 호출**이라 meta["cost"] 에

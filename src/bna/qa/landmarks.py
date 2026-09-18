@@ -85,13 +85,21 @@ PATCH_SPOTS = {
 }
 NASO_PULL = 0.015          # 팔자 두 패치를 입꼬리 쪽으로 당기는 양 (얼굴 폭 비율) — 연서님 "입과 살짝만 가까이"
 MARIO_DIR = (0.35, -1.0)   # 마리오네트 패치: 입꼬리에서 (바깥, 위) 방향으로 내려가 턱선과 만나는 점
-MARIO_INSET = 0.35         # 턱선에서 입꼬리 쪽으로 들이는 양 (패치 반지름 배수) — 1.0 이면 턱선 위 볼로 떠 보였다(09-18 눈 확인)
+MARIO_OUT = 0.5            # 턱선(MediaPipe 윤곽)에서 **바깥**으로 내미는 양 (패치 반지름 배수) — 원 절반이 턱 밑으로 넘어간다.
+                           #   09-18 밤 연서님 (v25 두 회차 ↔ 실사진 #117·#118 대조): 종전 MARIO_INSET 0.35(안으로 들임)는
+                           #   목표 원이 턱선보다 홍채 1.5개쯤 위(볼 중간)에 잡혔다 — MediaPipe 윤곽이 실제 턱 끝보다 안쪽인데
+                           #   거기서 한 번 더 들여 두 번 올라간 셈. 실사진 패치는 턱선 모서리에 걸쳐 정면에선 거의 안 보인다.
+MARIO_REQ_TURN = 0.25      # 마리오네트 자리를 '반드시'로 보는 건 가까운 쪽 턱 밑이 보이는 각도(3/4)에서만 — 돌아간 정도가 이 이상.
+                           #   정면에선 턱선 모서리 패치가 안 보이는 게 정상이라 '있어도 되는 자리'(없어도 감점 없음)로 둔다.
 SIDE_MIN_RATIO = 0.30      # 코끝→양쪽 얼굴 끝 거리 비가 이보다 작으면 그쪽은 돌아가 안 보인다 → 패치 안 붙임
 SQUASH_NEAR = 0.35         # 가까운 쪽 볼 타원 눌림 계수 (turn=0.6 이면 가로 0.79배)
 SQUASH_FAR = 0.9           # 먼 쪽 볼 (turn=0.3 이면 0.73배)
 FAR_SIDE_RATIO = 0.75     # 이보다 짧은 쪽 = 카메라에서 돌아간 쪽(마리오네트 턱선 패치도 윤곽 검사)
 FACE_RING_MIN = 8          # 패치 테두리 12점 중 얼굴 윤곽 안이어야 하는 개수 (아래 patch_spots 주석)
-IRIS_FALLBACK = 0.088      # 홍채 점(468~477)이 없을 때 홍채 지름 = 얼굴 폭 × 이 값 (09-18 실측 0.089·0.095)
+MOUTH_IRIS = 0.265         # 눈 점(468~477)이 화면 밖이거나 없을 때 홍채 지름 = 입 너비(61↔291) × 이 값.
+                           #   09-18 밤 실측: 눈이 화면 안인 기존 팔자 컷 218장 중앙값 0.265 (p10 0.228 · p90 0.315).
+                           #   종전(얼굴 폭 × 0.088, 또는 화면 밖 눈 점 그대로)은 코 아래 크롭에서 MediaPipe 가 지어낸 눈으로
+                           #   자를 만들어 c4 한국 30대 컷이 '자리 오차'로 떨어졌다(09-18 c4 교훈).
 _SIDE = {"R": dict(corner=291, edge=454, iris=(474, 476)),     # 사진 속 오른쪽이 아니라 얼굴 점 번호 기준 한쪽
          "L": dict(corner=61, edge=234, iris=(469, 471))}
 
@@ -120,18 +128,32 @@ def _jaw_hit(pts: np.ndarray, origin: np.ndarray, d: np.ndarray):
     return None if best is None else best[1]
 
 
-def patch_spots(pts: np.ndarray, strict: bool = True) -> list:
-    """직후 컷 패치 자리 [{side, name, x, y, r}] (픽셀). 한쪽에 셋: 팔자 끝·그 옆·마리오네트 끝(턱선).
+def iris_diam(pts: np.ndarray, size=None) -> tuple:
+    """(홍채 지름 px, 자 출처 'iris'|'mouth'). 눈 점(468~477)이 전부 화면 안일 때만 홍채를 쓴다.
+    size=(w, h) 를 안 주면 화면 안 검사를 못 하므로 종전대로 홍채(점이 있으면)."""
+    pts = np.asarray(pts, float)
+    if len(pts) >= 478:
+        eye = pts[468:478]
+        inframe = size is None or bool(((eye[:, 0] >= 0) & (eye[:, 0] < size[0]) &
+                                         (eye[:, 1] >= 0) & (eye[:, 1] < size[1])).all())
+        if inframe:     # 먼 쪽 눈은 옆으로 눌려 작게 잡힌다 → 큰 쪽
+            return max(float(np.linalg.norm(pts[a] - pts[b])) for s in _SIDE.values() for a, b in [s["iris"]]), "iris"
+    return float(np.linalg.norm(pts[MOUTH_R] - pts[MOUTH_L])) * MOUTH_IRIS, "mouth"
+
+
+def patch_spots(pts: np.ndarray, strict: bool = True, size=None) -> list:
+    """직후 컷 패치 자리 [{side, name, x, y, r, need, scale}] (픽셀). 한쪽에 셋: 팔자 끝·그 옆·마리오네트 끝(턱선 모서리).
 
     크기 = 그 사람 홍채 지름(사진마다 얼굴 따라 커지고 작아진다 — 09-17 '두 명 패치 크기가 똑같다' 교정의 연장).
+      눈이 화면 밖이면 입 너비로 잰다(iris_diam) — size=(w,h) 를 줘야 화면 밖을 가린다.
+    need=False = '있어도 되는 자리'(없어도 감점 없음) — 정면·먼 쪽의 마리오네트(턱선 모서리는 정면에서 거의 안 보인다).
     돌아가 안 보이는 쪽(SIDE_MIN_RATIO 미만)은 빈다 — 얼굴 가장자리에 걸친 패치는 합성 티가 난다."""
     pts = np.asarray(pts, float)
     W = float(np.linalg.norm(pts[454] - pts[234]))
     up = pts[10] - pts[152]; up /= np.linalg.norm(up)
     across = pts[454] - pts[234]; across /= np.linalg.norm(across)
     reach = {k: float(np.linalg.norm(pts[s["edge"]] - pts[NOSE_TIP])) for k, s in _SIDE.items()}
-    irises = [float(np.linalg.norm(pts[a] - pts[b])) for s in _SIDE.values() for a, b in [s["iris"]] if len(pts) > max(a, b)]
-    diam = max(irises) if irises else W * IRIS_FALLBACK     # 먼 쪽 눈은 옆으로 눌려 작게 잡힌다 → 큰 쪽
+    diam, scale = iris_diam(pts, size)
     r = diam / 2
     # 타원 (2026-09-18 빌디 제안 "3/4 컷은 옆으로 눌린 타원이 자연스럽다") — 볼은 얼굴이 돌아간 만큼 가로로 눌려 보인다.
     #   sx = 얼굴 가로축(across) 방향 배율, ang = 그 축의 기울기(도). 돌아간 정도 = 양쪽 코끝→얼굴 끝 거리의 비.
@@ -150,12 +172,14 @@ def patch_spots(pts: np.ndarray, strict: bool = True) -> list:
         c = pts[s["corner"]]
         for name, (ox, oy) in PATCH_SPOTS.items():
             p = c + ((ox - NASO_PULL) * o + oy * up) * W
-            out.append({"side": side, "name": name, "x": float(p[0]), "y": float(p[1]), "r": r, **_squash(side)})
+            out.append({"side": side, "name": name, "x": float(p[0]), "y": float(p[1]), "r": r, "need": True,
+                        "scale": scale, **_squash(side)})
         d = MARIO_DIR[0] * o + MARIO_DIR[1] * up; d /= np.linalg.norm(d)
         hit = _jaw_hit(pts, c, d)
         if hit is not None:
-            p = hit - d * r * MARIO_INSET          # 턱선에서 입꼬리 쪽으로 반지름×INSET
-            out.append({"side": side, "name": "mario_end", "x": float(p[0]), "y": float(p[1]), "r": r, **_squash(side)})
+            p = hit + d * r * MARIO_OUT            # 턱선에서 바깥(턱 밑)으로 반지름×OUT — 원 절반이 턱 밑으로 넘어간다
+            out.append({"side": side, "name": "mario_end", "x": float(p[0]), "y": float(p[1]), "r": r,
+                        "need": side == near and turn >= MARIO_REQ_TURN, "scale": scale, **_squash(side)})
     # 얼굴 윤곽 밖으로 걸치는 자리는 뺀다 (09-18 눈 확인: 옆으로 살짝 돈 정면 컷에서 먼 쪽 '옆' 패치가 배경에 떴다).
     #   윤곽 = full_face_skin 폴리곤. 중심만 보면 반쪽 패치가 허공에 뜬다.
     if not strict:
@@ -168,8 +192,9 @@ def patch_spots(pts: np.ndarray, strict: bool = True) -> list:
     #     마리오네트 자리는 턱선에서 재어 들인 점이라 중심만 본다(테두리를 세면 턱선에 걸친 게 정상인데 빠진다 — 09-18 실측).
     #     단 **돌아간 쪽**(코끝→얼굴 끝 거리가 가까운 쪽의 FAR_SIDE_RATIO 미만)은 마리오네트도 테두리를 센다 —
     #     09-18 확대 확인: 옆으로 살짝 돈 정면 컷의 먼 쪽 턱선 패치가 보이는 턱 윤곽 밖(목·배경)으로 반쯤 나갔다.
+    #     09-18 밤: 마리오네트 중심이 턱선 **바깥**(MARIO_OUT)으로 나가 윤곽 중심 검사를 통째로 건너뛴다(돌아간 쪽은 뺀다).
     far = {k for k, v in reach.items() if v < FAR_SIDE_RATIO * max(reach.values())}
-    out = [s for s in out if _inside(face, (s["x"], s["y"])) and ((s["name"] == "mario_end" and s["side"] not in far) or sum(
+    out = [s for s in out if (s["name"] == "mario_end" and s["side"] not in far) or _inside(face, (s["x"], s["y"])) and (sum(
         _inside(face, (s["x"] + s["r"] * np.cos(a), s["y"] + s["r"] * np.sin(a)))
         for a in np.linspace(0, 2 * np.pi, 12, endpoint=False)) >= FACE_RING_MIN)]
     return out

@@ -1493,13 +1493,14 @@ ok("exactly three per side" in _im and "only dressings" in _im and "forehead" no
    "직후 패치 개수 문장: '정확히 한쪽 셋 · 이 여섯이 전부' 긍정형(금지 자리 나열 금지 — 09-10 교훈)")
 # 게이트 사유 두 갈래 + 허용 1.5 + '가장 가까운 컷' 고르기 — 비전 호출 없이 가짜 채점기로
 from bna.qa import patchgate as _pgm, landmarks as _lmm
-ok(_pgm.TOL_IRIS == 1.5, f"위치 게이트 허용 = 홍채 지름 1.5개 — 실제 {_pgm.TOL_IRIS}")
+ok(_pgm.TOL_IRIS == 1.0, f"위치 게이트 허용 = 홍채 지름 1.0개(09-18 밤 1.5→1.0 복귀) — 실제 {_pgm.TOL_IRIS}")
 # 09-18 저녁: 짚기는 모델(가짜 detect), 원 안/밖·짝짓기·여분은 코드 — 가짜 짚기는 원본 픽셀 좌표를 조각 픽셀로 바꿔 돌려준다
 _orig_detect, _orig_spots, _orig_axes = _lmm.detect, _lmm.patch_spots, _pgm._axes
 _lmm.detect = lambda img: "pts"
 _pgm._axes = lambda pts: (__import__("numpy").array([1.0, 0.0]), __import__("numpy").array([0.0, -1.0]))  # 가로=+x, 위=-y
 _pg_spots = [{"side": "L", "name": n, "x": 100 + 40 * i, "y": 100, "r": 5} for i, n in enumerate(["a", "b", "c"])]
-_lmm.patch_spots = lambda pts, strict=True: _pg_spots
+_lmm.patch_spots = lambda pts, strict=True, size=None: _pg_spots if strict else _pg_spots + _pg_opt
+_pg_opt = []                                    # '있어도 되는 자리'(정면 마리오네트 등) — 아래 시험에서만 채운다
 from PIL import Image as _PImg
 _blank = _PImg.new("RGB", (400, 300))
 _pg_box = _pgm._crop_box(_blank, _pg_spots)
@@ -1513,7 +1514,32 @@ _g_both = _pgm.check(_blank, detect=_pg_det((140, 100), (180, 100), (100, 125), 
 _g_shift = _pgm.check(_blank, detect=_pg_det((100, 118), (140, 100), (180, 100)))
 _g_twin = _pgm.check(_blank, detect=_pg_det((98, 100), (104, 101), (140, 100), (180, 100)))   # 한 원에 겹친 둘
 _g_fail = _pgm.check(_blank, detect=lambda crop: (_ for _ in ()).throw(RuntimeError("x")))
+_g_none = _pgm.check(_blank, detect=_pg_det())
+# 09-18 밤: 정면 마리오네트 = '있어도 되는 자리' — 없어도 통과, 있으면 그 원 안이어야(원 밖이면 여분)
+_pg_opt = [{"side": "L", "name": "mario_end", "x": 140, "y": 122, "r": 5, "need": False}]
+_g_optnone = _pgm.check(_blank, detect=_pg_det((101, 100), (140, 104), (178, 99)))
+_g_optin = _pgm.check(_blank, detect=_pg_det((101, 100), (140, 104), (178, 99), (141, 123)))
+_g_optoff = _pgm.check(_blank, detect=_pg_det((101, 100), (140, 104), (178, 99), (140, 145)))
+_g_optsteal = _pgm.check(_blank, detect=_pg_det((101, 100), (178, 99), (141, 121)))   # 옆 패치 못 짚음 + 턱선 패치
+_pg_opt = []
 _lmm.detect, _lmm.patch_spots, _pgm._axes = _orig_detect, _orig_spots, _orig_axes
+ok(_g_none["passed"] is None and _g_none["unmeasured"] == 3,
+   f"하나도 못 짚음 = 못 잼(패치가 희미해서 — 09-18 밤 연서님 '없음이 아니라 못 잼') — {_g_none}")
+ok(_g_optnone["passed"] is True and _g_optin["passed"] is True,
+   f"정면 마리오네트는 없어도·원 안에 있어도 통과 — {_g_optnone.get('reasons')}/{_g_optin.get('reasons')}")
+ok(_g_optoff["passed"] is False and _g_optoff["reasons"] == ["count"],
+   f"마리오네트가 턱선 원 밖(볼 중간)이면 탈락 — {_g_optoff.get('reasons')}")
+ok(_g_optsteal["passed"] is True and _g_optsteal["unmeasured"] == 1,
+   f"턱선 원 안 패치를 빈 필수 자리 짝으로 끌어오지 않는다(못 잼 1) — {_g_optsteal.get('reasons')}, 못 잼 {_g_optsteal.get('unmeasured')}")
+# 자 — 눈 점이 화면 밖이면 입 너비 × MOUTH_IRIS (09-18 밤 연서님 ④, c4 한국 30대 코 아래 크롭)
+import numpy as _np_pg
+_pp = _np_pg.zeros((478, 2)); _pp[61] = (100, 200); _pp[291] = (200, 200)
+_pp[468:478] = (150, -30); _pp[474], _pp[476], _pp[469], _pp[471] = (140, -30), (170, -30), (130, -30), (160, -30)
+ok(_lmm.iris_diam(_pp, size=(300, 300)) == (100 * _lmm.MOUTH_IRIS, "mouth"), "눈이 화면 밖 → 자 = 입 너비 × 0.265")
+_pp[468:478, 1] = 50
+ok(_lmm.iris_diam(_pp, size=(300, 300)) == (30.0, "iris"), "눈이 화면 안 → 자 = 홍채(큰 쪽)")
+ok(_lmm.MARIO_OUT == 0.5 and not hasattr(_lmm, "MARIO_INSET"),
+   "마리오네트 목표 = MediaPipe 턱선에서 반지름 0.5 바깥(09-18 밤 연서님 — INSET 두 번 올라감 교정)")
 ok(_g_twin["passed"] is False and _g_twin["reasons"] == ["count"] and _g_twin["total"] == 4,
    f"겹친 패치 둘도 각자 센다(09-18 저녁 '5개쯤 보이는데 3개') — {_g_twin.get('reasons')}, total={_g_twin.get('total')}")
 ok(_g_fail["passed"] is None, "짚기 실패 = 못 잼(None) — 재생성 사유 아님(fail-open)")
@@ -1522,7 +1548,8 @@ ok(_sh["found"] and not _sh["in_ring"] and _sh["dir"] == "아래" and abs(_sh["d
    f"어긋남 = 얼굴 기준 방향·홍채 지름 거리(09-18 저녁 연서님 \"같은 방향으로 계속 벗어나는지\") — {_sh}")
 ok(_g_ok["passed"] is True and _g_ok["reasons"] == [], f"게이트 통과 — {_g_ok}")
 ok(_g_cnt["passed"] is False and _g_cnt["reasons"] == ["count"], f"원 밖 여분만 = count — {_g_cnt.get('reasons')}")
-ok(_g_pos["passed"] is False and _g_pos["reasons"] == ["position"], f"원 빔만 = position — {_g_pos.get('reasons')}")
+ok(_g_pos["passed"] is True and _g_pos["unmeasured"] == 1,
+   f"원 빔(짝 없음) = 못 잼 — 재생성 사유 아님(09-18 밤 연서님, 희미한 패치) — {_g_pos.get('reasons')}, 못 잼 {_g_pos.get('unmeasured')}")
 ok(_g_both["reasons"] == ["position", "count"], f"원 빔 + 총 4개 = 두 사유 — {_g_both.get('reasons')}")
 ok(_g_shift["passed"] is False and _g_shift["reasons"] == ["position"],
    f"셋을 그렸는데 하나가 원 밖으로 밀림 = 자리 오차만(개수 아님, 09-18 오후 실측 7/8) — {_g_shift.get('reasons')}")
@@ -1539,8 +1566,10 @@ ok("posGateChip(it)" in _wsrc and "위치 게이트 <b>미통과</b>" in _wsrc, 
 # 같은 날 "얼굴 크기가 다른데 패치 크기가 똑같다 = 합성 티" — 실측 얼굴 2.25배 vs 패치 1.45배. 절대 크기(cm) 대신 홍채에 묶는다
 ok("iris" in _im and "one centimetre" not in _im,
    "패치 크기는 얼굴 안의 기준(홍채)에 묶어야 한다 — '1cm' 는 사진에 자가 없어 고정 픽셀로 찍힌다")
-ok("clear hydrocolloid" in _im and "colourless" in _im and "glossy circular rim" in _im,
-   "패치는 투명이고, 왜 안 보이는지(색 없음·링만 반짝)까지 적어야 한다 — '거의 안 보임'만 적으면 티나게 그린다(09-11 실측)")
+ok("clear hydrocolloid" in _im and "thin transparent film" in _im and "faint reflection of light along one side" in _im
+   and "zoomed in" in _im and "glossy circular rim" not in _im,
+   "패치는 투명이고, 왜 안 보이는지(얇은 필름·피부가 비침·한쪽 가장자리 희미한 반사·확대해야 보임)까지 적어야 한다 — "
+   "'거의 안 보임'만 적으면 티나게 그린다(09-11 실측). 09-18 밤 연서님: '링만 반질'은 흰 테두리가 또렷해 내렸다")
 ok("flushed pink" not in _im and "scattered" not in _im and "same ordinary, even tone" in _im,
    "볼 전체 홍조·흩뿌린 주사자국은 실사진에 없다 — 피부톤 그대로 + 패치 밑 점 하나씩")
 _imk = " ".join(str(_tr_all["nasolabial"]["facts"]["immediate_marks"]).split())

@@ -21,9 +21,14 @@ from PIL import Image, ImageDraw, ImageFont
 
 from . import landmarks
 
-TOL_IRIS = 1.5      # 허용 반경 = 홍채 지름 × 이 값. 원 반지름 r 은 홍채 반지름이라 2r×TOL
-                    #   1.0(빌디 "홍채 지름 1개로 시작") → 1.5 (09-18 오후 연서님 "실사진도 그 정도는 흔들린다").
+TOL_IRIS = 1.0      # 허용 반경 = 홍채 지름 × 이 값. 원 반지름 r 은 홍채 반지름이라 2r×TOL
+                    #   1.0(빌디 "홍채 지름 1개로 시작") → 1.5 (09-18 오후 연서님 "실사진도 그 정도는 흔들린다")
+                    #   → 1.0 복귀 (09-18 밤 연서님 "1.5는 원끼리 겹칠 만큼 커서 통과가 의미가 없었다. 0/8은 허용이 좁아서가
+                    #   아니라 목표가 틀려서였다" — 목표는 landmarks.MARIO_OUT·iris_diam 으로 고쳤다).
                     #   ⚠ 여분 패치(개수)는 이걸 넓혀도 안 풀린다 — 그건 REASON 'count' 로 따로 센다.
+# 게이트의 용도 (09-18 밤 연서님): **엉뚱한 자리의 또렷한 패치만 거른다.** 패치를 실사진처럼 희미하게 그리게 했으니
+#   짚기가 못 찾는 자리가 생긴다 → 필수 자리가 비면 '없음(자리 오차)'이 아니라 '못 잼'(unmeasured)으로 세고 재생성
+#   사유에서 뺀다. 자리 오차는 '패치를 찾았는데 원 밖(짝 거리 ≤ MISS_IRIS)'일 때만, 여분은 '어느 원과도 짝이 안 되는 패치'.
 
 # 탈락 사유 두 갈래 (09-18 오후 연서님 "원 밖 여분과 자리 오차가 갈라져 보이게").
 #   count    = 원 밖에 떨어진 패치가 있다(개수가 많다) — 프롬프트(개수 문장)로 고칠 일
@@ -41,6 +46,9 @@ def closeness(gr: dict) -> tuple:
 CROP_PAD = 5.0      # 채점용 확대 조각 = 자리들을 감싸고 r × 이만큼 여유
                     #   3.0 → 5.0 (09-18 저녁): 허용 원 반지름이 3r(=1.5 홍채 지름)이라 3.0 이면 원이 조각 끝에 닿아,
                     #   바깥으로 밀린 패치가 조각 밖으로 잘려 '원 빔'만 남고 어디로 밀렸는지를 못 쟀다.
+                    #   09-18 밤: 조각을 **한쪽 얼굴씩** 따로 잘라 짚게 한다(양쪽을 한 장에 담던 것 대비 약 2배 확대) —
+                    #   패치를 희미하게 그리게 해서 짚기가 놓치지 않게 (연서님 "목표 자리 주변을 2~3배 확대해서").
+DEDUP_R = 1.0       # 좌우 조각이 입 가운데서 겹친다 — 두 조각에서 짚은 패치가 반지름 × 이만큼 안이면 같은 패치
 
 DETECT_MODEL = "gemini-3.8-flash"     # 짚기 모델 — 위 머리말의 09-18 비교로 골랐다. 바꾸면 눈 확인부터 다시.
 MISS_IRIS = 3.0                       # 짝으로 인정하는 최대 거리(홍채 지름). 넘으면 '그 자리 빠짐'으로 보고한다.
@@ -49,12 +57,16 @@ DETECT_COST = 0.003                  # 1회 어림(USD) — 약 1.9천 토큰. �
 
 # 패치를 하나씩 상자로 짚게 한다(세는 게 아니라 짚는 것 — 겹친 테두리도 각자 한 상자). 원은 안 그린 깨끗한 조각을 보낸다
 #   (원이 있으면 모델이 원을 패치로 짚거나 원 안만 본다).
+#   09-18 밤: 패치 문장을 '거의 안 보이는 얇은 필름·흰 테두리 없음·한쪽 가장자리 희미한 반사·가운데 붉은 점'으로 바꿔
+#   짚기 문장도 그 생김새로 맞췄다(종전 'glossy rim' 만 찾으면 희미한 패치를 놓친다).
 PROMPT = (
-    "Photo of the lower face right after a filler treatment. Small round CLEAR (transparent, colourless) "
-    "hydrocolloid dressings are stuck on the skin; each shows only as a faint glossy circular or oval rim, "
-    "usually with a tiny red dot inside. Detect EVERY such dressing, one box per rim. Rims that touch or "
-    "overlap are separate dressings. A partial rim cut by the picture edge still counts. A red dot with no rim "
-    "is not a dressing. "
+    "Zoomed-in photo of one side of the lower face right after a filler treatment. Small round CLEAR "
+    "(transparent, colourless) dressings may be stuck on the skin. They are very hard to see: a thin film the skin "
+    "shows straight through, with no white border — look for a faint circular or oval outline, a slight change in "
+    "skin sheen or texture, a faint light reflection along part of an edge, and usually a tiny red dot at the "
+    "centre. Detect EVERY such dressing, one box per dressing. Dressings that touch or overlap are separate. "
+    "A partial dressing cut by the picture edge still counts. A red dot with no outline around it is not a "
+    "dressing. If you see none, return an empty list. "
     'Return JSON list: [{"box_2d": [ymin, xmin, ymax, xmax], "label": "dressing"}] with coordinates 0-1000.')
 
 
@@ -146,25 +158,42 @@ def direction_ko(off: dict) -> str:
 def check(img: Image.Image, p_qa=None, detect=None) -> dict:
     # p_qa 는 배치 호출 모양을 안 바꾸려고 남겼다(09-18 저녁부터 짚기는 Gemini 직접). detect = 시험용 가짜 짚기.
     """{'passed': True|False|None, 'n': 자리 수, 'inside': 찬 필수 원 수, 'outside': 원 밖 패치 수, 'total': 본 패치 수,
+        'unmeasured': 못 짚어 못 잰 필수 자리 수(재생성 사유 아님), 'calls': 짚기 호출 수, 'scale': 자 출처(iris|mouth),
         'offsets': 필수 자리마다 실제 패치와의 차이(얼굴 기준 방향·홍채 지름), 'dressings': 짚은 패치 좌표, 'note'}"""
     pts = landmarks.detect(img)
     if pts is None:
         return {"passed": None, "note": "얼굴 점 못 찾음"}
-    need = landmarks.patch_spots(pts)                   # 반드시 패치가 있어야 하는 자리(보이는 곳)
+    visible = landmarks.patch_spots(pts, size=img.size)             # 보이는 자리 (눈이 화면 밖이면 자 = 입 너비)
+    need = [s for s in visible if s.get("need", True)]              # 반드시 패치가 있어야 하는 자리
     if not need:
         return {"passed": None, "note": "보이는 패치 자리 없음"}
     keys = {(s["side"], s["name"]) for s in need}
-    extra = [s for s in landmarks.patch_spots(pts, strict=False) if (s["side"], s["name"]) not in keys]
-    spots = need + extra                                # 원 번호: 필수 먼저, '있어도 되는 자리'(먼 쪽 볼) 뒤
-    box = _crop_box(img, spots)
-    k = 1024 / max(box[2] - box[0], box[3] - box[1])
-    crop = img.convert("RGB").crop(box).resize((int((box[2] - box[0]) * k), int((box[3] - box[1]) * k)))
-    try:
-        found = (detect or _detect)(crop)
-    except Exception as e:                      # 채점이 죽어도 생성을 죽이지 않는다
-        return {"passed": None, "n": len(need), "note": f"채점 실패: {e!r}"[:200]}
+    # '있어도 되는 자리' — 정면 마리오네트(턱선 모서리, 09-18 밤 연서님 "없어도 감점 없음") + 먼 쪽 볼(윤곽 검사로 빠진 것)
+    extra = [s for s in landmarks.patch_spots(pts, strict=False, size=img.size) if (s["side"], s["name"]) not in keys]
+    spots = need + extra                                # 원 번호: 필수 먼저, '있어도 되는 자리' 뒤
+    rgb = img.convert("RGB")
+    found, calls = [], 0
+    for side in sorted({s["side"] for s in spots}):     # 한쪽 얼굴씩 확대해 짚는다(CROP_PAD 머리말)
+        grp = [s for s in spots if s["side"] == side]
+        box = _crop_box(img, grp)
+        k = 1024 / max(box[2] - box[0], box[3] - box[1])
+        crop = rgb.crop(box).resize((int((box[2] - box[0]) * k), int((box[3] - box[1]) * k)))
+        try:
+            calls += 1
+            got = (detect or _detect)(crop)
+        except Exception as e:                  # 채점이 죽어도 생성을 죽이지 않는다
+            return {"passed": None, "n": len(need), "calls": calls, "note": f"채점 실패: {e!r}"[:200]}
+        r = max(s["r"] for s in grp)
+        for cx, cy in got:
+            x, y = box[0] + cx / k, box[1] + cy / k
+            if all(((x - f["x"]) ** 2 + (y - f["y"]) ** 2) ** 0.5 > r * DEDUP_R for f in found):
+                found.append({"x": x, "y": y, "ring": 0})
     N = len(need)
-    ds = [{"x": box[0] + cx / k, "y": box[1] + cy / k, "ring": 0} for cx, cy in found][:MAX_DRESSINGS]
+    ds = found[:MAX_DRESSINGS]
+    scale = need[0].get("scale")
+    if not ds:                                  # 하나도 못 짚음 = 희미해서 못 본 것 — '없음'이 아니라 못 잼
+        return {"passed": None, "reasons": [], "n": N, "inside": 0, "outside": 0, "total": 0, "unmeasured": N,
+                "calls": calls, "scale": scale, "note": f"{DETECT_MODEL} 짚음 0개 — 못 잼"}
     # 짝짓기 — 필수 자리마다 패치 하나씩, 거리 합이 가장 작은 짝(전수; N≤6·패치≤10 이라 싸다).
     #   '원마다 가장 가까운 패치'로 하면 두 원이 겹친 자리의 패치 하나를 두 원이 같이 가져가거나, 한 원이 뺏겨 빈 원의
     #   '어긋남'이 엉뚱한 먼 패치로 재진다(09-18 저녁 일본 40대 남 컷: 입꼬리 원을 비우고 첫 패치가 옆 원에 앉았다).
@@ -178,6 +207,10 @@ def check(img: Image.Image, p_qa=None, detect=None) -> dict:
     # 홍채 지름 MISS_IRIS 개보다 먼 짝은 짝이 아니다 — 그 자리엔 패치가 없고, 먼 패치는 다른 곳의 여분이다
     #   (09-18 저녁 중국 40대 여 컷: 오른쪽 턱선 패치가 빠졌는데 전수 짝짓기가 반대쪽 볼 패치를 5.7개 거리에서 끌어왔다).
     pick = {i: j for i, j in pick.items() if dist(ds[j], need[i]) <= 2 * need[i]["r"] * MISS_IRIS}
+    # '있어도 되는 자리' 원 안에 제대로 앉은 패치는 필수 자리의 짝으로 끌어오지 않는다 — 09-18 밤 정면 마리오네트가 선택이 되며
+    #   생긴 구멍: 옆 패치(naso_side)가 희미해 못 짚히면 턱선 패치가 그 짝으로 끌려와 '자리 오차'가 된다(실제론 못 잼).
+    pick = {i: j for i, j in pick.items()
+            if not any(dist(ds[j], s) <= 2 * s["r"] * TOL_IRIS and dist(ds[j], s) < dist(ds[j], need[i]) for s in extra)}
     inside = 0
     for i, j in pick.items():
         if dist(ds[j], need[i]) <= 2 * need[i]["r"] * TOL_IRIS:
@@ -193,7 +226,10 @@ def check(img: Image.Image, p_qa=None, detect=None) -> dict:
     #   "원 안 2 + 원 밖 1" = 셋을 그렸는데 하나가 밀린 것. outside>0 으로 세면 밀린 패치 하나가 두 사유로 동시에 잡혀
     #   개수 문제가 8/8 로 부풀었다 — 실제 여분(총 4개 이상)은 1장). 밀린 패치는 짝이 있으니 position 하나로만 센다.
     #   09-18 저녁: 짚기가 겹친 패치도 각자 잡으므로, 짝 못 받은 패치(= 필수 자리 수를 넘친 몫)가 곧 여분이다.
-    reasons = (["position"] if inside < N else []) + (["count"] if extras else [])
+    # 09-18 밤 연서님: 필수 원이 비면(짝 없음) '못 잼'이다 — 희미한 패치를 짚기가 놓쳤을 수 있다. 자리 오차는 짝이 있는데
+    #   원 밖일 때만(= 엉뚱한 자리의 또렷한 패치). 멀리 떨어진 또렷한 패치는 짝이 안 돼 여분(count)으로 잡힌다.
+    unmeasured = N - len(pick)
+    reasons = (["position"] if inside < len(pick) else []) + (["count"] if extras else [])
     # 자리 차이(얼굴 기준 방향·홍채 지름 거리) — 짝지은 패치 기준. 얼굴 축을 못 구하면(가짜 점 등) 비운다.
     try:
         axes = _axes(pts)
@@ -202,12 +238,12 @@ def check(img: Image.Image, p_qa=None, detect=None) -> dict:
     offs = []
     for i, s in enumerate(need):
         if i not in pick or axes is None:
-            offs.append({"spot": s["side"] + ":" + s["name"], "found": False, "dir": "빠짐"}); continue
+            offs.append({"spot": s["side"] + ":" + s["name"], "found": False, "dir": "못 잼"}); continue
         d = ds[pick[i]]
         o = offset(s, d["x"], d["y"], axes)
         offs.append({"spot": s["side"] + ":" + s["name"], "found": True, "in_ring": d["ring"] == i + 1, **o,
                      "dir": direction_ko(o)})
-    return {"passed": inside == N and not extras, "reasons": reasons,
+    return {"passed": not reasons, "reasons": reasons, "unmeasured": unmeasured, "calls": calls, "scale": scale,
             "n": N, "inside": inside, "outside": outside, "total": len(ds), "optional": len(extra),
             "offsets": offs, "spots": [s["side"] + ":" + s["name"] for s in spots],
             "dressings": [{k: round(v, 1) if k != "ring" else v for k, v in d.items()} for d in ds],
