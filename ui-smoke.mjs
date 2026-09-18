@@ -87,6 +87,15 @@ try {
   // 검수 대기가 남은 배치가 '완료'로 보이면 안 된다 (2026-09-18 연서님)
   const doneButPending = await ev("Array.from(document.querySelectorAll('#batches tbody tr')).filter(tr=>{const b=BATCHES.find(x=>x.batch_id===tr.dataset.id);return b&&(b.stats?.pending||0)>0&&tr.lastElementChild.innerText.trim()==='완료'}).length");
   ok(doneButPending === 0, '검수 대기가 남은 작업은 완료가 아니라 검수 필요로 보인다', `완료로 잘못 보인 줄 ${doneButPending}개`);
+  // 작업 화면 필터가 '검수 끝'으로 기억돼 있어도 홈에서 검수 대기 배치를 누르면 상세가 열려야 한다 (2026-09-18 연서님 "홈에서 누르면 튕긴다")
+  await ev("(function(){localStorage.setItem('bna.jobsfilter','reviewed');return 1})()");
+  await goto('#home'); await sleep(1200);
+  const homeRow = await ev("(function(){var r=[...document.querySelectorAll('#home-recent tbody tr.click')].find(t=>t.innerText.includes('검수'));if(!r)return null;r.click();return r.dataset.id})()");
+  if (homeRow) { await sleep(2000);
+    const opened = await ev(`document.querySelector('.page.active')?.id==='tab-jobs' && !document.querySelector('#detail-body').hidden && document.querySelector('#batches tbody tr.sel')?.dataset.id==='${homeRow}'`);
+    ok(opened, '홈에서 검수 대기 배치를 누르면 필터에 가려지지 않고 상세가 열린다', homeRow); }
+  else ok(true, '홈에서 검수 대기 배치를 누르면 상세가 열린다', '(검수 대기 배치 없음 — 건너뜀)');
+  await ev("(function(){localStorage.removeItem('bna.jobsfilter');return 1})()");
 
   // ② 줄을 눌러도 목록은 그대로 있고 상세로 이동한다
   //    (2026-09-08 성연서님 "UX 가 더 안 좋아졌다" → 커밋 55095cc 로 접기를 통째로 없앱다.
