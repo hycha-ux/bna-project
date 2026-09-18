@@ -120,7 +120,7 @@ def _jaw_hit(pts: np.ndarray, origin: np.ndarray, d: np.ndarray):
     return None if best is None else best[1]
 
 
-def patch_spots(pts: np.ndarray) -> list:
+def patch_spots(pts: np.ndarray, strict: bool = True) -> list:
     """직후 컷 패치 자리 [{side, name, x, y, r}] (픽셀). 한쪽에 셋: 팔자 끝·그 옆·마리오네트 끝(턱선).
 
     크기 = 그 사람 홍채 지름(사진마다 얼굴 따라 커지고 작아진다 — 09-17 '두 명 패치 크기가 똑같다' 교정의 연장).
@@ -158,6 +158,10 @@ def patch_spots(pts: np.ndarray) -> list:
             out.append({"side": side, "name": "mario_end", "x": float(p[0]), "y": float(p[1]), "r": r, **_squash(side)})
     # 얼굴 윤곽 밖으로 걸치는 자리는 뺀다 (09-18 눈 확인: 옆으로 살짝 돈 정면 컷에서 먼 쪽 '옆' 패치가 배경에 떴다).
     #   윤곽 = full_face_skin 폴리곤. 중심만 보면 반쪽 패치가 허공에 뜬다.
+    if not strict:
+        # 윤곽 검사 없이 전부 — 위치 게이트(patchgate)의 '있어도 되는 자리' 원. 먼 쪽 볼은 프롬프트가 셋을 다 그리는데
+        #   윤곽 검사가 둘을 빼므로, 그 둘을 '원 밖 패치'로 세면 먼 쪽이 보이는 컷은 늘 떨어진다(09-18 게이트 첫 점검).
+        return out
     face = [tuple(map(float, pts[i])) for i in REGIONS["full_face_skin"]]
     #   ⚠ '원 전체가 안'으로 하면 턱선 패치가 전부 빠진다 — 이 윤곽의 아래 변이 곧 턱선이라 마리오네트 자리는 걸치는 게 맞다.
     #     그래서 중심은 안 + 테두리 12점 중 FACE_RING_MIN 이상이 안(MediaPipe 턱선은 보이는 턱 끝보다 살짝 안쪽이다).

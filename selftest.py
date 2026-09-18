@@ -1481,8 +1481,13 @@ ok("lower end of the nasolabial fold" in _im and "on both sides" in _im
    and "centimetres" not in _im and "low on the cheek" not in _im,
    "패치 자리는 '팔자 아래 끝 · 양쪽' 이어야 한다 — cm·볼 서술 금지(09-17 저녁 검수)")
 # 같은 날 #118 실사진 표시(파란 체크 = 선의 아래 끝, 한쪽 셋) — 마리오네트 끝 패치가 빠지면 표시와 다르다
-ok("three per side" in _im and "lower end of the marionette line" in _im,
-   "패치는 한쪽 셋: 팔자 끝 둘 + 마리오네트 끝 하나(09-17 #118 표시)")
+ok("three per side" in _im and "right on the jawline" in _im and "marionette line meets the jaw" in _im,
+   "패치는 한쪽 셋: 팔자 끝 둘 + 마리오네트 끝 하나 — 마리오네트는 턱선 위(09-17 #118 표시 → 09-18 연서님 '턱 라인으로')")
+# 09-18 C안: 위치 게이트는 직후 컷에만, 스위치는 spec 이 싣는다(배치는 시점 이름을 안 본다)
+from bna.spec import build_prompts as _bp_pg
+_pg_afters = [a for a in _bp_pg("nasolabial", "selfie", sample_variation("selfie", 7, treatment="nasolabial"), 7,
+                                 series=["immediate", "2w"])["afters"]]
+ok([a["patch_gate"] for a in _pg_afters] == [2, 0], f"패치 위치 게이트는 직후 컷에만 2회 — 실제 {[a['patch_gate'] for a in _pg_afters]}")
 # 같은 날 "얼굴 크기가 다른데 패치 크기가 똑같다 = 합성 티" — 실측 얼굴 2.25배 vs 패치 1.45배. 절대 크기(cm) 대신 홍채에 묶는다
 ok("iris" in _im and "one centimetre" not in _im,
    "패치 크기는 얼굴 안의 기준(홍채)에 묶어야 한다 — '1cm' 는 사진에 자가 없어 고정 픽셀로 찍힌다")

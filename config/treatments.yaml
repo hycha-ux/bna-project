@@ -145,10 +145,11 @@ nasolabial:
       Right after the injections the skin tone of the cheeks is the same ordinary, even tone as in the
       reference. The only traces of the procedure are small round clear hydrocolloid dressings sitting
       at the lower ends of the treated lines, the same on both sides of the face, three per side: one
-      exactly where the lower end of the nasolabial fold finishes, a little above and outside the corner
-      of the mouth; a second just beside it, slightly further out and a little higher on the cheek; and a
-      third at the lower end of the marionette line, below and outside the corner of the mouth, close to
-      the jawline. All of them are clear of the lips and far from the nose. Their size follows this
+      exactly where the lower end of the nasolabial fold finishes, on the cheek just beside the corner of
+      the mouth, a little above and outside it; a second just beside that one, slightly further out on the
+      cheek and a little lower; and a third sitting right on the jawline, directly below and a little
+      outside the corner of the mouth, where the marionette line meets the jaw. All of them are clear of
+      the lips and far from the nose. Their size follows this
       person's face in this photo: each dressing is about as wide as the iris of their eye, so the
       dressings look small when the face is small in the frame and larger when the face fills the frame.
       The dressings differ slightly from each other, one a touch smaller, one with an edge faintly lifted,
@@ -159,6 +160,13 @@ nasolabial:
     #   2026-09-10 실측에서 **금지 품목을 적으면 모델이 그걸 그렸다**(마취크림 5/5). 같은 일을
     #   막는 긍정문("시술 설명이 말하는 것만 피부에 있다")이 mode_extra 기본값으로 이미 붙는다.
     later: 1~2주 컷은 테이프 제거 상태, 효과 강도는 직후와 같다. 주입부 작은 멍 가능 여부는 미확인(의료진 확인 대기)
+  # 직후 패치 위치 게이트 — C안 (2026-09-18 빌디/연서님 "후처리 접고 좌표 계산은 채점 게이트로만").
+  #   직후 컷의 패치가 얼굴 점으로 계산한 자리(허용 = 홍채 지름 1개)에 없으면 **그 직후 컷만** 이 횟수까지 다시 그린다.
+  #   0/없음 = 끔. 판정 = src/bna/qa/patchgate.py, 자리 = landmarks.patch_spots. 위 immediate_marks 의 ⑨ 문장과 한 벌이다 —
+  #   문장이 가리키는 자리와 계산 자리가 갈리면 게이트가 매번 떨어뜨린다(한쪽만 고치지 마라).
+  #   ⑨ 2026-09-18 연서님 "마리오네트 패치는 턱 라인, 팔자 패치는 입 쪽으로 살짝": 팔자 끝 = 입꼬리 바로 옆 볼,
+  #      옆 패치 = 조금 더 바깥·조금 아래(계산 자리 실측이 아래였다), 마리오네트 = 턱선 위.
+  patch_gate: 2
   # 2026-09-18: moderate 에서 subtle 을 뺐다. subtle 문구는 "문제가 아직 남아 있고 나란히 놓고 비교할 때나
   #   눈에 띈다"라서, 필러가 직후부터 최종 강도인 시술인데도 2주 컷이 판정선(6) 아래로 떨어졌다
   #   (09-17 실측: 6세트 중 5세트가 subtle, 2주 effect_visible 2.0·3.0·3.0). moderate 문구 자체가

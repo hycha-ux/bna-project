@@ -6,7 +6,7 @@ from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
 from . import postprocess, refs, providers, seedbank
-from .qa import structure, identity, dedup, vision, landmarks
+from .qa import structure, identity, dedup, vision, landmarks, patchgate
 from .stats import summarize, write_manifest
 from .version import prompt_version
 from .progress import Progress
@@ -233,6 +233,22 @@ class Batch:
                         after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
                         after = Image.open(io.BytesIO(after_b))
                         cost = self.pricing[self.p_edit.name]["generate"]
+                        # 직후 패치 위치 게이트 — C안 (2026-09-18 빌디/연서님: 후처리 접고 좌표 계산은 채점으로만).
+                        #   그려진 패치가 계산 자리(허용 = 홍채 지름 1개)에 없으면 **이 직후 컷만** 다시 그린다 — 세트 재시도로
+                        #   넘기면 Before·2주까지 다시 사서 비용이 3배다. 스위치·횟수 = treatments.yaml `patch_gate` → spec 의 af["patch_gate"](없으면 끔).
+                        #   None(못 잼)은 재생성 사유가 아니다(patchgate 머리말). 원장 = meta["patch_gate"][시점] = 회차별 결과 목록.
+                        tries = int(af.get("patch_gate") or 0)          # spec 이 직후 컷에만 실어 보낸다
+                        if tries:
+                            glog = meta.setdefault("patch_gate", {}).setdefault(af["when"], [])
+                            for g in range(tries + 1):
+                                gr = await loop.run_in_executor(None, patchgate.check, after, self.p_qa)
+                                cost += self.pricing[self.p_qa.name]["qa"]
+                                glog.append({"attempt": attempt, "try": g, **{k: gr.get(k) for k in ("passed", "n", "inside", "outside", "note")}})
+                                if gr.get("passed") is not False or g == tries:
+                                    break
+                                after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
+                                after = Image.open(io.BytesIO(after_b))
+                                cost += self.pricing[self.p_edit.name]["generate"]
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
             #   나머지 시점은 취소도 안 된 채 계속 도는데, 그 장들은 **이미 돈을 쓴 호출**이라 meta["cost"] 에
