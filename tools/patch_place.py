@@ -93,18 +93,29 @@ def _patch_parts(orig, edited, s):
     sig = s["r"] * 0.6
     e = e + (cv2.GaussianBlur(o, (0, 0), sig) - cv2.GaussianBlur(e, (0, 0), sig))   # 톤(저주파) 맞춤
     d = e - o
-    g = np.abs(d).mean(axis=2)
     yy, xx = np.mgrid[0:2 * R, 0:2 * R]
-    rad = np.hypot(xx - (s["x"] - x0), yy - (s["y"] - y0)) / s["r"]
-    ang = np.arctan2(yy - (s["y"] - y0), xx - (s["x"] - x0))
-    radii = np.linspace(0.6, 1.4, 33)
-    prof = [g[(rad > q - 0.04) & (rad < q + 0.04)].mean() for q in radii]
-    rr = float(radii[int(np.argmax(prof))])
+    pos = np.maximum(d.mean(axis=2), 0)
+    # 고리의 **실제** 중심·반지름을 찾는다 (09-18 2차 교정, 연서님 "1번째 세트는 제대로 합성이 안 됨").
+    #   모델은 원 안에서 패치를 한쪽으로 치우쳐 그린다 — 계산한 원 중심에 고리를 가정하면 실제 고리와 한쪽만 겹쳐
+    #   반쪽 고리(초승달)만 옮겨지고 점이 테두리에 붙는다(정면 컷 턱선 패치가 그랬다). 밝은 고리가 가장 잘 맞는
+    #   (중심 이동 ±0.4r, 반지름 0.6~1.3r) 을 격자로 고른다.
+    best = (-1.0, 0.0, 0.0, 1.0)
+    for dx in np.arange(-0.4, 0.41, 0.1):
+        for dy in np.arange(-0.4, 0.41, 0.1):
+            rd = np.hypot(xx - (s["x"] - x0 + dx * s["r"]), yy - (s["y"] - y0 + dy * s["r"])) / s["r"]
+            for q in np.arange(0.6, 1.31, 0.05):
+                sc = float(pos[np.abs(rd - q) < 0.06].mean())
+                if sc > best[0]:
+                    best = (sc, dx, dy, q)
+    _sc, dx, dy, rr = best
+    cx, cy = s["x"] - x0 + dx * s["r"], s["y"] - y0 + dy * s["r"]
+    rad = np.hypot(xx - cx, yy - cy) / s["r"]
+    ang = np.arctan2(yy - cy, xx - cx)
+    rr = float(rr)
     ring = np.exp(-((rad - rr) ** 2) / (2 * RIM_SD ** 2))
     # 덮임률 = 둘레 24칸 중 '밝은 고리'가 보이는 칸 비율. 밝기 증가(+)만 센다 — 피부결 손실(±)이 섞이면
     #   초승달도 1.0 이 나왔다(09-18 첫 판정 실패). 기준 = 원 안쪽 밝기 증가 p90 의 2배(최소 8).
     #   09-18 실측: 정면 컷 온전한 고리 0.79~1.0 / 3/4 컷 반쪽·흐린 고리 0.33~0.46.
-    pos = np.maximum(d.mean(axis=2), 0)
     band = np.abs(rad - rr) < 0.15
     bg = float(np.percentile(pos[rad < max(rr - 0.3, 0.2)], 90))
     bins = np.digitize(ang, np.linspace(-np.pi, np.pi, 25))
@@ -114,7 +125,8 @@ def _patch_parts(orig, edited, s):
     dot = ((red(e) - red(o)) > 12) & (rad < rr * 0.8)
     dotw = cv2.GaussianBlur(cv2.dilate(dot.astype(np.uint8), np.ones((3, 3))).astype(float), (0, 0), 1.2)
     w = np.maximum(ring * RIM_GAIN, np.clip(dotw * 1.5, 0, 1))
-    return {"rr": rr, "w": w, "d": d, "cover": cover, "box": box, "rad": rad, "dotw": dotw}
+    return {"rr": rr, "w": w, "d": d, "cover": cover, "box": box, "rad": rad, "dotw": dotw,
+            "has_dot": bool(dot.sum() >= 4), "off": (round(float(dx), 1), round(float(dy), 1))}
 
 
 def blend_patches(orig, edited, spots):
@@ -124,7 +136,7 @@ def blend_patches(orig, edited, spots):
     out = np.asarray(orig.convert("RGB"), float).copy()
     parts = [(_patch_parts(orig, edited, s), s) for s in spots]
     good = [p for p, _s in parts if p["cover"] >= COVER_MIN]
-    tmpl = max(good, key=lambda p: p["cover"]) if good else None
+    tmpl = max(good, key=lambda p: (p["has_dot"], p["cover"])) if good else None   # 점까지 있는 패치를 본으로
     log = []
     for p, s in parts:
         src = p if p["cover"] >= COVER_MIN else tmpl
@@ -140,8 +152,15 @@ def blend_patches(orig, edited, spots):
         cx0, cy0, cx1, cy1 = max(x0, 0), max(y0, 0), min(x1, wdt), min(y1, h)
         sl = (slice(cy0 - y0, cy1 - y0), slice(cx0 - x0, cx1 - x0))
         out[cy0:cy1, cx0:cx1] += dd[sl] * ww[sl][..., None]
-        log.append({"name": s["name"], "side": s["side"], "cover": round(p["cover"], 2),
-                    "source": "own" if src is p else "template"})
+        if src is p and not p["has_dot"] and tmpl is not None and tmpl["has_dot"]:
+            # 고리는 온전한데 바늘 점이 없는 원 (09-18 정면 컷 왼쪽 팔자) — 본 패치의 점만 빌려 찍는다
+            import cv2
+            n = x1 - x0
+            dotd = cv2.resize(tmpl["d"] * (tmpl["dotw"][..., None] > 0.05), (n, n))
+            dotw = cv2.resize(np.clip(tmpl["dotw"] * 1.5, 0, 1), (n, n))
+            out[cy0:cy1, cx0:cx1] += dotd[sl] * dotw[sl][..., None]
+        log.append({"name": s["name"], "side": s["side"], "cover": round(p["cover"], 2), "off": p["off"],
+                    "dot": p["has_dot"], "source": "own" if src is p else "template"})
     return Image.fromarray(np.clip(out, 0, 255).astype("uint8")), log
 
 
