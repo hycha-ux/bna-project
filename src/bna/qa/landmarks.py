@@ -71,6 +71,101 @@ def neck_polygon(pts: np.ndarray) -> list:
     return top + bottom
 LEFT_EYE, RIGHT_EYE, NOSE_TIP, MOUTH_L, MOUTH_R = 33, 263, 1, 61, 291
 
+# ── 직후 컷 투명 패치 자리 (2026-09-18 성연서님 "마리오네트 패치는 턱 라인, 팔자 패치는 입 쪽으로 살짝 — 약 2px") ──
+#   말(프롬프트)로는 자리를 못 박는다: 모델은 사진 안에서 cm 를 못 재 09-17~18 두 회차 내내 패치가 볼·턱 가운데로 흩어졌다.
+#   그래서 자리는 **얼굴 점에서 계산**하고, 그 원 안에만 그리게 한다(마스크 편집 + 원 밖 복원).
+#   단위 = 얼굴 폭 W(234↔454). "out"=입꼬리에서 같은 쪽 얼굴 바깥으로, "up"=턱→이마 축(기울어진 셀카도 따라간다).
+#   기준값 = 09-18 회차(2fae) 직후 컷 2장에서 모델이 그린 패치 중심을 잰 값 — 연서님이 "팔자는 비슷"이라 한 자리다:
+#     팔자 끝 A ≈ out 0.10~0.15 · up +0.08 / 옆 B ≈ out 0.15~0.21 · up −0.04~+0.02 / 마리오네트 ≈ out 0.08 · up −0.17(턱 가운데 볼 → 틀림)
+#   "2px" 은 사진 크기마다 뜻이 달라 얼굴 폭 비율(NASO_PULL)로 옮겼다 — 1024px 사진 얼굴 폭 ~550px 에서 0.015 ≈ 8px(원본),
+#   슬랙 미리보기(가로 ~400px)에선 ~3px. 더/덜은 이 숫자 하나만 바꾼다.
+PATCH_SPOTS = {
+    "naso_end":  (0.125, 0.075),     # 팔자 아래 끝 (입꼬리 조금 위·바깥)
+    "naso_side": (0.200, -0.020),    # 그 바로 바깥·조금 아래 볼 (A 와 지름 1.2배 이상 떨어지게 — 3/4 컷에서 겹쳤다)
+}
+NASO_PULL = 0.015          # 팔자 두 패치를 입꼬리 쪽으로 당기는 양 (얼굴 폭 비율) — 연서님 "입과 살짝만 가까이"
+MARIO_DIR = (0.35, -1.0)   # 마리오네트 패치: 입꼬리에서 (바깥, 위) 방향으로 내려가 턱선과 만나는 점
+MARIO_INSET = 0.35         # 턱선에서 입꼬리 쪽으로 들이는 양 (패치 반지름 배수) — 1.0 이면 턱선 위 볼로 떠 보였다(09-18 눈 확인)
+SIDE_MIN_RATIO = 0.30      # 코끝→양쪽 얼굴 끝 거리 비가 이보다 작으면 그쪽은 돌아가 안 보인다 → 패치 안 붙임
+FACE_RING_MIN = 8          # 패치 테두리 12점 중 얼굴 윤곽 안이어야 하는 개수 (아래 patch_spots 주석)
+IRIS_FALLBACK = 0.088      # 홍채 점(468~477)이 없을 때 홍채 지름 = 얼굴 폭 × 이 값 (09-18 실측 0.089·0.095)
+_SIDE = {"R": dict(corner=291, edge=454, iris=(474, 476)),     # 사진 속 오른쪽이 아니라 얼굴 점 번호 기준 한쪽
+         "L": dict(corner=61, edge=234, iris=(469, 471))}
+
+
+def _inside(poly: list, q) -> bool:
+    """점이 다각형 안인가 (광선 교차). 의존성 없이 — 셀카 배치 PC 마다 설치본이 다르다(09-15 insightface 교훈)."""
+    x, y = q; n = len(poly); inside = False
+    for i in range(n):
+        (x1, y1), (x2, y2) = poly[i], poly[(i + 1) % n]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
+def _jaw_hit(pts: np.ndarray, origin: np.ndarray, d: np.ndarray):
+    """origin 에서 d 방향 반직선이 턱선(JAW_LINE 꺾은선)과 처음 만나는 점. 없으면 None."""
+    best = None
+    for a, b in zip(JAW_LINE, JAW_LINE[1:]):
+        p, q = np.asarray(pts[a], float), np.asarray(pts[b], float)
+        m = np.array([d, p - q]).T
+        if abs(np.linalg.det(m)) < 1e-9:
+            continue
+        t, s = np.linalg.solve(m, p - origin)
+        if t > 0 and 0 <= s <= 1 and (best is None or t < best[0]):
+            best = (t, origin + t * d)
+    return None if best is None else best[1]
+
+
+def patch_spots(pts: np.ndarray) -> list:
+    """직후 컷 패치 자리 [{side, name, x, y, r}] (픽셀). 한쪽에 셋: 팔자 끝·그 옆·마리오네트 끝(턱선).
+
+    크기 = 그 사람 홍채 지름(사진마다 얼굴 따라 커지고 작아진다 — 09-17 '두 명 패치 크기가 똑같다' 교정의 연장).
+    돌아가 안 보이는 쪽(SIDE_MIN_RATIO 미만)은 빈다 — 얼굴 가장자리에 걸친 패치는 합성 티가 난다."""
+    pts = np.asarray(pts, float)
+    W = float(np.linalg.norm(pts[454] - pts[234]))
+    up = pts[10] - pts[152]; up /= np.linalg.norm(up)
+    across = pts[454] - pts[234]; across /= np.linalg.norm(across)
+    reach = {k: float(np.linalg.norm(pts[s["edge"]] - pts[NOSE_TIP])) for k, s in _SIDE.items()}
+    irises = [float(np.linalg.norm(pts[a] - pts[b])) for s in _SIDE.values() for a, b in [s["iris"]] if len(pts) > max(a, b)]
+    diam = max(irises) if irises else W * IRIS_FALLBACK     # 먼 쪽 눈은 옆으로 눌려 작게 잡힌다 → 큰 쪽
+    r = diam / 2
+    out = []
+    for side, s in _SIDE.items():
+        if reach[side] < SIDE_MIN_RATIO * max(reach.values()):
+            continue
+        o = across if side == "R" else -across
+        c = pts[s["corner"]]
+        for name, (ox, oy) in PATCH_SPOTS.items():
+            p = c + ((ox - NASO_PULL) * o + oy * up) * W
+            out.append({"side": side, "name": name, "x": float(p[0]), "y": float(p[1]), "r": r})
+        d = MARIO_DIR[0] * o + MARIO_DIR[1] * up; d /= np.linalg.norm(d)
+        hit = _jaw_hit(pts, c, d)
+        if hit is not None:
+            p = hit - d * r * MARIO_INSET          # 턱선에서 입꼬리 쪽으로 반지름×INSET
+            out.append({"side": side, "name": "mario_end", "x": float(p[0]), "y": float(p[1]), "r": r})
+    # 얼굴 윤곽 밖으로 걸치는 자리는 뺀다 (09-18 눈 확인: 옆으로 살짝 돈 정면 컷에서 먼 쪽 '옆' 패치가 배경에 떴다).
+    #   윤곽 = full_face_skin 폴리곤. 중심만 보면 반쪽 패치가 허공에 뜬다.
+    face = [tuple(map(float, pts[i])) for i in REGIONS["full_face_skin"]]
+    #   ⚠ '원 전체가 안'으로 하면 턱선 패치가 전부 빠진다 — 이 윤곽의 아래 변이 곧 턱선이라 마리오네트 자리는 걸치는 게 맞다.
+    #     그래서 중심은 안 + 테두리 12점 중 FACE_RING_MIN 이상이 안(MediaPipe 턱선은 보이는 턱 끝보다 살짝 안쪽이다).
+    #     마리오네트 자리는 턱선에서 재어 들인 점이라 중심만 본다(테두리를 세면 턱선에 걸친 게 정상인데 빠진다 — 09-18 실측).
+    out = [s for s in out if _inside(face, (s["x"], s["y"])) and (s["name"] == "mario_end" or sum(
+        _inside(face, (s["x"] + s["r"] * np.cos(a), s["y"] + s["r"] * np.sin(a)))
+        for a in np.linspace(0, 2 * np.pi, 12, endpoint=False)) >= FACE_RING_MIN)]
+    return out
+
+
+def spots_mask(size, spots: list, grow: float = 1.35, feather: int = 3) -> Image.Image:
+    """패치 자리 원 마스크 (L, 흰색=편집 허용). grow = 패치보다 조금 넓게 열어 모델이 가장자리를 그릴 틈을 준다."""
+    from PIL import ImageFilter
+    m = Image.new("L", size, 0)
+    d = ImageDraw.Draw(m)
+    for s in spots:
+        rr = s["r"] * grow
+        d.ellipse([s["x"] - rr, s["y"] - rr, s["x"] + rr, s["y"] + rr], fill=255)
+    return m.filter(ImageFilter.GaussianBlur(feather)) if feather else m
+
 
 def _model():
     """FaceLandmarker 를 한 번만 만들어 재사용한다. 미설치·모델 확보 실패면 None."""
