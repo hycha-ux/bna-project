@@ -84,6 +84,9 @@ try {
   const listShown = await ev("!document.body.classList.contains('list-folded') && !!document.querySelector('#batches-wrap')?.offsetHeight");
   ok(rows > 0, '새로고침하면 작업 목록에 줄이 보인다', `줄 ${rows}개`);
   ok(listShown, '새로고침 직후 목록이 접혀 있지 않다');
+  // 검수 대기가 남은 배치가 '완료'로 보이면 안 된다 (2026-09-18 연서님)
+  const doneButPending = await ev("Array.from(document.querySelectorAll('#batches tbody tr')).filter(tr=>{const b=BATCHES.find(x=>x.batch_id===tr.dataset.id);return b&&(b.stats?.pending||0)>0&&tr.lastElementChild.innerText.trim()==='완료'}).length");
+  ok(doneButPending === 0, '검수 대기가 남은 작업은 완료가 아니라 검수 필요로 보인다', `완료로 잘못 보인 줄 ${doneButPending}개`);
 
   // ② 줄을 눌러도 목록은 그대로 있고 상세로 이동한다
   //    (2026-09-08 성연서님 "UX 가 더 안 좋아졌다" → 커밋 55095cc 로 접기를 통째로 없앱다.
