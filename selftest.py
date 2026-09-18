@@ -1505,13 +1505,16 @@ _blank = _PImg.new("RGB", (400, 300))
 _g_ok = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": True, "3": True}, "outside": 0}))
 _g_cnt = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": True, "3": True}, "outside": 2}))
 _g_pos = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": False, "3": True}, "outside": 0}))
-_g_both = _pgm.check(_blank, _FakeQA({"rings": {"1": False, "2": False, "3": True}, "outside": 1}))
+_g_both = _pgm.check(_blank, _FakeQA({"rings": {"1": False, "2": True, "3": True}, "outside": 2}))
+_g_shift = _pgm.check(_blank, _FakeQA({"rings": {"1": False, "2": True, "3": True}, "outside": 1}))
 _lmm.detect, _lmm.patch_spots = _orig_detect, _orig_spots
 ok(_g_ok["passed"] is True and _g_ok["reasons"] == [], f"게이트 통과 — {_g_ok}")
 ok(_g_cnt["passed"] is False and _g_cnt["reasons"] == ["count"], f"원 밖 여분만 = count — {_g_cnt.get('reasons')}")
 ok(_g_pos["passed"] is False and _g_pos["reasons"] == ["position"], f"원 빔만 = position — {_g_pos.get('reasons')}")
-ok(_g_both["reasons"] == ["position", "count"], f"둘 다 = 두 사유 — {_g_both.get('reasons')}")
-ok(max([_g_both, _g_cnt, _g_pos], key=_pgm.closeness) is _g_cnt
+ok(_g_both["reasons"] == ["position", "count"], f"원 빔 + 총 4개 = 두 사유 — {_g_both.get('reasons')}")
+ok(_g_shift["passed"] is False and _g_shift["reasons"] == ["position"],
+   f"셋을 그렸는데 하나가 원 밖으로 밀림 = 자리 오차만(개수 아님, 09-18 오후 실측 7/8) — {_g_shift.get('reasons')}")
+ok(max([_g_both, _g_cnt, _g_shift], key=_pgm.closeness) is _g_cnt
    and _pgm.closeness({"inside": None}) < _pgm.closeness(_g_both),
    "다 떨어지면 남길 컷 = 원 안 많을수록 → 원 밖 적을수록, 못 잰 컷은 맨 뒤")
 import inspect as _insp_pg

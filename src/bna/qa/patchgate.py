@@ -87,7 +87,11 @@ def check(img: Image.Image, p_qa) -> dict:
         outside = int(data.get("outside") or 0)
     except (TypeError, ValueError):
         outside = None
-    reasons = [] if outside is None else (["position"] if inside < len(need) else []) + (["count"] if outside > 0 else [])
-    return {"passed": (not reasons) if outside is not None else None, "reasons": reasons,
+    # count 는 '원 밖에 있다'가 아니라 '필수 자리 수보다 많다'로 판정한다 (09-18 오후 첫 2세트 실측: 직후 8장 중 7장이
+    #   "원 안 2 + 원 밖 1" = 셋을 그렸는데 하나가 밀린 것. outside>0 으로 세면 밀린 패치 하나가 두 사유로 동시에 잡혀
+    #   개수 문제가 8/8 로 부풀었다 — 실제 여분(총 4개 이상)은 1장). 밀린 패치는 position 하나로만 센다.
+    reasons = [] if outside is None else (["position"] if inside < len(need) else []) + (
+        ["count"] if inside + outside > len(need) else [])
+    return {"passed": (inside == len(need) and outside == 0) if outside is not None else None, "reasons": reasons,
             "n": len(need), "inside": inside, "outside": outside, "optional": len(extra),
             "spots": [s["side"] + ":" + s["name"] for s in spots], "note": str(data.get("note", ""))[:200]}
