@@ -79,6 +79,8 @@ PLACE_TRIES = 3       # 빈(또는 반쪽) 원만 다시 그리는 횟수 상한
 #     테두리가 반쪽이거나 없으면 같은 사진의 **가장 온전한 패치**를 본으로 찍는다(추가 호출 0).
 RIM_GAIN = 0.75       # 테두리 세기 — 09-11 "너무 티나게 붙어 있어서 AI 같다" 이후 기준은 '희미한 광택 고리'다
 RIM_SD = 0.09         # 고리 두께(반지름 비) — 실측 테두리 3~4px ÷ 반지름 26~27px
+DOT_MIN = 7.0         # 붉은 기 증가가 이보다 작으면 점 없음 (09-18 실측: 정면 17.5~27 / 3/4 10~11 / 빈 원 4~5)
+DOT_TARGET = 20.0     # 흐린 점을 이 세기까지 올린다 (정면 컷 점 중앙값 수준)
 COVER_MIN = 0.7       # 고리가 둘레의 이만큼 이상 보여야 '온전' — 초승달은 0.3~0.5
 
 
@@ -122,11 +124,19 @@ def _patch_parts(orig, edited, s):
     hits = np.array([pos[band & (bins == b)].max() if (band & (bins == b)).any() else 0 for b in range(1, 25)])
     cover = float(np.mean(hits > max(2 * bg, 8.0)))
     red = lambda a: a[..., 0] - (a[..., 1] + a[..., 2]) / 2
-    dot = ((red(e) - red(o)) > 12) & (rad < rr * 0.8)
+    # 바늘 점 = 고리 안에서 붉은 기가 가장 많이 오른 곳. 고정 임계(12)는 3/4 컷의 흐린 점(10~11)을 통째로 버렸다
+    #   (09-18 2차) → 그 원 최대값의 60% 이상(최소 DOT_MIN)으로 상대 판정, 흐린 점은 DOT_TARGET 까지 끌어올린다.
+    dr = red(e) - red(o)
+    inner = rad < rr * 0.9
+    mx = float(dr[inner].max()) if inner.any() else 0.0
+    dot = (dr >= max(DOT_MIN, 0.6 * mx)) & inner if mx >= DOT_MIN else np.zeros_like(inner)
     dotw = cv2.GaussianBlur(cv2.dilate(dot.astype(np.uint8), np.ones((3, 3))).astype(float), (0, 0), 1.2)
+    if dot.any():
+        d = d.copy()
+        d[dotw > 0.05] *= min(DOT_TARGET / mx, 2.5) if mx < DOT_TARGET else 1.0
     w = np.maximum(ring * RIM_GAIN, np.clip(dotw * 1.5, 0, 1))
     return {"rr": rr, "w": w, "d": d, "cover": cover, "box": box, "rad": rad, "dotw": dotw,
-            "has_dot": bool(dot.sum() >= 4), "off": (round(float(dx), 1), round(float(dy), 1))}
+            "has_dot": bool(dot.sum() >= 3), "off": (round(float(dx), 1), round(float(dy), 1))}
 
 
 def blend_patches(orig, edited, spots):
