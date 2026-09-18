@@ -144,9 +144,9 @@ nasolabial:
     immediate_marks: >
       Right after the injections the skin tone of the cheeks is the same ordinary, even tone as in the
       reference. The only traces of the procedure are small round clear hydrocolloid dressings sitting
-      at the lower ends of the treated lines, the same on both sides of the face, exactly three per side: one
-      exactly where the lower end of the nasolabial fold finishes, on the cheek just beside the corner of
-      the mouth, a little above and outside it; a second just beside that one, slightly further out on the
+      at the lower ends of the treated lines, the same on both sides of the face, exactly three per side: the
+      first on the cheek almost touching the corner of the mouth, its rim nearly meeting the mouth corner,
+      right where the lower end of the nasolabial fold finishes, only slightly above and outside it; a second just beside that one, slightly further out on the
       cheek and a little lower; and a third sitting right on the jawline, directly below and a little
       outside the corner of the mouth, where the marionette line meets the jaw. All of them are clear of
       the lips and far from the nose. These six dressings, three on each side, are the only dressings
@@ -172,6 +172,10 @@ nasolabial:
   #        금지 자리를 나열하지 않았다(09-10 교훈: 적으면 그린다) — 긍정형 '나머지 피부는 비어 있다'로만.
   #      · 자리 오차 → 허용 반경 홍채 지름 1.0 → 1.5개(patchgate.TOL_IRIS). 사유는 count / position 으로 갈라 적는다.
   #      · 재시도 최대 3번(2→3). 다 떨어져도 버리지 않고 계산 자리에 가장 가까운 컷을 남겨 '위치 게이트 미통과'로 표시.
+  #   ⑪ 2026-09-18 저녁 연서님 (2세트: 직후 8장 중 0장, 자리 오차 8/8 — 첫 패치가 입꼬리 옆 원을 비우고 아래·바깥으로 밀렸다)
+  #      → 첫 패치 문장만 "입꼬리에 거의 닿는 볼"로 당겼다. **계산 자리(landmarks.PATCH_SPOTS)는 일부러 안 옮겼다** —
+  #      모델이 늘 바깥·아래로 밀어 그리는 버릇을 문장 쪽에서 상쇄하려는 것이다(과녁은 그대로, 조준만 안쪽으로).
+  #      이번에도 낮으면 문장은 더 안 건드리고, 연서님이 미통과 컷을 직접 보고 허용 범위를 정한다.
   patch_gate: 3
   # 2026-09-18: moderate 에서 subtle 을 뺐다. subtle 문구는 "문제가 아직 남아 있고 나란히 놓고 비교할 때나
   #   눈에 띈다"라서, 필러가 직후부터 최종 강도인 시술인데도 2주 컷이 판정선(6) 아래로 떨어졌다

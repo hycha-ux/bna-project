@@ -1494,20 +1494,32 @@ ok("exactly three per side" in _im and "only dressings" in _im and "forehead" no
 # 게이트 사유 두 갈래 + 허용 1.5 + '가장 가까운 컷' 고르기 — 비전 호출 없이 가짜 채점기로
 from bna.qa import patchgate as _pgm, landmarks as _lmm
 ok(_pgm.TOL_IRIS == 1.5, f"위치 게이트 허용 = 홍채 지름 1.5개 — 실제 {_pgm.TOL_IRIS}")
-class _FakeQA:
-    def __init__(self, data): self.data = data
-    def chat_json(self, *a, **k): return {"data": self.data}
-_orig_detect, _orig_spots = _lmm.detect, _lmm.patch_spots
+# 09-18 저녁: 짚기는 모델(가짜 detect), 원 안/밖·짝짓기·여분은 코드 — 가짜 짚기는 원본 픽셀 좌표를 조각 픽셀로 바꿔 돌려준다
+_orig_detect, _orig_spots, _orig_axes = _lmm.detect, _lmm.patch_spots, _pgm._axes
 _lmm.detect = lambda img: "pts"
-_lmm.patch_spots = lambda pts, strict=True: [{"side": "L", "name": n, "x": 100 + 30 * i, "y": 100, "r": 5} for i, n in enumerate(["a", "b", "c"])]
+_pgm._axes = lambda pts: (__import__("numpy").array([1.0, 0.0]), __import__("numpy").array([0.0, -1.0]))  # 가로=+x, 위=-y
+_pg_spots = [{"side": "L", "name": n, "x": 100 + 40 * i, "y": 100, "r": 5} for i, n in enumerate(["a", "b", "c"])]
+_lmm.patch_spots = lambda pts, strict=True: _pg_spots
 from PIL import Image as _PImg
 _blank = _PImg.new("RGB", (400, 300))
-_g_ok = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": True, "3": True}, "outside": 0}))
-_g_cnt = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": True, "3": True}, "outside": 2}))
-_g_pos = _pgm.check(_blank, _FakeQA({"rings": {"1": True, "2": False, "3": True}, "outside": 0}))
-_g_both = _pgm.check(_blank, _FakeQA({"rings": {"1": False, "2": True, "3": True}, "outside": 2}))
-_g_shift = _pgm.check(_blank, _FakeQA({"rings": {"1": False, "2": True, "3": True}, "outside": 1}))
-_lmm.detect, _lmm.patch_spots = _orig_detect, _orig_spots
+_pg_box = _pgm._crop_box(_blank, _pg_spots)
+_pg_k = 1024 / max(_pg_box[2] - _pg_box[0], _pg_box[3] - _pg_box[1])
+def _pg_det(*xy):
+    return lambda crop: [((x - _pg_box[0]) * _pg_k, (y - _pg_box[1]) * _pg_k) for x, y in xy]
+_g_ok = _pgm.check(_blank, detect=_pg_det((101, 100), (140, 104), (178, 99)))
+_g_cnt = _pgm.check(_blank, detect=_pg_det((101, 100), (140, 104), (178, 99), (100, 150), (40, 60)))
+_g_pos = _pgm.check(_blank, detect=_pg_det((101, 100), (178, 99)))
+_g_both = _pgm.check(_blank, detect=_pg_det((140, 100), (180, 100), (100, 125), (100, 140), (60, 40)))
+_g_shift = _pgm.check(_blank, detect=_pg_det((100, 118), (140, 100), (180, 100)))
+_g_twin = _pgm.check(_blank, detect=_pg_det((98, 100), (104, 101), (140, 100), (180, 100)))   # 한 원에 겹친 둘
+_g_fail = _pgm.check(_blank, detect=lambda crop: (_ for _ in ()).throw(RuntimeError("x")))
+_lmm.detect, _lmm.patch_spots, _pgm._axes = _orig_detect, _orig_spots, _orig_axes
+ok(_g_twin["passed"] is False and _g_twin["reasons"] == ["count"] and _g_twin["total"] == 4,
+   f"겹친 패치 둘도 각자 센다(09-18 저녁 '5개쯤 보이는데 3개') — {_g_twin.get('reasons')}, total={_g_twin.get('total')}")
+ok(_g_fail["passed"] is None, "짚기 실패 = 못 잼(None) — 재생성 사유 아님(fail-open)")
+_sh = _g_shift["offsets"][0]
+ok(_sh["found"] and not _sh["in_ring"] and _sh["dir"] == "아래" and abs(_sh["dist"] - 1.8) < 0.01,
+   f"어긋남 = 얼굴 기준 방향·홍채 지름 거리(09-18 저녁 연서님 \"같은 방향으로 계속 벗어나는지\") — {_sh}")
 ok(_g_ok["passed"] is True and _g_ok["reasons"] == [], f"게이트 통과 — {_g_ok}")
 ok(_g_cnt["passed"] is False and _g_cnt["reasons"] == ["count"], f"원 밖 여분만 = count — {_g_cnt.get('reasons')}")
 ok(_g_pos["passed"] is False and _g_pos["reasons"] == ["position"], f"원 빔만 = position — {_g_pos.get('reasons')}")
