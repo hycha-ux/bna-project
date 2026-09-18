@@ -87,6 +87,7 @@ NASO_PULL = 0.015          # 팔자 두 패치를 입꼬리 쪽으로 당기는 
 MARIO_DIR = (0.35, -1.0)   # 마리오네트 패치: 입꼬리에서 (바깥, 위) 방향으로 내려가 턱선과 만나는 점
 MARIO_INSET = 0.35         # 턱선에서 입꼬리 쪽으로 들이는 양 (패치 반지름 배수) — 1.0 이면 턱선 위 볼로 떠 보였다(09-18 눈 확인)
 SIDE_MIN_RATIO = 0.30      # 코끝→양쪽 얼굴 끝 거리 비가 이보다 작으면 그쪽은 돌아가 안 보인다 → 패치 안 붙임
+FAR_SIDE_RATIO = 0.75     # 이보다 짧은 쪽 = 카메라에서 돌아간 쪽(마리오네트 턱선 패치도 윤곽 검사)
 FACE_RING_MIN = 8          # 패치 테두리 12점 중 얼굴 윤곽 안이어야 하는 개수 (아래 patch_spots 주석)
 IRIS_FALLBACK = 0.088      # 홍채 점(468~477)이 없을 때 홍채 지름 = 얼굴 폭 × 이 값 (09-18 실측 0.089·0.095)
 _SIDE = {"R": dict(corner=291, edge=454, iris=(474, 476)),     # 사진 속 오른쪽이 아니라 얼굴 점 번호 기준 한쪽
@@ -150,7 +151,10 @@ def patch_spots(pts: np.ndarray) -> list:
     #   ⚠ '원 전체가 안'으로 하면 턱선 패치가 전부 빠진다 — 이 윤곽의 아래 변이 곧 턱선이라 마리오네트 자리는 걸치는 게 맞다.
     #     그래서 중심은 안 + 테두리 12점 중 FACE_RING_MIN 이상이 안(MediaPipe 턱선은 보이는 턱 끝보다 살짝 안쪽이다).
     #     마리오네트 자리는 턱선에서 재어 들인 점이라 중심만 본다(테두리를 세면 턱선에 걸친 게 정상인데 빠진다 — 09-18 실측).
-    out = [s for s in out if _inside(face, (s["x"], s["y"])) and (s["name"] == "mario_end" or sum(
+    #     단 **돌아간 쪽**(코끝→얼굴 끝 거리가 가까운 쪽의 FAR_SIDE_RATIO 미만)은 마리오네트도 테두리를 센다 —
+    #     09-18 확대 확인: 옆으로 살짝 돈 정면 컷의 먼 쪽 턱선 패치가 보이는 턱 윤곽 밖(목·배경)으로 반쯤 나갔다.
+    far = {k for k, v in reach.items() if v < FAR_SIDE_RATIO * max(reach.values())}
+    out = [s for s in out if _inside(face, (s["x"], s["y"])) and ((s["name"] == "mario_end" and s["side"] not in far) or sum(
         _inside(face, (s["x"] + s["r"] * np.cos(a), s["y"] + s["r"] * np.sin(a)))
         for a in np.linspace(0, 2 * np.pi, 12, endpoint=False)) >= FACE_RING_MIN)]
     return out

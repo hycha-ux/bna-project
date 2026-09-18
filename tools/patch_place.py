@@ -4,7 +4,8 @@
 
 ⚠ 유료다 — 이미지 편집 2콜(약 $0.19 × 2). --dry 면 자리만 계산해 초록 원 미리보기만 저장한다(돈 0).
   ① 지우기: 팔자·마리오네트 부위 마스크 안의 기존 패치를 지운다(모델이 아무 데나 붙인 것).
-  ② 붙이기: landmarks.patch_spots 로 계산한 원 안에만 새 패치를 그린다.
+  ② 붙이기: landmarks.patch_spots 로 계산한 원 안에만 새 패치를 그린다(고리가 온전하지 않은 원만 최대 3회 다시).
+  ③ 합성: 모델 그림에서 고리·바늘 점만 떼어 원본 피부 위에 얹는다(blend_patches — 09-18 '합성 티' 교정).
   두 단계 모두 **마스크 밖은 원본 픽셀로 되돌린다**(composite) — 모델은 마스크를 '안내'로만 읽고 밖도 살짝 다시 그린다.
   자리는 모델이 아니라 이 합성이 정한다. 그래서 "2px 더 안쪽" 같은 요청이 숫자 하나(landmarks.NASO_PULL)로 된다.
 
@@ -67,16 +68,91 @@ def align(ref, moving):
     return Image.fromarray(warped), {"shift_px": round(shift, 1), "scale": round(scale, 4), "inliers": int(inl.sum())}
 
 
-PLACE_TRIES = 3
-PRESENT_MIN = 6.0     # 원 안 평균 밝기 변화(0~255)가 이보다 작으면 '안 붙음' — 09-18 실측 붙은 원 7.1~14.8 · 빈 원 4.6~5.4(재합성 잡음) 사이 — 여유가 얇으니 표본이 늘면 다시 재라
+PLACE_TRIES = 3       # 빈(또는 반쪽) 원만 다시 그리는 횟수 상한
 
 
-def changed(a, b, s) -> float:
-    """원 s 안에서 a→b 평균 절대 차이(회색조). 패치가 붙었는지의 대리 값."""
+# ── 붙인 자국 없애기 (2026-09-18 성연서님 "위치는 맞는데 합성이 제대로 안 됐어") ──
+#   원본 크기로 확대해 본 원인 4개: ①패치 안 피부가 주변보다 매끈(모공 사라짐 = 원판을 오려 붙인 티)
+#   ②원판 안 톤이 살짝 다름 ③테두리가 두껍고 번쩍(스티커 같음) ④그린 테두리가 반쪽뿐인 컷(초승달).
+#   → 모델 결과를 통째로 쓰지 않고 **테두리 고리 + 바늘 점만** 원본 피부 위에 얹는다. 피부 결은 원본 그대로다
+#     (투명 패치는 피부가 비쳐 보이는 물건이라 결이 보이는 게 맞다). 톤 차이는 저주파(흐린 판)끼리 맞춰 없앤다.
+#     테두리가 반쪽이거나 없으면 같은 사진의 **가장 온전한 패치**를 본으로 찍는다(추가 호출 0).
+RIM_GAIN = 0.75       # 테두리 세기 — 09-11 "너무 티나게 붙어 있어서 AI 같다" 이후 기준은 '희미한 광택 고리'다
+RIM_SD = 0.09         # 고리 두께(반지름 비) — 실측 테두리 3~4px ÷ 반지름 26~27px
+COVER_MIN = 0.7       # 고리가 둘레의 이만큼 이상 보여야 '온전' — 초승달은 0.3~0.5
+
+
+def _patch_parts(orig, edited, s):
+    """원 s 둘레에서 (고리 반지름, 고리+점 무게 맵, 톤 맞춘 차이, 둘레 덮임률, 상자) 를 잰다."""
+    import cv2
     import numpy as np
-    box = tuple(int(v) for v in (s["x"] - s["r"], s["y"] - s["r"], s["x"] + s["r"], s["y"] + s["r"]))
-    x = np.asarray(a.convert("L").crop(box), float); y = np.asarray(b.convert("L").crop(box), float)
-    return float(np.abs(x - y).mean())
+    R = int(s["r"] * 1.7)
+    x0, y0 = int(s["x"]) - R, int(s["y"]) - R
+    box = (x0, y0, x0 + 2 * R, y0 + 2 * R)
+    o = np.asarray(orig.crop(box), float); e = np.asarray(edited.crop(box), float)
+    sig = s["r"] * 0.6
+    e = e + (cv2.GaussianBlur(o, (0, 0), sig) - cv2.GaussianBlur(e, (0, 0), sig))   # 톤(저주파) 맞춤
+    d = e - o
+    g = np.abs(d).mean(axis=2)
+    yy, xx = np.mgrid[0:2 * R, 0:2 * R]
+    rad = np.hypot(xx - (s["x"] - x0), yy - (s["y"] - y0)) / s["r"]
+    ang = np.arctan2(yy - (s["y"] - y0), xx - (s["x"] - x0))
+    radii = np.linspace(0.6, 1.4, 33)
+    prof = [g[(rad > q - 0.04) & (rad < q + 0.04)].mean() for q in radii]
+    rr = float(radii[int(np.argmax(prof))])
+    ring = np.exp(-((rad - rr) ** 2) / (2 * RIM_SD ** 2))
+    # 덮임률 = 둘레 24칸 중 '밝은 고리'가 보이는 칸 비율. 밝기 증가(+)만 센다 — 피부결 손실(±)이 섞이면
+    #   초승달도 1.0 이 나왔다(09-18 첫 판정 실패). 기준 = 원 안쪽 밝기 증가 p90 의 2배(최소 8).
+    #   09-18 실측: 정면 컷 온전한 고리 0.79~1.0 / 3/4 컷 반쪽·흐린 고리 0.33~0.46.
+    pos = np.maximum(d.mean(axis=2), 0)
+    band = np.abs(rad - rr) < 0.15
+    bg = float(np.percentile(pos[rad < max(rr - 0.3, 0.2)], 90))
+    bins = np.digitize(ang, np.linspace(-np.pi, np.pi, 25))
+    hits = np.array([pos[band & (bins == b)].max() if (band & (bins == b)).any() else 0 for b in range(1, 25)])
+    cover = float(np.mean(hits > max(2 * bg, 8.0)))
+    red = lambda a: a[..., 0] - (a[..., 1] + a[..., 2]) / 2
+    dot = ((red(e) - red(o)) > 12) & (rad < rr * 0.8)
+    dotw = cv2.GaussianBlur(cv2.dilate(dot.astype(np.uint8), np.ones((3, 3))).astype(float), (0, 0), 1.2)
+    w = np.maximum(ring * RIM_GAIN, np.clip(dotw * 1.5, 0, 1))
+    return {"rr": rr, "w": w, "d": d, "cover": cover, "box": box, "rad": rad, "dotw": dotw}
+
+
+def blend_patches(orig, edited, spots):
+    """원본(orig) 위에 모델 결과(edited)의 테두리·점만 얹는다. 반쪽·빈 원은 같은 사진의 가장 온전한 패치로 찍는다.
+    돌려주는 것: (합성 사진, [{name, cover, source}])"""
+    import numpy as np
+    out = np.asarray(orig.convert("RGB"), float).copy()
+    parts = [(_patch_parts(orig, edited, s), s) for s in spots]
+    good = [p for p, _s in parts if p["cover"] >= COVER_MIN]
+    tmpl = max(good, key=lambda p: p["cover"]) if good else None
+    log = []
+    for p, s in parts:
+        src = p if p["cover"] >= COVER_MIN else tmpl
+        if src is None:
+            log.append({"name": s["name"], "side": s["side"], "cover": round(p["cover"], 2), "source": "none"}); continue
+        x0, y0, x1, y1 = p["box"]
+        dd, ww = src["d"], src["w"]
+        if src is not p:          # 본 패치를 이 자리 크기로 맞춰 찍는다(점은 본의 것을 그대로 — 같은 조명·같은 사진)
+            import cv2
+            n = x1 - x0
+            dd = cv2.resize(dd, (n, n)); ww = cv2.resize(ww, (n, n))
+        h, wdt = out.shape[:2]
+        cx0, cy0, cx1, cy1 = max(x0, 0), max(y0, 0), min(x1, wdt), min(y1, h)
+        sl = (slice(cy0 - y0, cy1 - y0), slice(cx0 - x0, cx1 - x0))
+        out[cy0:cy1, cx0:cx1] += dd[sl] * ww[sl][..., None]
+        log.append({"name": s["name"], "side": s["side"], "cover": round(p["cover"], 2),
+                    "source": "own" if src is p else "template"})
+    return Image.fromarray(np.clip(out, 0, 255).astype("uint8")), log
+
+
+def tone_match(orig, edited, mask, sigma=40):
+    """마스크 안의 톤 쏠림(저주파)만 원본에 맞춘다 — 09-18 3/4 컷 지우기 단계에서 볼 전체가 누렇게 떴다."""
+    import cv2
+    import numpy as np
+    o = np.asarray(orig.convert("RGB"), float); e = np.asarray(edited.convert("RGB"), float)
+    m = np.asarray(mask.convert("L"), float)[..., None] / 255
+    fixed = e + (cv2.GaussianBlur(o, (0, 0), sigma) - cv2.GaussianBlur(e, (0, 0), sigma)) * m
+    return Image.fromarray(np.clip(fixed, 0, 255).astype("uint8"))
 
 
 def preview(img, spots):
@@ -113,6 +189,10 @@ def main():
     region = landmarks.region_mask(img, pts, "nasolabial_marionette", feather=6)
     region = region.point(lambda v: 255 if v > 20 else 0)
     from PIL import ImageFilter
+    import numpy as np
+    # 볼(cheeks)까지 — 09-18 3/4 컷에서 팔자 위쪽 볼에 앉은 옛 패치가 부위 마스크 밖이라 안 지워지고 남았다
+    region = Image.fromarray(np.maximum(np.asarray(region), np.asarray(
+        landmarks.region_mask(img, pts, "cheeks", feather=0).point(lambda v: 255 if v > 20 else 0))))
     region = region.filter(ImageFilter.MaxFilter(31)).filter(ImageFilter.GaussianBlur(6))
     if reuse:
         clean = Image.open(from_clean).convert("RGB")
@@ -121,6 +201,7 @@ def main():
         clean = Image.open(io.BytesIO(b1)).convert("RGB").resize(img.size)
         clean, info = align(img, clean); print("align clean:", info)
         clean = landmarks.composite_outside_mask(img, clean, region)
+        clean = tone_match(img, clean, region)          # 지운 자리 톤 쏠림(누렇게 뜸) 되돌리기
         clean.save(from_clean, quality=95)
     # ② 붙이기 — 계산한 원 안에만. 원마다 붙었는지 재고, 빈 원만 다시(최대 PLACE_TRIES 회).
     #   ⚠ 09-18 실측: 한 번에 원 3~5개를 주면 모델이 1~2개를 비워 둔다(2장 중 2장). 개수를 말해도 비는 원이 생겨
@@ -134,11 +215,16 @@ def main():
         new = Image.open(io.BytesIO(b2)).convert("RGB").resize(img.size)
         new, info = align(placed, new); print(f"align placed #{t}:", info)
         placed = landmarks.composite_outside_mask(placed, new, m)
-        todo = [s for s in todo if changed(clean, placed, s) < PRESENT_MIN]
-        print(f"try {t}: empty circles {[(s['side'], s['name']) for s in todo]}")
+        # 빈 원 = 고리가 온전하지 않은 원(덮임률). 종전 '평균 변화량'은 초승달·흐린 고리를 '붙음'으로 셌다(09-18).
+        todo = [s for s in todo if _patch_parts(clean, placed, s)["cover"] < COVER_MIN]
+        print(f"try {t}: 다시 그릴 원 {[(s['side'], s['name']) for s in todo]}")
         if not todo:
             break
     placed.save(outdir / f"{src.stem}_2placed.jpg", quality=95)
+    # ③ 합성 — 모델 그림을 통째로 쓰지 않고 고리·점만 원본 피부 위에 (blend_patches 머리말)
+    final, log = blend_patches(clean, placed, spots)
+    print("blend:", log)
+    final.save(outdir / f"{src.stem}_3blend.jpg", quality=95)
     print("saved", outdir)
 
 
