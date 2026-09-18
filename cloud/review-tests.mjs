@@ -5,7 +5,7 @@
  * 네트워크는 안 부른다 — 겹치기·충돌 판정은 순수 함수라 여기서 전부 잡힌다.
  */
 import {
-  PREFIX, applyToBatch, applyToLibrary, applyToList, blobName, keyOf, newer, parseBlobName, recount,
+  PREFIX, applyToBatch, applyToLibrary, applyToList, blobName, deletableNow, keyOf, newer, parseBlobName, recount,
 } from './lib/reviews.mjs';
 
 const fails = [];
@@ -82,6 +82,16 @@ ok(recount({pending: 3}, [{}]).pending === 3, '사진 목록이 없으면 검수
 const c = recount({}, [{pick: null, tags: ['각도'], note: ''}, {pick: null, tags: [], note: '메모'}, {}]);
 ok(c.reviewed === 2 && c.picked === 0 && c.rejected === 0,
    `판정 없이 사유·메모만 있어도 검수한 것으로 센다 — 실제 ${c.reviewed}`);
+
+// ── 사본 지우기: 이번 회차에 새로 반영한 것은 남긴다 (2026-09-18 "검수했는데 다 풀렸다가 돌아왔다") ──
+ok(deletableNow({pick: 'pick', updated_at: 300}, {pick: 'pick', updated_at: 200}) === true,
+   'PC 원장이 이미 더 새 것이면 지금 지운다(지난 스냅샷에 실려 있다)');
+ok(deletableNow(null, {pick: 'pick', updated_at: 200}) === false,
+   'PC 에 아직 없던 판정은 이번 회차에 지우지 않는다 — 캐시 15초 동안 화면이 빈다');
+ok(deletableNow({pick: 'pick'}, {pick: 'pick', updated_at: 200}) === false,
+   'PC 원장에 시각이 없으면 지우지 않는다');
+ok(deletableNow({pick: 'pick', updated_at: 200}, {pick: 'reject', updated_at: 200}) === false,
+   '같은 시각이면 지우지 않는다(방금 반영한 것일 수 있다)');
 
 console.log();
 console.log(fails.length ? `실패 ${fails.length}건` : '전부 통과');

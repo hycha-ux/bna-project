@@ -96,6 +96,22 @@ export async function overlay(token) {
   return map;
 }
 
+/**
+ * 사무실 PC 가 흡수한 클라우드 사본을 **이번 회차에 지워도 되는가** (2026-09-18 연서님 "검수했는데 다 풀렸다가 돌아왔다").
+ *
+ * 왜 따로 있나. 종전엔 "이번 회차에 반영한 것"을 스냅샷 업로드 직후 바로 지웠다. 그런데 클라우드 서버는
+ * 스냅샷을 최대 15초 캐시하고 인스턴스마다 따로 든다 → 그 사이 화면은 *옛 스냅샷(판정 없음) + 지워진 사본*
+ * 이라 판정이 통째로 사라져 보였다가 캐시가 갈리면 돌아온다. 대량 검수 땐 10분마다 깜빡인다.
+ *
+ * 규칙: PC 원장이 **이미 더 새** 것(= 지난 회차에 흡수돼 이미 스냅샷에 실려 있던 것)만 지운다.
+ * 이번 회차에 새로 반영한 것은 남겨 두면 다음 회차에 이 조건에 걸려 지워진다 — 그때는 지난 스냅샷에도
+ * 이미 실려 있어 캐시가 옛것이어도 판정이 비지 않는다. 오버레이와 스냅샷 값이 같으니 남아 있어도 화면은 같다.
+ */
+export function deletableNow(local, cloud) {
+  if (!local || !cloud) return false;
+  return (local.updated_at || 0) > (cloud.updated_at || 0);
+}
+
 /** 스냅샷의 판정과 오버레이 중 **더 새 것**을 고른다. 양쪽 다 사람이 누른 값이다. */
 export function newer(fromSnapshot, fromCloud) {
   if (!fromCloud) return fromSnapshot || {};

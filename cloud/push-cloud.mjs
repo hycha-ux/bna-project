@@ -140,7 +140,7 @@ async function absorbPromotions(TOKEN) {
 }
 
 async function absorbReviews(TOKEN) {
-  if (!TOKEN) return { taken: 0, done: [] };
+  if (!TOKEN) return { taken: 0, done: [], already: [] };
   let blobs = [];
   try {
     let cursor;
@@ -151,9 +151,10 @@ async function absorbReviews(TOKEN) {
     } while (cursor);
   } catch (e) {
     console.log('  검수 흡수 건너뜀 —', e.message);   // 못 읽어도 업로드는 계속한다
-    return { taken: 0, done: [] };
+    return { taken: 0, done: [], already: [] };
   }
-  const done = [];
+  const done = [];        // 이번 회차에 새로 반영한 것 — 지우지 않는다(다음 회차에 already 로 걸려 지워진다)
+  const already = [];     // PC 원장이 이미 더 새 것 — 지난 스냅샷에 실려 있으니 지금 지워도 화면이 안 빈다
   const failed = [];
   for (const b of blobs) {
     const id = REV.parseBlobName(b.pathname);
@@ -165,7 +166,7 @@ async function absorbReviews(TOKEN) {
       if (!rv) { failed.push(b.pathname); continue; }
       const local = readLocalReview(id.batch, id.item);
       // 이 PC 에서 더 나중에 고친 게 있으면 클라우드 값이 이기지 않는다(양쪽 다 사람이 누른다)
-      if (local && (local.updated_at || 0) > (rv.updated_at || 0)) { done.push(b); continue; }
+      if (REV.deletableNow(local, rv)) { already.push(b); continue; }
       const r = await fetch(BASE + '/api/review', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batch: id.batch, item: id.item, pick: rv.pick ?? null, tags: rv.tags || [], note: rv.note || '', as_treatment: rv.as_treatment ?? null }),
@@ -178,7 +179,7 @@ async function absorbReviews(TOKEN) {
     console.log(`  ⚠ 검수 흡수 실패 ${failed.length}건 / 전체 ${blobs.length}건 — 사람이 누른 판정이 이 PC 에 안 들어왔다`);
     for (const f of failed.slice(0, 5)) console.log('     ·', f);
   }
-  return { taken: done.length, done, failed: failed.length, seen: blobs.length };
+  return { taken: done.length, done, already, failed: failed.length, seen: blobs.length };
 }
 
 function readLocalReview(batch, item) {
@@ -326,10 +327,14 @@ async function main() {
       for (const b of page.blobs.filter((x) => drop.has(x.pathname))) await del(b.url, { token: TOKEN });
     } catch (e) { console.log('  실시간 진행 파일 정리 건너뜀 —', e.message); }
 
-    // ── 5. 흡수한 검수만 지운다 — 스냅샷을 올린 **뒤**여야 화면이 안 되돌아간다 ──
-    for (const b of absorbed.done) {
-      try { await del(b.url, { token: TOKEN }); } catch { /* 남으면 다음 회차가 다시 흡수한다(멱등) */ }
+    // ── 5. 지난 회차에 이미 반영된 사본만 지운다 (2026-09-18) ──
+    //   이번 회차에 새로 반영한 것(absorbed.done)은 남긴다 — 클라우드 서버의 스냅샷 캐시(15초·인스턴스별)가 옛것인
+    //   동안 사본까지 없으면 판정이 통째로 사라져 보였다(연서님 "검수했는데 다 풀렸다가 돌아왔다").
+    //   다음 회차엔 PC 원장이 더 새 것이라 already 로 걸려 지워진다. 판정은 lib/reviews.mjs deletableNow 하나.
+    for (const b of absorbed.already || []) {
+      try { await del(b.url, { token: TOKEN }); } catch { /* 남으면 다음 회차가 다시 지운다(멱등) */ }
     }
+    if (absorbed.done?.length) console.log(`  클라우드 검수 사본 ${absorbed.done.length}건은 다음 회차에 지운다(캐시 틈 방지)`);
 
     console.log(
       `푸시 완료 · 배치 ${batches.length}${dropped ? `(데모 ${dropped} 제외)` : ''} · 이미지 ${
