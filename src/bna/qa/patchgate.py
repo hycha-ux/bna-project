@@ -128,6 +128,35 @@ def _overlay(img: Image.Image, spots: list):
     return b.getvalue()
 
 
+PAD_RETRY = 0.5     # 얼굴을 못 찾았을 때 사방에 붙이는 여백(원본 크기 대비). 09-21 실측으로 고른 값 — 아래 머리말.
+
+
+def _face_pts(img: Image.Image):
+    """(얼굴 점, 여백을 썼나). 원본에서 못 찾으면 여백을 붙여 한 번 더 찾고 좌표는 원본 기준으로 되돌린다.
+
+    왜: 부분 크롭 셀카(눈이 화면 밖, 코 아래만)는 얼굴이 프레임을 꽉 채워 MediaPipe 가 자주 못 찾는다 —
+      그러면 위치 게이트가 통째로 '못 잼'이 되어 패치 자리를 한 번도 못 잰다(09-18 c4·c5 두 회차 연속).
+      09-21 실측(c5 배치 Before): 원본 못 찾음 · 여백 25% 못 찾음 · **여백 50%·100% 는 478점** ·
+      확대(x1.5·x2.0)는 못 찾음 — 모자란 건 해상도가 아니라 얼굴 주변 여백이다.
+    ⚠ 여백으로 찾은 점은 **기록 전용**이다(check 끝의 passed=None). 09-15 교훈대로 MediaPipe 는 눈이
+      프레임 밖인 컷에서 눈 좌표를 지어내므로, 그 자로 재고 떨어뜨리면 멀쩡한 컷을 유료로 다시 그린다.
+      분포를 먼저 모으고, 게이트로 승격할지는 그다음이다(09-18 '기록 전용으로 먼저 연다'와 같은 결)."""
+    pts = landmarks.detect(img)
+    if pts is not None:
+        return pts, False
+    rgb = img.convert("RGB")
+    w, h = rgb.size
+    pw, ph = int(w * PAD_RETRY), int(h * PAD_RETRY)
+    canvas = Image.new("RGB", (w + 2 * pw, h + 2 * ph), rgb.resize((1, 1)).getpixel((0, 0)))
+    canvas.paste(rgb, (pw, ph))
+    pts = landmarks.detect(canvas)
+    if pts is None:
+        return None, False
+    pts[:, 0] -= pw
+    pts[:, 1] -= ph
+    return pts, True
+
+
 def _axes(pts):
     """얼굴 기준 축 — (across 단위벡터, up 단위벡터). landmarks.patch_spots 와 같은 정의."""
     import numpy as np
@@ -160,7 +189,7 @@ def check(img: Image.Image, p_qa=None, detect=None) -> dict:
     """{'passed': True|False|None, 'n': 자리 수, 'inside': 찬 필수 원 수, 'outside': 원 밖 패치 수, 'total': 본 패치 수,
         'unmeasured': 못 짚어 못 잰 필수 자리 수(재생성 사유 아님), 'calls': 짚기 호출 수, 'scale': 자 출처(iris|mouth),
         'offsets': 필수 자리마다 실제 패치와의 차이(얼굴 기준 방향·홍채 지름), 'dressings': 짚은 패치 좌표, 'note'}"""
-    pts = landmarks.detect(img)
+    pts, padded = _face_pts(img)
     if pts is None:
         return {"passed": None, "note": "얼굴 점 못 찾음"}
     visible = landmarks.patch_spots(pts, size=img.size)             # 보이는 자리 (눈이 화면 밖이면 자 = 입 너비)
@@ -243,8 +272,11 @@ def check(img: Image.Image, p_qa=None, detect=None) -> dict:
         o = offset(s, d["x"], d["y"], axes)
         offs.append({"spot": s["side"] + ":" + s["name"], "found": True, "in_ring": d["ring"] == i + 1, **o,
                      "dir": direction_ko(o)})
-    return {"passed": not reasons, "reasons": reasons, "unmeasured": unmeasured, "calls": calls, "scale": scale,
-            "n": N, "inside": inside, "outside": outside, "total": len(ds), "optional": len(extra),
-            "offsets": offs, "spots": [s["side"] + ":" + s["name"] for s in spots],
-            "dressings": [{k: round(v, 1) if k != "ring" else v for k, v in d.items()} for d in ds],
-            "note": f"{DETECT_MODEL} 짚음 {len(ds)}개"}
+    res = {"passed": not reasons, "reasons": reasons, "unmeasured": unmeasured, "calls": calls, "scale": scale,
+           "n": N, "inside": inside, "outside": outside, "total": len(ds), "optional": len(extra),
+           "offsets": offs, "spots": [s["side"] + ":" + s["name"] for s in spots],
+           "dressings": [{k: round(v, 1) if k != "ring" else v for k, v in d.items()} for d in ds],
+           "note": f"{DETECT_MODEL} 짚음 {len(ds)}개"}
+    if padded:                                  # 여백을 붙여야 찾은 컷 = 기록 전용 (_face_pts 머리말)
+        res.update(passed=None, reasons=[], note=res["note"] + " · 여백 붙여 잼(기록 전용)")
+    return res

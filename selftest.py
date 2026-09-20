@@ -1556,6 +1556,27 @@ ok(_g_shift["passed"] is False and _g_shift["reasons"] == ["position"],
 ok(max([_g_both, _g_cnt, _g_shift], key=_pgm.closeness) is _g_cnt
    and _pgm.closeness({"inside": None}) < _pgm.closeness(_g_both),
    "다 떨어지면 남길 컷 = 원 안 많을수록 → 원 밖 적을수록, 못 잰 컷은 맨 뒤")
+# 09-21: 부분 크롭 컷 — 원본에서 얼굴을 못 찾으면 여백을 붙여 한 번 더 찾고, 그렇게 잰 회차는 '기록 전용'(passed=None).
+#   실측 근거는 _face_pts 머리말(c5 배치 Before: 원본 못 찾음 → 여백 50% 에서 478점).
+import inspect as _insp_pg
+_pad_seen = []
+def _pad_detect(img):
+    _pad_seen.append(img.size)
+    if img.size == (400, 300):                  # 원본 = 못 찾음, 여백 붙인 것만 찾는다
+        return None
+    return _np_pg.zeros((478, 2)) + [210, 160]
+_lmm.detect = _pad_detect
+_pts_pad, _was_pad = _pgm._face_pts(_PImg.new("RGB", (400, 300)))
+ok(_was_pad and _pad_seen[-1] == (800, 600) and abs(_pts_pad[0][0] - 10) < 1e-6 and abs(_pts_pad[0][1] - 10) < 1e-6,
+   f"못 찾으면 여백 50% 붙여 재검출 + 좌표는 원본 기준으로 복원 — {_pad_seen}, {_pts_pad[0] if _pts_pad is not None else None}")
+_lmm.patch_spots, _pgm._axes = (lambda pts, strict=True, size=None: _pg_spots), (lambda pts: (
+    _np_pg.array([1.0, 0.0]), _np_pg.array([0.0, -1.0])))
+_g_pad = _pgm.check(_blank, detect=_pg_det((101, 100), (140, 104), (178, 99)))
+_lmm.detect, _lmm.patch_spots, _pgm._axes = _orig_detect, _orig_spots, _orig_axes
+ok(_g_pad["passed"] is None and _g_pad["reasons"] == [] and "여백" in _g_pad["note"] and _g_pad["inside"] == 3,
+   f"여백으로 찾은 컷은 기록 전용(다시 그리지 않는다 — 지어낸 눈 좌표로 유료 재생성 금지) — {_g_pad.get('passed')}, {_g_pad.get('note')}")
+ok("여백 붙여 잼" in _insp_pg.getsource(_pgm.check) and "기록 전용" in _insp_pg.getsource(_pgm._face_pts),
+   "여백 재검출은 게이트가 아니라 기록 — 코드에 그 이유가 적혀 있어야 한다")
 import inspect as _insp_pg
 from bna import batch as _bt_pg
 _bsrc = _insp_pg.getsource(_bt_pg)
