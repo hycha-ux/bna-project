@@ -126,7 +126,9 @@ FACE_LINE = ("The first {n} attached photos are look references. Draw a differen
              "beauty: follow the references for the face shape, the eye shape and gaze, the skin texture and tone, "
              "the makeup and the hair; only the exact placement and proportions of the features (eyes, nose, mouth) "
              "are new, so it is clearly not the same individual. Do not copy their pose, background, lighting or hands.")
-BAD_FACE = {"face_10.jpg"}   # 턱 괸 손이 결과로 따라왔다(v32 0000 'hands_absent', 2026-09-21) — 손 든 참조는 빼 둔다
+# 손·팔이 보이는 참조는 뺀다 — 턱 괸 손이 결과로 따라와 'hands_absent' 탈락이 두 번 났다(v32 0000 face_10,
+#   v33 0000 face_13 포함 회차, 2026-09-21). 27장을 눈으로 전수 확인해 손·든 팔·팔짱이 보이는 16장을 뺐다(남은 11장).
+BAD_FACE = {f"face_{n:02d}.jpg" for n in (1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 16, 17, 18, 19, 23, 24)}
 
 
 def face_ref(variation: dict, key: str):
