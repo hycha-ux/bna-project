@@ -131,14 +131,14 @@ FACE_LINE = ("The first {n} attached photos are look references. Draw a differen
 BAD_FACE = {f"face_{n:02d}.jpg" for n in (1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 16, 17, 18, 19, 23, 24)}
 
 
-def face_ref(variation: dict, key: str):
+def face_ref(variation: dict, key: str, treatment: str = None):
     """미모 프로필 외모 참조 (2026-09-21 빌디 ⑤) — [(bytes, 파일명), …] (없으면 []).
     스위치(BNA_EXP_LOOKS_PROFILE)가 켜졌고 그 looks 프로필에 face_refs(장수)가 있을 때만. 셀카 Before 전용.
     ⚠ samples_index.yaml 밖 폴더다 — 색인에 넣으면 candidates 가 장면 참조로도 붙인다.
     ⚠ 같은 조합이 여러 세트에 붙으면 결과가 한 얼굴로 모인다(중복 게이트 0.75) → 컷마다 해시로 다른 조합을 고른다
       (같은 컷=같은 조합이라 재현·재시도는 성립). 노션 27장끼리 쌍 유사도 최대 0.528(faces.json)."""
     from .spec import looks_profile
-    k = int(looks_profile(_key(variation, "looks")).get("face_refs") or 0)
+    k = int(looks_profile(_key(variation, "looks"), None, treatment).get("face_refs") or 0)
     files = [f for f in sorted(FACE_DIR.glob("face_*.jpg")) if f.name not in BAD_FACE]
     if not k or not files:
         return []                                     # 참조가 없으면 종전과 같은 글 조건 Before (fail-open)

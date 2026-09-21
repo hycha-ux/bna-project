@@ -180,7 +180,7 @@ class Batch:
                     # 미모 프로필 외모 참조 (2026-09-21 빌디 ⑤, 스위치 켰을 때만 — 고르는 규칙은 refs.face_ref 한 곳).
                     #   씨앗 은행과 같은 자리(첫 장)에 붙지만 뜻이 다르다: '이 사람'이 아니라 '같은 미인상, 다른 사람'.
                     #   2~3장이면 첫 장은 ref 자리, 나머지는 장면 참조 **앞**에 붙인다(문장이 "처음 N장"이라 순서가 뜻이다).
-                    faces = refs.face_ref(spec["variation"], f"{self.batch_id}|{item_id}|{attempt}")
+                    faces = refs.face_ref(spec["variation"], f"{self.batch_id}|{item_id}|{attempt}", self.treatment)
                     if faces:
                         person_b, person_f = faces[0][0], ",".join(n for _b, n in faces)
                         gen_refs = [b for b, _n in faces[1:]] + list(style_refs or [])

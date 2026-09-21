@@ -76,7 +76,7 @@ def treatment_rules(treatment: str, mode: str) -> dict:
     treatment 이 None 이면 빈 규칙 (예전 호출·테스트가 그대로 돈다)."""
     r = {"allow": {}, "ban": {}, "age_weights": {}, "framing_weights": {}, "drift_lock": [],
          "framing_ban_by_angle": {}, "expression_policy": "free", "lighting_arc": {},
-         "severity_weights": {}, "series_relax": [], "single_relax": []}
+         "severity_weights": {}, "series_relax": [], "single_relax": [], "name": treatment}
     if not treatment:
         return r
     t = load("treatments.yaml").get(treatment)
@@ -136,7 +136,7 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     lg = v.get("looks_gates", {}).get(axis) or {}
     if lg:
         allowed = [k for k in allowed if k not in lg or keys.get("looks") in lg[k]] or allowed
-    _lpf = looks_profile(keys.get("looks"), v)
+    _lpf = looks_profile(keys.get("looks"), v, tr.get("name"))
     pg = (_lpf.get("gates") or {}).get(axis) or (_lpf.get("gates_bg") if axis == "background" else None)
     if pg:                                            # 미모 프로필(스위치 켰을 때만): 피곤·잡티 계열·옆빛 못 내는 배경 빼기
         allowed = [k for k in allowed if k in pg] or allowed
@@ -210,14 +210,14 @@ def _drop_identity_items(text: str, keywords: list) -> tuple:
         return text, len(items) - len(kept)
     return text[:i + 2] + ", ".join(kept) + text[j:], len(items) - len(kept)
 
-def person_description(variation: dict) -> str:
+def person_description(variation: dict, treatment: str = None) -> str:
     f = {k: (variation.get(k) or {}).get("text", "") for k in PERSON_AXES}
     # 미모는 인물 **맨 앞** 형용사 + 나이 바로 뒤 구체 특징 (2026-09-21 연서님 "미모가 나온 적이 없다" —
     #   맨 끝에 붙은 부정문은 앞선 리얼리티 묘사와 뒤따르는 '더 예쁘게 마라' 규칙 셋에 눌려 안 읽혔다).
     head = " ".join(x for x in (f["looks"], f["country"], f["gender"], f["age"]) if x)
     lk = (variation.get("looks") or {}).get("key")
     detail = (load("variations.yaml").get("looks_detail") or {}).get(lk, "")
-    prof = looks_profile(lk)                         # 미모 프로필(스위치 켰을 때만): 피부·머리 문장 교체 + 나라별 미인상 + 메이크업
+    prof = looks_profile(lk, None, treatment)                         # 미모 프로필(스위치 켰을 때만): 피부·머리 문장 교체 + 나라별 미인상 + 메이크업
     _k = lambda ax: (variation.get(ax) or {}).get("key")
     skin = (prof.get("skin_text") or {}).get(_k("skin_condition"), f["skin_condition"])
     hair = (prof.get("hair_text") or {}).get(_k("hair_style"), f["hair_style"])
@@ -262,7 +262,7 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
             for k, fw in tr.get("framing_weights", {}).items():
                 w[k] = w.get(k, 1.0) * fw
         # 미모 프로필 가중(스위치 켰을 때만) — planner.plan_batch 에도 같은 곱이 있다(두 경로 한 벌).
-        for k, pw in ((looks_profile(keys.get("looks"), v).get("weights") or {}).get(axis) or {}).items():
+        for k, pw in ((looks_profile(keys.get("looks"), v, tr.get("name")).get("weights") or {}).get(axis) or {}).items():
             w[k] = w.get(k, 1.0) * float(pw)
         if w and len(allowed) > 1:
             ws = [max(0.01, float(w.get(k, 1.0))) for k in allowed]
@@ -292,23 +292,33 @@ def experiment_flags(as_meta: bool = False):
     relax = {s.strip() for s in os.environ.get("BNA_EXP_RELAX", "").split(",") if s.strip()}
     sev = os.environ.get("BNA_EXP_SEVERITY", "").strip() or None
     when = os.environ.get("BNA_EXP_WHEN", "").strip() or None
-    prof = os.environ.get("BNA_EXP_LOOKS_PROFILE", "").strip() in ("1", "true", "on")
+    _pv = os.environ.get("BNA_EXP_LOOKS_PROFILE", "").strip().lower()
+    # 3값: "1" 강제 켬 · "0" 강제 끔(회귀·되돌리기 비교용) · 빈 값 = 설정(looks_profile.<looks>.enabled)을 따른다
+    prof = True if _pv in ("1", "true", "on") else (False if _pv in ("0", "false", "off") else None)
     if as_meta:
         out = {"relax": sorted(relax), "severity": sev, "when": when}
-        if prof:                                       # 새 칸은 켰을 때만 싣는다 — 옛 회차 meta 와 모양이 같게
-            out["looks_profile"] = True
-        return out if (relax or sev or when or prof) else None
+        if prof is not None:                           # 새 칸은 환경변수로 켜거나 껐을 때만 — 옛 회차 meta 와 모양이 같게
+            out["looks_profile"] = prof
+        return out if (relax or sev or when or prof is not None) else None
     return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof}
 
 
-def looks_profile(looks_key, v: dict = None) -> dict:
+def looks_profile(looks_key, v: dict = None, treatment: str = None) -> dict:
     """미모 프로필(variations.yaml `looks_profile`) — 실험 스위치 BNA_EXP_LOOKS_PROFILE 이 켜졌고 그 looks 에
     프로필이 있을 때만 그 dict, 아니면 {} (2026-09-21 빌디 제안·연서님 확인). 판정은 여기 한 곳이다 —
     추첨(allowed_values·sample_variation·planner)과 문장(person_description·build_prompts)·참조(batch)가 같이 부른다."""
-    if not looks_key or not experiment_flags()["looks_profile"]:
+    if not looks_key:
         return {}
     v = v or load("variations.yaml")
-    return (v.get("looks_profile") or {}).get(looks_key) or {}
+    p = (v.get("looks_profile") or {}).get(looks_key) or {}
+    # 시술 범위(2026-09-21 정식 반영 때 실측): 전역으로 켜자 피부 3종의 '전=센 빛' 조명 호가 옆빛 강제에 깨졌다(회귀 4건).
+    #   프로필은 팔자에서만 시험했으니 `treatments` 목록 밖이면 끈다. 시술을 모르면(None) 끈다 — 닫는 쪽(fail-closed).
+    if p.get("treatments") and treatment not in p["treatments"]:
+        return {}
+    sw = experiment_flags()["looks_profile"]
+    # 2026-09-21 정식 반영(연서님 "①~③ OK"): 설정 `enabled: true` 면 스위치 없이 켜진다. 환경변수 "0" 은 강제로 끈다.
+    on = sw if sw is not None else bool(p.get("enabled"))
+    return p if on else {}
 
 
 def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False,
@@ -362,7 +372,7 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     lock = (set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
     # 미모 프로필 3차: Before 에 강제한 표정(웃음)·빛(옆빛)은 After 에서도 그대로 — 풀리면 촬영 차이가 효과로 둔갑한다.
     #   완화(relax)보다 **뒤에** 더한다: single_relax 가 표정을 풀어도 여기서 다시 잠근다.
-    lock |= set(looks_profile((variation.get("looks") or {}).get("key"), v).get("lock_after") or [])
+    lock |= set(looks_profile((variation.get("looks") or {}).get("key"), v, treatment).get("lock_after") or [])
     seen = seen or {}
     probs = v.get("after_drift", {}).get(mode, {})
     if "immediate" in probs or "later" in probs:
@@ -637,7 +647,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     if variation.get("framing", {}).get("key") in _srf:
         skin_read = " ".join(str(_srf[variation["framing"]["key"]]).split())
     # 미모 프로필(스위치 켰을 때만) — '피곤하고 못 나온 피부' 압력 대신 맑은 피부, 질감 문장에서 잡티·붉음만 뺀다.
-    _prof = looks_profile((variation.get("looks") or {}).get("key")) if mode == "selfie" else {}
+    _prof = looks_profile((variation.get("looks") or {}).get("key"), None, treatment) if mode == "selfie" else {}
     skin_texture = " ".join(str(_prof.get("skin_texture") or SKIN_TEXTURE).split())
     if _prof.get("skin_read"):
         skin_read = " ".join(str(_prof["skin_read"]).split())
@@ -671,7 +681,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     # 미모 프로필 전용 문장(있으면) — 나이 하향 **뒤**의 sev 로 고른다(late_20s 가 mild 로 내려가면 종전 mild 문장)
     cond = ((_prof.get("before_condition") or {}).get(treatment) or {}).get(sev, cond)
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
-        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, skin_read=skin_read, avoid=avoid_before,
+        person=person_description(variation, treatment), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, skin_read=skin_read, avoid=avoid_before,
         skin_texture=skin_texture, **fields)
     def identity_for(ref_framing, target_framing=None):
         """동일인 잠금 문장.
@@ -832,7 +842,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 # 미모 프로필 3차: Before 가 살짝 웃는 컷이면 "웃지 마라"가 곧 가짜 효과다(웃음이 빠지면 팔자가 저절로 얕아진다)
                 #   → 같은 웃음을 같은 세기로 유지하라고 바꾼다. 표정 축은 lock_after 로 이미 잠겨 있다.
                 smile_held = (variation["expression"]["key"] == "slight_smile"
-                              and "expression" in (looks_profile(variation["looks"]["key"]).get("lock_after") or []))
+                              and "expression" in (looks_profile(variation["looks"]["key"], None, treatment).get("lock_after") or []))
                 keep_mouth = ('Keep exactly the same slight closed-mouth smile as in the reference, with the same '
                               'intensity - do not make it bigger or smaller and do not drop it, since changing the '
                               'smile alone would change the folds being treated. ' if smile_held else
@@ -866,6 +876,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             #    ⚠ 직후 컷엔 안 붙인다 (2026-09-14 저녁 연서님 "엠보는 직후가 다이나믹"): 직후는 볼록·홍조가
             #      보이는 시점이라 광이 돌면 4주 컷과 섞인다. 흔적은 facts.immediate_marks 가 그린다.
             finish = "" if w == "immediate" else " ".join(str(t.get("after_finish") or "").split())
+            # 미모 프로필 ④(2026-09-21): 미모 컷 After 효과를 한 단계 또렷하게 — 사람 '효과 없음' 2/4(프로필 회차).
+            #   강도 칸(effect_levels)은 이미 pronounced 라 올릴 칸이 없다 → '나란히 놓으면 한눈에 보인다' 한 줄을 얹는다.
+            _an = " ".join(str(looks_profile(variation["looks"]["key"], None, treatment).get("after_note") or "").split())
+            if _an and w != "immediate":
+                chg = f"{chg} {_an}"
             txt = (CFG / "prompts/after_selfie.md").read_text(encoding="utf-8").format(
                 identity_lock=ident, after_scene=after_scene, after_hair=after_hair, after_change=chg,
                 after_finish=finish, relight=RELIGHT_LINE,
@@ -898,7 +913,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         chg, lv, lowered = change_for(w, level)
         afters.append(build_after(w, chg, lv, lowered))
     last = afters[-1]
-    before_parts = segments(before, [("person", person_description(variation)), ("before_condition", cond), ("scene", scene),
+    before_parts = segments(before, [("person", person_description(variation, treatment)), ("before_condition", cond), ("scene", scene),
                                      ("mode_extra", mode_extra), ("skin_read", skin_read), ("avoid", avoid_before)])
     # ⚠ `avoid_applied` 는 "그 사진에 실제로 붙어 있던 금지문"이고 메모 초안(notedraft)이 정본으로 읽는다.
     #   after_prompt·after_parts 가 마지막 컷이므로 여기도 **마지막 컷에 붙은 목록**이어야 짝이 맞는다 —

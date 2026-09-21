@@ -111,7 +111,7 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
         opts = [fixed[axis]] if axis in fixed else opts
         # 미모 프로필 가중(스위치 켰을 때만, spec.looks_profile 판정) — 있으면 큐도 looks 별로 가른다
         #   (가중이 다른 두 인물이 한 큐를 나눠 쓰면 서로의 가중이 섞인다). spec.sample_variation 에도 같은 곱이 있다.
-        pw = (looks_profile(looks, v).get("weights") or {}).get(axis) or {}
+        pw = (looks_profile(looks, v, treatment).get("weights") or {}).get(axis) or {}
         # 큐는 (축, 허용 집합)마다 따로 — 한 큐를 같이 쓰면 게이트로 못 뽑는 값(미모→40대~)이 남았다가
         #   다음 재충전 때 통째로 버려져, 그 값을 뽑을 수 있는 쪽(보통 인물)에서도 사라진다(2026-09-21 실측: 40대~ 32%→7%).
         qk = (axis, tuple(opts), looks if pw else None)

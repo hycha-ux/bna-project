@@ -153,6 +153,15 @@ looks_gates:
 #   한국적 미인상 = detail_by_country(그 나라일 때만 — 다른 나라 인물에 '한국적'을 붙이지 않는다) + 피부톤·얼굴형·머리 게이트.
 looks_profile:
   attractive:
+    # 정식 반영(2026-09-21 연서님 "①~③ OK") — 스위치 없이 켜진다. 되돌리기 = false.
+    #   근거: 프로필 2·3차 사람 채택 2/4(전체 평균 약 49%와 같음), 얼굴은 노션 미인상 도달. ⚠ 4장이라 '안 나빠졌다'까지만.
+    #   강제로 끄고 비교할 땐 환경변수 BNA_EXP_LOOKS_PROFILE=0.
+    enabled: true
+    treatments: [nasolabial]     # 시험한 시술만 — 전역으로 켜자 피부 3종 조명 호·표정 정책이 깨졌다(spec.looks_profile)
+    # ④ 같은 날: 프로필 회차에서 사람이 뺀 2장이 전부 '효과 없음'(둘 다 기계 통과) → After 에 한 줄(spec.build_after).
+    after_note: >
+      Side by side with the reference, the softer nasolabial folds and marionette lines must be obvious at a glance,
+      even with the same slight smile and the same side light.
     weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}}
     # 2차 dry 에서 본 모순 둘을 같이 막았다: '작은 얼굴' + body_type full("fuller face and neck"), '맑은 피부' + 주근깨·점
     gates: {skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],

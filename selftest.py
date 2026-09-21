@@ -469,7 +469,10 @@ ok("Keep identical" not in _pc15["after_prompt"] and "separate exposure" in _pc1
 ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날")
 ok(all(k in _pc15["after_prompt"] for k in ("flyaways", "eyes are open a slightly different amount", "collar, neckline, straps and folds")) and "wearing is different" not in _pc15["after_prompt"],
    "살짝 다름 3항목(잔머리·눈/입·옷 매무새)이 문안에 있고, 옷은 같은 옷 (2026-09-15 저녁 연서님)")
-ok("tired" in build_prompts("nasolabial", "selfie", sample_variation("selfie", 5, treatment="nasolabial"), 5)["before_prompt"], "셀카 Before 의 피부 읽힘 문장은 그대로")
+# 보통 인물 기준(09-21 미모 프로필은 미모 인물의 피부 읽힘을 따로 바꾼다 — ㊴가 그쪽을 잰다)
+ok("tired" in build_prompts("nasolabial", "selfie", {**sample_variation("selfie", 5, treatment="nasolabial"),
+                                                     "looks": {"key": "ordinary", "text": ""}}, 5)["before_prompt"],
+   "셀카 Before 의 피부 읽힘 문장은 그대로(보통 인물)")
 # 첫 실회차 "겹쳐놔도 똑같다" 수정 (2026-09-15 저녁): 임상은 mild·subtle 안 뽑고, After 문안은 편집 지시가 아니다
 _c15 = [build_prompts("nasolabial", "clinical", sample_variation("clinical", s, treatment="nasolabial"), s) for s in range(20)]
 ok(all(p["variation"]["effect_level"]["key"] != "subtle" for p in _c15), "임상은 subtle 효과를 뽑지 않는다 — 전후가 비교에서 보여야 한다")
@@ -809,6 +812,7 @@ ok("head_to_bust" in _tr_all["nasolabial"]["framing_allow"]
    and not any("head_to_bust" in (_tr_all[k].get("framing_allow") or []) for k in _tr_all if k != "nasolabial"),
    "머리~바스트는 팔자에만 열린다(메인 시술부터 소량 재보기) — 다른 시술 framing_allow 엔 없어야 한다")
 _vbf = dict(_v); _vbf["framing"] = {"key": "head_to_bust", "text": _vb["framing"]["head_to_bust"]}
+_vbf["looks"] = {"key": "ordinary", "text": ""}      # 보통 인물 기준(미모 프로필은 피부 읽힘을 따로 바꾼다 — ㊴)
 _pbust = build_prompts("nasolabial", "selfie", _vbf, 17, series=["immediate", "2w"])
 ok("arm's length" in _pbust["before_prompt"] and "pushed close to the lens" not in _pbust["before_prompt"],
    "바스트 Before 본문은 일상 셀카 문장이고 '부위를 렌즈에 바짝' 문장이 없어야 한다")
@@ -2454,7 +2458,8 @@ def _run37(env):
     _os37.environ.update(env)
     out = []
     for sd in range(40):
-        v = sample_variation("selfie", 3700 + sd)
+        # 보통 인물로 고정(09-21 미모 프로필 정식 반영) — 미모 컷은 표정이 lock_after 로 잠겨 이 검사의 대상(완화 경로)이 아니다
+        v = {**sample_variation("selfie", 3700 + sd), "looks": {"key": "ordinary", "text": ""}}
         r = build_prompts("nasolabial", "selfie", v, 3700 + sd)
         out.append((v, r))
     for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY", "BNA_EXP_WHEN"):
@@ -2525,19 +2530,31 @@ import os
 from bna import refs as _rf39
 from bna.spec import SKIN_TEXTURE as _st39
 def _run39(on):
+    # on: True=환경변수 켬 · False=환경변수로 강제 끔("0") · None=스위치 없음(정식 경로 — 설정 enabled 를 따른다)
     os.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
-    if on:
-        os.environ["BNA_EXP_LOOKS_PROFILE"] = "1"
+    if on is not None:
+        os.environ["BNA_EXP_LOOKS_PROFILE"] = "1" if on else "0"
     try:
         vs = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v["looks"]["key"] == "attractive"]
-        return vs, [build_prompts("nasolabial", "selfie", v, 4242 + i) for i, v in enumerate(vs)], _rf39.face_ref(vs[0], "t")
+        return vs, [build_prompts("nasolabial", "selfie", v, 4242 + i) for i, v in enumerate(vs)], _rf39.face_ref(vs[0], "t", "nasolabial")
     finally:
         os.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
 _v39off, _r39off, _f39off = _run39(False)
 _v39on, _r39on, _f39on = _run39(True)
 ok(all(_st39 in r["before_prompt"] for r in _r39off) and not any("natural makeup" in r["before_prompt"] for r in _r39off)
-   and _f39off == [] and all(r["experiment"] is None for r in _r39off),
-   "미모 프로필 스위치를 안 켜면 종전 그대로 — 질감 문장 원문·메이크업 없음·외모 참조 없음")
+   and _f39off == [] and all((r["experiment"] or {}).get("looks_profile") is False for r in _r39off),
+   "미모 프로필을 강제로 끄면(=되돌리기) 종전 그대로 — 질감 문장 원문·메이크업 없음·외모 참조 없음")
+# 정식 반영(09-21 "①~③ OK"): 스위치 없이도 켜지고, meta 실험 칸은 비어 있다(정식 경로라서)
+_v39def, _r39def, _f39def = _run39(None)
+ok(_r39def and all("natural makeup" in r["before_prompt"] and r["experiment"] is None for r in _r39def) and len(_f39def) == 3,
+   "미모 프로필 정식 반영 — 스위치 없이 켜지고 meta 실험 칸은 None")
+ok(all("obvious at a glance" in a["after_prompt"] for r in _r39def for a in r["afters"] if a["when"] != "immediate"),
+   "미모 프로필 ④ — 미모 컷 After(직후 제외)에 '한눈에 보인다' 한 줄")
+# 정식 반영 첫 회귀에서 전역으로 켜져 피부 3종 조명 호가 깨졌다 → 팔자 밖 시술엔 안 먹어야 한다(treatments 범위)
+_oth39 = [t for t in load("treatments.yaml") if t != "nasolabial" and "selfie" in load("treatments.yaml")[t].get("modes", [])]
+_leak39 = [t for t in _oth39 for i, v in enumerate(_pb38("selfie", 40, 77, {"looks": "attractive"}, treatment=t)[:5])
+           if "natural makeup" in build_prompts(t, "selfie", v, 77 + i)["before_prompt"] or _rf39.face_ref(v, "t", t)]
+ok(_oth39 and not _leak39, f"미모 프로필은 팔자에만 — 다른 시술 {len(_oth39)}종에 새지 않는다 (샘 {sorted(set(_leak39))})")
 # ④ 2차: 미모 전용 moderate — 30대는 moderate + 전용 문장("솔직한 나이" 없음), late_20s 는 나이 하향으로 mild(종전 문장)
 _r39m = [r for r in _r39on if r["variation"]["age"]["key"] == "30s"]
 ok(_r39m and all(r["variation"]["before_severity"]["key"] == "moderate" and "pretty, well-kept face" in r["before_prompt"]
