@@ -2504,6 +2504,19 @@ from bna import batch as _bt37
 _src37 = _in37.getsource(_bt37)
 ok("too_similar" not in _src37, "too_similar 는 기록 전용 — batch.py 가 탈락 사유로 읽는 곳이 없다")
 
+# ㊳ (09-21 연서님 "필요하면 팔자에 golden_hour 열자") 팔자 미모 셀카에 늦은 오후 옆빛이 실제로 뽑히는가.
+#   존재를 단언한다 — 설정에 적고도 허용표 교집합에서 조용히 빠지는 게 이 레포의 반복 사고다(0921 교훈).
+#   ⚠ 보통 인물엔 여전히 0이어야 한다(looks_gates). 테라스 배경은 빛 교집합이 비면 안 된다.
+from bna.planner import plan_batch as _pb38
+_v38 = _pb38("selfie", 400, 4242, {}, treatment="nasolabial")
+_att38 = [v for v in _v38 if v["looks"]["key"] == "attractive"]
+_gh38 = sum(v["lighting"]["key"] == "golden_hour" for v in _att38)
+ok(_gh38 >= len(_att38) * 0.2, f"팔자 미모 셀카에 golden_hour 가 뽑힌다 — {_gh38}/{len(_att38)}")
+ok(not any(v["lighting"]["key"] == "golden_hour" for v in _v38 if v["looks"]["key"] != "attractive"),
+   "golden_hour 는 미모 전용 — 보통 인물 0장")
+ok(all(v["lighting"]["key"] in ("golden_hour", "backlit") for v in _v38 if v["background"]["key"] == "terrace_golden"),
+   "황금빛 테라스 배경은 배경 허용 빛(golden_hour·backlit) 안에서만 뽑힌다 — 창가 빛으로 어긋나지 않는다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

@@ -241,7 +241,12 @@ nasolabial:
     #   세트 안(Before↔After)은 drift_lock 으로 계속 잠긴다 — 흩어지는 건 세트*끼리*다.
     expression: [neutral_closed, relaxed_open, gaze_off, gaze_screen, brow_up, eyes_narrow, blink_soft,
                  jaw_loose, lips_speak, lip_asym]
-    lighting: [window, fluorescent, ceiling_harsh, mixed]   # 어두운 밤·역광에서는 주름 그림자가 안 보인다
+    lighting: [window, fluorescent, ceiling_harsh, mixed, golden_hour]   # 어두운 밤·역광에서는 주름 그림자가 안 보인다
+    # golden_hour(2026-09-21 연서님 "필요하면 팔자에 golden_hour 열자") — 미모 전용(looks_gates)이라 보통 인물엔 안 붙는다.
+    #   열기 전 실측(looks-scene-dist, 계획 400장): 미모 258장 중 미모 전용 빛 0% · window 55%, 그리고 terrace_golden
+    #   배경(40장)은 배경 허용 빛 [golden_hour, backlit] 과 팔자 허용 빛의 교집합이 비어 '황금빛 테라스 + 창가 빛'으로 어긋났다.
+    #   노션 AI 셀카 30세트는 늦은 오후 옆빛이 가장 흔했다. 옆빛은 팔자 골에 그림자를 만드는 쪽이라 역광과 달리 주름을 지우지 않는다.
+    #   되돌리기 = 이 줄에서 golden_hour 삭제.
     angle: [front, selfie_3q, selfie_side, chin_up, tilted, selfie_high]   # selfie_low 는 팔자를 과장한다
   framing_allow: [head_to_bust, full_face, forehead_cut, lower_face, nose_to_neck, one_cheek]   # head_to_bust = 머리~바스트 셀카, 팔자만 (2026-09-17 연서님)
   # tilted 추가(2026-09-10 검수): 고개를 기울인 채 한쪽 볼만 크게 잡으면 팔자가 프레임 밖으로 밀린다
