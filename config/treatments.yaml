@@ -50,7 +50,7 @@ nasolabial:
   #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
   #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.
   series_levels: {immediate: final, 1w: final}
-  effect_levels: [subtle, moderate]
+  effect_levels: [subtle, moderate, pronounced]   # 2026-09-21: pronounced 추가 — 아래 effect_by_severity 와 한 벌이다(목록에서 빠뜨리면 임상 폴백만 옛 강도로 남는다)
   before_severity: [mild, moderate, marked]
   severity_min_age: {mild: late_20s, moderate: 30s, marked: 40s}
   before_condition:
@@ -200,7 +200,13 @@ nasolabial:
   #   "한 번의 시술이 실제로 하는 범위 안, 완벽해 보이지 않게"로 과장을 막고 있다.
   #   ⚠ mild 는 그대로 subtle 이다 — 연한 주름을 또렷이 펴면 그건 과장이다(위 severity_weights 로 빈도를 낮췄다).
   #   ⚠ 이 판단은 팔자(필러)에만 적용한다. 스킨부스터·모공·홍조는 정말로 변화가 은은해서 같이 올리면 과장이 된다.
-  effect_by_severity: {mild: [subtle], moderate: [moderate], marked: [moderate]}
+  # 2026-09-21 성연서님 검수 "효과 세기로 2세트": 09-21 배치(…091049-d559) 두 장을 **둘 다** '효과 없음'으로
+  #   반려했다 — 기계 게이트(자리·개수·비전 6점)는 통과한 장이다. 즉 지금 자는 사람 눈보다 헐겁다.
+  #   09-18 에 subtle→moderate 로 한 칸 올린 것과 **같은 축의 다음 칸**이다(moderate→pronounced).
+  #   ⚠ mild 는 그대로 subtle — 연한 주름을 또렷이 펴면 과장이다(빈도는 severity_weights 로 이미 낮다).
+  #   ⚠ 이번 회차도 움직인 축은 이거 하나다(게이트·자리·개수·잠금 전부 그대로) — 그래야 09-21 회차와 비교가 된다.
+  #   ⚠ 팔자(필러)에만 적용. 스킨부스터·모공·홍조는 변화가 정말 은은해서 같이 올리면 과장이 된다.
+  effect_by_severity: {mild: [subtle], moderate: [pronounced], marked: [pronounced]}
   expression_policy: lock          # 웃으면 누구나 팔자가 깊어진다 — 표정 차이가 시술 효과로 둔갑
   drift_lock: [expression, angle]
   # 2026-09-18 연서님 검수 ③ "전·직후·2주 세 장의 표정·입모양·구도·카메라 각도가 똑같다".

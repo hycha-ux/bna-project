@@ -621,14 +621,20 @@ _v = sample_variation("selfie", 5, treatment="nasolabial")
 _pl = build_prompts("nasolabial", "selfie", _v, 5); _sr = build_prompts("nasolabial", "selfie", _v, 5, series=["2w", "immediate"])
 ok(_pl["series"] is None and len(_pl["afters"]) == 1, "시리즈가 아니면 After 하나(종전과 같다)")
 ok(_sr["series"] == ["immediate", "2w"] and [a["when"] for a in _sr["afters"]] == ["immediate", "2w"], "시점은 시간순으로 정렬된다")
-ok(_sr["afters"][0]["effect_level"] in ("subtle", "moderate") and "barely visible yet" not in _sr["afters"][0]["after_prompt"],
+# 허용 강도는 **설정에서 읽는다**(2026-09-21) — 여기 이름을 손으로 적어 두면 강도를 한 칸 올릴 때마다
+#   이 줄이 같이 빨개져, 고친 사람이 "회귀가 깨졌다"로 읽고 되돌리게 된다. 재는 건 이름이 아니라
+#   '직후 컷이 낮춰지지 않았나'(effect_lowered=False)다.
+_NASO_LV = tuple(load("treatments.yaml")["nasolabial"]["effect_levels"])
+ok(_sr["afters"][0]["effect_level"] in _NASO_LV and _sr["afters"][0]["effect_lowered"] is False
+   and "barely visible yet" not in _sr["afters"][0]["after_prompt"],
    "필러(팔자)의 직후 컷은 최종 강도다 — immediate_level: final (2026-09-11)")
 # 낮추는 길은 **필러가 아닌 시술**로 잰다 — 필러는 B안 이후 어느 시점도 안 낮춘다.
 _vn = sample_variation("selfie", 5, treatment="nose_lifting")
 _sr3 = build_prompts("nose_lifting", "selfie", _vn, 5, series=["1w", "2w"])
 ok(_sr3["afters"][0]["effect_level"] == "subtle" and _sr3["afters"][0]["effect_lowered"] is True,
    "에너지 시술의 중간 시점(1주)은 종전대로 강도를 낮춘다 — 낮추는 길 자체가 죽으면 안 된다")
-ok(_sr["afters"][1]["effect_level"] in ("subtle", "moderate") and _sr["after_prompt"] == _sr["afters"][-1]["after_prompt"], "마지막 시점이 최종 강도이고 after_prompt 대표")
+ok(_sr["afters"][1]["effect_level"] in _NASO_LV and _sr["afters"][1]["effect_lowered"] is False
+   and _sr["after_prompt"] == _sr["afters"][-1]["after_prompt"], "마지막 시점이 최종 강도이고 after_prompt 대표")
 ok(len({a["after_prompt"] for a in _sr["afters"]}) == 2, "시점마다 프롬프트가 다르다")
 ok("right after the procedure" in _sr["afters"][0]["after_prompt"] and "two weeks" in _sr["afters"][1]["after_prompt"], "시점 문구가 각자 붙는다")
 ok(_sp("skin_pores", ["immediate", "2w"]) == ["2w"], "시술이 허용하지 않는 시점은 빠진다")

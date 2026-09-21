@@ -16,6 +16,12 @@ effect_levels:
   early: "The treatment change is barely visible yet: the treated area looks almost the same as in the reference, slightly puffy or pink from the procedure; do not show the final result"
   subtle: "The change is mild: the treated area is better than in the reference but the concern is still present, noticeable mainly when the two photos are compared side by side"
   moderate: "The change is clear when the two photos are compared, but still within what a single treatment realistically does; nothing looks perfect or erased"
+  # 2026-09-21 성연서님 검수: 09-21 두 세트를 **둘 다** '효과 없음'으로 반려했다(기계가 통과시킨 장까지).
+  #   moderate 는 "두 장을 나란히 놓고 비교하면 보인다"라서, 한 장만 보는 사람 눈엔 티가 안 난다.
+  #   → 한 칸 위를 만들되 **세게 말하지 말고 짚는다**(09-18 교훈): 깊이·그림자·범위를 구체로 말하고,
+  #     '완전히 지움'과 '다른 부위 손대기' 금지는 그대로 실어 과장선을 넘지 않게 한다.
+  #   ⚠ 쓰는 곳은 시술별 `effect_by_severity` 다 — 이 칸을 만들었다고 저절로 세지지 않는다.
+  pronounced: "The change is obvious at a glance in this photo alone, without putting the two photos side by side: the treated fold or line is about half as deep as before and the shadow inside it is mostly gone, and the skin along it sits visibly smoother. It is still the same feature on the same face: the fold or line is still visible along its whole length, never erased or filled flat, and nothing else on the face is smoothed, lifted, brightened or made to look younger"
 # 직후 컷을 **최종 강도로** 그리는 시술(필러)에 붙는 문장. 사실 카드(facts.immediate_marks)가 있으면
 # 그쪽이 이긴다 — 카드가 "무엇이 어디에" 까지 말하므로 더 구체적이다.
 # ⚠ 여기 적을 수 있는 건 주사 시술 공통인 붓기·발적까지다. 테이프 자리는 시술마다 달라 추정하면 안 된다.
