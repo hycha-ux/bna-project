@@ -149,7 +149,9 @@ nasolabial:
       right where the lower end of the nasolabial fold finishes, only slightly above and outside it; a second just beside that one, slightly further out on the
       cheek and a little lower; and a third sitting right on the jawline edge, directly below and a little
       outside the corner of the mouth, where the marionette line meets the jaw, half of it wrapping onto the
-      underside of the jaw so that from the front it is barely visible. All of them are clear of
+      underside of the jaw so that from the front it is barely visible. The first two sit close together
+      as a pair high on the cheek, and the whole stretch of cheek between that pair and the jawline one is
+      bare skin. All of them are clear of
       the lips and far from the nose. These six dressings, three on each side, are the only dressings
       anywhere on the face; all the rest of the skin is bare. Their size follows this
       person's face in this photo: each dressing is about as wide as the iris of their eye, so the
@@ -185,6 +187,12 @@ nasolabial:
   #      · 마리오네트: 문장 = 턱선 모서리에 걸쳐 절반이 턱 밑, 계산 자리 = landmarks.MARIO_OUT(윤곽선에서 반지름 0.5 바깥, INSET 폐지).
   #        정면에선 '있어도 되는 자리'(없어도 감점 없음), 3/4 가까운 쪽만 필수(landmarks.MARIO_REQ_TURN).
   #      · 게이트: 허용 1.5→1.0, 한쪽씩 확대해 짚기, 못 짚은 필수 자리 = '못 잼'(재생성 사유 아님), 자 = 눈이 화면 밖이면 입 너비×0.265.
+  #   ⑬ 2026-09-21 (v26 2세트: 자리는 5/5 원 안·오차 0.28~0.48로 해결, 남은 탈락은 **개수** 하나) — 여분의 정체를 눈으로 확인했다.
+  #      같은 컷을 3번 다시 채점해 짚은 점을 원본에 찍어 보니 3번 모두 네 점으로 같았고, 네 점 전부 둘레에 희미한 패치 테두리가 있었다
+  #      (= 짚기 오탐이 아니라 **정말 한쪽에 넷을 그렸다**). 넷째는 볼 짝(①②)과 턱선(③) **사이 빈 구간**에 앉았다.
+  #      → "exactly three per side"는 이미 있었으므로 개수를 더 세게 말하지 않고, 모델이 채워 넣은 **그 구간이 비어 있다**를
+  #        긍정형으로 한 문장 더했다(0910 교훈: 금지 나열은 그리게 만든다). 게이트·계산 자리·허용 반경은 **안 건드렸다** —
+  #        한 회차에 한 축만 움직여야 다음 회차가 비교가 된다(09-18 6세트 교훈).
   patch_gate: 3
   # 2026-09-18: moderate 에서 subtle 을 뺐다. subtle 문구는 "문제가 아직 남아 있고 나란히 놓고 비교할 때나
   #   눈에 띈다"라서, 필러가 직후부터 최종 강도인 시술인데도 2주 컷이 판정선(6) 아래로 떨어졌다
