@@ -164,7 +164,10 @@ looks_profile:
       even with the same slight smile and the same side light.
     weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}}
     # 2차 dry 에서 본 모순 둘을 같이 막았다: '작은 얼굴' + body_type full("fuller face and neck"), '맑은 피부' + 주근깨·점
-    gates: {skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],
+    # 구도 게이트(2026-09-22 빌디 "미모 컷은 크롭이면 안 된다 — 노션 30장 전부 얼굴 전체~상반신"):
+    #   가중(weights.framing)만으론 v35 0001 이 lower_face 로 나갔다. After 이웃 이동도 이 게이트를 거쳐
+    #   full_face→forehead_cut 이 막힌다(drift_after 의 allowed_values). 되돌리기 = framing 한 칸 삭제.
+    gates: {framing: [full_face, head_to_bust], skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],
             skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight]}
     skin_text: {clear: "clear, even skin"}
     hair_text: {long_straight: "long straight hair with soft see-through bangs"}

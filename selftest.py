@@ -470,8 +470,10 @@ ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" 
 ok(all(k in _pc15["after_prompt"] for k in ("flyaways", "eyes are open a slightly different amount", "collar, neckline, straps and folds")) and "wearing is different" not in _pc15["after_prompt"],
    "살짝 다름 3항목(잔머리·눈/입·옷 매무새)이 문안에 있고, 옷은 같은 옷 (2026-09-15 저녁 연서님)")
 # 보통 인물 기준(09-21 미모 프로필은 미모 인물의 피부 읽힘을 따로 바꾼다 — ㊴가 그쪽을 잰다)
+#   구도도 얼굴 전체로 못박는다(바스트 컷은 피부 읽힘 문장이 따로다 — 시드에 맡기면 09-22 게이트 뒤 바스트가 뽑혔다)
 ok("tired" in build_prompts("nasolabial", "selfie", {**sample_variation("selfie", 5, treatment="nasolabial"),
-                                                     "looks": {"key": "ordinary", "text": ""}}, 5)["before_prompt"],
+                                                     "looks": {"key": "ordinary", "text": ""},
+                                                     "framing": {"key": "full_face", "text": "the whole face fills the frame"}}, 5)["before_prompt"],
    "셀카 Before 의 피부 읽힘 문장은 그대로(보통 인물)")
 # 첫 실회차 "겹쳐놔도 똑같다" 수정 (2026-09-15 저녁): 임상은 mild·subtle 안 뽑고, After 문안은 편집 지시가 아니다
 _c15 = [build_prompts("nasolabial", "clinical", sample_variation("clinical", s, treatment="nasolabial"), s) for s in range(20)]
@@ -824,7 +826,9 @@ for _ab in _pbust["afters"]:
     if _ab["after_variation"]["framing"]["key"] == "head_to_bust":
         ok("the phone is not visible" in _ab["after_prompt"] and "close to the lens" not in _ab["after_prompt"],
            f"바스트 After({_ab['when']}) 본문도 바스트 문장이어야 한다 — '부위를 렌즈에 바짝' 금지")
-_pnorm = build_prompts("nasolabial", "selfie", _v, 17, series=["2w"])
+# 종전 본문 기준은 보통 인물·얼굴 전체로 못박는다 — 시드 5 는 09-22 미모 구도 게이트 뒤 미모·바스트로 뽑혀 이 비교가 성립하지 않았다.
+_pnorm = build_prompts("nasolabial", "selfie", {**_v, "looks": {"key": "ordinary", "text": ""},
+                                                "framing": {"key": "full_face", "text": _vb["framing"]["full_face"]}}, 17, series=["2w"])
 ok("arm's length" not in _pnorm["before_prompt"] and "pushed close to the lens" in _pnorm["before_prompt"],
    "다른 프레이밍의 Before 본문은 종전 문장 그대로다")
 
@@ -2589,6 +2593,15 @@ ok(not any(r["variation"]["expression"]["key"] == "slight_smile" for r in _r39of
    "프로필 스위치를 끄면 팔자 Before 에 웃음이 안 뽑힌다(scene_allow 그대로)")
 ok(_lh39(_v39on, "framing", "head_to_bust") > _lh39(_v39off, "framing", "head_to_bust"),
    f"프로필 ③ — 머리~바스트 비중이 오른다 ({_lh39(_v39off, 'framing', 'head_to_bust'):.2f}→{_lh39(_v39on, 'framing', 'head_to_bust'):.2f})")
+# ㊶ (09-22 빌디 "미모 컷은 크롭이면 안 된다 — full_face·head_to_bust 둘만, 가중이 아니라 게이트")
+#   v35 0001 이 가중만 걸린 상태에서 lower_face 로 나갔다. Before·After(직후·2주 이웃 이동 포함) 전부를 잰다.
+#   존재도 같이 단언한다 — 둘 다 실제로 나와야 '게이트'지 한쪽으로 쏠린 가중이 아니다.
+_F41 = {"full_face", "head_to_bust"}
+_r41 = [build_prompts("nasolabial", "selfie", v, 4242 + i, series=["immediate", "2w"]) for i, v in enumerate(_v39on)]
+_fr41 = [r["variation"]["framing"]["key"] for r in _r41] + [a["after_variation"]["framing"]["key"] for r in _r41 for a in r["afters"]]
+ok(_fr41 and set(_fr41) <= _F41, f"미모 구도 게이트 — Before·After 전부 얼굴 전체·상반신만 ({sorted(set(_fr41))}, {len(_fr41)}컷)")
+ok(set(r["variation"]["framing"]["key"] for r in _r41) == _F41, "미모 구도 게이트 — 두 구도가 실제로 둘 다 나온다")
+ok(any(v["framing"]["key"] not in _F41 for v in _v39off), "미모 프로필을 끄면 구도 게이트도 풀린다(되돌리기 경로)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
