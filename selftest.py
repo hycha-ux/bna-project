@@ -301,7 +301,14 @@ for _t in _T:
         if _k["context"] in (_r["ban"].get("context") or []): _viol[f"{_t} context_ban"] = _viol.get(f"{_t} context_ban", 0) + 1
         if any(_r["age_weights"].get(_k["age"], 1) <= 0 for _ in [0]): _viol[f"{_t} age0"] = _viol.get(f"{_t} age0", 0) + 1
         _sp = build_prompts(_t, "selfie", _p, _s); _af = _sp["after_variation"]
+        # single_relax(단발 완화, 09-21 팔자 expression)는 잠금 위의 **허가된 예외**다 — 대신 그 축은
+        #   '입 상태 유지'가 새 제약이다(바뀌어도 되지만 다문 입↔벌린 입으로는 못 간다).
         for _ax in _r["drift_lock"]:
+            if _ax in _r.get("single_relax", []):
+                _mt = load("variations.yaml").get("expression_traits", {}) if _ax == "expression" else {}
+                if _ax == "expression" and _mt.get(_af[_ax]["key"], {}).get("mouth") != _mt.get(_p[_ax]["key"], {}).get("mouth"):
+                    _viol[f"{_t} relax-mouth:{_ax}"] = _viol.get(f"{_t} relax-mouth:{_ax}", 0) + 1
+                continue
             if _af[_ax]["key"] != _p[_ax]["key"]: _viol[f"{_t} drift:{_ax}"] = _viol.get(f"{_t} drift:{_ax}", 0) + 1
         _ak = {a: x["key"] for a, x in _af.items()}
         if _ak["context"] in (_V["framing_ban"].get(_ak["framing"]) or []): _viol[f"{_t} after framing_ban"] = _viol.get(f"{_t} after framing_ban", 0) + 1
@@ -2442,8 +2449,16 @@ def _run37(env):
     return out
 _off37 = _run37({})
 _on37 = _run37({"BNA_EXP_RELAX": "expression", "BNA_EXP_SEVERITY": "moderate"})
-ok(all("expression" not in r["after_changed_axes"] for _v, r in _off37),
-   "스위치 끔 — 팔자 단발 After 표정은 한 번도 안 바뀐다(기본 경로 불변)")
+# 2026-09-21 정식 반영(treatments.yaml 팔자 single_relax:[expression]) — 종전 이 줄은 "기본 경로에선 표정이
+#   한 번도 안 바뀐다"를 지켰다(실험 결과 전 기본 경로 불변). 결과(§9) 뒤 연서님 OK 로 뒤집었으므로 계약이 바뀐다:
+#   ① 기본 경로에서도 표정이 바뀐다 ② 하지만 **강제는 아니다**(주사위 0.7 — 일부는 그대로 남는다)
+#   ③ 바뀐 표정도 입 상태는 Before 와 같다(가짜 효과 방지) ④ angle 은 계속 잠긴다.
+_offchg37 = [(v, r) for v, r in _off37 if "expression" in r["after_changed_axes"]]
+ok(0 < len(_offchg37) < 40, f"정식 경로 — 팔자 단발 표정이 바뀌되 강제는 아니다({len(_offchg37)}/40, 주사위 0.7)")
+_offmouth37 = [1 for v, r in _offchg37
+               if _tb37.get(v["expression"]["key"], {}).get("mouth") != _tb37.get(r["after_variation"]["expression"]["key"], {}).get("mouth")]
+ok(not _offmouth37, f"정식 경로 — 바뀐 표정도 입 상태는 Before 와 같다 — 위반 {len(_offmouth37)}")
+ok(all("angle" not in r["after_changed_axes"] for _v, r in _off37), "정식 경로 — angle 은 계속 잠겨 있다(single_relax 에 없다)")
 _chg37 = [(v, r) for v, r in _on37 if "expression" in r["after_changed_axes"]]
 ok(len(_chg37) >= 10, f"스위치 켬 — 팔자 단발 After 표정이 바뀐다({len(_chg37)}/40, 주사위 0.7 × 이웃 유무)")
 _mouth37 = [(v["expression"]["key"], r["after_variation"]["expression"]["key"]) for v, r in _chg37
@@ -2466,7 +2481,9 @@ ok(all(r["afters"][-1]["when"] == "2w" for _v, r in _on37b), "BNA_EXP_WHEN=2w �
 _chg37b = sum(1 for _v, r in _on37b if "expression" in r["after_changed_axes"])
 ok(_chg37b >= 36, f"켠 축은 주사위를 건너뛴다 — 표정 바뀜 {_chg37b}/40 (주사위 0.7 이면 ~28; 남는 건 같은 입 상태 이웃이 없는 경우뿐)")
 _off37b = _run37({"BNA_EXP_SEVERITY": "moderate", "BNA_EXP_WHEN": "2w"})
-ok(all("expression" not in r["after_changed_axes"] for _v, r in _off37b), "대조(시점·강도만 고정) — 표정은 여전히 잠겨 있다")
+# 정식 반영 뒤 '대조(스위치 없음)'는 더 이상 표정 잠금이 아니다 — 실험 스위치와의 차이는 '강제냐 확률이냐'다.
+_offb37 = sum(1 for _v, r in _off37b if "expression" in r["after_changed_axes"])
+ok(_offb37 < _chg37b, f"스위치 없는 경로는 실험 스위치보다 덜 바꾼다(확률 {_offb37}/40 < 강제 {_chg37b}/40)")
 ok([r["variation"]["age"]["key"] for _v, r in _on37b] == [r["variation"]["age"]["key"] for _v, r in _off37b],
    "스위치 유무가 인물 추첨(rng 흐름)을 바꾸지 않는다 — 같은 seed 면 같은 사람")
 from bna.qa import identity as _id37

@@ -67,10 +67,13 @@ def treatment_rules(treatment: str, mode: str) -> dict:
                       drift_lock·SERIES_LOCK 을 이 축에서 벗기되 자유 재추첨이 아니라 이웃 한 칸이다
                       (expression 은 '입 상태 유지 + 다른 키', angle·framing 은 neighbors 표).
                       안 적으면 종전대로 완전 잠금이라 다른 시술은 하나도 안 움직인다.
+    single_relax    : 같은 완화를 **단발 컷**에 거는 축 목록 (2026-09-21 정식 반영, 팔자 expression).
+                      확률은 종전 주사위 그대로. ⚠ 이 함수는 화이트리스트라, 여기 칸을 안 만들면
+                      yaml 에 적어도 조용히 무시된다(09-21 첫 반영에서 0/40 으로 드러났다).
     treatment 이 None 이면 빈 규칙 (예전 호출·테스트가 그대로 돈다)."""
     r = {"allow": {}, "ban": {}, "age_weights": {}, "framing_weights": {}, "drift_lock": [],
          "framing_ban_by_angle": {}, "expression_policy": "free", "lighting_arc": {},
-         "severity_weights": {}, "series_relax": []}
+         "severity_weights": {}, "series_relax": [], "single_relax": []}
     if not treatment:
         return r
     t = load("treatments.yaml").get(treatment)
@@ -80,6 +83,7 @@ def treatment_rules(treatment: str, mode: str) -> dict:
     r["severity_weights"] = {str(k): float(v) for k, v in (t.get("severity_weights") or {}).items()}
     r["drift_lock"] = list(t.get("drift_lock") or [])
     r["series_relax"] = list(t.get("series_relax") or [])
+    r["single_relax"] = list(t.get("single_relax") or [])
     r["expression_policy"] = t.get("expression_policy", "free")
     if r["expression_policy"] == "lock" and "expression" not in r["drift_lock"]:
         r["drift_lock"].append("expression")
@@ -301,6 +305,11 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     v = load("variations.yaml")
     tr = treatment_rules(treatment, mode)
     relax = set(tr.get("series_relax") or []) if series else set()
+    # 단발 완화 (2026-09-21 정식 반영, 연서님 "응 돌려보자") — 시리즈가 아닐 때 `single_relax` 축을 같은
+    #   완화 경로(입 상태 고정 + 이웃 한 칸)로 푼다. 확률은 종전 주사위 그대로(실험 스위치와 달리 강제하지 않는다).
+    #   근거·되돌리기 = treatments.yaml 해당 줄 주석. 시리즈 컷은 위 series_relax 가 이미 맡는다.
+    if not series:
+        relax |= set(tr.get("single_relax") or []) & set(tr.get("drift_lock") or [])
     # 실험 스위치 (2026-09-21 연서님 확인, 빌디 요청) — **단발 컷에도** 시리즈 완화를 켠다.
     #   팔자는 drift_lock[expression, angle] 이라 단발 회차 18장 전부 After 표정이 한 번도 안 바뀌었고,
     #   사람 'AI 티' 15장이 전부 팔자였다(docs/ai-look-item-0921-teemo.md §8). 완화 경로는 시리즈와 같다 —
