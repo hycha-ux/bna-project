@@ -34,6 +34,9 @@ def defaults_for(mode: str) -> dict:
 
 PERSON_AXES = ["country", "age", "gender", "face_shape", "skin_tone", "skin_condition", "body_type",
                "hair_style", "hair_color", "eyes", "looks", "extras"]   # looks = 미모 축 (2026-09-17), 옛 계획엔 없어 build_prompts 가 ordinary 로 채운다
+# 추첨 순서: looks 를 age 보다 먼저 — looks_gates.age(미모는 20~30대만)가 looks 를 알아야 닫힌다(fail-closed).
+#   서명(planner.signature)은 PERSON_AXES 순서 그대로라 옛 등록부와 계속 맞는다. (2026-09-21)
+DRAW_ORDER = ["looks"] + [a for a in PERSON_AXES if a != "looks"]
 SCENE_AXES = ["background", "angle", "framing", "context", "lighting", "color", "quality", "expression"]
 
 # 시술별 '못 잼(동일인 게이트가 얼굴을 못 찾음)' 상한. 정본은 여기 하나다 —
@@ -198,8 +201,12 @@ def _drop_identity_items(text: str, keywords: list) -> tuple:
 
 def person_description(variation: dict) -> str:
     f = {k: (variation.get(k) or {}).get("text", "") for k in PERSON_AXES}
-    parts = [f"{f['country']} {f['gender']} {f['age']}", f["face_shape"], f["skin_tone"], f["skin_condition"],
-             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["looks"], f["extras"]]
+    # 미모는 인물 **맨 앞** 형용사 + 나이 바로 뒤 구체 특징 (2026-09-21 연서님 "미모가 나온 적이 없다" —
+    #   맨 끝에 붙은 부정문은 앞선 리얼리티 묘사와 뒤따르는 '더 예쁘게 마라' 규칙 셋에 눌려 안 읽혔다).
+    head = " ".join(x for x in (f["looks"], f["country"], f["gender"], f["age"]) if x)
+    detail = (load("variations.yaml").get("looks_detail") or {}).get((variation.get("looks") or {}).get("key"), "")
+    parts = [head, detail, f["face_shape"], f["skin_tone"], f["skin_condition"],
+             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["extras"]]
     return ", ".join(p for p in parts if p)
 
 
@@ -221,7 +228,7 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
     v = load("variations.yaml")
     tr = treatment_rules(treatment, mode)
     picked, keys = {}, {}
-    for axis in PERSON_AXES + SCENE_AXES:
+    for axis in DRAW_ORDER + SCENE_AXES:
         options = v[axis]
         allowed = allowed_values(axis, keys, mode, v, tr)
         w = dict(weights.get(axis) or {})

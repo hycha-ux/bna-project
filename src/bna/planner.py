@@ -9,7 +9,7 @@
 import json, random, time
 from collections import Counter
 from pathlib import Path
-from .spec import ROOT, load, PERSON_AXES, SCENE_AXES, treatment_rules, allowed_values
+from .spec import ROOT, load, PERSON_AXES, DRAW_ORDER, SCENE_AXES, treatment_rules, allowed_values
 
 REGISTRY = ROOT / "outputs" / "person_registry.jsonl"
 
@@ -109,7 +109,9 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
     def draw(axis, opts):
         """허용 목록(opts) 안에서 순환 큐로 뽑는다 — 축별로 고르게, 가중치만큼 더 자주."""
         opts = [fixed[axis]] if axis in fixed else opts
-        q = queues.setdefault(axis, [])
+        # 큐는 (축, 허용 집합)마다 따로 — 한 큐를 같이 쓰면 게이트로 못 뽑는 값(미모→40대~)이 남았다가
+        #   다음 재충전 때 통째로 버려져, 그 값을 뽑을 수 있는 쪽(보통 인물)에서도 사라진다(2026-09-21 실측: 40대~ 32%→7%).
+        q = queues.setdefault((axis, tuple(opts)), [])
         for o in q:                     # 큐에 남은 것 중 허용되는 첫 항목
             if o in opts:
                 q.remove(o); return o
@@ -121,8 +123,8 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
             return max(1, round(WEIGHT_SCALE * base * float(aw.get(o, 1.0))))
         pool = [o for o in opts for _ in range(reps(o))]            # 가중치만큼 복제 후 섞기
         rng.shuffle(pool)
-        queues[axis] = pool
-        return queues[axis].pop(0)
+        queues[(axis, tuple(opts))] = pool
+        return pool.pop(0)
 
     past = set(avoid_sigs or ())
     past_scenes = set(avoid_scene_sigs or ())
@@ -140,7 +142,7 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
         while len(plans) < n and tries < n * 20:
             tries += 1
             p = {}
-            for axis in PERSON_AXES:
+            for axis in DRAW_ORDER:               # looks 먼저 (looks_gates.age)
                 p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"))
             sig = tuple(p[a] for a in PERSON_AXES)
             if sig in seen or (strict and sig in past):

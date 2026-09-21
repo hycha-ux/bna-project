@@ -78,9 +78,16 @@ eyes:
 #   ⚠ 이 축은 '예쁘게 그려라'가 아니라 **원래 그렇게 생긴 사람**이다 — 피부·주름·리얼리티 규정은 그대로 다 붙는다.
 #     Before 의 "described 보다 더 예쁘게 만들지 마라"와 충돌하지 않는 이유: 여기 적힌 것까지가 'described' 다.
 #   임상은 ordinary 고정(mode_rules) — 병원 기록 사진은 미모를 고르지 않는다. 6:4 는 셀카 가중(weights.looks).
+#   2026-09-21 연서님 "미모가 나온 적이 없다" — 09-17 문장은 사람 묘사 맨 끝에 붙고 절반이 부정문("모델 아님·이상화 아님")이라
+#     Before 의 "described 보다 예쁘게 마라"·동일인 잠금·회피 규칙(대칭 금지) 셋에 눌려 보통 얼굴로 수렴했다(실측 미모 15장 중 미모로 읽힌 컷 0).
+#     그래서 ① 문장을 인물 **맨 앞** 형용사로("strikingly pretty Korean woman…") ② 부정문 대신 구체 특징(looks_detail) ③ 나이는 20~30대만(looks_gates.age).
+#   looks = 인물 앞 형용사 한 마디. looks_detail = 나이 뒤에 붙는 구체 특징 문장. 둘 다 spec.person_description 이 조립한다.
 looks:
   ordinary: ""
-  attractive: "naturally good-looking, with well-balanced, harmonious features and a face that photographs well - a real person who happens to be attractive, not a model or an idealized face"
+  attractive: "strikingly pretty"
+looks_detail:
+  ordinary: ""
+  attractive: "with clear bright eyes, smooth even facial contours, a neat jawline and balanced proportions - the kind of face that gets compliments"
 
 extras:
   none: ""
@@ -124,6 +131,8 @@ age_gates:
 #   보통 인물에 붙으면 인플루언서 사진이 된다. 판정 = spec.allowed_values 의 looks_gates 한 곳.
 #   ⚠ 새 값은 mode_rules.selfie(화이트리스트)·background_lighting·context_allow 에도 같이 들어가야 뽑힌다 — 한 곳만 넣으면 조용히 0.
 looks_gates:
+  # 나이: 미모 인물은 20~30대만 (2026-09-21 연서님). 40대~는 보통 인물에서만 뽑힌다 — 그래서 planner/spec 은 looks 를 age 보다 먼저 뽑는다(DRAW_ORDER).
+  age: {late_teens: [ordinary], "40s": [ordinary], "50s": [ordinary], "60s": [ordinary]}
   background: {cafe_window: [attractive], terrace_golden: [attractive], park_green: [attractive]}
   context: {knit_cardigan: [attractive], white_blouse: [attractive], fitted_black_top: [attractive]}
   lighting: {golden_hour: [attractive]}

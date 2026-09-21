@@ -836,8 +836,17 @@ ok("looks" in build_prompts("nasolabial", "selfie", _vo, 5)["variation"],
    "미모 축이 없는 옛 계획도 조립돼야 한다(ordinary 로 채움)")
 _va = dict(_v); _va["looks"] = {"key": "attractive", "text": load("variations.yaml")["looks"]["attractive"]}
 _pa = build_prompts("nasolabial", "selfie", _va, 5)
-ok("naturally good-looking" in _pa["before_prompt"] and "not a model" in _pa["before_prompt"],
-   "미모 문장은 '원래 그렇게 생긴 실제 사람'이라고 못 박아야 한다 — 모델·이상화된 얼굴은 AI 티")
+ok(_pa["before_prompt"].startswith("Realistic unedited photo of a strikingly pretty "),
+   f"미모는 인물 맨 앞 형용사여야 한다(2026-09-21 연서님 '미모가 나온 적이 없다') — 실제 {_pa['before_prompt'][:70]!r}")
+ok("the kind of face that gets compliments" in _pa["before_prompt"] and "not a model" not in _pa["before_prompt"],
+   "미모 특징은 구체 문장으로, 부정문('모델 아님')은 빼야 한다 — 부정문이 리얼리티 규칙 셋에 눌려 보통 얼굴로 수렴했다")
+_lka = {p["age"]["key"] for p in _pblk("selfie", 1000, seed=17, treatment="nasolabial") if p["looks"]["key"] == "attractive"}
+ok(_lka <= {"early_20s", "late_20s", "30s"} and _lka,
+   f"미모 인물은 20~30대만 (2026-09-21 연서님) — 실제 {sorted(_lka)}")
+_lko = {p["age"]["key"] for p in _pblk("selfie", 1000, seed=17, treatment="nasolabial") if p["looks"]["key"] == "ordinary"}
+ok("40s" in _lko and "50s" in _lko, f"40대~는 보통 인물에서 계속 뽑혀야 한다(미모 게이트가 나이를 통째로 죽이면 안 된다) — 실제 {sorted(_lko)}")
+_vs = sample_variation("selfie", seed=3, treatment="nasolabial")
+ok("looks" in _vs and "age" in _vs, "단건 추첨(sample_variation)도 looks 를 age 앞에 뽑아야 한다(DRAW_ORDER)")
 
 # ㉒-c 팔자 + 마리오네트 (2026-09-17 연서님 "마리오네트 부위도 함께 시술 변화가 있었으면")
 #    실사진(온볼라썸 #1·#117·#118) 태그가 전부 팔자+마리오네트다. 네 칸(부위·마스크·Before·After)이 같이 넓어야 한다 —
@@ -1927,7 +1936,9 @@ ok(not _bad27, f"참조 태그는 그 축에 실재하는 값이어야 한다(�
 from collections import Counter as _C27
 _seen27 = _C27()
 for _t27 in ("skin_pores", "skinbooster_embo", "skin_redness"):
-    for _i27, _p27 in enumerate(_pb26("selfie", 60, seed=27, treatment=_t27)):
+    # 120장 — 직후 참조 8장은 태그가 전부 같아 동점 무작위라, 60장(직후 ≈16컷·자리 32)이면 한 장이 0회일 확률이 ≈10%다.
+    #   2026-09-21 추첨 큐를 (축, 허용 집합)별로 나누며 난수 순서가 바뀌자 05.jpg 가 걸렸다(코드 결함 아님) → 표본을 늘려 ≈0.1% 로.
+    for _i27, _p27 in enumerate(_pb26("selfie", 120, seed=27, treatment=_t27)):
         _sp27 = build_prompts(_t27, "selfie", _p27, 27000 + _i27)
         _w27 = _sp27["afters"][0]["when"]
         for _r27 in _R26._rank(_R26.candidates("selfie", _t27, None), _p27, None)[:2]:
