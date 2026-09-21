@@ -2517,6 +2517,37 @@ ok(not any(v["lighting"]["key"] == "golden_hour" for v in _v38 if v["looks"]["ke
 ok(all(v["lighting"]["key"] in ("golden_hour", "backlit") for v in _v38 if v["background"]["key"] == "terrace_golden"),
    "황금빛 테라스 배경은 배경 허용 빛(golden_hour·backlit) 안에서만 뽑힌다 — 창가 빛으로 어긋나지 않는다")
 
+# ㊴ (09-21 빌디 미모 프로필, 연서님 확인) 스위치 BNA_EXP_LOOKS_PROFILE 을 켰을 때만 5가지가 **실제로 나오는가**,
+#   끄면 종전 문장 그대로인가. 존재를 단언한다(0921 교훈 — 적고도 조용히 안 먹는 게 반복 사고).
+import os
+from bna import refs as _rf39
+from bna.spec import SKIN_TEXTURE as _st39
+def _run39(on):
+    os.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
+    if on:
+        os.environ["BNA_EXP_LOOKS_PROFILE"] = "1"
+    try:
+        vs = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v["looks"]["key"] == "attractive"]
+        return vs, [build_prompts("nasolabial", "selfie", v, 4242 + i) for i, v in enumerate(vs)], _rf39.face_ref(vs[0], "t")[1]
+    finally:
+        os.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
+_v39off, _r39off, _f39off = _run39(False)
+_v39on, _r39on, _f39on = _run39(True)
+ok(all(_st39 in r["before_prompt"] for r in _r39off) and not any("natural makeup" in r["before_prompt"] for r in _r39off)
+   and _f39off is None and all(r["experiment"] is None for r in _r39off),
+   "미모 프로필 스위치를 안 켜면 종전 그대로 — 질감 문장 원문·메이크업 없음·외모 참조 없음")
+ok(all(r["variation"]["before_severity"]["key"] == "mild" for r in _r39on), "프로필 ④ — 미모 Before 강도 전부 mild")
+ok(all("natural makeup" in r["before_prompt"] and "minor blemishes" not in r["before_prompt"]
+       and "visible pores" in r["before_prompt"] for r in _r39on),
+   "프로필 ①② — 메이크업 문장이 붙고, 잡티 문장은 빠지고, 모공·솜털 질감은 남는다")
+ok(not any(v["extras"]["key"] == "tired" or v["skin_condition"]["key"] in ("redness", "acne_marks", "oily") for v in _v39on),
+   "프로필 ① — 피곤·붉음·여드름 자국·번들 피부가 미모 인물에서 안 뽑힌다")
+_lh39 = lambda vs, ax, k: sum(v[ax]["key"] == k for v in vs) / max(1, len(vs))
+ok(_lh39(_v39on, "framing", "head_to_bust") > _lh39(_v39off, "framing", "head_to_bust")
+   and _lh39(_v39on, "age", "late_20s") > _lh39(_v39off, "age", "late_20s"),
+   f"프로필 ③④ — 머리~바스트·late_20s 비중이 오른다 (바스트 {_lh39(_v39off, 'framing', 'head_to_bust'):.2f}→{_lh39(_v39on, 'framing', 'head_to_bust'):.2f})")
+ok(bool(_f39on) and (_rf39.FACE_DIR / _f39on).exists(), f"프로필 ⑤ — 외모 참조 사진이 골라진다({_f39on})")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

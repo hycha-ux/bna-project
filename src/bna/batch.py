@@ -173,10 +173,16 @@ class Batch:
                 #   맞는 얼굴이 없으면 (None, None) → 종전과 똑같은 글 조건 Before. 조건을 다시 뽑으면(redraw) 여기서 다시 고른다.
                 person_b, person_f = (seedbank.pick(spec["variation"], f"{item_id}|{spec['variation']['gender']['key']}|{spec['variation']['age']['key']}")
                                       if self.mode == "clinical" else (None, None))
+                person_line = seedbank.prompt_line() if person_b else ""
+                if self.mode == "selfie":
+                    # 미모 프로필 외모 참조 (2026-09-21 빌디 ⑤, 스위치 켰을 때만 — 고르는 규칙은 refs.face_ref 한 곳).
+                    #   씨앗 은행과 같은 자리(첫 장)에 붙지만 뜻이 다르다: '이 사람'이 아니라 '이 정도 외모, 다른 사람'.
+                    person_b, person_f = refs.face_ref(spec["variation"], f"{self.batch_id}|{item_id}|{attempt}")
+                    person_line = refs.FACE_LINE if person_b else ""
                 meta["person_ref"] = person_f                  # 익명 파생 파일명만 — 어떤 가공 인물을 썼는지 사후 대조용
                 before_prompt = self.p_gen.adapt_prompt(spec["before_prompt"], "before")
                 if person_b:
-                    before_prompt = seedbank.prompt_line() + " " + before_prompt
+                    before_prompt = person_line + " " + before_prompt
                 for pre in range(1, BEFORE_PRECHECK_TRIES + 1):
                     async with self._slots(self.p_gen):        # Before 도 공급자 한도를 탄다 — _slots 머리말이 근거
                         before_b = await loop.run_in_executor(None, self.p_gen.generate, before_prompt,

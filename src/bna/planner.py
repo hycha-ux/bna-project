@@ -9,7 +9,7 @@
 import json, random, time
 from collections import Counter
 from pathlib import Path
-from .spec import ROOT, load, PERSON_AXES, DRAW_ORDER, SCENE_AXES, treatment_rules, allowed_values
+from .spec import ROOT, load, PERSON_AXES, DRAW_ORDER, SCENE_AXES, treatment_rules, allowed_values, looks_profile
 
 REGISTRY = ROOT / "outputs" / "person_registry.jsonl"
 
@@ -106,24 +106,28 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
     fw = tr.get("framing_weights") or {}                 # 시술별 프레이밍 가중 (목주름만 전역과 다르다)
 
     queues = {}
-    def draw(axis, opts):
+    def draw(axis, opts, looks=None):
         """허용 목록(opts) 안에서 순환 큐로 뽑는다 — 축별로 고르게, 가중치만큼 더 자주."""
         opts = [fixed[axis]] if axis in fixed else opts
+        # 미모 프로필 가중(스위치 켰을 때만, spec.looks_profile 판정) — 있으면 큐도 looks 별로 가른다
+        #   (가중이 다른 두 인물이 한 큐를 나눠 쓰면 서로의 가중이 섞인다). spec.sample_variation 에도 같은 곱이 있다.
+        pw = (looks_profile(looks, v).get("weights") or {}).get(axis) or {}
         # 큐는 (축, 허용 집합)마다 따로 — 한 큐를 같이 쓰면 게이트로 못 뽑는 값(미모→40대~)이 남았다가
         #   다음 재충전 때 통째로 버려져, 그 값을 뽑을 수 있는 쪽(보통 인물)에서도 사라진다(2026-09-21 실측: 40대~ 32%→7%).
-        q = queues.setdefault((axis, tuple(opts)), [])
+        qk = (axis, tuple(opts), looks if pw else None)
+        q = queues.setdefault(qk, [])
         for o in q:                     # 큐에 남은 것 중 허용되는 첫 항목
             if o in opts:
                 q.remove(o); return o
         w = weights.get(axis, {}); aw = avoid_weights.get(axis, {})
         def reps(o):                    # 기본 가중 × 시술 가중 × 학습 회피 가중, 최소 1
-            base = float(w.get(o, 1)) * (float(tw.get(o, 1.0)) if axis == "age" else 1.0)                 * (float(fw.get(o, 1.0)) if axis == "framing" else 1.0)
+            base = float(w.get(o, 1)) * (float(tw.get(o, 1.0)) if axis == "age" else 1.0)                 * (float(fw.get(o, 1.0)) if axis == "framing" else 1.0) * float(pw.get(o, 1.0))
             # ⚠ 최소 1 이라 WEIGHT_SCALE(=4)보다 잘게는 못 나눈다 — 가중 0.25 가 바닥이고
             #   그 아래로 적어도 0.25 로 취급된다. 더 줄여야 하면 framing_allow 에서 빼라.
             return max(1, round(WEIGHT_SCALE * base * float(aw.get(o, 1.0))))
         pool = [o for o in opts for _ in range(reps(o))]            # 가중치만큼 복제 후 섞기
         rng.shuffle(pool)
-        queues[(axis, tuple(opts))] = pool
+        queues[qk] = pool
         return pool.pop(0)
 
     past = set(avoid_sigs or ())
@@ -143,13 +147,13 @@ def plan_batch(mode: str, n: int, seed=None, fixed=None, avoid_weights=None, tre
             tries += 1
             p = {}
             for axis in DRAW_ORDER:               # looks 먼저 (looks_gates.age)
-                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"))
+                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"), p.get("looks"))
             sig = tuple(p[a] for a in PERSON_AXES)
             if sig in seen or (strict and sig in past):
                 continue
             for axis in SCENE_AXES:
                 # stage="before" = 이 추첨이 **시술 전** 사진이라는 뜻 (조명 호가 있는 시술에서만 뜻이 있다)
-                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"))
+                p[axis] = draw(axis, allowed_values(axis, p, mode, v, tr, stage="before"), p.get("looks"))
             scene = tuple(p[a] for a in SCENE_SIG_AXES)
             # 구도 중복 회피(2026-09-10). **1차에서만** 막는다 — 구도 후보는 유한해서
             # 2차까지 막으면 배치가 말없이 줄어든다(그게 더 나쁘다는 게 이 루프의 원래 원칙).

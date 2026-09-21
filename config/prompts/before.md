@@ -1,7 +1,7 @@
 Realistic unedited photo of a {person}.
 {before_condition}
 {scene}
-Real skin with visible pores, faint peach fuzz, minor blemishes, slight redness and natural asymmetry; individual hair strands.
+{skin_texture}
 {mode_extra}
 {skin_read}
 One single snapshot: a single frame that fills the whole image, one moment, one view of the face, with no text anywhere in the picture.

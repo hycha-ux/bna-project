@@ -119,6 +119,28 @@ def _key(variation: dict, axis: str):
     return (variation.get(axis) or {}).get("key") if isinstance(variation.get(axis), dict) else None
 
 
+FACE_DIR = ROOT / "samples" / "reference" / "looks_face"
+FACE_LINE = ("The first attached photo is a look reference only: match its level of attractiveness, grooming, "
+             "natural makeup and hair styling, but draw a clearly different person - a different face shape, eyes, "
+             "nose, mouth and jawline. Do not copy that face, and do not copy its pose, background, lighting or hands.")
+
+
+def face_ref(variation: dict, key: str):
+    """미모 프로필 외모 참조 (2026-09-21 빌디 ⑤) — (bytes, 파일명) 또는 (None, None).
+    스위치(BNA_EXP_LOOKS_PROFILE)가 켜졌고 그 looks 프로필에 face_refs 가 있을 때만. 셀카 Before 전용.
+    ⚠ samples_index.yaml 밖 폴더다 — 색인에 넣으면 candidates 가 장면 참조로도 붙인다.
+    ⚠ 같은 얼굴이 여러 세트에 붙으면 결과가 한 얼굴로 모인다(중복 게이트 0.75) → 컷마다 해시로 다른 얼굴을 고른다
+      (같은 컷=같은 얼굴이라 재현·재시도는 성립). 노션 27장끼리 쌍 유사도 최대 0.528(faces.json)."""
+    from .spec import looks_profile
+    if not looks_profile(_key(variation, "looks")).get("face_refs"):
+        return None, None
+    files = sorted(FACE_DIR.glob("face_*.jpg"))
+    if not files:
+        return None, None                             # 참조가 없으면 종전과 같은 글 조건 Before (fail-open)
+    f = files[int(hashlib.sha1(key.encode("utf-8")).hexdigest(), 16) % len(files)]
+    return f.read_bytes(), f.name
+
+
 def pick(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
     return [(REF_DIR / f).read_bytes() for f in pick_files(mode, variation, k, treatment, when)]
 

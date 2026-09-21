@@ -136,6 +136,9 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     lg = v.get("looks_gates", {}).get(axis) or {}
     if lg:
         allowed = [k for k in allowed if k not in lg or keys.get("looks") in lg[k]] or allowed
+    pg = (looks_profile(keys.get("looks"), v).get("gates") or {}).get(axis)
+    if pg:                                            # 미모 프로필(스위치 켰을 때만): 피곤·잡티 계열 빼기
+        allowed = [k for k in allowed if k in pg] or allowed
     if axis == "lighting":
         compat = v.get("background_lighting", {}).get(keys.get("background"))
         if compat:
@@ -204,9 +207,12 @@ def person_description(variation: dict) -> str:
     # 미모는 인물 **맨 앞** 형용사 + 나이 바로 뒤 구체 특징 (2026-09-21 연서님 "미모가 나온 적이 없다" —
     #   맨 끝에 붙은 부정문은 앞선 리얼리티 묘사와 뒤따르는 '더 예쁘게 마라' 규칙 셋에 눌려 안 읽혔다).
     head = " ".join(x for x in (f["looks"], f["country"], f["gender"], f["age"]) if x)
-    detail = (load("variations.yaml").get("looks_detail") or {}).get((variation.get("looks") or {}).get("key"), "")
-    parts = [head, detail, f["face_shape"], f["skin_tone"], f["skin_condition"],
-             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["extras"]]
+    lk = (variation.get("looks") or {}).get("key")
+    detail = (load("variations.yaml").get("looks_detail") or {}).get(lk, "")
+    prof = looks_profile(lk)                         # 미모 프로필(스위치 켰을 때만): 피부 문장 교체 + 메이크업
+    skin = (prof.get("skin_text") or {}).get((variation.get("skin_condition") or {}).get("key"), f["skin_condition"])
+    parts = [head, detail, f["face_shape"], f["skin_tone"], skin,
+             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["extras"], prof.get("makeup", "")]
     return ", ".join(p for p in parts if p)
 
 
@@ -244,6 +250,9 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
         if axis == "framing":                            # 시술별 프레이밍 가중 (목주름은 목만 컷이 필수라 전역값과 다르다)
             for k, fw in tr.get("framing_weights", {}).items():
                 w[k] = w.get(k, 1.0) * fw
+        # 미모 프로필 가중(스위치 켰을 때만) — planner.plan_batch 에도 같은 곱이 있다(두 경로 한 벌).
+        for k, pw in ((looks_profile(keys.get("looks"), v).get("weights") or {}).get(axis) or {}).items():
+            w[k] = w.get(k, 1.0) * float(pw)
         if w and len(allowed) > 1:
             ws = [max(0.01, float(w.get(k, 1.0))) for k in allowed]
             key = rng.choices(allowed, weights=ws, k=1)[0]
@@ -272,9 +281,23 @@ def experiment_flags(as_meta: bool = False):
     relax = {s.strip() for s in os.environ.get("BNA_EXP_RELAX", "").split(",") if s.strip()}
     sev = os.environ.get("BNA_EXP_SEVERITY", "").strip() or None
     when = os.environ.get("BNA_EXP_WHEN", "").strip() or None
+    prof = os.environ.get("BNA_EXP_LOOKS_PROFILE", "").strip() in ("1", "true", "on")
     if as_meta:
-        return {"relax": sorted(relax), "severity": sev, "when": when} if (relax or sev or when) else None
-    return {"relax": relax, "severity": sev, "when": when}
+        out = {"relax": sorted(relax), "severity": sev, "when": when}
+        if prof:                                       # 새 칸은 켰을 때만 싣는다 — 옛 회차 meta 와 모양이 같게
+            out["looks_profile"] = True
+        return out if (relax or sev or when or prof) else None
+    return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof}
+
+
+def looks_profile(looks_key, v: dict = None) -> dict:
+    """미모 프로필(variations.yaml `looks_profile`) — 실험 스위치 BNA_EXP_LOOKS_PROFILE 이 켜졌고 그 looks 에
+    프로필이 있을 때만 그 dict, 아니면 {} (2026-09-21 빌디 제안·연서님 확인). 판정은 여기 한 곳이다 —
+    추첨(allowed_values·sample_variation·planner)과 문장(person_description·build_prompts)·참조(batch)가 같이 부른다."""
+    if not looks_key or not experiment_flags()["looks_profile"]:
+        return {}
+    v = v or load("variations.yaml")
+    return (v.get("looks_profile") or {}).get(looks_key) or {}
 
 
 def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False,
@@ -545,6 +568,11 @@ RESHOT_HELD = (RESHOT_BASE + '. The mouth stays in the same state as in the refe
                'treated on its own; its exact line is still not copied, the jaw hangs a little differently and '
                'the corners rest a little differently. Do not copy the pose or the gaze of the reference. ')
 
+# Before 피부 질감 한 줄 (종전 before.md 에 박혀 있던 문장 그대로 — 2026-09-21 미모 프로필이 이 줄만 갈아 끼우려고 뺐다)
+SKIN_TEXTURE = ("Real skin with visible pores, faint peach fuzz, minor blemishes, slight redness and natural asymmetry; "
+                "individual hair strands.")
+
+
 def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None,
                   avoid_not_at=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
@@ -594,6 +622,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     _srf = (load("prompts/mode_extra.yaml")["skin_read"].get(f"{mode}_by_framing") or {})
     if variation.get("framing", {}).get("key") in _srf:
         skin_read = " ".join(str(_srf[variation["framing"]["key"]]).split())
+    # 미모 프로필(스위치 켰을 때만) — '피곤하고 못 나온 피부' 압력 대신 맑은 피부, 질감 문장에서 잡티·붉음만 뺀다.
+    _prof = looks_profile((variation.get("looks") or {}).get("key")) if mode == "selfie" else {}
+    skin_texture = " ".join(str(_prof.get("skin_texture") or SKIN_TEXTURE).split())
+    if _prof.get("skin_read"):
+        skin_read = " ".join(str(_prof["skin_read"]).split())
     sevs = t.get("before_severity", ["moderate"])
     # Before 강도는 **가중 추첨**이다 (2026-09-14). 종전 균등 추첨은 피부 3종에서 절반이 mild 로 떨어졌고,
     #   mild 는 effect_by_severity 상 subtle 하고만 짝지어진다 — 즉 "거의 없는 문제 → 은은한 개선"이라
@@ -611,6 +644,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     _fs = experiment_flags()["severity"]
     if _fs and _fs in sevs:
         sev = _fs
+    elif _prof.get("severity") in sevs:               # 미모 프로필: Before 강도 고정(추첨은 위에서 이미 소비 — rng 흐름 불변)
+        sev = _prof["severity"]
     min_age = t.get("severity_min_age", {})
     if min_age:                                   # 인물 나이가 강도 최소 나이보다 어리면 한 단계씩 낮춤
         order = list(load("variations.yaml")["age"])
@@ -620,7 +655,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     cond = t.get("before_condition", {})
     cond = cond.get(sev, "") if isinstance(cond, dict) else cond
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
-        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, skin_read=skin_read, avoid=avoid_before, **fields)
+        person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, skin_read=skin_read, avoid=avoid_before,
+        skin_texture=skin_texture, **fields)
     def identity_for(ref_framing, target_framing=None):
         """동일인 잠금 문장.
         - 항목 목록은 Before·After 중 **좁은 쪽** 파일에서 온다 (레퍼런스에 없는 걸 요구하면 모델이 지어낸다).

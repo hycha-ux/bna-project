@@ -137,6 +137,27 @@ looks_gates:
   context: {knit_cardigan: [attractive], white_blouse: [attractive], fitted_black_top: [attractive]}
   lighting: {golden_hour: [attractive]}
 
+# 미모 프로필 (2026-09-21 빌디 제안·연서님 확인 "한 줄씩 열지 말고 미모 프로필로 한 번에 묶어 2세트 시험") —
+#   **실험 스위치 BNA_EXP_LOOKS_PROFILE=1 일 때만** 먹는다(spec.looks_profile 한 곳이 판정). 정식 경로는 종전 그대로.
+#   왜 묶었나: 미모 컷은 "strikingly pretty" 한 줄 뒤에 리얼리티 규칙(솔직한 나이·피곤·잡티·무보정·주름 뚜렷)이
+#   다섯 줄 붙어 리얼리티가 이겼다 — v31 에서 빛(golden_hour)만 열어도 얼굴은 '평범한 30대'였다(노션 비교 시트).
+#   ① 피부·피곤 계열 빼기(gates·skin_text) — 모공·솜털 질감 문장은 남긴다(AI 티 방지, skin_texture)
+#   ② 자연 메이크업(makeup) ③ 긴 생머리·머리~바스트 가중(weights) ④ Before 강도 mild 고정·late_20s 중심
+#   ⑤ 노션 AI 셀카 얼굴 컷을 '외모 수준' 참조로 붙인다(face_refs — refs.face_ref 가 고른다, 얼굴은 베끼지 않게 문장으로 막는다)
+#   ⚠ 끄기 = 스위치를 안 켜면 끝(이 블록은 스위치 없이는 아무것도 안 한다).
+looks_profile:
+  attractive:
+    weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}, age: {late_20s: 6}}
+    gates: {skin_condition: [clear, freckles, moles], extras: [none, earrings, glasses]}
+    skin_text: {clear: "clear, even skin"}
+    makeup: "natural makeup: soft mascara, a thin line of eyeliner and a tinted lip"
+    severity: mild
+    skin_texture: "Real skin with visible pores up close, faint peach fuzz and natural asymmetry; individual hair strands."
+    skin_read: >
+      The skin reads clear and even in this light, with real texture still visible; a natural, healthy
+      look as it is on a good day - no beauty filter, no smoothing, no glass-skin sheen.
+    face_refs: true
+
 background:
   clinic: "plain light clinic wall"
   home: "living room at home, slightly cluttered"

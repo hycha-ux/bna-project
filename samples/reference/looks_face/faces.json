@@ -1,0 +1,115 @@
+{
+ "faces": [
+  {
+   "file": "face_01.jpg",
+   "src": "0908_15"
+  },
+  {
+   "file": "face_02.jpg",
+   "src": "0908_16"
+  },
+  {
+   "file": "face_03.jpg",
+   "src": "0908_17"
+  },
+  {
+   "file": "face_04.jpg",
+   "src": "0908_18"
+  },
+  {
+   "file": "face_05.jpg",
+   "src": "0908_19"
+  },
+  {
+   "file": "face_06.jpg",
+   "src": "0915_10"
+  },
+  {
+   "file": "face_07.jpg",
+   "src": "0915_11"
+  },
+  {
+   "file": "face_08.jpg",
+   "src": "0915_13"
+  },
+  {
+   "file": "face_09.jpg",
+   "src": "0915_14"
+  },
+  {
+   "file": "face_10.jpg",
+   "src": "0915_15"
+  },
+  {
+   "file": "face_11.jpg",
+   "src": "0915_16"
+  },
+  {
+   "file": "face_12.jpg",
+   "src": "0915_17"
+  },
+  {
+   "file": "face_13.jpg",
+   "src": "0915_18"
+  },
+  {
+   "file": "face_14.jpg",
+   "src": "0915_19"
+  },
+  {
+   "file": "face_15.jpg",
+   "src": "0915_1"
+  },
+  {
+   "file": "face_16.jpg",
+   "src": "0915_20"
+  },
+  {
+   "file": "face_17.jpg",
+   "src": "0915_21"
+  },
+  {
+   "file": "face_18.jpg",
+   "src": "0915_22"
+  },
+  {
+   "file": "face_19.jpg",
+   "src": "0915_24"
+  },
+  {
+   "file": "face_20.jpg",
+   "src": "0915_25"
+  },
+  {
+   "file": "face_21.jpg",
+   "src": "0915_2"
+  },
+  {
+   "file": "face_22.jpg",
+   "src": "0915_3"
+  },
+  {
+   "file": "face_23.jpg",
+   "src": "0915_4"
+  },
+  {
+   "file": "face_24.jpg",
+   "src": "0915_5"
+  },
+  {
+   "file": "face_25.jpg",
+   "src": "0915_6"
+  },
+  {
+   "file": "face_26.jpg",
+   "src": "0915_7"
+  },
+  {
+   "file": "face_27.jpg",
+   "src": "0915_9"
+  }
+ ],
+ "pair_sim_max": 0.528,
+ "pair_sim_ge_0.75": 0,
+ "pairs": 351
+}
