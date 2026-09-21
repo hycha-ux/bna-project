@@ -136,9 +136,17 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     lg = v.get("looks_gates", {}).get(axis) or {}
     if lg:
         allowed = [k for k in allowed if k not in lg or keys.get("looks") in lg[k]] or allowed
-    pg = (looks_profile(keys.get("looks"), v).get("gates") or {}).get(axis)
-    if pg:                                            # 미모 프로필(스위치 켰을 때만): 피곤·잡티 계열 빼기
+    _lpf = looks_profile(keys.get("looks"), v)
+    pg = (_lpf.get("gates") or {}).get(axis) or (_lpf.get("gates_bg") if axis == "background" else None)
+    if pg:                                            # 미모 프로필(스위치 켰을 때만): 피곤·잡티 계열·옆빛 못 내는 배경 빼기
         allowed = [k for k in allowed if k in pg] or allowed
+    pf = (_lpf.get("before_force") or {}).get(axis)
+    if pf and stage == "before":
+        # 미모 프로필 Before 강제(3차) — 시술 허용표(scene_allow)를 일부러 넘는다. After 는 lock_after 가 같은 값으로 잠근다.
+        #   빛은 배경이 낼 수 있는 것과 교집합(없으면 강제 목록 그대로 — 배경 게이트가 이미 옆빛 배경만 남겼다).
+        compat = v.get("background_lighting", {}).get(keys.get("background")) if axis == "lighting" else None
+        forced = [k for k in pf if k in v[axis]]
+        return [k for k in forced if not compat or k in compat] or forced
     if axis == "lighting":
         compat = v.get("background_lighting", {}).get(keys.get("background"))
         if compat:
@@ -352,6 +360,9 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     _exp_forced = experiment_flags()["relax"] & set(tr.get("drift_lock") or [])
     relax |= _exp_forced
     lock = (set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
+    # 미모 프로필 3차: Before 에 강제한 표정(웃음)·빛(옆빛)은 After 에서도 그대로 — 풀리면 촬영 차이가 효과로 둔갑한다.
+    #   완화(relax)보다 **뒤에** 더한다: single_relax 가 표정을 풀어도 여기서 다시 잠근다.
+    lock |= set(looks_profile((variation.get("looks") or {}).get("key"), v).get("lock_after") or [])
     seen = seen or {}
     probs = v.get("after_drift", {}).get(mode, {})
     if "immediate" in probs or "later" in probs:
@@ -818,10 +829,17 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 #   참조 이미지를 같이 넘기는 구조에서 모델은 늘 복사 쪽을 골랐다(09-17 6세트 전수).
                 #   → 뽑힌 표정을 그대로 서술하고(시리즈면 컷마다 다르다 — series_relax), 지킬 것은
                 #   '웃음·입꼬리 당김 금지' 하나로 좁힌다. 같은 표정이 뽑힌 회차에도 모순이 없다.
+                # 미모 프로필 3차: Before 가 살짝 웃는 컷이면 "웃지 마라"가 곧 가짜 효과다(웃음이 빠지면 팔자가 저절로 얕아진다)
+                #   → 같은 웃음을 같은 세기로 유지하라고 바꾼다. 표정 축은 lock_after 로 이미 잠겨 있다.
+                smile_held = (variation["expression"]["key"] == "slight_smile"
+                              and "expression" in (looks_profile(variation["looks"]["key"]).get("lock_after") or []))
+                keep_mouth = ('Keep exactly the same slight closed-mouth smile as in the reference, with the same '
+                              'intensity - do not make it bigger or smaller and do not drop it, since changing the '
+                              'smile alone would change the folds being treated. ' if smile_held else
+                              'Do not smile and do not tense or lift the corners of the mouth or the cheeks, since that '
+                              'alone would change the folds being treated. ')
                 expression_line = (
-                    f'Expression in this photo: {a["expression"]}. '
-                    'Do not smile and do not tense or lift the corners of the mouth or the cheeks, since that '
-                    'alone would change the folds being treated. ' + RESHOT_HELD +
+                    f'Expression in this photo: {a["expression"]}. ' + keep_mouth + RESHOT_HELD +
                     'These differences must be visible at a glance when the two photos sit side by side, while '
                     'still reading as the same pose.')
             else:

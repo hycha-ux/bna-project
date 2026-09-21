@@ -2558,6 +2558,18 @@ ok(all("natural makeup" in r["before_prompt"] and "minor blemishes" not in r["be
 ok(not any(v["extras"]["key"] == "tired" or v["skin_condition"]["key"] in ("redness", "acne_marks", "oily") for v in _v39on),
    "프로필 ① — 피곤·붉음·여드름 자국·번들 피부가 미모 인물에서 안 뽑힌다")
 _lh39 = lambda vs, ax, k: sum(v[ax]["key"] == k for v in vs) / max(1, len(vs))
+# ㊵ (09-21 3차 연서님 "미모 Before 는 옆빛·살짝 웃는 표정") — 웃는 Before 에 안 웃는 After 가 오면 가짜 효과다.
+#   Before 강제 + After 잠금 + After 문장 교체가 한 벌로 먹는지, 그리고 스위치를 끄면 팔자 웃음 금지가 그대로인지.
+_r40 = [r for r in _r39on]
+ok(_r40 and all(r["variation"]["expression"]["key"] == "slight_smile" == r["after_variation"]["expression"]["key"] for r in _r40),
+   f"프로필 3차 — 미모 Before·After 둘 다 살짝 웃음 ({len(_r40)}장)")
+ok(all(r["variation"]["lighting"]["key"] in ("window", "golden_hour")
+       and r["variation"]["lighting"]["key"] == r["after_variation"]["lighting"]["key"] for r in _r40),
+   "프로필 3차 — 미모 Before 는 옆빛(창가·늦은 오후)이고 After 도 같은 빛")
+ok(all("Do not smile" not in a["after_prompt"] and "same slight closed-mouth smile" in a["after_prompt"]
+       for r in _r40 for a in r["afters"]), "프로필 3차 — After 문장이 '웃지 마라'가 아니라 '같은 웃음 그대로'")
+ok(not any(r["variation"]["expression"]["key"] == "slight_smile" for r in _r39off),
+   "프로필 스위치를 끄면 팔자 Before 에 웃음이 안 뽑힌다(scene_allow 그대로)")
 ok(_lh39(_v39on, "framing", "head_to_bust") > _lh39(_v39off, "framing", "head_to_bust"),
    f"프로필 ③ — 머리~바스트 비중이 오른다 ({_lh39(_v39off, 'framing', 'head_to_bust'):.2f}→{_lh39(_v39on, 'framing', 'head_to_bust'):.2f})")
 

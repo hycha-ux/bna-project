@@ -169,8 +169,18 @@ looks_profile:
           This person has never had any aesthetic treatment. Even on this pretty, well-kept face, clearly
           visible nasolabial folds run from the sides of the nose to just above and outside the corners of
           the mouth with a light shadow in the crease, and a shallow marionette line runs from each corner
-          of the mouth down and slightly outward toward the jawline. Do not soften or hide these lines.
+          of the mouth down and slightly outward toward the jawline. The makeup does not hide these lines,
+          and the slight smile and the side light make them read clearly. Do not soften or hide these lines.
     face_sim_max: 0.6
+    # ── 3차(같은 날 연서님: "미모 컷은 정면 부드러운 빛이라 Before 에 팔자가 원래 안 보여. 옆빛·살짝 웃는 표정으로") ──
+    #   v33 0000 은 moderate 인데도 효과 3점 — Before 사진에 주름이 거의 안 보였다(없던 걸 고칠 수는 없다).
+    #   before_force = Before 추첨에서 이 값만 허용(시술 scene_allow 를 **일부러 넘는다** — 팔자는 웃음을 막아 둔 축이다).
+    #   ⚠ 그래서 lock_after 가 한 벌이다: 웃는 Before 에 안 웃는 After 가 오면 시술 없이 팔자가 얕아진다 = 가짜 효과.
+    #     표정·빛 둘 다 After 에서 잠그고, After 문장도 "같은 웃음 그대로"로 바꾼다(spec.build_prompts 의 smile_held).
+    #   욕실·병원 배경은 옆빛을 못 낸다(background_lighting) → 미모에서 뺀다.
+    before_force: {expression: [slight_smile], lighting: [window, golden_hour]}
+    lock_after: [expression, lighting]
+    gates_bg: [cafe_window, terrace_golden, park_green, cafe, outdoor, home, car]
     skin_texture: "Real skin with visible pores up close, faint peach fuzz and natural asymmetry; individual hair strands."
     skin_read: >
       The skin reads clear and even in this light, with real texture still visible; a natural, healthy
