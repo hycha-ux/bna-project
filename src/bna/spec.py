@@ -209,10 +209,13 @@ def person_description(variation: dict) -> str:
     head = " ".join(x for x in (f["looks"], f["country"], f["gender"], f["age"]) if x)
     lk = (variation.get("looks") or {}).get("key")
     detail = (load("variations.yaml").get("looks_detail") or {}).get(lk, "")
-    prof = looks_profile(lk)                         # 미모 프로필(스위치 켰을 때만): 피부 문장 교체 + 메이크업
-    skin = (prof.get("skin_text") or {}).get((variation.get("skin_condition") or {}).get("key"), f["skin_condition"])
+    prof = looks_profile(lk)                         # 미모 프로필(스위치 켰을 때만): 피부·머리 문장 교체 + 나라별 미인상 + 메이크업
+    _k = lambda ax: (variation.get(ax) or {}).get("key")
+    skin = (prof.get("skin_text") or {}).get(_k("skin_condition"), f["skin_condition"])
+    hair = (prof.get("hair_text") or {}).get(_k("hair_style"), f["hair_style"])
+    detail = (prof.get("detail_by_country") or {}).get(_k("country"), detail)
     parts = [head, detail, f["face_shape"], f["skin_tone"], skin,
-             f["body_type"], f"{f['hair_color']}, {f['hair_style']}", f["eyes"], f["extras"], prof.get("makeup", "")]
+             f["body_type"], f"{f['hair_color']}, {hair}", f["eyes"], f["extras"], prof.get("makeup", "")]
     return ", ".join(p for p in parts if p)
 
 
@@ -654,6 +657,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             sev = sevs[sevs.index(sev) - 1]
     cond = t.get("before_condition", {})
     cond = cond.get(sev, "") if isinstance(cond, dict) else cond
+    # 미모 프로필 전용 문장(있으면) — 나이 하향 **뒤**의 sev 로 고른다(late_20s 가 mild 로 내려가면 종전 mild 문장)
+    cond = ((_prof.get("before_condition") or {}).get(treatment) or {}).get(sev, cond)
     before = (CFG / "prompts/before.md").read_text(encoding="utf-8").format(
         person=person_description(variation), before_condition=str(cond).strip(), scene=scene, mode_extra=mode_extra, skin_read=skin_read, avoid=avoid_before,
         skin_texture=skin_texture, **fields)

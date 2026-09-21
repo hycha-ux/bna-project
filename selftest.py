@@ -566,7 +566,9 @@ with _tf15.TemporaryDirectory() as _sbd15:
     finally:
         _sb15._cfg = _real_cfg15
 _bsrc15 = open("src/bna/batch.py", encoding="utf-8").read()
-ok("seedbank.pick(" in _bsrc15 and 'spec["aspect"], person_b, style_refs, None' in _bsrc15,
+# 09-21: Before 호출의 장면 참조 칸은 gen_refs(기본 = style_refs, 미모 프로필이면 외모 참조 2·3번째 장이 앞에 붙는다)
+ok("seedbank.pick(" in _bsrc15 and 'spec["aspect"], person_b, gen_refs, None' in _bsrc15
+   and "gen_refs = style_refs" in _bsrc15,
    "배치가 고른 얼굴을 Before 호출의 인물 참조 칸으로 실제로 넘긴다(고르기만 하고 안 넘기면 죽은 배선)")
 ok(set(sample_variation("selfie", 1)) >= set(SCENE_AXES), "treatment 없이도(예전 호출) 추첨이 된다")
 from bna.qa import landmarks as _lm
@@ -2528,25 +2530,36 @@ def _run39(on):
         os.environ["BNA_EXP_LOOKS_PROFILE"] = "1"
     try:
         vs = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v["looks"]["key"] == "attractive"]
-        return vs, [build_prompts("nasolabial", "selfie", v, 4242 + i) for i, v in enumerate(vs)], _rf39.face_ref(vs[0], "t")[1]
+        return vs, [build_prompts("nasolabial", "selfie", v, 4242 + i) for i, v in enumerate(vs)], _rf39.face_ref(vs[0], "t")
     finally:
         os.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
 _v39off, _r39off, _f39off = _run39(False)
 _v39on, _r39on, _f39on = _run39(True)
 ok(all(_st39 in r["before_prompt"] for r in _r39off) and not any("natural makeup" in r["before_prompt"] for r in _r39off)
-   and _f39off is None and all(r["experiment"] is None for r in _r39off),
+   and _f39off == [] and all(r["experiment"] is None for r in _r39off),
    "미모 프로필 스위치를 안 켜면 종전 그대로 — 질감 문장 원문·메이크업 없음·외모 참조 없음")
-ok(all(r["variation"]["before_severity"]["key"] == "mild" for r in _r39on), "프로필 ④ — 미모 Before 강도 전부 mild")
+# ④ 2차: 미모 전용 moderate — 30대는 moderate + 전용 문장("솔직한 나이" 없음), late_20s 는 나이 하향으로 mild(종전 문장)
+_r39m = [r for r in _r39on if r["variation"]["age"]["key"] == "30s"]
+ok(_r39m and all(r["variation"]["before_severity"]["key"] == "moderate" and "pretty, well-kept face" in r["before_prompt"]
+                 and "honest age" not in r["before_prompt"] for r in _r39m),
+   f"프로필 ④(2차) — 미모 30대는 moderate + 전용 문장, '솔직한 나이' 없음 ({len(_r39m)}장)")
+ok(all(r["variation"]["before_severity"]["key"] == "mild" for r in _r39on if r["variation"]["age"]["key"] == "late_20s"),
+   "프로필 ④(2차) — late_20s 는 팔자 최소 나이 규칙대로 mild 로 내려간다(규칙을 우회하지 않는다)")
+_rk39 = [r for r in _r39on if r["variation"]["country"]["key"] == "korea"]
+ok(_rk39 and all("Korean beauty look" in r["before_prompt"] for r in _rk39)
+   and not any("Korean beauty look" in r["before_prompt"] for r in _r39on if r["variation"]["country"]["key"] != "korea"),
+   "프로필(2차) — 한국적 미인상 문장은 한국 인물에만")
+ok(not any(v["extras"]["key"].startswith("glasses") for v in _v39on), "프로필(2차) — 미모 인물에 안경 없음")
+ok(len(_f39on) == 3 and len({n for _b, n in _f39on}) == 3 and not {n for _b, n in _f39on} & _rf39.BAD_FACE,
+   f"프로필 ⑤(2차) — 참조 3장, 서로 다른 장, 손 든 참조 제외 ({[n for _b, n in _f39on]})")
 ok(all("natural makeup" in r["before_prompt"] and "minor blemishes" not in r["before_prompt"]
        and "visible pores" in r["before_prompt"] for r in _r39on),
    "프로필 ①② — 메이크업 문장이 붙고, 잡티 문장은 빠지고, 모공·솜털 질감은 남는다")
 ok(not any(v["extras"]["key"] == "tired" or v["skin_condition"]["key"] in ("redness", "acne_marks", "oily") for v in _v39on),
    "프로필 ① — 피곤·붉음·여드름 자국·번들 피부가 미모 인물에서 안 뽑힌다")
 _lh39 = lambda vs, ax, k: sum(v[ax]["key"] == k for v in vs) / max(1, len(vs))
-ok(_lh39(_v39on, "framing", "head_to_bust") > _lh39(_v39off, "framing", "head_to_bust")
-   and _lh39(_v39on, "age", "late_20s") > _lh39(_v39off, "age", "late_20s"),
-   f"프로필 ③④ — 머리~바스트·late_20s 비중이 오른다 (바스트 {_lh39(_v39off, 'framing', 'head_to_bust'):.2f}→{_lh39(_v39on, 'framing', 'head_to_bust'):.2f})")
-ok(bool(_f39on) and (_rf39.FACE_DIR / _f39on).exists(), f"프로필 ⑤ — 외모 참조 사진이 골라진다({_f39on})")
+ok(_lh39(_v39on, "framing", "head_to_bust") > _lh39(_v39off, "framing", "head_to_bust"),
+   f"프로필 ③ — 머리~바스트 비중이 오른다 ({_lh39(_v39off, 'framing', 'head_to_bust'):.2f}→{_lh39(_v39on, 'framing', 'head_to_bust'):.2f})")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

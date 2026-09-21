@@ -174,11 +174,24 @@ class Batch:
                 person_b, person_f = (seedbank.pick(spec["variation"], f"{item_id}|{spec['variation']['gender']['key']}|{spec['variation']['age']['key']}")
                                       if self.mode == "clinical" else (None, None))
                 person_line = seedbank.prompt_line() if person_b else ""
+                gen_refs = style_refs                          # Before 생성에 실제로 붙는 장면 참조
+                faces, face_embs, sim_max = [], [], None
                 if self.mode == "selfie":
                     # 미모 프로필 외모 참조 (2026-09-21 빌디 ⑤, 스위치 켰을 때만 — 고르는 규칙은 refs.face_ref 한 곳).
-                    #   씨앗 은행과 같은 자리(첫 장)에 붙지만 뜻이 다르다: '이 사람'이 아니라 '이 정도 외모, 다른 사람'.
-                    person_b, person_f = refs.face_ref(spec["variation"], f"{self.batch_id}|{item_id}|{attempt}")
-                    person_line = refs.FACE_LINE if person_b else ""
+                    #   씨앗 은행과 같은 자리(첫 장)에 붙지만 뜻이 다르다: '이 사람'이 아니라 '같은 미인상, 다른 사람'.
+                    #   2~3장이면 첫 장은 ref 자리, 나머지는 장면 참조 **앞**에 붙인다(문장이 "처음 N장"이라 순서가 뜻이다).
+                    faces = refs.face_ref(spec["variation"], f"{self.batch_id}|{item_id}|{attempt}")
+                    if faces:
+                        person_b, person_f = faces[0][0], ",".join(n for _b, n in faces)
+                        gen_refs = [b for b, _n in faces[1:]] + list(style_refs or [])
+                        person_line = refs.FACE_LINE.format(n=len(faces))
+                        from .spec import looks_profile as _lp
+                        sim_max = _lp(spec["variation"]["looks"]["key"]).get("face_sim_max")
+                        face_embs = [e for e in (await loop.run_in_executor(
+                            None, lambda: [identity.embed(Image.open(io.BytesIO(b)).convert("RGB")) for b, _n in faces]))
+                                     if e is not None]
+                    else:
+                        person_b, person_f = None, None
                 meta["person_ref"] = person_f                  # 익명 파생 파일명만 — 어떤 가공 인물을 썼는지 사후 대조용
                 before_prompt = self.p_gen.adapt_prompt(spec["before_prompt"], "before")
                 if person_b:
@@ -186,14 +199,25 @@ class Batch:
                 for pre in range(1, BEFORE_PRECHECK_TRIES + 1):
                     async with self._slots(self.p_gen):        # Before 도 공급자 한도를 탄다 — _slots 머리말이 근거
                         before_b = await loop.run_in_executor(None, self.p_gen.generate, before_prompt,
-                                                              spec["aspect"], person_b, style_refs, None)
+                                                              spec["aspect"], person_b, gen_refs, None)
                     meta["cost"] += self.pricing[self.p_gen.name]["generate"]
                     before = Image.open(io.BytesIO(before_b))
                     nfaces = await loop.run_in_executor(None, identity.big_faces, before)
-                    if (nfaces or 0) < 2:
-                        break
-                    meta.setdefault("before_precheck", []).append({"attempt": attempt, "try": pre, "faces": nfaces})
-                    self._p(item_id, "before", attempt=attempt, note=f"콜라주 비포 다시 ({pre})")
+                    if (nfaces or 0) >= 2:
+                        meta.setdefault("before_precheck", []).append({"attempt": attempt, "try": pre, "faces": nfaces})
+                        self._p(item_id, "before", attempt=attempt, note=f"콜라주 비포 다시 ({pre})")
+                        continue
+                    if face_embs:
+                        # 참조와의 닮음 (2026-09-21 2차 연서님: 목표 0.3~0.5, 0.6 넘으면 재시도 — 넘으면 '그 사람'을 베낀 것).
+                        #   못 재면(None) 통과시킨다(fail-open). 선검사 한도를 같이 쓴다 — 다 넘어도 마지막 장으로 진행하고 기록만 남긴다.
+                        e = await loop.run_in_executor(None, identity.embed, before.convert("RGB"))
+                        s = max(float((e * fe).sum()) for fe in face_embs) if e is not None else None
+                        meta.setdefault("face_ref_sim", []).append({"attempt": attempt, "try": pre,
+                                                                     "sim": None if s is None else round(s, 3)})
+                        if s is not None and sim_max and s > float(sim_max) and pre < BEFORE_PRECHECK_TRIES:
+                            self._p(item_id, "before", attempt=attempt, note=f"참조를 베낌({s:.2f}) 비포 다시 ({pre})")
+                            continue
+                    break
                 pts = landmarks.detect(before)
                 mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
 

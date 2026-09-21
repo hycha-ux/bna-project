@@ -145,18 +145,37 @@ looks_gates:
 #   ② 자연 메이크업(makeup) ③ 긴 생머리·머리~바스트 가중(weights) ④ Before 강도 mild 고정·late_20s 중심
 #   ⑤ 노션 AI 셀카 얼굴 컷을 '외모 수준' 참조로 붙인다(face_refs — refs.face_ref 가 고른다, 얼굴은 베끼지 않게 문장으로 막는다)
 #   ⚠ 끄기 = 스위치를 안 켜면 끝(이 블록은 스위치 없이는 아무것도 안 한다).
+#   ── 2차(같은 날 연서님: "④ moderate OK · 참조를 더 세게 · 한국 고정 · 미모 안경 제외 · 한국적 미인상") ──
+#   v32 1차 결과: 얼굴은 노션 쪽으로 왔지만 mild 라 효과 점수 3·4점으로 0/2 탈락, 참조 닮음 0.13·0.20(거의 안 봄).
+#   ④ mild → 미모 전용 moderate 문장(before_condition — 주름은 또렷, "솔직한 나이·더 예쁘게 금지"는 뺌).
+#     ⚠ 팔자 severity_min_age 가 moderate=30s 라 late_20s 는 여전히 mild 로 내려간다 — 그래서 late_20s 가중을 뺐다.
+#   ⑤ 참조 face_refs 장(기본 3)·문장은 "다른 사람이되 같은 미인상", 참조와 닮음 face_sim_max 초과면 Before 다시(batch).
+#   한국적 미인상 = detail_by_country(그 나라일 때만 — 다른 나라 인물에 '한국적'을 붙이지 않는다) + 피부톤·얼굴형·머리 게이트.
 looks_profile:
   attractive:
-    weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}, age: {late_20s: 6}}
-    gates: {skin_condition: [clear, freckles, moles], extras: [none, earrings, glasses]}
+    weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}}
+    # 2차 dry 에서 본 모순 둘을 같이 막았다: '작은 얼굴' + body_type full("fuller face and neck"), '맑은 피부' + 주근깨·점
+    gates: {skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],
+            skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight]}
     skin_text: {clear: "clear, even skin"}
+    hair_text: {long_straight: "long straight hair with soft see-through bangs"}
+    detail_by_country:
+      korea: "with a classic Korean beauty look: fair, clear, luminous skin, a small face, clearly defined bright eyes and full lips"
     makeup: "natural makeup: soft mascara, a thin line of eyeliner and a tinted lip"
-    severity: mild
+    severity: moderate
+    before_condition:
+      nasolabial:
+        moderate: >
+          This person has never had any aesthetic treatment. Even on this pretty, well-kept face, clearly
+          visible nasolabial folds run from the sides of the nose to just above and outside the corners of
+          the mouth with a light shadow in the crease, and a shallow marionette line runs from each corner
+          of the mouth down and slightly outward toward the jawline. Do not soften or hide these lines.
+    face_sim_max: 0.6
     skin_texture: "Real skin with visible pores up close, faint peach fuzz and natural asymmetry; individual hair strands."
     skin_read: >
       The skin reads clear and even in this light, with real texture still visible; a natural, healthy
       look as it is on a good day - no beauty filter, no smoothing, no glass-skin sheen.
-    face_refs: true
+    face_refs: 3
 
 background:
   clinic: "plain light clinic wall"
