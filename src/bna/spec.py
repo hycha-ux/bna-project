@@ -246,6 +246,21 @@ def sample_variation(mode: str, seed=None, weights=None, treatment=None) -> dict
 SERIES_LOCK = {"framing", "extras"}
 
 
+def experiment_flags(as_meta: bool = False):
+    """실험 회차 스위치 (2026-09-21). 기본 경로는 안 바꾸고, 켠 회차만 환경변수로 켠다.
+
+    BNA_EXP_RELAX    쉼표 구분 축 — 단발 컷에도 시리즈 완화를 건다(drift_lock 에 있는 축만 풀린다)
+    BNA_EXP_SEVERITY Before 강도 고정 (mild|moderate|marked)
+    as_meta=True 면 meta 에 실을 모양({relax:[…], severity:…} 또는 None)을 돌려준다.
+    """
+    import os
+    relax = {s.strip() for s in os.environ.get("BNA_EXP_RELAX", "").split(",") if s.strip()}
+    sev = os.environ.get("BNA_EXP_SEVERITY", "").strip() or None
+    if as_meta:
+        return {"relax": sorted(relax), "severity": sev} if (relax or sev) else None
+    return {"relax": relax, "severity": sev}
+
+
 def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False,
                 seen: dict = None) -> dict:
     """셀카 모드: After 촬영 상황을 확률적으로 바꾼다 (이목구비 축은 절대 건드리지 않음).
@@ -281,6 +296,13 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     v = load("variations.yaml")
     tr = treatment_rules(treatment, mode)
     relax = set(tr.get("series_relax") or []) if series else set()
+    # 실험 스위치 (2026-09-21 연서님 확인, 빌디 요청) — **단발 컷에도** 시리즈 완화를 켠다.
+    #   팔자는 drift_lock[expression, angle] 이라 단발 회차 18장 전부 After 표정이 한 번도 안 바뀌었고,
+    #   사람 'AI 티' 15장이 전부 팔자였다(docs/ai-look-item-0921-teemo.md §8). 완화 경로는 시리즈와 같다 —
+    #   입 상태(다문/벌린)는 Before 와 묶고 키만 바꾼다(가짜 효과 방지는 그대로).
+    #   ⚠ 설정(yaml)이 아니라 환경변수인 이유: 실험 회차에서만 켜고, 결과 전엔 기본 경로를 안 바꾼다.
+    #     켠 회차는 meta["experiment"] 에 남는다(experiment_flags). drift_lock 에 있는 축만 풀린다.
+    relax |= experiment_flags()["relax"] & set(tr.get("drift_lock") or [])
     lock = (set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
     seen = seen or {}
     probs = v.get("after_drift", {}).get(mode, {})
@@ -560,6 +582,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         #   전후가 구별되지 않는 세트가 된다 (2026-09-15 첫 실회차 "너무 안 바뀐다"). 셀카는 종전 그대로.
         _pool = [x for x in _pool if x != "mild"]
     sev = rng.choice(_pool)
+    # 실험 스위치 — Before 강도 고정 (09-21 c8 교훈: 2세트 회차에선 추첨 한 건이 곧 50%라 바꾼 축이 안 걸린다).
+    #   추첨은 그대로 한 번 소비한다(rng 흐름이 스위치 유무로 갈리지 않게). 시술이 모르는 값이면 무시.
+    _fs = experiment_flags()["severity"]
+    if _fs and _fs in sevs:
+        sev = _fs
     min_age = t.get("severity_min_age", {})
     if min_age:                                   # 인물 나이가 강도 최소 나이보다 어리면 한 단계씩 낮춤
         order = list(load("variations.yaml")["age"])
@@ -799,4 +826,5 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             "variation": variation, "after_variation": last["after_variation"],
             "after_changed_axes": last["after_changed_axes"], "generation": "edit" if mode == "clinical" else "identity_reference",
             "series": pts or None, "afters": afters,          # 시리즈면 시점별 After 목록(배치·화면이 이걸 돈다). after_* 는 마지막 시점
-            "before_prompt": " ".join(before.split()), "after_prompt": last["after_prompt"]}
+            "before_prompt": " ".join(before.split()), "after_prompt": last["after_prompt"],
+            "experiment": experiment_flags(as_meta=True)}          # 켠 실험 스위치(없으면 None) — 회차 비교 때 갈라 읽는다

@@ -1112,7 +1112,7 @@ async function loadHome() {
   tb.innerHTML = batches.filter(b => HOME_SIM || !['sim', 'demo'].includes(b.kind)).slice(0, 7).map(b => { const s = b.stats || {}; const stc = b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? '<span class="chip bad">오류</span>' : (b.status==='done' && !(s.total ?? 0) && b.kind !== 'dry_run') ? '<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽은 배치입니다">실패</span>' : s.pending ? `<span class="chip warn">검수 ${s.pending}</span>` : '';
     return `<tr class="click" data-id="${b.batch_id}"><td class="muted">${fmtBid(b.batch_id)}</td><td><div class="ell">${tname(b.treatment)} <span class="muted">${MODE_KO[b.mode]||''}</span></div></td><td style="text-align:right;white-space:nowrap">${b.kind==='dry_run' ? `— / ${s.total ?? ''}` : `<b>${s.passed ?? 0}</b> / ${s.total ?? ''}`} ${stc}</td></tr>`; }).join('')
     || '<tr><td colspan="3" class="empty">실제 생성 기록이 없습니다</td></tr>';
-  tb.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { show('jobs'); openBatch(tr.dataset.id, true); });
+  tb.querySelectorAll('tr.click').forEach(tr => tr.onclick = () => gotoBatch(tr.dataset.id));
 }
 $('#home-sim').onchange = e => { HOME_SIM = e.target.checked; try { localStorage.setItem('bna.homesim', HOME_SIM ? '1' : '0'); } catch {} loadHome(); };
 function renderBoard() {
@@ -1144,7 +1144,7 @@ function renderTodo() {
     {text: idn.na_rate == null ? '—' : pct(idn.na_rate), cls: 'plain'}, 'lessons');
   $('#home-todo').innerHTML = running + pending + lessons + gate;
   // 행 전체를 누르면 이동 (2026-09-15 연서님: 버튼 대신). ⓘ 는 풍선만
-  $('#home-todo').querySelectorAll('.todo-row.link').forEach(r => { const go = async () => { const a = r.dataset.go; if (a === 'review') { show('jobs'); await openBatch(OV.pending_batch, true); $('#gal-view [data-v=review]')?.click(); } else show(a); };
+  $('#home-todo').querySelectorAll('.todo-row.link').forEach(r => { const go = async () => { const a = r.dataset.go; if (a === 'review') { await gotoBatch(OV.pending_batch); $('#gal-view [data-v=review]')?.click(); } else show(a); };
     r.onclick = e => { if (e.target.closest('.tip')) return; go(); }; r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; });
 }
 // ── SVG 헬퍼 ──
@@ -1341,12 +1341,12 @@ $('#btn-run').onclick = async () => {
 };
 $('#btn-dry').onclick = async () => {
   const q = firstReq(); if (!q) return;
-  try { const r = await api('/api/dryrun_save', q); toast(`프롬프트 ${r.count}장 저장`); CUR = null; show('jobs'); await openBatch(r.batch_id); }
+  try { const r = await api('/api/dryrun_save', q); toast(`프롬프트 ${r.count}장 저장`); CUR = null; await gotoBatch(r.batch_id); }
   catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 $('#btn-demo').onclick = async () => {
   const q = firstReq(); if (!q) return;
-  try { msg('#req-msg', '샘플 생성 중…'); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast('샘플 결과 생성 완료'); msg('#req-msg', ''); CUR = null; show('jobs'); await openBatch(r.batch_id); }
+  try { msg('#req-msg', '샘플 생성 중…'); const r = await api('/api/demo', {treatment:q.treatment, mode:q.mode, count:Math.min(q.count, 40)}); toast('샘플 결과 생성 완료'); msg('#req-msg', ''); CUR = null; await gotoBatch(r.batch_id); }
   catch (e) { msg('#req-msg', '오류: ' + e.message, 'err'); }
 };
 
@@ -1408,7 +1408,7 @@ async function loadGenRequests() {
       <td style="white-space:nowrap;text-align:right">${ctl}</td></tr>`; })()}))).html;
   $('#q-empty').hidden = tb.children.length > 0; if (!tb.children.length && reqs.length) $('#q-empty').textContent = '이 날의 요청이 없습니다';
   tb.querySelectorAll('[data-gq=cancel]').forEach(b => b.onclick = async () => { try { await api('/api/gen_requests/cancel', {id: b.dataset.id}); loadGenRequests(); } catch (e) { msg('#req-msg', e.message, 'err'); } });
-  tb.querySelectorAll('[data-q=open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.id); });
+  tb.querySelectorAll('[data-q=open]').forEach(b => b.onclick = () => gotoBatch(b.dataset.id));
 }
 // 대기열 열 더 보기 (2026-09-15) — 기본은 6열, 켜면 12열
 let Q_COLS = false; try { Q_COLS = localStorage.getItem('bna.qcols') === '1'; } catch {}
@@ -1448,7 +1448,7 @@ async function loadQueue() {
   $('#q-empty').hidden = tb.children.length > 0; if (!tb.children.length && jobs.length) $('#q-empty').textContent = '이 날의 작업이 없습니다';
   tb.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => {
     const a = b.dataset.q, id = b.dataset.id;
-    if (a === 'open') { show('jobs'); openBatch(id); return; }
+    if (a === 'open') { gotoBatch(id); return; }
     if (a === 'cancel' || a === 'remove') await api(`/api/queue/${a}`, {job_id: id});
     if (a === 'up' || a === 'down') await api('/api/queue/move', {job_id: id, direction: a});
     loadQueue();
@@ -1477,12 +1477,16 @@ function clearDetail() {
 let JOBS_ST = ''; try { JOBS_ST = localStorage.getItem('bna.jobsfilter') || ''; } catch {}
 let JOBS_MODE = ''; try { JOBS_MODE = localStorage.getItem('bna.jobsmode') || ''; } catch {}   // 유형 서브탭 ''·selfie·clinical, 선택은 기억
 $$('#jobs-mode button').forEach(b => b.onclick = () => { JOBS_MODE = b.dataset.m; try { localStorage.setItem('bna.jobsmode', JOBS_MODE); } catch {} loadBatches(); });
+// 생성이 끝났다고 '완료'가 아니다 — AI 통과 사진을 사람이 아직 안 봤으면 '검수 필요' (2026-09-18 연서님 "검수가 필요하면 검수 필요로 두면 좋겠어")
+const DONE_CHIP = s => (s?.pending || 0) > 0 ? `<span class="chip warn" title="AI 통과 ${s.pending}장을 아직 채택/제외로 가르지 않았습니다">검수 필요 ${s.pending}</span>` : '<span class="chip ok">완료</span>';
 const JOBS_MATCH = { '': () => true, running: b => b.status === 'running', pending: b => (b.stats?.pending || 0) > 0, reviewed: b => b.status !== 'running' && (b.stats?.total || 0) > 0 && !(b.stats?.pending || 0) };
 $$('#jobs-filter button').forEach(b => b.onclick = () => { JOBS_ST = b.dataset.f; try { localStorage.setItem('bna.jobsfilter', JOBS_ST); } catch {} loadBatches(); });
 // 실패한 배치(오류·생성 0장)는 목록에서 뺀다 — 생성 자체가 안 된 거라 볼 게 없다(대기열에 실패로 남는다). 개발용 기록 보기를 켜면 보인다 (2026-09-14 성연서님)
 const isFailed = b => b.kind !== 'dry_run' && (b.status === 'error' || (b.status !== 'running' && !(b.stats?.total || 0)));
+let LB_SEQ = 0;
 async function loadBatches() {
-  BATCHES = await api('/api/batches'); const kind = DEV_MODE ? $('#jobs-kind').value : 'run'; const q = SEARCH.toLowerCase();
+  const seq = ++LB_SEQ; const fresh = await api('/api/batches'); if (seq !== LB_SEQ) return BATCHES;   // 더 새 호출이 있으면 이 결과는 버린다
+  BATCHES = fresh; const kind = DEV_MODE ? $('#jobs-kind').value : 'run'; const q = SEARCH.toLowerCase();
   $$('#jobs-filter button').forEach(b => b.classList.toggle('on', b.dataset.f === JOBS_ST));
   $$('#jobs-mode button').forEach(b => b.classList.toggle('on', b.dataset.m === JOBS_MODE));
   const kindOk = b => !kind || (kind === 'test' ? b.kind !== 'run' : b.kind === kind);
@@ -1501,7 +1505,7 @@ async function loadBatches() {
   $('#batches-empty').innerHTML = DEV_MODE && kind === 'run' && nTest ? `실제 생성 기록이 없습니다. <button class="b sm" id="see-test">테스트 기록 ${nTest}개 보기</button>` : (JOBS_TR ? `${esc(CFG.treatments[JOBS_TR]?.name_ko || JOBS_TR)} 생성 기록이 없습니다` : '생성 기록이 없습니다');
   const st_ = $('#see-test'); if (st_) st_.onclick = () => { $('#jobs-kind').value = 'test'; loadBatches(); };
   tb.innerHTML = list.map(b => { const s = b.stats || {};
-    const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.live?.stale ? ` <span class="chip bad" title="마지막 신호 ${fmtS(b.progress.live.age_s)} 전 — 사무실 PC 를 확인하세요">멈춤</span>` : ''}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>` : (!((b.stats || {}).total ?? 0) && b.kind !== 'dry_run') ? '<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽은 배치입니다. 사무실 PC 기록을 봐야 합니다">실패</span>' : '<span class="chip ok">완료</span>';
+    const st = b.status==='running' && b.progress ? `<span class="mini" style="width:60px"><i style="width:${(b.progress.done/b.progress.planned*100).toFixed(0)}%"></i></span>${b.progress.done}/${b.progress.planned}${b.progress.live?.stale ? ` <span class="chip bad" title="마지막 신호 ${fmtS(b.progress.live.age_s)} 전 — 사무실 PC 를 확인하세요">멈춤</span>` : ''}` : b.status==='running' ? '<span class="chip warn">실행 중</span>' : b.status==='error' ? `<span class="chip bad" title="${esc(b.error)}">오류</span>` : b.progress?.stopped ? `<span class="chip acc" title="${esc(b.progress.stopped)}">${STOP_KO(b.progress.stopped)}</span>${(s.pending || 0) ? ' ' + DONE_CHIP(s) : ''}` : (!((b.stats || {}).total ?? 0) && b.kind !== 'dry_run') ? '<span class="chip bad" title="생성된 사진이 0장 — 시작하자마자 죽은 배치입니다. 사무실 PC 기록을 봐야 합니다">실패</span>' : DONE_CHIP(s);
     const dry = b.kind === 'dry_run';
     return `<tr class="click ${CUR && CUR.batch_id === b.batch_id ? 'sel' : ''}" data-id="${b.batch_id}"><td title="${b.batch_id}">${fmtBid(b.batch_id)}</td><td>${tname(b.treatment)}</td><td>${MODE_KO[b.mode]||b.mode||''}</td><td><span class="chip ${b.kind==='run'?'acc':''}" title="${KIND_TIP[b.kind]||''}">${KIND_KO[b.kind]||b.kind}</span></td>
       <td>${s.total ?? b.count ?? ''}</td><td>${dry ? '—' : (s.passed ?? 0)}</td><td>${dry ? '—' : pct(s.pass_rate||0)}</td>
@@ -1517,6 +1521,19 @@ setInterval(() => { if ($('#tab-jobs').classList.contains('active') && BATCHES.s
 // ---------- 작업 상세 ----------
 // 작업을 고르면 목록을 접는다 — 고르고 나면 목록은 자리만 차지하고,
 // 그만큼 사진이 화면 밖으로 밀린다. 헤더를 누르면 다시 펼친다.
+// 홈·대기열·라이브러리에서 배치를 열 때 — 작업 화면의 기억된 필터(유형 서브탭·상태·시술)가 그 배치를 가리면
+// loadBatches 가 '목록에 없는 배치' 로 보고 상세를 지워 버렸다(2026-09-18 연서님 "홈에서 검수 안 된 걸 누르면 튕긴다").
+// 그래서 필터를 그 배치가 보이게 맞춘 다음, 목록을 받고 나서 연다.
+async function gotoBatch(id) {
+  show('jobs');
+  const b = BATCHES.find(x => x.batch_id === id) || await api('/api/batches/' + id);
+  if (JOBS_MODE && b.mode && JOBS_MODE !== b.mode) { JOBS_MODE = b.mode; try { localStorage.setItem('bna.jobsmode', JOBS_MODE); } catch {} }
+  if (JOBS_TR && b.treatment !== JOBS_TR) { JOBS_TR = ''; $$('#sub-jobs button').forEach(x => x.classList.toggle('on', x.dataset.tr === '')); }
+  if (JOBS_ST && !(JOBS_MATCH[JOBS_ST] || JOBS_MATCH[''])(b)) { JOBS_ST = ''; try { localStorage.setItem('bna.jobsfilter', ''); } catch {} }
+  if (DEV_MODE && b.kind !== 'run' && $('#jobs-kind').value === 'run') $('#jobs-kind').value = 'test';
+  await loadBatches();
+  await openBatch(id, true);
+}
 async function openBatch(id, byUser = false) {
   CUR = await api('/api/batches/' + id);
   // 사람이 목록에서 골랐을 때만 상세로 스크롤 — 목록은 위에 그대로 남는다(사라지지 않는다)
@@ -1556,7 +1573,7 @@ function renderProgress(pg, el, title) {
   const cells = ids.map(id => { const it = pg.items[id]; return `<b class="st-${it.stage}" title="${+id+1} · ${STAGE_KO[it.stage]} · 시도 ${it.attempt}${it.fail_reasons?.length?' · '+it.fail_reasons.map(failKo).join(', '):''}">${it.attempt>1?it.attempt:''}</b>`; }).join('');
   // 마지막 신호 — 클라우드가 붙여 주는 pg.live({age_s, stale}). stale=true 면 진행 중인데 5분 넘게 신호가 끊긴 것(멈춤 의심), null 이면 신호 파일이 없어 모름 (2026-09-15 티모 요청)
   const lv = pg.live || {}, sig = lv.age_s == null ? '' : lv.age_s < 5 ? '마지막 신호 방금' : `마지막 신호 ${fmtS(lv.age_s)} 전`;
-  const state = s.running ? (lv.stale ? `<span class="chip bad" title="진행 중인데 사무실 PC 에서 5분 넘게 신호가 없습니다 — PC 가 꺼졌거나 배치 서버가 죽었을 수 있습니다">멈춤 의심 · ${sig}</span>` : `<span class="chip warn">진행 중</span>`) : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : `<span class="chip ok">완료</span>` + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · ${c.skipped}장 생략</span>` : '');
+  const state = s.running ? (lv.stale ? `<span class="chip bad" title="진행 중인데 사무실 PC 에서 5분 넘게 신호가 없습니다 — PC 가 꺼졌거나 배치 서버가 죽었을 수 있습니다">멈춤 의심 · ${sig}</span>` : `<span class="chip warn">진행 중</span>`) : pg.error ? `<span class="chip bad" title="${esc(pg.error)}">오류</span>` : DONE_CHIP(CUR?.stats || {}) + (s.stopped ? ` <span class="chip acc">${STOP_KO(s.stopped)} · ${c.skipped}장 생략</span>` : '');
   el.innerHTML = `<div class="top"><div class="lead">${title ? `<b class="ttl">${title}</b>` : ''}<span class="big">${s.done}<small>/ ${s.planned}</small></span>${state}</div>
       <div class="muted">${s.running ? `남은 시간 약 ${fmtS(s.eta_s)} · ` : ''}경과 ${fmtS(s.elapsed_s)}${s.running && sig && !lv.stale ? ` · <span title="사무실 PC 가 30~60초마다 진행 신호를 보냅니다. 5분 넘게 끊기면 멈춤으로 표시됩니다">${sig}</span>` : s.running && !sig ? ' · <span title="이 배치는 아직 실시간 신호 파일이 없습니다 — 예전 방식(사진 판정 때만 갱신)으로 보이는 중">신호 없음</span>' : ''}${s.retries ? ` · 재생성 ${s.retries}회` : ''}</div></div>
     <div class="stack">${seg}</div>
@@ -1629,6 +1646,12 @@ const CMP_KO = {side:'나란히', wipe:'슬라이더', flip:'깜빡이'};
 const idGate = it => { const idn = it.identity || {}; return idn.gate || (idn.hard_fail ? 'fail' : idn.measured === false ? 'n/a' : null); };
 // '사람이 봐야 하는' 컷 = 기계가 못 쟀거나(n/a) 애매한(review) 것. 다른 사람(fail)은 이미 기계가 걸렀다.
 const idNeedsHuman = it => ['n/a', 'review'].includes(idGate(it));
+// 직후 패치 위치 게이트 (2026-09-18 오후 연서님) — 재시도 3번이 다 떨어지면 버리지 않고 계산 자리에 가장 가까운 컷을 남긴다.
+//   그 컷은 AI 통과로 보여도 사람이 패치 자리를 봐야 한다. 사유 둘: count=원 밖 여분 / position=자리 오차 (patchgate.REASON_KO 와 한 벌)
+const PG_KO = {count: '원 밖 여분', position: '자리 오차'};
+const posGateFail = it => Object.entries(it.patch_gate_final || {}).filter(([, r]) => r && r.passed === false)
+  .map(([w, r]) => ({when: w, why: (r.reasons || []).map(k => PG_KO[k] || k).join('·'), r}));
+const posGateChip = it => posGateFail(it).map(f => `<span class="gate warn" title="${esc(val('timeline', f.when))} 컷: 직후 패치가 계산 자리(허용 홍채 지름 1.5개)에 안 앉았습니다 — ${esc(f.why)} · 원 안 ${f.r.inside ?? '?'}/${f.r.n ?? '?'} · 원 밖 ${f.r.outside ?? '?'} · ${f.r.draws}장 중 가장 가까운 컷을 남겼습니다. 패치 자리를 직접 봐 주세요">위치 게이트 <b>미통과</b></span>`).join('');
 function gateChips(it) {
   const idn = it.identity || {}, st = it.structure || {};
   const g = idGate(it);
@@ -1642,7 +1665,21 @@ function gateChips(it) {
   const stc = sp === true ? `<span class="gate ok" title="정렬·크기·밝기·부위 프레임 안">구조 <b>통과</b></span>`
     : sp === false ? `<span class="gate bad" title="${esc(st.region_in_frame === false ? '시술 부위가 프레임 밖' : '정렬·크기·밝기 차이 초과')}">구조 <b>탈락</b></span>`
     : sp === null ? `<span class="gate na" title="얼굴을 못 찾아 못 쟀습니다">구조 <b>못 잼</b></span>` : `<span class="gate na">구조 <b>—</b></span>`;
-  return `<div class="gates">${id}${stc}</div>`;
+  return `<div class="gates">${id}${stc}${simChip(it)}${posGateChip(it)}</div>`;
+}
+// 닮음 정도 (2026-09-21 연서님 확인 · 기록 전용) — 동일인 유사도의 **위쪽**을 본다. 너무 높으면 '다른 날
+//   다시 찍은 사진'이 아니라 Before 를 베낀 그림일 수 있다(사람 'AI 티' 메모 6건 전부 "비포와 똑같다").
+//   판정(too_similar)·컷은 identity.py 의 TOO_SIMILAR 하나가 정본이라 여기서 다시 재지 않는다 —
+//   그 칸이 없는 옛 메타는 숫자만 보이고 판정은 안 붙인다. 탈락 사유가 아니므로 bad 색을 쓰지 않는다.
+function simChip(it) {
+  const idn = it.identity || {};
+  if (idn.similarity == null || idGate(it) !== 'ok') return '';
+  const s = idn.similarity.toFixed(2), cut = idn.too_similar_cut;
+  if (idn.too_similar === true)
+    return `<span class="gate warn" title="Before 와 얼굴이 ${s} 만큼 닮았습니다(${cut} 이상). 다른 날 다시 찍은 사진보다 베낀 그림에 가깝다는 신호입니다 — 기록 전용이라 탈락시키지 않습니다">닮음 <b>${s} · 너무 같음</b></span>`;
+  if (idn.too_similar === false)
+    return `<span class="gate ok" title="Before 와 얼굴 닮음 ${s} (${cut} 미만) — 같은 사람이되 다른 날 찍은 정도로 다릅니다">닮음 <b>${s}</b></span>`;
+  return `<span class="gate na" title="이 컷은 '너무 같음' 기록이 생기기 전(09-21 이전)에 만들어졌습니다 — 숫자만 봐 주세요">닮음 <b>${s}</b></span>`;
 }
 /** 다 판정했을 때 — 손그림 컷 + 집계. 브랜드 시트 v0.6 '끝났어요' 화면 */
 function renderDone() {
@@ -1839,7 +1876,7 @@ function itemCard(it) {
   return `<div class="item ${rv.pick||''}" id="it-${it.item_id}">
     <div class="pair">${img(it.before_file, '시술 전')}${img(it.after_file, seriesN > 1 ? `시술 후 · ${val('timeline', Object.keys(afs).at(-1))}` : '시술 후')}${seriesN > 1 ? `<span class="series-badge" title="경과 시리즈 ${Object.keys(afs).map(w => val('timeline', w)).join(' → ')}">${seriesN}시점</span>` : ''}</div>
     <div class="body">
-      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}${idBadge}${movedChip}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
+      <div class="head"><span class="id">${+it.item_id+1}</span>${verdict}${idBadge}${posGateChip(it)}${movedChip}<span class="head-r">${reviewed ? `<button class="b ghost" data-act="clear" data-id="${it.item_id}">초기화</button>` : ''}<button class="b ghost" data-detail="${it.item_id}">상세</button></span></div>
       <div class="conds" title="${conds.join(' · ')}">${conds.join(' · ')}</div>
       <div class="act">
         <button class="b ${rv.pick==='pick'?'on-pick':''}"${RO()?' disabled':''} data-act="pick" data-id="${it.item_id}">${rv.pick==='pick'?PICK.pick.on:PICK.pick.btn}</button>
@@ -1913,7 +1950,8 @@ function detail(id, item = null, bid = null, extra = '') {
   // 게이트 결과는 글 대신 칩: 통과는 회색, 불일치·사람 확인은 강조
   const gate = (label, ok, text) => `<span class="chip ${ok ? '' : 'warn'}">${label} ${text}</span>`;
   const chips = [it.structure && gate('얼굴 정렬', it.structure.passed, it.structure.passed ? '통과' : '불일치'),
-    it.identity && (g => gate('동일 인물', g === 'ok', ({ok:'통과', review:'사람 확인', fail:'불일치', 'n/a':'못 잼 · 사람 확인'})[g] || '—'))(idGate(it))].filter(Boolean).join('');
+    it.identity && (g => gate('동일 인물', g === 'ok', ({ok:'통과', review:'사람 확인', fail:'불일치', 'n/a':'못 잼 · 사람 확인'})[g] || '—'))(idGate(it)),
+    ...posGateFail(it).map(f => gate('위치 게이트', false, `미통과 · ${f.why}`))].filter(Boolean).join('');
   $('#dlg-in').innerHTML = `<div class="dlg-head"><div class="dlg-title"><h2>${+it.item_id+1} · ${CFG.treatments[it.treatment]?.name_ko||it.treatment} <span class="chip">${MODE_KO[it.mode]||it.mode}</span></h2>
       <div class="dlg-meta"><span>시도 ${it.attempt||0}</span><span class="sep">·</span><span>$${(it.cost||0).toFixed(3)}</span>${it.prompt_version ? `<span class="sep">·</span><span>프롬프트 ${esc(vname(it.prompt_version))}</span>` : ''}${chips ? `<span class="gates">${chips}</span>` : ''}</div></div>
       <div class="dlg-act">${extra}<button type="button" class="dlg-x" onclick="dlg.close()" aria-label="닫기" title="닫기 (Esc)"><i class="ic ic-x"></i></button></div></div>
@@ -1956,7 +1994,7 @@ function renderLibrary() {
   const groups = {}; items.forEach(i => { const k = `${i.treatment}|${i.mode}`; (groups[k] = groups[k] || []).push(i); });
   $('#lib-groups').innerHTML = Object.entries(groups).map(([k, arr]) => { const [t, m] = k.split('|');
     return `<div class="card lib-group"><h3>${CFG.treatments[t]?.name_ko || t} <span class="chip">${MODE_KO[m]||m}</span><span class="muted">${arr.length}장</span></h3><div class="lib">${arr.map(libCard).join('')}</div></div>`; }).join('');
-  $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => { show('jobs'); openBatch(b.dataset.open); });
+  $('#lib-groups').querySelectorAll('[data-open]').forEach(b => b.onclick = () => gotoBatch(b.dataset.open));
   $('#lib-groups').querySelectorAll('[data-sel]').forEach(cb => cb.onchange = () => { if (cb.checked) LIB_SEL.add(cb.dataset.sel); else LIB_SEL.delete(cb.dataset.sel); renderLibSel(); });
   renderLibSel();
   $('#lib-groups').querySelectorAll('[data-dl]').forEach(b => b.onclick = () => { const [bid, iid] = b.dataset.dl.split('/'); const it = LIB.items.find(x => x.batch_id === bid && x.item_id === iid); if (it) downloadItem(bid, iid, it); });

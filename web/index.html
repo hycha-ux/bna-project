@@ -1665,7 +1665,21 @@ function gateChips(it) {
   const stc = sp === true ? `<span class="gate ok" title="정렬·크기·밝기·부위 프레임 안">구조 <b>통과</b></span>`
     : sp === false ? `<span class="gate bad" title="${esc(st.region_in_frame === false ? '시술 부위가 프레임 밖' : '정렬·크기·밝기 차이 초과')}">구조 <b>탈락</b></span>`
     : sp === null ? `<span class="gate na" title="얼굴을 못 찾아 못 쟀습니다">구조 <b>못 잼</b></span>` : `<span class="gate na">구조 <b>—</b></span>`;
-  return `<div class="gates">${id}${stc}${posGateChip(it)}</div>`;
+  return `<div class="gates">${id}${stc}${simChip(it)}${posGateChip(it)}</div>`;
+}
+// 닮음 정도 (2026-09-21 연서님 확인 · 기록 전용) — 동일인 유사도의 **위쪽**을 본다. 너무 높으면 '다른 날
+//   다시 찍은 사진'이 아니라 Before 를 베낀 그림일 수 있다(사람 'AI 티' 메모 6건 전부 "비포와 똑같다").
+//   판정(too_similar)·컷은 identity.py 의 TOO_SIMILAR 하나가 정본이라 여기서 다시 재지 않는다 —
+//   그 칸이 없는 옛 메타는 숫자만 보이고 판정은 안 붙인다. 탈락 사유가 아니므로 bad 색을 쓰지 않는다.
+function simChip(it) {
+  const idn = it.identity || {};
+  if (idn.similarity == null || idGate(it) !== 'ok') return '';
+  const s = idn.similarity.toFixed(2), cut = idn.too_similar_cut;
+  if (idn.too_similar === true)
+    return `<span class="gate warn" title="Before 와 얼굴이 ${s} 만큼 닮았습니다(${cut} 이상). 다른 날 다시 찍은 사진보다 베낀 그림에 가깝다는 신호입니다 — 기록 전용이라 탈락시키지 않습니다">닮음 <b>${s} · 너무 같음</b></span>`;
+  if (idn.too_similar === false)
+    return `<span class="gate ok" title="Before 와 얼굴 닮음 ${s} (${cut} 미만) — 같은 사람이되 다른 날 찍은 정도로 다릅니다">닮음 <b>${s}</b></span>`;
+  return `<span class="gate na" title="이 컷은 '너무 같음' 기록이 생기기 전(09-21 이전)에 만들어졌습니다 — 숫자만 봐 주세요">닮음 <b>${s}</b></span>`;
 }
 /** 다 판정했을 때 — 손그림 컷 + 집계. 브랜드 시트 v0.6 '끝났어요' 화면 */
 function renderDone() {

@@ -36,6 +36,14 @@ from PIL import Image
 
 THRESHOLD = 0.45        # 2026-09-11 실측. 음성 666쌍의 최대(0.441) 바로 위 — 오탐 0/666
 REVIEW_BAND = 0.35      # 이 값 이상 THRESHOLD 미만은 '탈락'이 아니라 '사람 확인' 구간
+# 상한 — **너무 같다**(2026-09-21, 기록 전용·탈락 사유 아님). 하한이 "다른 사람"을 막는다면 상한은
+#   "다른 날 다시 찍은 사진이 아니라 Before 를 베낀 그림"을 가리킨다. 사람 'AI 티' 메모 6건이 전부
+#   "각도·표정·입모양이 비포와 똑같다"였고, 기계 통과분 70장에서 이 값 ≥0.82 는 걸린 19장 중 18장(95%)을
+#   사람도 버렸다 · AI티 회수 16/28 · 채택 오살 1/31. 판정 시각으로 반 갈라도 83%/100% 로 버텼다.
+#   ⚠ 같은 원장으로 고르고 잰 값이라 낙관 쪽이다 — 그래서 **게이트가 아니라 기록**으로 먼저 켠다.
+#     다음 회차들의 사람 판정과 대 보고 나서야 탈락 사유로 올린다(09-18 "게이트는 분포를 본 다음").
+#   근거·표=docs/ai-look-item-0921-teemo.md §4, 산출=tools/rescore_phone_real.py 옆 분석.
+TOO_SIMILAR = 0.82
 LETTERBOX_FILL = 0.5    # 재시도 시 원본이 캔버스에서 차지하는 비율 (실측 0.5·0.35 동률, 0.5 채택)
 _app = None
 
@@ -127,6 +135,8 @@ def check(before: Image.Image, after: Image.Image, threshold: float = THRESHOLD)
     nb, na = big_faces(before), big_faces(after)
     collage = (nb or 0) >= 2 or (na or 0) >= 2
     return {"similarity": s, "gate": gate,
+            # 너무 같다(베낀 그림 의심) — 3값: True/False/None(못 잼). **기록 전용**, 탈락 사유 아님(위 TOO_SIMILAR).
+            "too_similar": None if s is None else bool(s >= TOO_SIMILAR), "too_similar_cut": TOO_SIMILAR,
             "passed": True if gate == "ok" else (False if gate == "fail" else None),
             "hard_fail": gate == "fail",
             "measured": s is not None,

@@ -2420,6 +2420,52 @@ ok(not _refbad36 and _refhit36 > 0, f"배경 크롭 참조는 미모·전 컷·�
 _nob36 = _rf36.pick_files("selfie", {"looks": {"key": "attractive"}, "background": {"key": "bathroom"}}, treatment="nasolabial")
 ok(not [f for f in _nob36 if "attractive_bg" in f], f"욕실 컷엔 카페·테라스 크롭이 안 붙는다 — {_nob36}")
 
+# ㊲ 실험 스위치 + '너무 같음' 기록 (2026-09-21 연서님 확인 · 빌디 요청, docs/ai-look-item-0921-teemo.md §8)
+#    ① 스위치가 꺼져 있으면 팔자 단발 After 표정은 **절대** 안 바뀐다(기본 경로 불변 — 실험 전 결과를 흔들지 않는다)
+#    ② 켜면 표정이 바뀌되 **입 상태는 Before 와 같다**(가짜 효과 방지는 시리즈 완화와 같은 규칙)
+#    ③ angle 은 스위치에 안 넣었으면 계속 잠겨 있다(한 회차 한 축) ④ 강도 고정 ⑤ meta 에 켠 스위치가 남는다
+#    ⑥ too_similar 는 기록 전용 — 3값이고, 탈락 사유 목록에 들어갈 길이 없다
+import os as _os37
+from bna.spec import experiment_flags as _ef37
+_tb37 = load("variations.yaml").get("expression_traits", {})
+def _run37(env):
+    for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY"):
+        _os37.environ.pop(k, None)
+    _os37.environ.update(env)
+    out = []
+    for sd in range(40):
+        v = sample_variation("selfie", 3700 + sd)
+        r = build_prompts("nasolabial", "selfie", v, 3700 + sd)
+        out.append((v, r))
+    for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY"):
+        _os37.environ.pop(k, None)
+    return out
+_off37 = _run37({})
+_on37 = _run37({"BNA_EXP_RELAX": "expression", "BNA_EXP_SEVERITY": "moderate"})
+ok(all("expression" not in r["after_changed_axes"] for _v, r in _off37),
+   "스위치 끔 — 팔자 단발 After 표정은 한 번도 안 바뀐다(기본 경로 불변)")
+_chg37 = [(v, r) for v, r in _on37 if "expression" in r["after_changed_axes"]]
+ok(len(_chg37) >= 10, f"스위치 켬 — 팔자 단발 After 표정이 바뀐다({len(_chg37)}/40, 주사위 0.7 × 이웃 유무)")
+_mouth37 = [(v["expression"]["key"], r["after_variation"]["expression"]["key"]) for v, r in _chg37
+            if _tb37.get(v["expression"]["key"], {}).get("mouth") != _tb37.get(r["after_variation"]["expression"]["key"], {}).get("mouth")]
+ok(not _mouth37, f"스위치 켬 — 바뀐 표정도 입 상태(다문/벌린)는 Before 와 같다 — 위반 {_mouth37[:3]}")
+ok(all("angle" not in r["after_changed_axes"] for _v, r in _on37), "스위치 켬 — angle 은 넣지 않았으므로 계속 잠겨 있다(한 회차 한 축)")
+# 강도 고정은 **나이 규칙(severity_min_age)을 이기지 않는다** — 20대에 깊은 팔자를 그리면 그 자체가 AI 티다.
+#   그래서 실험 회차는 --fix age 로 나이를 같이 고정한다(아래 실행 기록). 테스트도 나이가 허락하는 장만 본다.
+_ages37 = list(load("variations.yaml")["age"])
+_mina37 = (load("treatments.yaml")["nasolabial"].get("severity_min_age") or {}).get("moderate")
+_ok_age37 = [(v, r) for v, r in _on37 if not _mina37 or _ages37.index(v["age"]["key"]) >= _ages37.index(_mina37)]
+ok(_ok_age37 and all(r["variation"]["before_severity"]["key"] == "moderate" for _v, r in _ok_age37),
+   f"BNA_EXP_SEVERITY=moderate — 나이가 허락하는 {len(_ok_age37)}장 전부 Before 강도가 moderate")
+ok(all(r["experiment"] == {"relax": ["expression"], "severity": "moderate"} for _v, r in _on37)
+   and all(r["experiment"] is None for _v, r in _off37), "meta['experiment'] — 켠 회차만 스위치가 남고 끈 회차는 None")
+from bna.qa import identity as _id37
+ok(_id37.TOO_SIMILAR == 0.82 and _id37.TOO_SIMILAR > _id37.THRESHOLD, "too_similar 컷 0.82 는 동일인 하한(0.45) 위에 있다")
+import inspect as _in37
+from bna import batch as _bt37
+_src37 = _in37.getsource(_bt37)
+ok("too_similar" not in _src37, "too_similar 는 기록 전용 — batch.py 가 탈락 사유로 읽는 곳이 없다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
