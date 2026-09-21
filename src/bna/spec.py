@@ -249,16 +249,21 @@ SERIES_LOCK = {"framing", "extras"}
 def experiment_flags(as_meta: bool = False):
     """실험 회차 스위치 (2026-09-21). 기본 경로는 안 바꾸고, 켠 회차만 환경변수로 켠다.
 
-    BNA_EXP_RELAX    쉼표 구분 축 — 단발 컷에도 시리즈 완화를 건다(drift_lock 에 있는 축만 풀린다)
+    BNA_EXP_RELAX    쉼표 구분 축 — 단발 컷에도 시리즈 완화를 건다(drift_lock 에 있는 축만 풀린다).
+                     **켠 축은 주사위도 건너뛴다**(확률 1) — 09-21 1차: 스위치를 켜도 주사위(직후 0.5·이후 0.7)에서
+                     빠져 실험 2장 중 1장만 표정이 바뀌었다. 실험 묶음에서 '바꾸라고 한 축'이 안 바뀌면 표본이 아니다.
     BNA_EXP_SEVERITY Before 강도 고정 (mild|moderate|marked)
-    as_meta=True 면 meta 에 실을 모양({relax:[…], severity:…} 또는 None)을 돌려준다.
+    BNA_EXP_WHEN     단발 컷 시점 고정 (immediate|1w|2w|4w) — 09-21 1차: 시점이 추첨이라 대조=직후 2 ·
+                     실험=직후 1·2주 1 로 섞여 판정이 안 났다. 시술이 모르는 시점이면 무시(종전 추첨).
+    as_meta=True 면 meta 에 실을 모양({relax:[…], severity:…, when:…} 또는 None)을 돌려준다.
     """
     import os
     relax = {s.strip() for s in os.environ.get("BNA_EXP_RELAX", "").split(",") if s.strip()}
     sev = os.environ.get("BNA_EXP_SEVERITY", "").strip() or None
+    when = os.environ.get("BNA_EXP_WHEN", "").strip() or None
     if as_meta:
-        return {"relax": sorted(relax), "severity": sev} if (relax or sev) else None
-    return {"relax": relax, "severity": sev}
+        return {"relax": sorted(relax), "severity": sev, "when": when} if (relax or sev or when) else None
+    return {"relax": relax, "severity": sev, "when": when}
 
 
 def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False,
@@ -302,7 +307,8 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     #   입 상태(다문/벌린)는 Before 와 묶고 키만 바꾼다(가짜 효과 방지는 그대로).
     #   ⚠ 설정(yaml)이 아니라 환경변수인 이유: 실험 회차에서만 켜고, 결과 전엔 기본 경로를 안 바꾼다.
     #     켠 회차는 meta["experiment"] 에 남는다(experiment_flags). drift_lock 에 있는 축만 풀린다.
-    relax |= experiment_flags()["relax"] & set(tr.get("drift_lock") or [])
+    _exp_forced = experiment_flags()["relax"] & set(tr.get("drift_lock") or [])
+    relax |= _exp_forced
     lock = (set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
     seen = seen or {}
     probs = v.get("after_drift", {}).get(mode, {})
@@ -315,7 +321,9 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     after = {k: dict(val) for k, val in variation.items()}
     keys = {k: val["key"] for k, val in after.items()}
     for axis, p in probs.items():
-        if axis in lock or axis not in v or rng.random() >= p:
+        # 실험으로 푼 축은 확률 1 — 주사위는 그대로 한 번 굴려 rng 흐름을 스위치 유무와 맞춘다(experiment_flags 머리말).
+        _roll = rng.random() if (axis not in lock and axis in v) else None
+        if axis in lock or axis not in v or (_roll >= p and axis not in _exp_forced):
             continue
         allowed = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage=stg)
         if axis == "framing":                               # 프레이밍도 이웃 거리로만 (아래 framing_neighbors 주석)
@@ -640,6 +648,9 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     level = rng.choice(list(levels))
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
     when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))
+    _fw = experiment_flags()["when"]                  # 실험 스위치 — 단발 시점 고정(추첨은 이미 한 번 소비했다)
+    if _fw and not pts and _fw in t.get("timeline", ["2w"]):
+        when = _fw
 
     def change_for(w, final_level):
         """시점 하나의 시술 지시문. 시리즈면 최종 강도를 시점에 맞춰 낮춘다(직후 = 거의 안 보임 + 붓기).

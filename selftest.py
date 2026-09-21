@@ -2429,7 +2429,7 @@ import os as _os37
 from bna.spec import experiment_flags as _ef37
 _tb37 = load("variations.yaml").get("expression_traits", {})
 def _run37(env):
-    for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY"):
+    for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY", "BNA_EXP_WHEN"):
         _os37.environ.pop(k, None)
     _os37.environ.update(env)
     out = []
@@ -2437,7 +2437,7 @@ def _run37(env):
         v = sample_variation("selfie", 3700 + sd)
         r = build_prompts("nasolabial", "selfie", v, 3700 + sd)
         out.append((v, r))
-    for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY"):
+    for k in ("BNA_EXP_RELAX", "BNA_EXP_SEVERITY", "BNA_EXP_WHEN"):
         _os37.environ.pop(k, None)
     return out
 _off37 = _run37({})
@@ -2457,8 +2457,18 @@ _mina37 = (load("treatments.yaml")["nasolabial"].get("severity_min_age") or {}).
 _ok_age37 = [(v, r) for v, r in _on37 if not _mina37 or _ages37.index(v["age"]["key"]) >= _ages37.index(_mina37)]
 ok(_ok_age37 and all(r["variation"]["before_severity"]["key"] == "moderate" for _v, r in _ok_age37),
    f"BNA_EXP_SEVERITY=moderate — 나이가 허락하는 {len(_ok_age37)}장 전부 Before 강도가 moderate")
-ok(all(r["experiment"] == {"relax": ["expression"], "severity": "moderate"} for _v, r in _on37)
+ok(all(r["experiment"] == {"relax": ["expression"], "severity": "moderate", "when": None} for _v, r in _on37)
    and all(r["experiment"] is None for _v, r in _off37), "meta['experiment'] — 켠 회차만 스위치가 남고 끈 회차는 None")
+# ㊲-2 (09-21 2차) 시점 고정 + 켠 축은 주사위 건너뛰기. 1차는 시점이 섞이고(직후 2 vs 직후1·2주1)
+#   스위치를 켜도 주사위에 빠져 실험 2장 중 1장만 표정이 바뀌어 판정이 안 났다.
+_on37b = _run37({"BNA_EXP_RELAX": "expression", "BNA_EXP_SEVERITY": "moderate", "BNA_EXP_WHEN": "2w"})
+ok(all(r["afters"][-1]["when"] == "2w" for _v, r in _on37b), "BNA_EXP_WHEN=2w — 40장 전부 단발 시점이 2주")
+_chg37b = sum(1 for _v, r in _on37b if "expression" in r["after_changed_axes"])
+ok(_chg37b >= 36, f"켠 축은 주사위를 건너뛴다 — 표정 바뀜 {_chg37b}/40 (주사위 0.7 이면 ~28; 남는 건 같은 입 상태 이웃이 없는 경우뿐)")
+_off37b = _run37({"BNA_EXP_SEVERITY": "moderate", "BNA_EXP_WHEN": "2w"})
+ok(all("expression" not in r["after_changed_axes"] for _v, r in _off37b), "대조(시점·강도만 고정) — 표정은 여전히 잠겨 있다")
+ok([r["variation"]["age"]["key"] for _v, r in _on37b] == [r["variation"]["age"]["key"] for _v, r in _off37b],
+   "스위치 유무가 인물 추첨(rng 흐름)을 바꾸지 않는다 — 같은 seed 면 같은 사람")
 from bna.qa import identity as _id37
 ok(_id37.TOO_SIMILAR == 0.82 and _id37.TOO_SIMILAR > _id37.THRESHOLD, "too_similar 컷 0.82 는 동일인 하한(0.45) 위에 있다")
 import inspect as _in37
