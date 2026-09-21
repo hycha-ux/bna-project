@@ -369,7 +369,12 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     #     켠 회차는 meta["experiment"] 에 남는다(experiment_flags). drift_lock 에 있는 축만 풀린다.
     _exp_forced = experiment_flags()["relax"] & set(tr.get("drift_lock") or [])
     relax |= _exp_forced
-    lock = (set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
+    # 미모 프로필 After 각도 한 칸(2026-09-22 연서님 "미모 After 각도 한 칸 풀어서 2세트. 표정·빛 잠금은 그대로"):
+    #   v36 은 표정·빛(lock_after)+각도(drift_lock)가 다 잠겨 시도 6번 중 4번이 복붙(copy)으로 떨어졌다.
+    #   `after_relax` 축을 완화 경로(이웃 한 칸·폴백 없음, 확률은 after_drift 그대로)로 푼다. lock_after 는 아래에서 다시 잠근다.
+    relax |= set(looks_profile((variation.get("looks") or {}).get("key"), v, treatment).get("after_relax") or []) \
+        & set(tr.get("drift_lock") or [])
+    lock =(set(tr.get("drift_lock") or []) | (SERIES_LOCK if series else set())) - relax
     # 미모 프로필 3차: Before 에 강제한 표정(웃음)·빛(옆빛)은 After 에서도 그대로 — 풀리면 촬영 차이가 효과로 둔갑한다.
     #   완화(relax)보다 **뒤에** 더한다: single_relax 가 표정을 풀어도 여기서 다시 잠근다.
     lock |= set(looks_profile((variation.get("looks") or {}).get("key"), v, treatment).get("lock_after") or [])

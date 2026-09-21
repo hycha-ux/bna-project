@@ -280,7 +280,7 @@ else:
 
 # ⑱ 프롬프트 구조 v2 (2026-09-09 성연서님 "1단계 구조부터") — 시술별 제약이 추첨·드리프트·조립 세 곳에 다 먹는가.
 #    조용히 통과하는 결함이라 실측으로 잡는다. 문장이 아니라 '그 상황을 안 만드는' 쪽이 기준.
-from bna.spec import treatment_rules as _tr, load as _load, SCENE_AXES
+from bna.spec import treatment_rules as _tr, load as _load, SCENE_AXES, looks_profile
 from bna.planner import plan_batch as _pb2
 _V = _load("variations.yaml"); _T = _load("treatments.yaml")
 ok("filler" not in _T and {"filler_nose", "filler_neck"} <= set(_T), "필러는 코필러·목주름필러 2종으로 분할돼 있어야 한다 (성연서님 확정)")
@@ -308,6 +308,11 @@ for _t in _T:
                 _mt = load("variations.yaml").get("expression_traits", {}) if _ax == "expression" else {}
                 if _ax == "expression" and _mt.get(_af[_ax]["key"], {}).get("mouth") != _mt.get(_p[_ax]["key"], {}).get("mouth"):
                     _viol[f"{_t} relax-mouth:{_ax}"] = _viol.get(f"{_t} relax-mouth:{_ax}", 0) + 1
+                continue
+            # 미모 프로필 after_relax(09-22 각도)도 허가된 예외 — 대신 이웃 한 칸이 새 제약이다(㊷가 따로 잰다).
+            if _ax in (looks_profile(_p.get("looks", {}).get("key"), None, _t).get("after_relax") or []):
+                if _af[_ax]["key"] != _p[_ax]["key"] and _af[_ax]["key"] not in (_V.get(f"{_ax}_neighbors", {}).get(_p[_ax]["key"]) or []):
+                    _viol[f"{_t} relax-nb:{_ax}"] = _viol.get(f"{_t} relax-nb:{_ax}", 0) + 1
                 continue
             if _af[_ax]["key"] != _p[_ax]["key"]: _viol[f"{_t} drift:{_ax}"] = _viol.get(f"{_t} drift:{_ax}", 0) + 1
         _ak = {a: x["key"] for a, x in _af.items()}
@@ -2602,6 +2607,19 @@ _fr41 = [r["variation"]["framing"]["key"] for r in _r41] + [a["after_variation"]
 ok(_fr41 and set(_fr41) <= _F41, f"미모 구도 게이트 — Before·After 전부 얼굴 전체·상반신만 ({sorted(set(_fr41))}, {len(_fr41)}컷)")
 ok(set(r["variation"]["framing"]["key"] for r in _r41) == _F41, "미모 구도 게이트 — 두 구도가 실제로 둘 다 나온다")
 ok(any(v["framing"]["key"] not in _F41 for v in _v39off), "미모 프로필을 끄면 구도 게이트도 풀린다(되돌리기 경로)")
+# ㊷ (09-22 연서님 "미모 After 각도 한 칸 풀어서. 표정·빛 잠금은 그대로") — 새 동작이 실제로 나오는가(0 초과)와
+#   이웃 한 칸만인가, 잠금 둘은 그대로인가, 보통 인물 각도는 여전히 잠겼는가.
+_nb42 = load("variations.yaml")["angle_neighbors"]
+_ab42 = [(r["variation"], a["after_variation"]) for r in _r41 for a in r["afters"]]
+_mv42 = [(b, a) for b, a in _ab42 if a["angle"]["key"] != b["angle"]["key"]]
+ok(0 < len(_mv42) < len(_ab42), f"미모 After 각도가 실제로 바뀐다(강제 아님) — {len(_mv42)}/{len(_ab42)}컷")
+ok(all(a["angle"]["key"] in _nb42[b["angle"]["key"]] for b, a in _mv42), "미모 After 각도는 이웃 한 칸만")
+ok(all(a["expression"]["key"] == b["expression"]["key"] and a["lighting"]["key"] == b["lighting"]["key"] for b, a in _ab42),
+   "미모 After 표정·빛 잠금은 그대로")
+_ord42 = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v["looks"]["key"] != "attractive"][:40]
+ok(all(a["after_variation"]["angle"]["key"] == v["angle"]["key"]
+       for i, v in enumerate(_ord42) for a in build_prompts("nasolabial", "selfie", v, 900 + i)["afters"]),
+   "보통 인물 단발 After 각도는 여전히 잠김")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
