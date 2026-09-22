@@ -277,6 +277,44 @@ def composite_outside_mask(before: Image.Image, after: Image.Image, mask: Image.
     return Image.composite(after.convert("RGB"), before.convert("RGB"), mask)
 
 
+# ── 얼굴만 오린 참조 (2026-09-22 연서님 "얼굴만 오려서 넘기고 머리 스타일은 문장으로 유지") ─────────
+# v39 까지 미모 After 는 Before 사진 한 장을 통째로 참조로 받아 고개 각도·자세·화면 속 위치까지 따라 그렸다
+#   (6번 중 5번 복붙, 고개 차이 0.005~0.008). 넘기는 걸 **얼굴 윤곽 안쪽만**으로 줄인다 — 배경·옷·머리·어깨가
+#   없으니 따라 그릴 '자세'가 줄고, 눈을 수평으로 돌려 두므로 고개 기울기(roll)도 안 넘어간다.
+#   윤곽 밖은 중간 회색으로 채운다(검정·흰색은 조명 단서로 읽힌다). 머리 모양은 After 문장(Hair: …)이 맡는다.
+FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152,
+             148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
+CROP_MARGIN = 0.10        # 윤곽 상자 바깥 여유 (상자 긴 변 대비)
+
+
+def face_crop(img: Image.Image, pts: np.ndarray, margin: float = CROP_MARGIN) -> Image.Image:
+    """얼굴 윤곽만 남긴 정사각 참조. pts 가 없으면 None — 상위가 종전(통째 참조)으로 되돌린다(fail-open)."""
+    if pts is None:
+        return None
+    from PIL import ImageFilter
+    rgb = img.convert("RGB")
+    kp = key_points(pts)
+    ang = float(np.degrees(np.arctan2(*(kp["eye_r"] - kp["eye_l"])[::-1])))
+    oval = pts[FACE_OVAL]
+    c = oval.mean(axis=0)
+    # 눈이 수평이 되게 얼굴 중심 기준으로 돌린다 — 점도 같은 변환으로 옮긴다
+    rot = rgb.rotate(ang, resample=Image.BICUBIC, center=tuple(c), fillcolor=(128, 128, 128))
+    t = np.radians(ang)
+    R = np.array([[np.cos(t), np.sin(t)], [-np.sin(t), np.cos(t)]])
+    o = (oval - c) @ R.T + c
+    m = Image.new("L", rgb.size, 0)
+    ImageDraw.Draw(m).polygon([tuple(p) for p in o], fill=255)
+    m = m.filter(ImageFilter.GaussianBlur(4))
+    face = Image.composite(rot, Image.new("RGB", rgb.size, (128, 128, 128)), m)
+    x0, y0 = o.min(axis=0); x1, y1 = o.max(axis=0)
+    side = max(x1 - x0, y1 - y0) * (1 + 2 * margin)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    box = tuple(int(round(v)) for v in (cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2))
+    out = Image.new("RGB", (box[2] - box[0], box[3] - box[1]), (128, 128, 128))
+    out.paste(face, (-box[0], -box[1]))              # 상자가 사진 밖으로 나가도 검은 띠 대신 회색이 남는다
+    return out
+
+
 def key_points(pts: np.ndarray) -> dict:
     return {"eye_l": pts[LEFT_EYE], "eye_r": pts[RIGHT_EYE], "nose": pts[NOSE_TIP],
             "mouth_l": pts[MOUTH_L], "mouth_r": pts[MOUTH_R]}

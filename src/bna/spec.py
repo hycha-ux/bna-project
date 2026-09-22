@@ -388,7 +388,19 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
     stg = None if timeline == "immediate" else "after"
     after = {k: dict(val) for k, val in variation.items()}
     keys = {k: val["key"] for k, val in after.items()}
+    # 미모 After 각도 후보(2026-09-22 연서님 "카메라 위/아래·고개 기울임·3/4로 넓혀서") — 목록이 있으면 이웃표·확률 대신
+    #   이 안에서 Before 와 다른 각도로 **반드시** 바꾼다. 근거 = variations.yaml 주석.
+    #   시리즈 컷은 제외 — 같은 사람의 여러 시점은 이웃 한 칸(series_relax)이 규칙이다. 잠긴 축이어도 손대지 않는다.
+    _aang = looks_profile((variation.get("looks") or {}).get("key"), v, treatment).get("after_angles") or []
+    _aang_done = False
+    if _aang and not series and "angle" not in lock and "angle" in variation:
+        cand = [k for k in _aang if k in v["angle"] and k != variation["angle"]["key"]]
+        if cand:
+            k = rng.choice(cand); after["angle"] = {"key": k, "text": v["angle"][k]}; keys["angle"] = k
+            _aang_done = True
     for axis, p in probs.items():
+        if axis == "angle" and _aang_done:
+            continue
         # 실험으로 푼 축은 확률 1 — 주사위는 그대로 한 번 굴려 rng 흐름을 스위치 유무와 맞춘다(experiment_flags 머리말).
         _roll = rng.random() if (axis not in lock and axis in v) else None
         if axis in lock or axis not in v or (_roll >= p and axis not in _exp_forced):

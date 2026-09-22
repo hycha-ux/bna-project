@@ -5,7 +5,7 @@ from . import landmarks as L
 from ..spec import load
 
 
-def check(before: Image.Image, after: Image.Image, mode: str, region: str) -> dict:
+def check(before: Image.Image, after: Image.Image, mode: str, region: str, copy_head_only: bool = False) -> dict:
     tol = load("clinical_rig.yaml")["tolerance"]
     pb, pa = L.detect(before), L.detect(after)
     out = {"face_detected": pb is not None and pa is not None}
@@ -16,7 +16,7 @@ def check(before: Image.Image, after: Image.Image, mode: str, region: str) -> di
         #   **$1.14 를 태우고 실패**했다. 랜드마크가 없는 건 그림이 나빠서가 아니라 눈이 프레임 밖이라
         #   생기는 일이고, 다시 뽑아도 같은 변주면 또 미검출이다(재시도가 원리적으로 무의미).
         #   → passed=None(미판정). 상위(batch)가 None 을 실패로 세지 않으므로 비전 채점으로 넘어간다.
-        return {**out, "passed": None, "measured": False, "copy": copy_check(pb, pa, mode),
+        return {**out, "passed": None, "measured": False, "copy": copy_check(pb, pa, mode, head_only=copy_head_only),
                 "reason": "얼굴 미검출 — 부분 크롭·측면이면 정상이다(구조 검사 미측정, 비전 채점으로 판정)"}
 
     kb, ka = L.key_points(pb), L.key_points(pa)
@@ -31,7 +31,7 @@ def check(before: Image.Image, after: Image.Image, mode: str, region: str) -> di
     out.update(region_frame(pa, region, after.size))
     # 복붙 판정은 **여기 붙여도 값이 안 든다** — 랜드마크를 이미 떴으므로 추가 검출이 0이다.
     # 다만 `passed` 에는 섞지 않는다(별개 게이트라 화면·통계가 갈라 봐야 한다). 소비는 batch 가 한다.
-    out["copy"] = copy_check(pb, pa, mode)
+    out["copy"] = copy_check(pb, pa, mode, head_only=copy_head_only)
 
     if mode == "clinical":
         out["passed"] = (out["align_err_pct"] <= tol["landmark_align_pct"] and out["face_ratio_diff"] <= tol["face_ratio_diff"]
@@ -128,7 +128,8 @@ def pose_vector(pts) -> np.ndarray:
 COPY_EXPR_CUT, COPY_HEAD_CUT = 0.005, 0.015
 
 
-def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cut: float = None) -> dict:
+def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cut: float = None,
+               head_only: bool = False) -> dict:
     """복붙 판정 한 벌. 셀카에서만 걸고, 임상·얼굴 미검출은 **못 잼**(None)으로 둔다.
 
     3값 규칙은 이 파일의 다른 자들과 같다 — None 은 실패가 아니다(상위가 실패로 세지 않는다).
@@ -145,9 +146,13 @@ def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cu
     va, vb = pose_vector(after_pts), pose_vector(before_pts)
     expr = float(np.abs(va[:4] - vb[:4]).mean())
     head = float(np.abs(va[4:] - vb[4:]).mean())
-    same = expr <= ec and head <= hc
+    # head_only(2026-09-22 연서님, 미모 프로필 `copy_gate: head`): 표정을 일부러 잠근 컷은 표정 조건이 늘 참이라
+    #   AND 가 사실상 고개 하나다 — 그걸 명시로 바꾸고 원장에 규칙을 남긴다(옛 회차와 갈라 보려면 `rule` 을 봐라).
+    same = head <= hc if head_only else (expr <= ec and head <= hc)
     return {"expr_diff": round(expr, 4), "head_diff": round(head, 4), "cuts": cuts,
+            "rule": "head" if head_only else "expr_and_head",
             "measured": True, "passed": not same,
             "reason": "" if not same else
-                      f"전·후의 표정과 고개가 거의 같다(표정 {expr:.4f}≤{ec} · 고개 {head:.4f}≤{hc}) — "
-                      "다른 날 다시 찍은 셀카가 아니라 베껴 그린 컷으로 본다"}
+                      (f"전·후의 고개가 거의 같다(고개 {head:.4f}≤{hc}, 미모 컷은 고개만 본다) — 너무 같음" if head_only else
+                       f"전·후의 표정과 고개가 거의 같다(표정 {expr:.4f}≤{ec} · 고개 {head:.4f}≤{hc}) — "
+                       "다른 날 다시 찍은 셀카가 아니라 베껴 그린 컷으로 본다")}

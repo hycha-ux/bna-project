@@ -37,6 +37,14 @@ RETRY_REDRAW = {"vision:effect_visible", "structure"}
 #   After 쪽 콜라주(`collage`)는 Before 가 멀쩡하니 여기 넣지 않는다 — 넣으면 멀쩡한 Before 를 버린다.
 REDO_BEFORE = {"identity", "identity_review", "vision:identity", "structure", "collage_before"}
 
+# 얼굴만 오린 참조를 넘길 때 붙는 한 줄 (2026-09-22, 미모 `before_ref: face_crop`). 참조가 무엇인지 말하지 않으면
+#   모델이 회색 바탕·잘린 윤곽까지 그림의 일부로 읽는다. 머리 모양은 참조에 없으므로 문장(Hair: …)이 정본이라고 적는다.
+FACE_CROP_LINE = ("The first reference image is only a cut-out of this person's face on a plain grey card, straightened "
+                  "so the eyes are level. Use it only for who this is: the face shape, features, skin and smile. It "
+                  "is not a photo to follow - the head angle, the camera height, the framing, the hair, the clothes, "
+                  "the background and the light all come from the text above, and the hairstyle is exactly as "
+                  "written in the Hair line. Never show the grey card or a cut-out edge.")
+
 
 def _retry_plan(fail_reasons):
     """탈락 사유 → (조건을 다시 뽑나, Before 를 다시 그리나).
@@ -186,7 +194,9 @@ class Batch:
                         gen_refs = [b for b, _n in faces[1:]] + list(style_refs or [])
                         person_line = refs.FACE_LINE.format(n=len(faces))
                         from .spec import looks_profile as _lp
-                        sim_max = _lp(spec["variation"]["looks"]["key"]).get("face_sim_max")
+                        # ⚠ 시술을 넘겨야 한다(2026-09-22 티모) — 프로필에 `treatments` 가 생긴 뒤로 시술 없이 부르면
+                        #   fail-closed 로 {} 가 나와 이 0.6 상한이 **조용히 꺼져 있었다**(09-21 정식 반영 이후).
+                        sim_max = _lp(spec["variation"]["looks"]["key"], None, self.treatment).get("face_sim_max")
                         face_embs = [e for e in (await loop.run_in_executor(
                             None, lambda: [identity.embed(Image.open(io.BytesIO(b)).convert("RGB")) for b, _n in faces]))
                                      if e is not None]
@@ -228,6 +238,8 @@ class Batch:
             # 공급자 동시 한도는 self._slots(공급자) 가 배치 전체에서 지킨다 — Before·After 가 같은 슬롯을 쓰므로
             # 항목 3개 × 시점 3개 = 9콜이 한꺼번에 나가지 않고, Before 콜이 그 한도를 우회하지도 않는다.
             after_sem = self._slots(self.p_edit)              # 정본은 _slots 한 곳 (머리말이 근거)
+            from .spec import looks_profile as _lp2
+            _lpf = _lp2((spec["variation"].get("looks") or {}).get("key"), None, self.treatment) if self.mode == "selfie" else {}
             async def one_after(af):
                 after_prompt = self.p_edit.adapt_prompt(af["after_prompt"], "after")
                 async with after_sem:
@@ -260,7 +272,17 @@ class Batch:
                     else:
                         # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)
                         after_refs = self._refs(af.get("after_variation") or variation, af["when"])
-                        after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
+                        # 미모 After 참조 = 얼굴만 오린 Before (2026-09-22 연서님, variations.yaml `before_ref: face_crop`).
+                        #   통째 Before 는 고개·자세·화면 위치까지 따라 그리게 했다(v39 복붙 5/6). 얼굴 미검출이면 종전대로.
+                        #   재시도(After 만 다시)도 같은 참조를 쓴다 — ref_b 는 이 함수 안에서만 산다.
+                        ref_b = before_b
+                        if _lpf.get("before_ref") == "face_crop" and pts is not None:
+                            _fc = landmarks.face_crop(before, pts)
+                            if _fc is not None:
+                                ref_b = _png(_fc)
+                                after_prompt = after_prompt + " " + FACE_CROP_LINE
+                                meta.setdefault("before_ref", {})[af["when"]] = "face_crop"
+                        after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], ref_b, after_refs, None)
                         after = Image.open(io.BytesIO(after_b))
                         cost = self.pricing[self.p_edit.name]["generate"]
                         # 직후 패치 위치 게이트 — C안 (2026-09-18 빌디/연서님: 후처리 접고 좌표 계산은 채점으로만).
@@ -282,7 +304,7 @@ class Batch:
                                     best = (patchgate.closeness(gr), g, after, gr)
                                 if gr.get("passed") is not False or g == tries:
                                     break
-                                after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], before_b, after_refs, None)
+                                after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], ref_b, after_refs, None)
                                 after = Image.open(io.BytesIO(after_b))
                                 cost += self.pricing[self.p_edit.name]["generate"]
                             if gr.get("passed") is False:               # 끝까지 떨어짐 → 가장 가까운 컷으로 되돌린다
@@ -336,7 +358,8 @@ class Batch:
             meta["after_results"] = {}
             for when, ab, after_pp, ungate in outs:
                 r = {"fail_reasons": []}
-                st = structure.check(before_pp, after_pp, self.mode, t["mask_region"]); r["structure"] = st
+                st = structure.check(before_pp, after_pp, self.mode, t["mask_region"],
+                                     copy_head_only=_lpf.get("copy_gate") == "head"); r["structure"] = st
                 # passed 는 3값이다 — True(통과) / False(탈락) / None(못 잼). None 을 실패로 세면 같은 컷에 돈만 쓴다.
                 if st.get("passed") is False:
                     r["fail_reasons"].append("structure")

@@ -209,6 +209,21 @@ looks_profile:
     after_lighting: [window, golden_hour, mixed]
     # 09-22 연서님 "각도 한 칸 풀어서" — v36 복붙 4/6. 이웃 한 칸만(angle_neighbors), 되돌리기 = 이 줄 삭제.
     after_relax: [angle]
+    # 09-22 연서님 v39 다음 지시 — "After 각도 후보는 카메라 위/아래·고개 기울임·3/4로 넓혀서".
+    #   v39 는 이웃 한 칸·확률 0.7 이라 6번 중 5번이 복붙(고개 차이 0.005~0.008). 이 목록이 있으면 이웃표 대신
+    #   이 안에서 **Before 와 다른 각도로 반드시** 바꾼다(spec.drift_after). selfie_low 는 팔자 Before 추첨엔
+    #   여전히 금지다(주름 과장) — After 에만 오면 주름이 더 진해 보여 효과가 *약해지는* 쪽이라 가짜 효과가 아니다.
+    #   되돌리기 = 이 줄 삭제(종전 이웃 한 칸 경로로 돌아간다).
+    after_angles: [selfie_high, selfie_low, chin_up, tilted, selfie_3q]
+    # 같은 날 — "Before는 얼굴만 오려서 넘기고 머리 스타일은 문장으로 유지". After 생성 참조를 Before 통째가 아니라
+    #   얼굴 윤곽 안쪽만(qa/landmarks.face_crop, 눈 수평 정렬)으로 넘긴다. 얼굴 미검출이면 종전대로 통째(fail-open).
+    #   되돌리기 = 이 줄 삭제.
+    before_ref: face_crop
+    # 같은 날 — "미모 컷은 고개 차이 기준(0.015) 아래면 '너무 같음'으로 다시 그리게 게이트로 강제".
+    #   종전 복붙 게이트는 표정 AND 고개(structure.copy_check)였다. 미모는 표정을 일부러 잠가 두므로 표정 조건이
+    #   늘 참 → 고개 하나만 본다. 걸리면 Before 는 그대로 두고 After 만 다시 그린다(copy 는 REDO_BEFORE 밖).
+    #   되돌리기 = 이 줄 삭제.
+    copy_gate: head
     # 09-22 연서님 v37 검수 "패치가 AI 합성 느낌 · 효과 없음" — 직후(패치·붓기) 컷을 미모에서 뺀다. 되돌리기 = 이 줄 삭제.
     timeline: [2w]
     gates_bg: [cafe_window, terrace_golden, park_green, cafe, outdoor, home, car]

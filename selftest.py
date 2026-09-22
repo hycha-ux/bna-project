@@ -310,8 +310,11 @@ for _t in _T:
                     _viol[f"{_t} relax-mouth:{_ax}"] = _viol.get(f"{_t} relax-mouth:{_ax}", 0) + 1
                 continue
             # 미모 프로필 after_relax(09-22 각도)도 허가된 예외 — 대신 이웃 한 칸이 새 제약이다(㊷가 따로 잰다).
-            if _ax in (looks_profile(_p.get("looks", {}).get("key"), None, _t).get("after_relax") or []):
-                if _af[_ax]["key"] != _p[_ax]["key"] and _af[_ax]["key"] not in (_V.get(f"{_ax}_neighbors", {}).get(_p[_ax]["key"]) or []):
+            #   09-22 오후 `after_angles` 가 있으면 이웃표 대신 그 목록이 제약이다(㊹가 따로 잰다).
+            _lp_c = looks_profile(_p.get("looks", {}).get("key"), None, _t)
+            if _ax in (_lp_c.get("after_relax") or []):
+                _okset = (_lp_c.get(f"after_{_ax}s") or _V.get(f"{_ax}_neighbors", {}).get(_p[_ax]["key"]) or [])
+                if _af[_ax]["key"] != _p[_ax]["key"] and _af[_ax]["key"] not in _okset:
                     _viol[f"{_t} relax-nb:{_ax}"] = _viol.get(f"{_t} relax-nb:{_ax}", 0) + 1
                 continue
             if _af[_ax]["key"] != _p[_ax]["key"]: _viol[f"{_t} drift:{_ax}"] = _viol.get(f"{_t} drift:{_ax}", 0) + 1
@@ -2636,6 +2639,25 @@ _w43 = {r["afters"][-1]["when"] for r in _r39on}
 ok(_w43 == {"2w"}, f"미모 단발 컷은 2주만 — {sorted(_w43)} ({len(_r39on)}장)")
 _wo43 = {build_prompts("nasolabial", "selfie", v, 900 + i)["afters"][-1]["when"] for i, v in enumerate(_ord42)}
 ok({"immediate", "2w"} <= _wo43, f"보통 인물 시점은 그대로 추첨 — {sorted(_wo43)}")
+# ㊹ (09-22 연서님 "얼굴만 오려서 넘기고 · 고개 차이 0.015 아래면 '너무 같음' 게이트 · After 각도 후보 넓혀서") —
+#   ① 미모 단발 After 각도는 **반드시** 바뀌고 after_angles 안에서만 ② 목록이 이웃 한 칸보다 실제로 넓게 쓰인다
+#   ③ 고개만 보는 규칙은 표정이 달라도 고개가 같으면 '너무 같음' ④ 종전 AND 규칙은 그대로 ⑤ 얼굴 못 찾으면 오리지 않는다.
+_AA44 = set(load("variations.yaml")["looks_profile"]["attractive"]["after_angles"])
+_ab44 = [(r["variation"], r["afters"][-1]["after_variation"]) for r in _r39on]
+ok(all(a["angle"]["key"] != b["angle"]["key"] and a["angle"]["key"] in _AA44 for b, a in _ab44),
+   f"㊹ 미모 단발 After 각도는 반드시 바뀌고 후보 목록 안 ({len(_ab44)}장)")
+_used44 = {a["angle"]["key"] for _b, a in _ab44}
+ok(len(_used44) >= 4 and any(a["angle"]["key"] not in _nb42.get(b["angle"]["key"], []) for b, a in _ab44),
+   f"㊹ 후보가 이웃 한 칸보다 넓게 쓰인다 — {sorted(_used44)}")
+import numpy as _np44
+from bna.qa import structure as _st44, landmarks as _lm44
+_pb44 = _np44.random.default_rng(44).uniform(100, 900, (478, 2))
+_pa44 = _pb44.copy(); _pa44[13] += (0, 40); _pa44[14] -= (0, 40)          # 입만 크게 벌림 — 고개는 그대로
+ok(_st44.copy_check(_pb44, _pa44, "selfie", head_only=True)["passed"] is False,
+   "㊹ 고개만 보는 규칙 — 표정이 달라도 고개가 같으면 '너무 같음'")
+ok(_st44.copy_check(_pb44, _pa44, "selfie")["passed"] is True, "㊹ 종전 AND 규칙(보통 인물)은 그대로 — 표정이 다르면 통과")
+from PIL import Image as _Im44
+ok(_lm44.face_crop(_Im44.new("RGB", (64, 64)), None) is None, "㊹ 얼굴 못 찾으면 오리지 않는다(종전 통째 참조로 fail-open)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
