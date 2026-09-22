@@ -359,7 +359,8 @@ class Batch:
             for when, ab, after_pp, ungate in outs:
                 r = {"fail_reasons": []}
                 st = structure.check(before_pp, after_pp, self.mode, t["mask_region"],
-                                     copy_head_only=_lpf.get("copy_gate") == "head"); r["structure"] = st
+                                     copy_head_only=_lpf.get("copy_gate") == "head",
+                                     copy_roll_deg=_lpf.get("copy_roll_deg")); r["structure"] = st
                 # passed 는 3값이다 — True(통과) / False(탈락) / None(못 잼). None 을 실패로 세면 같은 컷에 돈만 쓴다.
                 if st.get("passed") is False:
                     r["fail_reasons"].append("structure")

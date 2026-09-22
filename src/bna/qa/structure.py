@@ -5,7 +5,8 @@ from . import landmarks as L
 from ..spec import load
 
 
-def check(before: Image.Image, after: Image.Image, mode: str, region: str, copy_head_only: bool = False) -> dict:
+def check(before: Image.Image, after: Image.Image, mode: str, region: str, copy_head_only: bool = False,
+          copy_roll_deg: float = None) -> dict:
     tol = load("clinical_rig.yaml")["tolerance"]
     pb, pa = L.detect(before), L.detect(after)
     out = {"face_detected": pb is not None and pa is not None}
@@ -16,7 +17,8 @@ def check(before: Image.Image, after: Image.Image, mode: str, region: str, copy_
         #   **$1.14 를 태우고 실패**했다. 랜드마크가 없는 건 그림이 나빠서가 아니라 눈이 프레임 밖이라
         #   생기는 일이고, 다시 뽑아도 같은 변주면 또 미검출이다(재시도가 원리적으로 무의미).
         #   → passed=None(미판정). 상위(batch)가 None 을 실패로 세지 않으므로 비전 채점으로 넘어간다.
-        return {**out, "passed": None, "measured": False, "copy": copy_check(pb, pa, mode, head_only=copy_head_only),
+        return {**out, "passed": None, "measured": False,
+                "copy": copy_check(pb, pa, mode, head_only=copy_head_only, roll_deg=copy_roll_deg),
                 "reason": "얼굴 미검출 — 부분 크롭·측면이면 정상이다(구조 검사 미측정, 비전 채점으로 판정)"}
 
     kb, ka = L.key_points(pb), L.key_points(pa)
@@ -31,7 +33,7 @@ def check(before: Image.Image, after: Image.Image, mode: str, region: str, copy_
     out.update(region_frame(pa, region, after.size))
     # 복붙 판정은 **여기 붙여도 값이 안 든다** — 랜드마크를 이미 떴으므로 추가 검출이 0이다.
     # 다만 `passed` 에는 섞지 않는다(별개 게이트라 화면·통계가 갈라 봐야 한다). 소비는 batch 가 한다.
-    out["copy"] = copy_check(pb, pa, mode, head_only=copy_head_only)
+    out["copy"] = copy_check(pb, pa, mode, head_only=copy_head_only, roll_deg=copy_roll_deg)
 
     if mode == "clinical":
         out["passed"] = (out["align_err_pct"] <= tol["landmark_align_pct"] and out["face_ratio_diff"] <= tol["face_ratio_diff"]
@@ -129,7 +131,7 @@ COPY_EXPR_CUT, COPY_HEAD_CUT = 0.005, 0.015
 
 
 def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cut: float = None,
-               head_only: bool = False) -> dict:
+               head_only: bool = False, roll_deg: float = None) -> dict:
     """복붙 판정 한 벌. 셀카에서만 걸고, 임상·얼굴 미검출은 **못 잼**(None)으로 둔다.
 
     3값 규칙은 이 파일의 다른 자들과 같다 — None 은 실패가 아니다(상위가 실패로 세지 않는다).
@@ -149,8 +151,21 @@ def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cu
     # head_only(2026-09-22 연서님, 미모 프로필 `copy_gate: head`): 표정을 일부러 잠근 컷은 표정 조건이 늘 참이라
     #   AND 가 사실상 고개 하나다 — 그걸 명시로 바꾸고 원장에 규칙을 남긴다(옛 회차와 갈라 보려면 `rule` 을 봐라).
     same = head <= hc if head_only else (expr <= ec and head <= hc)
+    # 기울기(roll) 인정 (2026-09-22 연서님 "A로" — v40 실측): pose_vector 는 눈 선을 수평으로 돌려 놓고 재므로
+    #   **좌우 기울기 변화는 head_diff 에 0으로 잡힌다**. v40 은 Before 12~18° 기울임 → After 똑바로인데 0.012 로
+    #   '너무 같음'이 났다. roll_deg 를 주면 두 사진 눈 선 각도 차이가 그 이상일 때 '다름'으로 본다. 없으면 종전 그대로.
+    roll = None
+    if roll_deg is not None:
+        def _ang(p):
+            k = L.key_points(p); d = k["eye_r"] - k["eye_l"]
+            return float(np.degrees(np.arctan2(d[1], d[0])))
+        roll = abs((_ang(after_pts) - _ang(before_pts) + 180) % 360 - 180)
+        cuts["roll_deg"] = roll_deg
+        if roll >= roll_deg:
+            same = False
     return {"expr_diff": round(expr, 4), "head_diff": round(head, 4), "cuts": cuts,
-            "rule": "head" if head_only else "expr_and_head",
+            "roll_diff": None if roll is None else round(roll, 1),
+            "rule": ("head" if head_only else "expr_and_head") + ("+roll" if roll_deg is not None else ""),
             "measured": True, "passed": not same,
             "reason": "" if not same else
                       (f"전·후의 고개가 거의 같다(고개 {head:.4f}≤{hc}, 미모 컷은 고개만 본다) — 너무 같음" if head_only else

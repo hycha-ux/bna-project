@@ -2656,6 +2656,16 @@ _pa44 = _pb44.copy(); _pa44[13] += (0, 40); _pa44[14] -= (0, 40)          # 입�
 ok(_st44.copy_check(_pb44, _pa44, "selfie", head_only=True)["passed"] is False,
    "㊹ 고개만 보는 규칙 — 표정이 달라도 고개가 같으면 '너무 같음'")
 ok(_st44.copy_check(_pb44, _pa44, "selfie")["passed"] is True, "㊹ 종전 AND 규칙(보통 인물)은 그대로 — 표정이 다르면 통과")
+# ㊺ (09-22 연서님 "A로") — 기울기 10° 이상 차이는 '다름'. 합성 점: After 를 얼굴 중심 기준 15° 돌린다(자세·표정 동일).
+_c45 = _pb44.mean(axis=0); _t45 = _np44.radians(15)
+_R45 = _np44.array([[_np44.cos(_t45), -_np44.sin(_t45)], [_np44.sin(_t45), _np44.cos(_t45)]])
+_pr45 = (_pb44 - _c45) @ _R45.T + _c45
+ok(_st44.copy_check(_pb44, _pr45, "selfie", head_only=True)["passed"] is False,
+   "㊺ 기울기만 바뀐 컷은 고개 자로는 '너무 같음'(v40 사각지대 재현)")
+_r45 = _st44.copy_check(_pb44, _pr45, "selfie", head_only=True, roll_deg=10)
+ok(_r45["passed"] is True and abs(_r45["roll_diff"] - 15) < 0.5, f"㊺ 기울기 10° 이상이면 '다름' — {_r45['roll_diff']}°")
+ok(_st44.copy_check(_pb44, _pb44, "selfie", head_only=True, roll_deg=10)["passed"] is False, "㊺ 똑같은 컷은 여전히 '너무 같음'")
+ok(load("variations.yaml")["looks_profile"]["attractive"].get("copy_roll_deg") == 10, "㊺ 미모 프로필에 기울기 10° 가 걸려 있다")
 from PIL import Image as _Im44
 ok(_lm44.face_crop(_Im44.new("RGB", (64, 64)), None) is None, "㊹ 얼굴 못 찾으면 오리지 않는다(종전 통째 참조로 fail-open)")
 

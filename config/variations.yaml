@@ -224,6 +224,9 @@ looks_profile:
     #   늘 참 → 고개 하나만 본다. 걸리면 Before 는 그대로 두고 After 만 다시 그린다(copy 는 REDO_BEFORE 밖).
     #   되돌리기 = 이 줄 삭제.
     copy_gate: head
+    # 같은 날 v40 뒤 연서님 "A로" — 고개 자는 기울기를 지우고 재서(structure.pose_vector) 기울임 각도로 바뀐 컷도
+    #   '너무 같음'이 났다(v40 실측 기울기 차 12~18°, head 0.012). 눈 선 각도 차가 이 값 이상이면 '다름'. 되돌리기 = 이 줄 삭제.
+    copy_roll_deg: 10
     # 09-22 연서님 v37 검수 "패치가 AI 합성 느낌 · 효과 없음" — 직후(패치·붓기) 컷을 미모에서 뺀다. 되돌리기 = 이 줄 삭제.
     timeline: [2w]
     gates_bg: [cafe_window, terrace_golden, park_green, cafe, outdoor, home, car]
