@@ -494,6 +494,12 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
                 ca = allowed_values("context", keys, mode, v, tr, base=override.get("context"), stage=stg)
                 if keys["context"] not in ca:           # 배경을 옮겼으면 맥락도 새 배경에 맞춘다
                     c = rng.choice(ca); after["context"] = {"key": c, "text": v["context"][c]}; keys["context"] = c
+    # 미모 소품 게이트(2026-09-22 연서님 v44 검수 "수건 머리띠·잠옷·집 티셔츠 제외") — 직후 컷 전용 맥락(after_immediate
+    #   override: clinic_headband·outing_top·hair_flat_after)은 allowed_values 의 looks 게이트를 우회한다(base 가 이긴다).
+    #   그래서 마지막에 한 번 더: 게이트 밖이면 Before 값으로 되돌린다(Before 는 이미 게이트 안). rng 소비 없음.
+    _gctx = (looks_profile((variation.get("looks") or {}).get("key"), v, treatment).get("gates") or {}).get("context")
+    if _gctx and "context" in after and keys.get("context") not in _gctx and "context" in variation:
+        after["context"] = dict(variation["context"]); keys["context"] = variation["context"]["key"]
     return after
 
 

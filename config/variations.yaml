@@ -190,7 +190,9 @@ looks_profile:
     #   가중(weights.framing)만으론 v35 0001 이 lower_face 로 나갔다. After 이웃 이동도 이 게이트를 거쳐
     #   full_face→forehead_cut 이 막힌다(drift_after 의 allowed_values). 되돌리기 = framing 한 칸 삭제.
     gates: {framing: [full_face, head_to_bust], skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],
-            skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight, side_swept, long_wavy, bangs]}
+            skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight, side_swept, long_wavy, bangs],
+            # v45 (09-22 연서님 v44 검수 — 통과 컷 After 에 수건 머리띠) 미모 소품은 이 여섯만. 잠옷·집 티셔츠·수건 머리띠·얼굴 덮은 머리 제외.
+            context: [none, necklace, knit_cardigan, white_blouse, fitted_black_top, cap]}
     skin_text: {clear: "clear, even skin"}
     # 09-22 연서님: "see-through bangs" 가 앞머리를 눈 위로 내렸다(v37 0001 채택 컷 Before 포함) →
     #   "눈썹 위·두 눈 완전 노출"로 교체. 눈 가림은 qa_checklist `eyes_uncovered` 가 따로 잰다(미모는 기록 전용).
@@ -213,7 +215,8 @@ looks_profile:
     # 같은 검수 — 팔자 미모 나이 = 30대 중후반(나이 칸은 30s 하나라 문구만 좁힌다, 추첨은 looks_age_by_treatment).
     age_text: {"30s": "in their mid-to-late 30s"}
     # 같은 검수 — "눈 가림 검사가 눈 멀쩡한 컷을 2점으로 탈락" → 미모 컷은 채점·기록만, 탈락 사유 아님. 되돌리기 = 이 줄 삭제.
-    ungate: [eyes_uncovered]
+    # v45 (같은 날 연서님 v43·v44 검수 "채택한 것 중 3장이 손 보임·복붙으로 기계가 떨어뜨린 컷") — 손 검사도 기록 전용.
+    ungate: [eyes_uncovered, hands_absent]
     before_condition:
       nasolabial:
         moderate: >

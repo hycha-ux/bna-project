@@ -2714,6 +2714,15 @@ ok(_pr48 is not None and _pr48[1] != "face_08.jpg" and _pr48[1] not in _rf48.BAD
    and (_pr48[2]["roll_diff"] >= 10 or _pr48[2]["head_diff"] >= 0.03), f"㊽ 자세 참조는 Before 와 각도 다른 장 — {_pr48 and _pr48[2]}")
 ok(_rf48.pose_ref(_pt48, "b|0000|2w")[1] == _pr48[1], "㊽ 같은 컷 키면 같은 자세 참조(재시도 재현)")
 ok(len({_rf48.pose_ref(_pt48, f"b|{i:04d}|2w")[1] for i in range(20)}) >= 3, "㊽ 컷마다 자세 참조가 갈린다")
+# ㊾ (v45, 09-22 연서님 v44 검수) — ① 미모 컷 손 검사 기록 전용 ② 미모 소품은 여섯만(Before·After 둘 다), 보통 인물은 그대로.
+_K49 = {"none", "necklace", "knit_cardigan", "white_blouse", "fitted_black_top", "cap"}
+ok("hands_absent" in (load("variations.yaml")["looks_profile"]["attractive"].get("ungate") or []), "㊾ 미모 손 검사 기록 전용")
+_m49 = [build_prompts("nasolabial", "selfie", v, 4900 + i) for i, v in enumerate(_v48) if v["looks"]["key"] == "attractive"]
+_cb49 = {r["variation"]["context"]["key"] for r in _m49}
+_ca49 = {a["after_variation"]["context"]["key"] for r in _m49 for a in r["afters"]}
+ok(_cb49 <= _K49 and _ca49 <= _K49, f"㊾ 미모 소품 여섯 안 — Before {sorted(_cb49)} / After {sorted(_ca49)} ({len(_m49)}장)")
+_o49 = {v["context"]["key"] for v in _v48 if v["looks"]["key"] != "attractive"}
+ok(_o49 & {"pajamas", "home_tee", "towel_headband"}, f"㊾ 보통 인물 소품은 그대로 — {sorted(_o49)}")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
