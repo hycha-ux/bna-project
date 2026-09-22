@@ -404,7 +404,11 @@ class Batch:
                     # After 면 Before 는 멀쩡하니 After 만 다시 그린다. 안 가르면 둘 중 하나가 늘 틀린다.
                     r["fail_reasons"].append("collage_before" if ((idn.get("faces") or {}).get("before") or 0) >= 2 else "collage")
                 if not r["fail_reasons"]:
-                    vs = await loop.run_in_executor(None, vision.score, before_out, ab, self.mode, self.p_qa, ungate)
+                    # 직후 컷 전용 자 (2026-09-22 연서님 "효과 면제는 이해하는데 대신 거는 자가 없어") — 직후는
+                    #   immediate_look 으로 통과/탈락하고 effect_visible 은 기록만(qa_checklist.yaml items_immediate 머리말).
+                    #   판정은 spec 이 실어 보낸 qa_extra 하나(시점 이름을 여기서 다시 보지 마라 — 규칙 두 벌 금지).
+                    _qx = next((a.get("qa_extra") for w2, a, _i in afters_out if w2 == when), None)
+                    vs = await loop.run_in_executor(None, vision.score, before_out, ab, self.mode, self.p_qa, ungate, _qx)
                     r["vision"] = vs; meta["cost"] += self.pricing[self.p_qa.name]["qa"]
                     r["fail_reasons"] += [f"vision:{k}" for k in vs["failed_items"]]
                 meta["after_results"][when] = r

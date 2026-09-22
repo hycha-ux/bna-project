@@ -15,6 +15,12 @@ hard_fail: [identity]   # 이 항목이 임계 미달이면 다른 점수와 무
 #      기계 검수는 사람 검수 앞의 거름망이지 대체가 아니다.
 thresholds:
   effect_visible: 6
+  # 2026-09-22 immediate_look 5 (근거: 사람 판정 직후 컷 53세트 재채점, tools/rescore_immediate.py → outputs/rescore/immediate_look_v2.jsonl).
+  #   v1 문구("같은 날")는 배경·옷 변화를 다른 날로 읽어 사람 판정과 거꾸로 갔다(채택 대부분 2~3점) → v2 는 얼굴로만 판정.
+  #   v2, 09-18 이후 셀카 25세트(패치 지시 이후): 점수가 2~3 / 7~9 로 갈린다. 컷 5 = 채택 10/13 남김 · 탈락 4/12 거름
+  #   (거른 4장 전부 사람 사유 '효과 없음'). ⚠ 사람이 'AI 티'로 뺀 8장은 이 자가 7~9점을 준다 — 이 항목은 AI 티 자가 아니다.
+  #   ⚠ 채택 3장(흔적 거의 없음)이 떨어진다. 컷 6·7 은 거름이 같고 채택만 1장 더 잃는다.
+  immediate_look: 5
 # '이 사진엔 해당 없음'을 0점으로 받으면 안 되는 항목. 심사가 "n/a" 로 답할 수 있고, n/a 는 실패가 아니다.
 # 2026-09-09 실사고: 셀카 프롬프트는 "폰이 보이지 않게" 라고 지시하는데 fingers 는 "손가락 다섯 개·자연스러운
 # 그립"을 요구했다. 심사가 "Hands or phone not visible in either image" 라고 적고 0점을 줬고, 그 결과
@@ -40,6 +46,22 @@ items:
 #   ⚠ 문항 글이 바뀌었으므로 이 줄 앞뒤 회차의 effect_visible 점수는 **다른 자로 잰 값**이다(컷 6 은 그대로).
   effect_visible: "The treatment effect is noticeable but within natural, non-exaggerated range, and it covers the whole treated area: if only part of the treated line or fold changed while the rest of it is unchanged, or one side changed more than the other, score low even when the changed part looks good."
   ai_look: "Overall image does not look AI-generated (no over-symmetry, waxy glow, odd artifacts)"
+
+# 직후 컷 전용 항목 (2026-09-22 연서님 "직후 컷이 효과 4점인데도 통과돼서 검수함에 와. 효과 면제는 이해하는데
+#   대신 거는 자가 없어") — 직후 컷은 effect_visible 을 기록만 하고(effect_ungated) 이 항목으로 통과/탈락한다.
+#   batch 가 시점 immediate 인 After 에만 붙인다(vision.score 의 extra). 컷은 thresholds.immediate_look (근거는 그 줄).
+items_immediate:
+  immediate_look: >
+    The AFTER photo was taken right after the procedure, on the same day as the BEFORE. Grade two things together.
+    (1) On the treated area only, fresh just-after signs are visible and look natural and physically real: small
+    clear or skin-tone patches lying flat on the treated lines, mild puffiness, or a few tiny red needle points.
+    (2) Everything else is the same person on the same day, judged ONLY from the face itself: the same face, skin,
+    makeup and hair length. The room, background, lighting, clothes, hair band, camera angle and expression are
+    EXPECTED to differ (the photo was retaken at the clinic or on the way home) and must never lower the score.
+    Score 10 when both hold. Score 4 or lower if no just-after sign is visible at all, if the signs look pasted-on,
+    stamped, glowing or unnaturally uniform, if they sit outside the treated area, if they are exaggerated (heavy
+    swelling, bruises, blood, bandages), or if the face, skin, makeup or hair length look like a different person or
+    a different day.
 
 # 모드별 덮어쓰기 — 여기 적은 키만 `items` 를 이긴다(`vision.score` 가 합친다).
 # 2026-09-14 빌디 지적: `drift` 한 줄에 두 모드를 같이 적어 두니 심사가 임상 쪽 뜻으로 읽었다.

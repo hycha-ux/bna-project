@@ -2,7 +2,7 @@
 from ..spec import load
 
 
-def score(before_bytes: bytes, after_bytes: bytes, mode: str, provider, ungate=()) -> dict:
+def score(before_bytes: bytes, after_bytes: bytes, mode: str, provider, ungate=(), extra: str = None) -> dict:
     """ungate = 이 컷에서 **묻긴 하되 탈락시키지 않을** 항목.
 
     2026-09-11 (빌디 지적): 경과 시리즈의 직후 컷은 프롬프트가 `early`("변화가 거의 안 보여야 하고
@@ -20,6 +20,9 @@ def score(before_bytes: bytes, after_bytes: bytes, mode: str, provider, ungate=(
     # 심사가 임상 쪽 뜻으로 읽고 배경·조명이 다르다는 이유로 셀카 컷에 7점을 줬다(컷이 7이라 턱걸이).
     # 결과가 뒤집혀 있었다 — **복사본일수록 이 항목이 만점**이다. 키만 덮으므로 나머지는 그대로다.
     items = {**cfg["items"], **(cfg.get(f"items_{mode}") or {})}
+    # 컷 종류별 추가 항목 (2026-09-22 연서님 — 직후 컷 전용 `items_immediate`). extra = 그 묶음 이름, 없으면 종전 그대로.
+    if extra:
+        items.update(cfg.get(f"items_{extra}") or {})
     raw = provider.qa(before_bytes, after_bytes, items, mode)          # {item: {score, note}}
     th = cfg["threshold"]
     ungate = set(ungate or ())

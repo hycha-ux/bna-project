@@ -2723,6 +2723,22 @@ _ca49 = {a["after_variation"]["context"]["key"] for r in _m49 for a in r["afters
 ok(_cb49 <= _K49 and _ca49 <= _K49, f"㊾ 미모 소품 여섯 안 — Before {sorted(_cb49)} / After {sorted(_ca49)} ({len(_m49)}장)")
 _o49 = {v["context"]["key"] for v in _v48 if v["looks"]["key"] != "attractive"}
 ok(_o49 & {"pajamas", "home_tee", "towel_headband"}, f"㊾ 보통 인물 소품은 그대로 — {sorted(_o49)}")
+# ㊿ (09-22 연서님 "직후 컷 전용 항목") — 직후는 immediate_look 을 묻고 걸며, 다른 시점엔 안 묻는다.
+from bna.qa import vision as _vs50
+class _FakeQA50:
+    def qa(self, b, a, items, mode):
+        self.asked = set(items)
+        return {k: {"score": (3.0 if k == "immediate_look" else 9.0), "note": ""} for k in items}
+_f50 = _FakeQA50()
+_r50 = _vs50.score(b"", b"", "selfie", _f50, ("effect_visible",), "immediate")
+ok("immediate_look" in _f50.asked and "vision" not in _r50 and "immediate_look" in _r50["failed_items"],
+   f"㊿ 직후 컷은 immediate_look 으로 탈락 — {_r50['failed_items']}")
+_vs50.score(b"", b"", "selfie", _f50, ())
+ok("immediate_look" not in _f50.asked, "㊿ 직후 아닌 컷엔 immediate_look 을 안 묻는다")
+ok("immediate_look" in (load("qa_checklist.yaml").get("thresholds") or {}), "㊿ immediate_look 컷이 명시돼 있다")
+_a50 = [a for r in _m49 for a in r["afters"]]
+ok(all((a["qa_extra"] == "immediate") == (a["when"] == "immediate") and (a["when"] != "immediate" or a["effect_ungated"]) for a in _a50)
+   and any(a["when"] == "immediate" for a in _a50), "㊿ 단발 직후 컷도 효과 기록만 + qa_extra=immediate (다른 시점은 없음)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

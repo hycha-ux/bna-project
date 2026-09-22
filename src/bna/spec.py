@@ -985,10 +985,13 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         # → 시리즈에서 **직후 컷은 계측만** 하고(meta 에 점수는 그대로 남는다) 효과 판정은 가라앉은 뒤
         #   컷이 한다. ⚠ 시리즈가 아닐 때(직후 한 장짜리)는 면제하지 않는다 — 그 세트엔 효과를 볼
         #   다른 컷이 없어서, 면제하면 아무도 효과를 안 보게 된다.
-        ungated = lowered or (bool(pts) and w == "immediate")
+        # 09-22 연서님 "직후 컷 전용 항목" — 직후는 단발도 효과 기록만, 대신 immediate_look 으로 건다(qa_extra).
+        #   종전엔 시리즈 직후만 면제였다. 배치는 이 두 칸만 읽는다(시점 이름을 다시 보지 않는다).
+        ungated = lowered or w == "immediate"
+        qa_extra = "immediate" if w == "immediate" else None
         # 직후 패치 위치 게이트 횟수 (2026-09-18 C안) — 배치가 시점 이름을 다시 보지 않게 여기서 실어 보낸다(규칙 두 벌 금지).
         pgate = int(t.get("patch_gate") or 0) if w == "immediate" else 0
-        return {"when": w, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "patch_gate": pgate,
+        return {"when": w, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}
 
