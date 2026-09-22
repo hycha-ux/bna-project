@@ -2620,6 +2620,12 @@ _ord42 = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v
 ok(all(a["after_variation"]["angle"]["key"] == v["angle"]["key"]
        for i, v in enumerate(_ord42) for a in build_prompts("nasolabial", "selfie", v, 900 + i)["afters"]),
    "보통 인물 단발 After 각도는 여전히 잠김")
+# ㊸ (09-22 연서님 v37 검수 "패치가 AI 합성 느낌·효과 없음") — 미모 단발 컷은 2주만(패치·붓기 직후 컷 제외),
+#   보통 인물은 종전대로 직후·1주·2주가 다 나온다(프로필 밖으로 새지 않는다).
+_w43 = {r["afters"][-1]["when"] for r in _r39on}
+ok(_w43 == {"2w"}, f"미모 단발 컷은 2주만 — {sorted(_w43)} ({len(_r39on)}장)")
+_wo43 = {build_prompts("nasolabial", "selfie", v, 900 + i)["afters"][-1]["when"] for i, v in enumerate(_ord42)}
+ok({"immediate", "2w"} <= _wo43, f"보통 인물 시점은 그대로 추첨 — {sorted(_wo43)}")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

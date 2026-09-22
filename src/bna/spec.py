@@ -731,6 +731,13 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     level = rng.choice(list(levels))
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
     when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))
+    # 미모 프로필 시점(2026-09-22 연서님 v37 검수 "패치가 AI 합성 느낌이 강하고 효과가 없어"): 직후 컷은
+    #   투명 패치(흔적)와 붓기를 그리라는 컷이라 결과가 안 보이는 게 설계다 — 무보정 미인 얼굴 위 패치는 도장처럼 떴다.
+    #   → 미모 단발 컷은 `timeline` 목록 안에서만(추첨 rng 는 이미 소비 — 흐름 불변). 되돌리기 = yaml 줄 삭제.
+    _lpt = [w for w in (looks_profile((variation.get("looks") or {}).get("key"), None, treatment).get("timeline") or [])
+            if w in t.get("timeline", ["2w"])]
+    if _lpt and not pts and when not in _lpt:
+        when = _lpt[0]
     _fw = experiment_flags()["when"]                  # 실험 스위치 — 단발 시점 고정(추첨은 이미 한 번 소비했다)
     if _fw and not pts and _fw in t.get("timeline", ["2w"]):
         when = _fw

@@ -196,6 +196,8 @@ looks_profile:
     lock_after: [expression, lighting]
     # 09-22 연서님 "각도 한 칸 풀어서" — v36 복붙 4/6. 이웃 한 칸만(angle_neighbors), 되돌리기 = 이 줄 삭제.
     after_relax: [angle]
+    # 09-22 연서님 v37 검수 "패치가 AI 합성 느낌 · 효과 없음" — 직후(패치·붓기) 컷을 미모에서 뺀다. 되돌리기 = 이 줄 삭제.
+    timeline: [2w]
     gates_bg: [cafe_window, terrace_golden, park_green, cafe, outdoor, home, car]
     skin_texture: "Real skin with visible pores up close, faint peach fuzz and natural asymmetry; individual hair strands."
     skin_read: >
