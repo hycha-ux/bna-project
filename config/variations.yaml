@@ -64,6 +64,8 @@ hair_style:
   slicked_back: "short hair neatly slicked back off the forehead"
   short_perm: "short soft wavy perm"
   crop_fringe: "short textured crop with a short fringe well above the eyebrows"
+  # 미모 전용 (v43, 09-22 연서님 "미모 머리 4종 분산" 중 '옆으로 넘김') — looks_gates 로 미모에서만, 남성 제외.
+  side_swept: "long hair swept to one side"
 
 hair_color:
   black: "black hair"
@@ -110,7 +112,7 @@ extras:
 # 성별에 따라 제외되는 옵션
 gender_exclusions:
   female: {extras: [beard_light, beard_full], hair_style: [buzz, side_part, slicked_back, short_perm, crop_fringe]}
-  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs, bob, long_straight, ponytail]}   # bob·long_straight 누락 → 남성 20.7% 단발/긴 생머리 (티모 0907 실측)
+  male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs, bob, long_straight, ponytail, side_swept]}   # bob·long_straight 누락 → 남성 20.7% 단발/긴 생머리 (티모 0907 실측)
 
 # 헤어 이웃: After(다른 날) 머리 모양은 2주 안에 될 수 있는 것으로만 (0909 dry-run: 포니테일 → 삭발). 없는 값은 안 바뀐다.
 hair_style_neighbors:
@@ -126,10 +128,11 @@ hair_style_neighbors:
   slicked_back: [side_part]
   short_perm: [short]
   crop_fringe: [short]
+  side_swept: [long_straight, long_wavy]   # 앞머리(bangs)로는 안 간다 — 미모 앞머리는 넷 중 하나만(v43)
 
 # 맥락 × 헤어: 잔머리는 긴 머리에만 (짧은 머리에 "볼을 덮는 잔머리"가 나왔다)
 context_hair:
-  hair_in_face: [long_straight, long_wavy, bob, bangs, ponytail, bun]
+  hair_in_face: [long_straight, long_wavy, bob, bangs, ponytail, bun, side_swept]
 
 # 나이 게이트: 그 값이 어울리는 나이에만 뽑는다 (0909 dry-run: 30대에 새치 + 굵은 목 + 피곤 = 나이가 안 읽힌다)
 age_gates:
@@ -146,6 +149,7 @@ looks_gates:
   background: {cafe_window: [attractive], terrace_golden: [attractive], park_green: [attractive]}
   context: {knit_cardigan: [attractive], white_blouse: [attractive], fitted_black_top: [attractive]}
   lighting: {golden_hour: [attractive]}
+  hair_style: {side_swept: [attractive]}   # v43 미모 머리 4종 중 새 키 — 보통 인물 분포는 안 바뀐다
 
 # 미모 나이 시술별 (2026-09-22 연서님 v40 검수 "팔자 미모는 30대 중후반 중심(팔자가 어울리는 얼굴), 그 외 시술 미모는 20대").
 #   위 looks_gates.age(공통 20~30대) 뒤에 좁힌다 — 판정 = spec.allowed_values. 30대 중후반 문구는 looks_profile.age_text.
@@ -178,18 +182,26 @@ looks_profile:
     # ④ 같은 날: 프로필 회차에서 사람이 뺀 2장이 전부 '효과 없음'(둘 다 기계 통과) → After 에 한 줄(spec.build_after).
     after_note: >
       Side by side with the reference, the softer nasolabial folds and marionette lines must be obvious at a glance,
-      even with the same slight smile and with the light still coming from one side (a different day's light).
-    weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}}
+      even with the same slight smile and the same side light.
+    # v43 (09-22 연서님 "미모 머리 4종 분산") — 머리 가중(long_straight 4)은 뺐다. 4종 균등.
+    weights: {framing: {head_to_bust: 4}}
     # 2차 dry 에서 본 모순 둘을 같이 막았다: '작은 얼굴' + body_type full("fuller face and neck"), '맑은 피부' + 주근깨·점
     # 구도 게이트(2026-09-22 빌디 "미모 컷은 크롭이면 안 된다 — 노션 30장 전부 얼굴 전체~상반신"):
     #   가중(weights.framing)만으론 v35 0001 이 lower_face 로 나갔다. After 이웃 이동도 이 게이트를 거쳐
     #   full_face→forehead_cut 이 막힌다(drift_after 의 allowed_values). 되돌리기 = framing 한 칸 삭제.
     gates: {framing: [full_face, head_to_bust], skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],
-            skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight]}
+            skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight, side_swept, long_wavy, bangs]}
     skin_text: {clear: "clear, even skin"}
     # 09-22 연서님: "see-through bangs" 가 앞머리를 눈 위로 내렸다(v37 0001 채택 컷 Before 포함) →
-    #   "눈썹 위·두 눈 완전 노출"로 교체. 눈 가림은 qa_checklist `eyes_uncovered` 게이트가 따로 거른다.
-    hair_text: {long_straight: "long straight hair with short light bangs cut above the eyebrows; no strand falls over the eyebrows, eyelids or eyes, and both eyes are fully visible"}
+    #   "눈썹 위·두 눈 완전 노출"로 교체. 눈 가림은 qa_checklist `eyes_uncovered` 가 따로 잰다(미모는 기록 전용).
+    # v43 (같은 날 연서님 "미모 머리 4종 분산 — 가르마 긴 생머리·옆으로 넘김·긴 웨이브·눈썹 위 앞머리, 앞머리는 넷 중 하나만"):
+    #   앞머리는 bangs 하나에만, 나머지 셋은 "no bangs" 를 문장에 박는다(종전 long_straight 는 전부 앞머리였다).
+    #   side_swept 는 미모 전용 새 키(looks_gates.hair_style) — 보통 인물 추첨엔 안 나온다.
+    hair_text:
+      long_straight: "long straight hair with a neat side parting, no bangs, the forehead partly showing"
+      side_swept: "long hair swept to one side from a deep side parting, no bangs, the forehead showing"
+      long_wavy: "long soft wavy hair with a side parting, no bangs, the forehead showing"
+      bangs: "long straight hair with short light bangs cut above the eyebrows; no strand falls over the eyebrows, eyelids or eyes, and both eyes are fully visible"
     detail_by_country:
       korea: "with a classic Korean beauty look: fair, clear, luminous skin, a small face, clearly defined bright eyes and full lips"
     makeup: "natural makeup: soft mascara, a thin line of eyeliner and a tinted lip"
@@ -218,24 +230,14 @@ looks_profile:
     #     표정·빛 둘 다 After 에서 잠그고, After 문장도 "같은 웃음 그대로"로 바꾼다(spec.build_prompts 의 smile_held).
     #   욕실·병원 배경은 옆빛을 못 낸다(background_lighting) → 미모에서 뺀다.
     before_force: {expression: [slight_smile], lighting: [window, golden_hour]}
-    # 09-22 연서님 "A로 가자" — 빛 잠금을 풀고 After 빛은 옆빛 3종(after_lighting) 안에서 Before 와 다르게.
-    #   종전 = [expression, lighting]. 되돌리기 = lighting 을 다시 넣고 after_lighting 삭제.
-    lock_after: [expression]
-    after_lighting: [window, golden_hour, mixed]
+    # 09-22 연서님 "A로 가자"(v39)로 빛 잠금을 풀었다가, 같은 날 오후 "v37(08:36)이 제일 좋았고 그 뒤로 계속 나빠졌어.
+    #   사진 설정은 v37로 되돌리자"(v43)로 잠금 복구 — after_lighting(옆빛 3종 안에서 바꾸기)은 삭제. 코드(spec.drift_after)는
+    #   키가 없으면 안 먹으므로 남겨 둔다. 다시 풀려면 lighting 을 빼고 after_lighting: [window, golden_hour, mixed].
+    lock_after: [expression, lighting]
     # 09-22 연서님 "각도 한 칸 풀어서" — v36 복붙 4/6. 이웃 한 칸만(angle_neighbors), 되돌리기 = 이 줄 삭제.
+    #   v40 의 after_angles(5종 강제)·before_ref(얼굴/머리 오려 넘기기)는 v43 에서 삭제 — v37 로 되돌림(Before 통째 참조).
+    #   코드(spec.drift_after·batch)는 키가 없으면 종전 경로라 남겨 둔다. 이력 = LESSONS·git 51b1d98.
     after_relax: [angle]
-    # 09-22 연서님 v39 다음 지시 — "After 각도 후보는 카메라 위/아래·고개 기울임·3/4로 넓혀서".
-    #   v39 는 이웃 한 칸·확률 0.7 이라 6번 중 5번이 복붙(고개 차이 0.005~0.008). 이 목록이 있으면 이웃표 대신
-    #   이 안에서 **Before 와 다른 각도로 반드시** 바꾼다(spec.drift_after). selfie_low 는 팔자 Before 추첨엔
-    #   여전히 금지다(주름 과장) — After 에만 오면 주름이 더 진해 보여 효과가 *약해지는* 쪽이라 가짜 효과가 아니다.
-    #   되돌리기 = 이 줄 삭제(종전 이웃 한 칸 경로로 돌아간다).
-    after_angles: [selfie_high, selfie_low, chin_up, tilted, selfie_3q]
-    # 같은 날 — "Before는 얼굴만 오려서 넘기고 머리 스타일은 문장으로 유지". After 생성 참조를 Before 통째가 아니라
-    #   얼굴 윤곽 안쪽만(qa/landmarks.face_crop, 눈 수평 정렬)으로 넘긴다. 얼굴 미검출이면 종전대로 통째(fail-open).
-    #   되돌리기 = 이 줄 삭제.
-    # 09-22 v40 검수 "얼굴만 오리니 머리 스타일·두상이 달라져 다른 사람 같다" → 머리카락+얼굴(qa/landmarks.head_crop,
-    #   어깨·옷·배경 제외). 분할 실패면 face_crop 으로 물러난다. face_crop 으로 되돌리려면 값만 바꾼다.
-    before_ref: head_crop
     # 같은 날 — "미모 컷은 고개 차이 기준(0.015) 아래면 '너무 같음'으로 다시 그리게 게이트로 강제".
     #   종전 복붙 게이트는 표정 AND 고개(structure.copy_check)였다. 미모는 표정을 일부러 잠가 두므로 표정 조건이
     #   늘 참 → 고개 하나만 본다. 걸리면 Before 는 그대로 두고 After 만 다시 그린다(copy 는 REDO_BEFORE 밖).
@@ -244,8 +246,7 @@ looks_profile:
     # 같은 날 v40 뒤 연서님 "A로" — 고개 자는 기울기를 지우고 재서(structure.pose_vector) 기울임 각도로 바뀐 컷도
     #   '너무 같음'이 났다(v40 실측 기울기 차 12~18°, head 0.012). 눈 선 각도 차가 이 값 이상이면 '다름'. 되돌리기 = 이 줄 삭제.
     copy_roll_deg: 10
-    # 09-22 연서님 v37 검수 "패치가 AI 합성 느낌 · 효과 없음" — 직후(패치·붓기) 컷을 미모에서 뺀다. 되돌리기 = 이 줄 삭제.
-    timeline: [2w]
+    # 09-22 연서님 v37 검수로 직후 컷을 뺐다가(timeline: [2w]) v43 "직후 다시 포함"으로 삭제 — 시점은 시술 추첨 그대로.
     gates_bg: [cafe_window, terrace_golden, park_green, cafe, outdoor, home, car]
     skin_texture: "Real skin with visible pores up close, faint peach fuzz and natural asymmetry; individual hair strands."
     skin_read: >

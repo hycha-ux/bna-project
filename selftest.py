@@ -2595,15 +2595,10 @@ _lh39 = lambda vs, ax, k: sum(v[ax]["key"] == k for v in vs) / max(1, len(vs))
 _r40 = [r for r in _r39on]
 ok(_r40 and all(r["variation"]["expression"]["key"] == "slight_smile" == r["after_variation"]["expression"]["key"] for r in _r40),
    f"프로필 3차 — 미모 Before·After 둘 다 살짝 웃음 ({len(_r40)}장)")
-# 09-22 A안(연서님): After 빛은 잠금이 아니라 '옆빛 3종 안에서 Before 와 다른 종류'로 바뀌었다.
-_SIDE40 = {"window", "golden_hour", "mixed"}
+# 09-22 A안(v39)으로 빛 잠금을 풀었다가 v43(연서님 "v37 로 되돌리자")에서 잠금 복구 — After 도 같은 빛.
 ok(all(r["variation"]["lighting"]["key"] in ("window", "golden_hour")
-       and r["after_variation"]["lighting"]["key"] in _SIDE40 for r in _r40),
-   "프로필 3차 — 미모 Before 는 옆빛(창가·늦은 오후), After 도 옆빛 3종 안")
-_lchg40 = sum(r["after_variation"]["lighting"]["key"] != r["variation"]["lighting"]["key"] for r in _r40)
-ok(_lchg40 >= len(_r40) * 0.9, f"A안 — 미모 After 빛 종류가 실제로 바뀐다 ({_lchg40}/{len(_r40)})")
-ok(all(r["after_variation"]["lighting"]["key"] in (_V.get("background_lighting", {}).get(r["after_variation"]["background"]["key"]) or [r["after_variation"]["lighting"]["key"]])
-       for r in _r40), "A안 — 바뀐 빛은 After 배경이 낼 수 있는 빛이다")
+       and r["variation"]["lighting"]["key"] == r["after_variation"]["lighting"]["key"] for r in _r40),
+   "프로필 3차 — 미모 Before 는 옆빛(창가·늦은 오후)이고 After 도 같은 빛(v43 잠금 복구)")
 _m40 = [v for v in _pb38("selfie", 300, 77, {}, treatment="nasolabial") if v["gender"]["key"] == "male"]
 ok(len({v["hair_style"]["key"] for v in _m40}) >= 4, f"남성 머리가 여러 가지로 나온다 — {sorted({v['hair_style']['key'] for v in _m40})}")
 ok(not any(v["hair_style"]["key"] in ("side_part", "slicked_back", "short_perm", "crop_fringe")
@@ -2630,28 +2625,25 @@ _ab42 = [(r["variation"], a["after_variation"]) for r in _r41 for a in r["afters
 _mv42 = [(b, a) for b, a in _ab42 if a["angle"]["key"] != b["angle"]["key"]]
 ok(0 < len(_mv42) < len(_ab42), f"미모 After 각도가 실제로 바뀐다(강제 아님) — {len(_mv42)}/{len(_ab42)}컷")
 ok(all(a["angle"]["key"] in _nb42[b["angle"]["key"]] for b, a in _mv42), "미모 After 각도는 이웃 한 칸만")
-ok(all(a["expression"]["key"] == b["expression"]["key"] for b, a in _ab42),
-   "미모 After 표정 잠금은 그대로(빛은 09-22 A안으로 옆빛 안에서 바뀐다 — ㊵)")
+ok(all(a["expression"]["key"] == b["expression"]["key"] and a["lighting"]["key"] == b["lighting"]["key"] for b, a in _ab42),
+   "미모 After 표정·빛 잠금은 그대로(v43 빛 잠금 복구)")
 _ord42 = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v["looks"]["key"] != "attractive"][:40]
 ok(all(a["after_variation"]["angle"]["key"] == v["angle"]["key"]
        for i, v in enumerate(_ord42) for a in build_prompts("nasolabial", "selfie", v, 900 + i)["afters"]),
    "보통 인물 단발 After 각도는 여전히 잠김")
-# ㊸ (09-22 연서님 v37 검수 "패치가 AI 합성 느낌·효과 없음") — 미모 단발 컷은 2주만(패치·붓기 직후 컷 제외),
-#   보통 인물은 종전대로 직후·1주·2주가 다 나온다(프로필 밖으로 새지 않는다).
+# ㊸ (09-22 연서님 v37 검수로 미모 직후 컷을 뺐다가 v43 "직후 다시 포함"으로 되돌림) — 미모 단발 컷도 직후·2주가 다 나온다.
 _w43 = {r["afters"][-1]["when"] for r in _r39on}
-ok(_w43 == {"2w"}, f"미모 단발 컷은 2주만 — {sorted(_w43)} ({len(_r39on)}장)")
+ok({"immediate", "2w"} <= _w43, f"㊸ v43 미모 단발 컷에 직후가 다시 나온다 — {sorted(_w43)} ({len(_r39on)}장)")
 _wo43 = {build_prompts("nasolabial", "selfie", v, 900 + i)["afters"][-1]["when"] for i, v in enumerate(_ord42)}
 ok({"immediate", "2w"} <= _wo43, f"보통 인물 시점은 그대로 추첨 — {sorted(_wo43)}")
-# ㊹ (09-22 연서님 "얼굴만 오려서 넘기고 · 고개 차이 0.015 아래면 '너무 같음' 게이트 · After 각도 후보 넓혀서") —
-#   ① 미모 단발 After 각도는 **반드시** 바뀌고 after_angles 안에서만 ② 목록이 이웃 한 칸보다 실제로 넓게 쓰인다
-#   ③ 고개만 보는 규칙은 표정이 달라도 고개가 같으면 '너무 같음' ④ 종전 AND 규칙은 그대로 ⑤ 얼굴 못 찾으면 오리지 않는다.
-_AA44 = set(load("variations.yaml")["looks_profile"]["attractive"]["after_angles"])
+# ㊹ (09-22 v40 "고개 차이 0.015 아래면 '너무 같음' 게이트") — 게이트·자 검사는 유지. v40 의 After 각도 5종 강제·
+#   얼굴 오려 넘기기는 v43 에서 설정 삭제(v37 로 되돌림) → 미모 단발 After 각도는 이웃 한 칸(㊷)이고 참조는 통째.
+_P44 = load("variations.yaml")["looks_profile"]["attractive"]
+ok("after_angles" not in _P44 and "before_ref" not in _P44 and "after_lighting" not in _P44 and "timeline" not in _P44,
+   "㊹ v43 되돌림 — 각도 5종 강제·오려 넘기기·빛 잠금 해제·직후 제거 설정이 없다")
 _ab44 = [(r["variation"], r["afters"][-1]["after_variation"]) for r in _r39on]
-ok(all(a["angle"]["key"] != b["angle"]["key"] and a["angle"]["key"] in _AA44 for b, a in _ab44),
-   f"㊹ 미모 단발 After 각도는 반드시 바뀌고 후보 목록 안 ({len(_ab44)}장)")
-_used44 = {a["angle"]["key"] for _b, a in _ab44}
-ok(len(_used44) >= 4 and any(a["angle"]["key"] not in _nb42.get(b["angle"]["key"], []) for b, a in _ab44),
-   f"㊹ 후보가 이웃 한 칸보다 넓게 쓰인다 — {sorted(_used44)}")
+ok(all(a["angle"]["key"] == b["angle"]["key"] or a["angle"]["key"] in _nb42.get(b["angle"]["key"], []) for b, a in _ab44),
+   f"㊹ v43 미모 단발 After 각도는 이웃 한 칸 안 ({len(_ab44)}장)")
 import numpy as _np44
 from bna.qa import structure as _st44, landmarks as _lm44
 _pb44 = _np44.random.default_rng(44).uniform(100, 900, (478, 2))
@@ -2677,12 +2669,26 @@ ok({r["variation"]["age"]["key"] for r in _r39on} == {"30s"}, "㊻ 팔자 미모
 ok(all("in their mid-to-late 30s" in r["before_prompt"] for r in _r39on), "㊻ 팔자 미모 인물 문구 = 30대 중후반")
 _o46 = [v for v in _pb38("selfie", 300, 4646, {}, treatment="skin_pores") if v["looks"]["key"] == "attractive"]
 ok(_o46 and {v["age"]["key"] for v in _o46} <= {"early_20s", "late_20s"}, f"㊻ 그 외 시술 미모는 20대만 — {sorted({v['age']['key'] for v in _o46})}")
-ok("eyes_uncovered" in (_P46.get("ungate") or []) and _P46.get("before_ref") == "head_crop",
-   "㊻ 미모 눈 가림 기록 전용 + 머리 전체 참조 설정")
+ok("eyes_uncovered" in (_P46.get("ungate") or []), "㊻ 미모 눈 가림 기록 전용")
 ok(any(r["afters"][-1]["effect_level"] != "moderate" for r in
        [build_prompts("nasolabial", "selfie", v, 900 + i) for i, v in enumerate(_ord42)]), "㊻ 보통 인물 효과 추첨은 그대로")
 from PIL import Image as _Im44
 ok(_lm44.face_crop(_Im44.new("RGB", (64, 64)), None) is None, "㊹ 얼굴 못 찾으면 오리지 않는다(종전 통째 참조로 fail-open)")
+# ㊼ (v43, 09-22 연서님 "미모 머리 4종 분산 — 가르마 긴 생머리·옆으로 넘김·긴 웨이브·눈썹 위 앞머리, 앞머리는 넷 중 하나만")
+#   ① 미모 여성 Before 가 4종 안이고 4종 다 나온다 ② 한 종이 절반을 넘지 않는다(분산) ③ 앞머리 문장은 bangs 에만
+#   ④ After 머리도 4종 안이고 앞머리로 새로 가지 않는다 ⑤ side_swept 는 보통 인물·남성에 안 나온다.
+_H47 = {"long_straight", "side_swept", "long_wavy", "bangs"}
+_f47 = [r for r in _r39on if r["variation"]["gender"]["key"] == "female"]
+_hb47 = [r["variation"]["hair_style"]["key"] for r in _f47]
+ok(_f47 and set(_hb47) == _H47, f"㊼ 미모 머리 4종이 다 나온다 — {sorted(set(_hb47))} ({len(_f47)}장)")
+ok(max(_hb47.count(k) for k in _H47) <= len(_hb47) * 0.5, f"㊼ 한 종이 절반을 넘지 않는다 — { {k: _hb47.count(k) for k in sorted(_H47)} }")
+ok(all(("bangs cut above" in r["before_prompt"]) == (r["variation"]["hair_style"]["key"] == "bangs") for r in _f47),
+   "㊼ 앞머리 문장은 bangs 한 종에만")
+ok(all(a["after_variation"]["hair_style"]["key"] in _H47
+       and (a["after_variation"]["hair_style"]["key"] != "bangs" or r["variation"]["hair_style"]["key"] == "bangs")
+       for r in _f47 for a in r["afters"]), "㊼ After 머리도 4종 안, 앞머리로 새로 가지 않는다")
+ok(not any(v["hair_style"]["key"] == "side_swept" for v in _pb38("selfie", 300, 4747, {}, treatment="nasolabial")
+           if v["looks"]["key"] != "attractive" or v["gender"]["key"] == "male"), "㊼ 옆으로 넘김은 미모 여성 전용")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
