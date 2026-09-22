@@ -2689,6 +2689,31 @@ ok(all(a["after_variation"]["hair_style"]["key"] in _H47
        for r in _f47 for a in r["afters"]), "㊼ After 머리도 4종 안, 앞머리로 새로 가지 않는다")
 ok(not any(v["hair_style"]["key"] == "side_swept" for v in _pb38("selfie", 300, 4747, {}, treatment="nasolabial")
            if v["looks"]["key"] != "attractive" or v["gender"]["key"] == "male"), "㊼ 옆으로 넘김은 미모 여성 전용")
+# ㊽ (v44, 09-22 연서님 v43 검수) — ① 팔자 셀카 시점 가중 2주 5·1주 3·직후 2(직후 20%, 빼지 않는다), 미모는 직후 1
+#   ② 임상은 종전 균등 ③ 미모 After 자세 참조: Before 와 각도 다른 노션 컷(기울기 ≥10° 또는 고개 ≥0.03), 같은 키=같은 장, 미검출=없음.
+from collections import Counter as _C48
+_v48 = _pb38("selfie", 600, 4848, {}, treatment="nasolabial")
+_w48o = _C48(build_prompts("nasolabial", "selfie", v, 4800 + i)["afters"][-1]["when"] for i, v in enumerate(_v48) if v["looks"]["key"] != "attractive")
+_w48m = _C48(build_prompts("nasolabial", "selfie", v, 4800 + i)["afters"][-1]["when"] for i, v in enumerate(_v48) if v["looks"]["key"] == "attractive")
+_n48o, _n48m = sum(_w48o.values()), sum(_w48m.values())
+ok(_n48o >= 100 and abs(_w48o["immediate"] / _n48o - 0.2) < 0.08 and abs(_w48o["2w"] / _n48o - 0.5) < 0.1,
+   f"㊽ 팔자 셀카 시점 가중 5:3:2 — {dict(_w48o)}")
+ok(_n48m >= 30 and 0 < _w48m["immediate"] / _n48m < 0.2 and _w48m["2w"] > _w48m["1w"] > _w48m["immediate"],
+   f"㊽ 미모는 직후 1(약 11%), 빼지는 않는다 — {dict(_w48m)}")
+_c48 = _C48(build_prompts("nasolabial", "clinical", v, 4800 + i)["afters"][-1]["when"]
+            for i, v in enumerate(_pb38("clinical", 150, 4849, {}, treatment="nasolabial")))
+ok(len(_c48) == 3 and min(_c48.values()) > 30, f"㊽ 임상은 종전 균등 추첨 — {dict(_c48)}")
+from bna import refs as _rf48
+ok(load("variations.yaml")["looks_profile"]["attractive"].get("pose_ref") is True, "㊽ 미모 프로필 자세 참조 켜짐")
+ok(_rf48.pose_ref(None, "k") is None, "㊽ Before 미검출이면 자세 참조 없음(fail-open)")
+from bna.spec import ROOT as _ROOT48
+_s48 = _Im44.open(_ROOT48 / "samples" / "reference" / "looks_face" / "face_08.jpg").convert("RGB")
+_pt48 = _lm44.detect(_s48)
+_pr48 = _rf48.pose_ref(_pt48, "b|0000|2w")
+ok(_pr48 is not None and _pr48[1] != "face_08.jpg" and _pr48[1] not in _rf48.BAD_FACE
+   and (_pr48[2]["roll_diff"] >= 10 or _pr48[2]["head_diff"] >= 0.03), f"㊽ 자세 참조는 Before 와 각도 다른 장 — {_pr48 and _pr48[2]}")
+ok(_rf48.pose_ref(_pt48, "b|0000|2w")[1] == _pr48[1], "㊽ 같은 컷 키면 같은 자세 참조(재시도 재현)")
+ok(len({_rf48.pose_ref(_pt48, f"b|{i:04d}|2w")[1] for i in range(20)}) >= 3, "㊽ 컷마다 자세 참조가 갈린다")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

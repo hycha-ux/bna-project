@@ -292,6 +292,15 @@ class Batch:
                                 ref_b = _png(_fc)
                                 after_prompt = after_prompt + " " + (HEAD_CROP_LINE if _hc is not None else FACE_CROP_LINE)
                                 meta.setdefault("before_ref", {})[af["when"]] = "head_crop" if _hc is not None else "face_crop"
+                        # 자세 참조 (2026-09-22 연서님 v43 검수, variations.yaml `pose_ref: true`): 입력 1 = 이 사람(Before 통째),
+                        #   입력 2 = Before 와 각도가 다른 노션 컷. 고르기는 refs.pose_ref 한 곳, 재시도는 같은 장(컷 키 해시).
+                        #   Before 미검출이면 종전 경로(fail-open). 무엇을 붙였는지 meta["pose_ref"][시점] 에 남긴다.
+                        if _lpf.get("pose_ref") and ref_b is before_b:
+                            _pr = await loop.run_in_executor(None, refs.pose_ref, pts, f"{self.batch_id}|{item_id}|{af['when']}")
+                            if _pr is not None:
+                                after_refs = [_pr[0]] + list(after_refs or [])
+                                after_prompt = after_prompt + " " + refs.POSE_LINE
+                                meta.setdefault("pose_ref", {})[af["when"]] = {"attempt": attempt, **_pr[2]}
                         after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], ref_b, after_refs, None)
                         after = Image.open(io.BytesIO(after_b))
                         cost = self.pricing[self.p_edit.name]["generate"]

@@ -146,6 +146,65 @@ def face_ref(variation: dict, key: str, treatment: str = None):
     return [(f.read_bytes(), f.name) for f in rng.sample(files, min(k, len(files)))]
 
 
+# 자세 참조 (2026-09-22 연서님 v43 검수 "문장 대신 자세 참조를 한 장 더 — 입력 1 = 이 사람, 입력 2 = 자세·구도용").
+#   v36~v43 After 는 Before 통째 참조의 고개·기울기를 베꼈다(복붙 탈락). 풀은 face_ref 와 같은 노션 11장(BAD_FACE 제외).
+#   "각도가 다르다" = 복붙 자와 같은 축: 기울기 차 ≥ POSE_ROLL_DEG 또는 고개 차 ≥ POSE_HEAD_MIN(복붙 컷 0.015 의 2배 여유).
+POSE_LINE = ("About the first two attached images: image 1 is this person (the reference photo): keep exactly who they are - the face, head "
+             "shape, hairline, skin and makeup - and the hairstyle and clothes as written in the text. Image 2 is only "
+             "a pose and camera reference: follow image 2 for the head angle, the head tilt, the turn of the face, the "
+             "camera height and the camera position; where the text above describes the head angle or pose, image 2 "
+             "wins. Do not use image 1's crop, head angle or tilt. Take nothing else "
+             "from image 2 - not its face, hair, makeup, clothes, background, lighting, arms or hands.")
+POSE_ROLL_DEG = 10.0
+POSE_HEAD_MIN = 0.03
+_POSE_CACHE = {}
+
+
+def _pose_of(f: Path):
+    """참조 한 장의 (고개 벡터, 기울기°) — 한 번만 잰다. 얼굴 미검출이면 None."""
+    if f.name not in _POSE_CACHE:
+        import numpy as np
+        from PIL import Image
+        from .qa import landmarks as L
+        from .qa.structure import pose_vector
+        p = L.detect(Image.open(f).convert("RGB"))
+        if p is None:
+            _POSE_CACHE[f.name] = None
+        else:
+            kp = L.key_points(p)
+            d = kp["eye_r"] - kp["eye_l"]
+            _POSE_CACHE[f.name] = (pose_vector(p)[4:], float(np.degrees(np.arctan2(d[1], d[0]))))
+    return _POSE_CACHE[f.name]
+
+
+def pose_ref(before_pts, key: str):
+    """Before 와 각도가 다른 노션 참조 한 장 — (bytes, 파일명, 잰 값 dict) 또는 None(Before 미검출·풀 없음 = fail-open).
+    후보(기울기 차 ≥10° 또는 고개 차 ≥0.03) 중 컷 키 해시로 고른다(재시도는 같은 장). 후보가 없으면 가장 먼 장."""
+    if before_pts is None:
+        return None
+    import numpy as np
+    from .qa import landmarks as L
+    from .qa.structure import pose_vector
+    kb = L.key_points(before_pts)
+    d = kb["eye_r"] - kb["eye_l"]
+    b_roll, b_head = float(np.degrees(np.arctan2(d[1], d[0]))), pose_vector(before_pts)[4:]
+    rows = []
+    for f in sorted(FACE_DIR.glob("face_*.jpg")):
+        if f.name in BAD_FACE or _pose_of(f) is None:
+            continue
+        head, roll = _pose_of(f)
+        rows.append({"file": f.name, "head_diff": round(float(np.abs(head - b_head).mean()), 4),
+                     "roll_diff": round(abs(roll - b_roll), 1)})
+    if not rows:
+        return None
+    ok = [r for r in rows if r["roll_diff"] >= POSE_ROLL_DEG or r["head_diff"] >= POSE_HEAD_MIN]
+    if ok:
+        r = random.Random(hashlib.sha1(key.encode("utf-8")).hexdigest()).choice(ok)
+    else:
+        r = max(rows, key=lambda x: max(x["roll_diff"] / POSE_ROLL_DEG, x["head_diff"] / POSE_HEAD_MIN))
+    return (FACE_DIR / r["file"]).read_bytes(), r["file"], {**r, "before_roll": round(b_roll, 1), "candidates": len(ok)}
+
+
 def pick(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:
     return [(REF_DIR / f).read_bytes() for f in pick_files(mode, variation, k, treatment, when)]
 

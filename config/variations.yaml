@@ -247,6 +247,11 @@ looks_profile:
     #   '너무 같음'이 났다(v40 실측 기울기 차 12~18°, head 0.012). 눈 선 각도 차가 이 값 이상이면 '다름'. 되돌리기 = 이 줄 삭제.
     copy_roll_deg: 10
     # 09-22 연서님 v37 검수로 직후 컷을 뺐다가(timeline: [2w]) v43 "직후 다시 포함"으로 삭제 — 시점은 시술 추첨 그대로.
+    # v44 (같은 날 연서님 "미모는 직후 1로 더 낮춰줘") — 팔자 timeline_weights(2주 5·1주 3·직후 2) 위에 직후만 덮는다 → 5:3:1.
+    timeline_weights: {immediate: 1}
+    # v44 (같은 날 연서님 "문장 대신 자세 참조를 한 장 더 — 입력 1 = 이 사람(Before 통째), 입력 2 = 노션 11장 중 Before 와
+    #   각도 다른 것. 사람은 1번, 자세·카메라 위치는 2번"). 고르기 = refs.pose_ref, 문장 = refs.POSE_LINE. 되돌리기 = 이 줄 삭제.
+    pose_ref: true
     gates_bg: [cafe_window, terrace_golden, park_green, cafe, outdoor, home, car]
     skin_texture: "Real skin with visible pores up close, faint peach fuzz and natural asymmetry; individual hair strands."
     skin_read: >

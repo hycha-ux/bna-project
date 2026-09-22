@@ -46,6 +46,10 @@ nasolabial:
   angles_clinical: [front, three_quarter]
   mask_region: nasolabial_marionette
   timeline: [immediate, 1w, 2w]
+  # 2026-09-22 연서님 v43 검수 "시간 지난 모습이 후기의 본체 — 2주 5·1주 3·직후 2, 직후는 빼지 말고 20%".
+  #   단발 셀카 시점 추첨 가중(spec.build_prompts). 임상·시리즈는 종전 그대로. 미모는 looks_profile.timeline_weights 가 덮는다.
+  #   되돌리기 = 이 줄 삭제(균등 추첨).
+  timeline_weights: {selfie: {2w: 5, 1w: 3, immediate: 2}}
   # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
   #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
   #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.

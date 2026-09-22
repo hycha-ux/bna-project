@@ -575,6 +575,14 @@ def check_treatment_facts(treatment: str) -> None:
             raise ValueError(f"{treatment}.series_levels[{w}]={lvl!r} 은 없는 강도다 (가능: {ok})")
         if w not in tl:
             raise ValueError(f"{treatment}.series_levels 에 {w} 를 적었는데 timeline 에 없다 — 죽은 설정")
+    for m, ws in (t.get("timeline_weights") or {}).items():   # 시점 가중(2026-09-22) — 죽은 설정·0 가중을 소리 내서 막는다
+        if m not in (t.get("modes") or []):
+            raise ValueError(f"{treatment}.timeline_weights 에 {m} 모드를 적었는데 modes 에 없다 — 죽은 설정")
+        for w, x in (ws or {}).items():
+            if w not in tl:
+                raise ValueError(f"{treatment}.timeline_weights.{m} 에 {w} 를 적었는데 timeline 에 없다 — 죽은 설정")
+            if not float(x) > 0:
+                raise ValueError(f"{treatment}.timeline_weights.{m}.{w}={x} — 0 이하 금지(빼기는 timeline 이 할 일)")
     facts = t.get("facts")
     if facts is None:
         return
@@ -776,7 +784,19 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     if _prof.get("effect_level") in (t.get("effect_levels") or []):
         level = _prof["effect_level"]
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
-    when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))
+    # 시점 가중 (2026-09-22 연서님 v43 검수 "시간 지난 모습이 후기의 본체 — 팔자 셀카 2주 5·1주 3·직후 2, 미모는 직후 1"):
+    #   treatments.yaml `timeline_weights: {모드: {시점: 가중}}` + 미모 프로필 `timeline_weights`(시점별 덮어쓰기).
+    #   가중이 없으면 종전 균등 추첨(rng.choice) 그대로 — 다른 시술·임상은 rng 흐름까지 불변. 0 은 쓰지 마라(빼기는 timeline 이 할 일).
+    _tl = t.get("timeline", ["2w"])
+    _tw = dict(((t.get("timeline_weights") or {}).get(mode) or {}))
+    if _tw and _prof.get("timeline_weights"):
+        _tw.update(_prof["timeline_weights"])
+    if pts:
+        when = pts[-1]
+    elif _tw:
+        when = rng.choices(_tl, weights=[float(_tw.get(w, 1)) for w in _tl], k=1)[0]
+    else:
+        when = rng.choice(_tl)
     # 미모 프로필 시점(2026-09-22 연서님 v37 검수 "패치가 AI 합성 느낌이 강하고 효과가 없어"): 직후 컷은
     #   투명 패치(흔적)와 붓기를 그리라는 컷이라 결과가 안 보이는 게 설계다 — 무보정 미인 얼굴 위 패치는 도장처럼 떴다.
     #   → 미모 단발 컷은 `timeline` 목록 안에서만(추첨 rng 는 이미 소비 — 흐름 불변). 되돌리기 = yaml 줄 삭제.
