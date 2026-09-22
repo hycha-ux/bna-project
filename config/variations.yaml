@@ -170,7 +170,9 @@ looks_profile:
     gates: {framing: [full_face, head_to_bust], skin_condition: [clear], extras: [none, earrings], body_type: [slim, average],
             skin_tone: [fair, light], face_shape: [oval, heart], hair_style: [long_straight]}
     skin_text: {clear: "clear, even skin"}
-    hair_text: {long_straight: "long straight hair with soft see-through bangs"}
+    # 09-22 연서님: "see-through bangs" 가 앞머리를 눈 위로 내렸다(v37 0001 채택 컷 Before 포함) →
+    #   "눈썹 위·두 눈 완전 노출"로 교체. 눈 가림은 qa_checklist `eyes_uncovered` 게이트가 따로 거른다.
+    hair_text: {long_straight: "long straight hair with short light bangs cut above the eyebrows; no strand falls over the eyebrows, eyelids or eyes, and both eyes are fully visible"}
     detail_by_country:
       korea: "with a classic Korean beauty look: fair, clear, luminous skin, a small face, clearly defined bright eyes and full lips"
     makeup: "natural makeup: soft mascara, a thin line of eyeliner and a tinted lip"
