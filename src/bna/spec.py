@@ -451,6 +451,29 @@ def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment
         ok = allowed_values(axis, keys, mode, v, tr, base=override.get(axis), stage=stg)
         if keys[axis] not in ok:
             k = rng.choice(ok); after[axis] = {"key": k, "text": v[axis][k]}; keys[axis] = k
+    # 미모 프로필 After 빛(2026-09-22 연서님 "A로 가자. 빛 종류는 풀되 After도 옆빛(주름 그림자 생기는 방향)은 유지"):
+    #   v38 은 웃음·빛을 다 잠가 6번 중 5번 복붙(copy). 빛 **종류**는 Before 와 다르게 바꾸되 옆빛 목록(after_lighting)
+    #   안에서만 — 정면·부드러운 빛으로 가면 주름 그림자가 사라져 가짜 효과가 된다. 배경이 그 빛을 못 내면
+    #   낼 수 있는 배경으로 옮긴다(조명 호와 같은 방식). 옮길 곳이 없으면 종전 값 그대로(fail-open).
+    #   마지막 재확인 **뒤에** 둔다 — 앞에 두면 재확인 루프가 옆빛 아닌 값으로 되돌릴 수 있다.
+    _alit = looks_profile((variation.get("looks") or {}).get("key"), v, treatment).get("after_lighting") or []
+    if _alit and "lighting" not in lock:
+        bl = v.get("background_lighting", {})
+        cand = [k for k in _alit if k in v["lighting"] and k != variation["lighting"]["key"]]
+        fit = [k for k in cand if not bl.get(keys["background"]) or k in bl[keys["background"]]]
+        if fit:
+            k = rng.choice(fit); after["lighting"] = {"key": k, "text": v["lighting"][k]}; keys["lighting"] = k
+        elif cand and "background" not in lock:
+            k = rng.choice(cand)
+            bgs = [b for b in allowed_values("background", keys, mode, v, tr, base=override.get("background"), stage=stg)
+                   if k in (bl.get(b) or [])]
+            if bgs:
+                b = rng.choice(bgs)
+                after["background"] = {"key": b, "text": v["background"][b]}; keys["background"] = b
+                after["lighting"] = {"key": k, "text": v["lighting"][k]}; keys["lighting"] = k
+                ca = allowed_values("context", keys, mode, v, tr, base=override.get("context"), stage=stg)
+                if keys["context"] not in ca:           # 배경을 옮겼으면 맥락도 새 배경에 맞춘다
+                    c = rng.choice(ca); after["context"] = {"key": c, "text": v["context"][c]}; keys["context"] = c
     return after
 
 

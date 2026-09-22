@@ -2589,9 +2589,19 @@ _lh39 = lambda vs, ax, k: sum(v[ax]["key"] == k for v in vs) / max(1, len(vs))
 _r40 = [r for r in _r39on]
 ok(_r40 and all(r["variation"]["expression"]["key"] == "slight_smile" == r["after_variation"]["expression"]["key"] for r in _r40),
    f"프로필 3차 — 미모 Before·After 둘 다 살짝 웃음 ({len(_r40)}장)")
+# 09-22 A안(연서님): After 빛은 잠금이 아니라 '옆빛 3종 안에서 Before 와 다른 종류'로 바뀌었다.
+_SIDE40 = {"window", "golden_hour", "mixed"}
 ok(all(r["variation"]["lighting"]["key"] in ("window", "golden_hour")
-       and r["variation"]["lighting"]["key"] == r["after_variation"]["lighting"]["key"] for r in _r40),
-   "프로필 3차 — 미모 Before 는 옆빛(창가·늦은 오후)이고 After 도 같은 빛")
+       and r["after_variation"]["lighting"]["key"] in _SIDE40 for r in _r40),
+   "프로필 3차 — 미모 Before 는 옆빛(창가·늦은 오후), After 도 옆빛 3종 안")
+_lchg40 = sum(r["after_variation"]["lighting"]["key"] != r["variation"]["lighting"]["key"] for r in _r40)
+ok(_lchg40 >= len(_r40) * 0.9, f"A안 — 미모 After 빛 종류가 실제로 바뀐다 ({_lchg40}/{len(_r40)})")
+ok(all(r["after_variation"]["lighting"]["key"] in (_V.get("background_lighting", {}).get(r["after_variation"]["background"]["key"]) or [r["after_variation"]["lighting"]["key"]])
+       for r in _r40), "A안 — 바뀐 빛은 After 배경이 낼 수 있는 빛이다")
+_m40 = [v for v in _pb38("selfie", 300, 77, {}, treatment="nasolabial") if v["gender"]["key"] == "male"]
+ok(len({v["hair_style"]["key"] for v in _m40}) >= 4, f"남성 머리가 여러 가지로 나온다 — {sorted({v['hair_style']['key'] for v in _m40})}")
+ok(not any(v["hair_style"]["key"] in ("side_part", "slicked_back", "short_perm", "crop_fringe")
+           for v in _pb38("selfie", 300, 77, {}, treatment="nasolabial") if v["gender"]["key"] == "female"), "남성 전용 머리는 여성에게 안 나온다")
 ok(all("Do not smile" not in a["after_prompt"] and "same slight closed-mouth smile" in a["after_prompt"]
        for r in _r40 for a in r["afters"]), "프로필 3차 — After 문장이 '웃지 마라'가 아니라 '같은 웃음 그대로'")
 ok(not any(r["variation"]["expression"]["key"] == "slight_smile" for r in _r39off),
@@ -2614,8 +2624,8 @@ _ab42 = [(r["variation"], a["after_variation"]) for r in _r41 for a in r["afters
 _mv42 = [(b, a) for b, a in _ab42 if a["angle"]["key"] != b["angle"]["key"]]
 ok(0 < len(_mv42) < len(_ab42), f"미모 After 각도가 실제로 바뀐다(강제 아님) — {len(_mv42)}/{len(_ab42)}컷")
 ok(all(a["angle"]["key"] in _nb42[b["angle"]["key"]] for b, a in _mv42), "미모 After 각도는 이웃 한 칸만")
-ok(all(a["expression"]["key"] == b["expression"]["key"] and a["lighting"]["key"] == b["lighting"]["key"] for b, a in _ab42),
-   "미모 After 표정·빛 잠금은 그대로")
+ok(all(a["expression"]["key"] == b["expression"]["key"] for b, a in _ab42),
+   "미모 After 표정 잠금은 그대로(빛은 09-22 A안으로 옆빛 안에서 바뀐다 — ㊵)")
 _ord42 = [v for v in _pb38("selfie", 200, 4242, {}, treatment="nasolabial") if v["looks"]["key"] != "attractive"][:40]
 ok(all(a["after_variation"]["angle"]["key"] == v["angle"]["key"]
        for i, v in enumerate(_ord42) for a in build_prompts("nasolabial", "selfie", v, 900 + i)["afters"]),

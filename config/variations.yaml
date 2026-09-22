@@ -58,6 +58,12 @@ hair_style:
   bun: "hair in a loose bun"
   buzz: "very short buzz cut"
   bangs: "medium hair with bangs"
+  # 남성 머리 4종 (2026-09-22 연서님 "남자 헤어스타일이 이것밖에 없는건가?") — 남성은 short·buzz 둘뿐이라
+  #   미모 남성 셀카가 매번 같은 머리로 나왔다. 여성은 gender_exclusions 로 뺀다. 앞머리는 눈썹 위(눈 가림 게이트).
+  side_part: "short side-parted hair with the forehead showing"
+  slicked_back: "short hair neatly slicked back off the forehead"
+  short_perm: "short soft wavy perm"
+  crop_fringe: "short textured crop with a short fringe well above the eyebrows"
 
 hair_color:
   black: "black hair"
@@ -103,7 +109,7 @@ extras:
 
 # 성별에 따라 제외되는 옵션
 gender_exclusions:
-  female: {extras: [beard_light, beard_full], hair_style: [buzz]}
+  female: {extras: [beard_light, beard_full], hair_style: [buzz, side_part, slicked_back, short_perm, crop_fringe]}
   male: {extras: [makeup_light, earrings], hair_style: [long_wavy, bun, bangs, bob, long_straight, ponytail]}   # bob·long_straight 누락 → 남성 20.7% 단발/긴 생머리 (티모 0907 실측)
 
 # 헤어 이웃: After(다른 날) 머리 모양은 2주 안에 될 수 있는 것으로만 (0909 dry-run: 포니테일 → 삭발). 없는 값은 안 바뀐다.
@@ -114,8 +120,12 @@ hair_style_neighbors:
   bun: [long_straight, long_wavy, ponytail]
   bob: [bangs, ponytail]
   bangs: [bob]
-  short: [buzz]
+  short: [buzz, side_part, crop_fringe]
   buzz: []
+  side_part: [short, slicked_back]
+  slicked_back: [side_part]
+  short_perm: [short]
+  crop_fringe: [short]
 
 # 맥락 × 헤어: 잔머리는 긴 머리에만 (짧은 머리에 "볼을 덮는 잔머리"가 나왔다)
 context_hair:
@@ -161,7 +171,7 @@ looks_profile:
     # ④ 같은 날: 프로필 회차에서 사람이 뺀 2장이 전부 '효과 없음'(둘 다 기계 통과) → After 에 한 줄(spec.build_after).
     after_note: >
       Side by side with the reference, the softer nasolabial folds and marionette lines must be obvious at a glance,
-      even with the same slight smile and the same side light.
+      even with the same slight smile and with the light still coming from one side (a different day's light).
     weights: {hair_style: {long_straight: 4}, framing: {head_to_bust: 4}}
     # 2차 dry 에서 본 모순 둘을 같이 막았다: '작은 얼굴' + body_type full("fuller face and neck"), '맑은 피부' + 주근깨·점
     # 구도 게이트(2026-09-22 빌디 "미모 컷은 크롭이면 안 된다 — 노션 30장 전부 얼굴 전체~상반신"):
@@ -193,7 +203,10 @@ looks_profile:
     #     표정·빛 둘 다 After 에서 잠그고, After 문장도 "같은 웃음 그대로"로 바꾼다(spec.build_prompts 의 smile_held).
     #   욕실·병원 배경은 옆빛을 못 낸다(background_lighting) → 미모에서 뺀다.
     before_force: {expression: [slight_smile], lighting: [window, golden_hour]}
-    lock_after: [expression, lighting]
+    # 09-22 연서님 "A로 가자" — 빛 잠금을 풀고 After 빛은 옆빛 3종(after_lighting) 안에서 Before 와 다르게.
+    #   종전 = [expression, lighting]. 되돌리기 = lighting 을 다시 넣고 after_lighting 삭제.
+    lock_after: [expression]
+    after_lighting: [window, golden_hour, mixed]
     # 09-22 연서님 "각도 한 칸 풀어서" — v36 복붙 4/6. 이웃 한 칸만(angle_neighbors), 되돌리기 = 이 줄 삭제.
     after_relax: [angle]
     # 09-22 연서님 v37 검수 "패치가 AI 합성 느낌 · 효과 없음" — 직후(패치·붓기) 컷을 미모에서 뺀다. 되돌리기 = 이 줄 삭제.
