@@ -315,6 +315,74 @@ def face_crop(img: Image.Image, pts: np.ndarray, margin: float = CROP_MARGIN) ->
     return out
 
 
+# ── 머리 전체 참조 (2026-09-22 연서님 v40 검수 "얼굴만 오려 넘기니 머리 스타일·두상이 달라져 다른 사람 같다 —
+#    헤어라인~턱, 머리카락 포함으로 오리고 어깨·옷·배경만 빼 줘") ─────────────────────────────────────────
+# 얼굴 윤곽만(face_crop)으로는 두상·앞머리·가르마가 참조에서 사라져 모델이 새로 지어냈다. 머리카락은 윤곽 점이
+#   없으므로 MediaPipe 다중 분할(머리카락·얼굴 피부·목 피부·옷·배경…)로 **머리카락 + 얼굴 피부**만 남긴다.
+#   세로는 머리 꼭대기 ~ 턱 아래 약간(턱 밑 긴 머리는 자른다), 나머지는 회색. 눈 수평 정렬은 face_crop 과 같다.
+#   분할 모델이 없거나 실패하면 None → 상위가 face_crop → 통째 순으로 물러난다(fail-open).
+SEG_URL = ("https://storage.googleapis.com/mediapipe-models/image_segmenter/"
+           "selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite")
+SEG_PATH = Path(os.getenv("BNA_SELFIE_SEG", Path.home() / ".cache" / "bna" / "selfie_multiclass.tflite"))
+SEG_KEEP = (1, 3)          # 1=머리카락, 3=얼굴 피부 (0 배경 · 2 몸 피부 · 4 옷 · 5 기타)
+HEAD_CHIN_PAD = 0.06       # 턱 아래 여유 (얼굴 높이 대비)
+_seg = None
+
+
+def _segmenter():
+    global _seg
+    if _seg is None:
+        try:
+            import mediapipe as mp
+            from mediapipe.tasks.python import vision as mpv, BaseOptions
+            if not SEG_PATH.exists():
+                import urllib.request
+                SEG_PATH.parent.mkdir(parents=True, exist_ok=True)
+                urllib.request.urlretrieve(SEG_URL, SEG_PATH)
+            _seg = mpv.ImageSegmenter.create_from_options(mpv.ImageSegmenterOptions(
+                base_options=BaseOptions(model_asset_path=str(SEG_PATH)), output_category_mask=True))
+        except Exception:
+            _seg = False
+    return _seg or None
+
+
+def head_crop(img: Image.Image, pts: np.ndarray, margin: float = 0.06) -> Image.Image:
+    """머리카락+얼굴만 남긴 참조. pts 없음·분할 실패면 None."""
+    seg = _segmenter() if pts is not None else None
+    if seg is None:
+        return None
+    import mediapipe as mp
+    from PIL import ImageFilter
+    rgb = img.convert("RGB")
+    kp = key_points(pts)
+    ang = float(np.degrees(np.arctan2(*(kp["eye_r"] - kp["eye_l"])[::-1])))
+    c = pts[FACE_OVAL].mean(axis=0)
+    rot = rgb.rotate(ang, resample=Image.BICUBIC, center=tuple(c), fillcolor=(128, 128, 128))
+    t = np.radians(ang)
+    R = np.array([[np.cos(t), np.sin(t)], [-np.sin(t), np.cos(t)]])
+    o = (pts - c) @ R.T + c
+    try:
+        cat = seg.segment(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.asarray(rot))).category_mask.numpy_view()
+    except Exception:
+        return None
+    keep = np.isin(np.squeeze(cat), SEG_KEEP)             # 마스크가 (H, W, 1) 로 온다
+    fh = float(o[152][1] - o[10][1]) or 1.0
+    bottom = int(min(rot.height, o[152][1] + HEAD_CHIN_PAD * fh))
+    keep[bottom:, :] = False
+    ys, xs = np.nonzero(keep)
+    if len(ys) < 100:
+        return None
+    m = Image.fromarray((keep * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(3))
+    head = Image.composite(rot, Image.new("RGB", rot.size, (128, 128, 128)), m)
+    x0, x1, y0, y1 = xs.min(), xs.max(), ys.min(), bottom
+    side = max(x1 - x0, y1 - y0) * (1 + 2 * margin)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    box = tuple(int(round(v)) for v in (cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2))
+    out = Image.new("RGB", (box[2] - box[0], box[3] - box[1]), (128, 128, 128))
+    out.paste(head, (-box[0], -box[1]))
+    return out
+
+
 def key_points(pts: np.ndarray) -> dict:
     return {"eye_l": pts[LEFT_EYE], "eye_r": pts[RIGHT_EYE], "nose": pts[NOSE_TIP],
             "mouth_l": pts[MOUTH_L], "mouth_r": pts[MOUTH_R]}

@@ -44,6 +44,12 @@ FACE_CROP_LINE = ("The first reference image is only a cut-out of this person's 
                   "is not a photo to follow - the head angle, the camera height, the framing, the hair, the clothes, "
                   "the background and the light all come from the text above, and the hairstyle is exactly as "
                   "written in the Hair line. Never show the grey card or a cut-out edge.")
+# 머리 전체 참조용 (09-22 v40 검수). 머리카락·두상은 참조에 있으므로 '같은 머리'로 읽게 하고, 자세·옷·배경만 문장이 정한다.
+HEAD_CROP_LINE = ("The first reference image is a cut-out of this person's whole head - hair and face - on a plain grey "
+                  "card, straightened so the eyes are level. Keep this same person: the same face, head shape, "
+                  "hairline, parting and bangs, and the hairstyle as written in the Hair line. It is not a photo to "
+                  "follow - the head angle, the camera height, the framing, the shoulders, the clothes, the background "
+                  "and the light all come from the text above. Never show the grey card or a cut-out edge.")
 
 
 def _retry_plan(fail_reasons):
@@ -275,13 +281,17 @@ class Batch:
                         # 미모 After 참조 = 얼굴만 오린 Before (2026-09-22 연서님, variations.yaml `before_ref: face_crop`).
                         #   통째 Before 는 고개·자세·화면 위치까지 따라 그리게 했다(v39 복붙 5/6). 얼굴 미검출이면 종전대로.
                         #   재시도(After 만 다시)도 같은 참조를 쓴다 — ref_b 는 이 함수 안에서만 산다.
+                        #   09-22 v40 검수 "얼굴만 오리니 머리·두상이 달라져 다른 사람 같다" → head_crop(머리카락 포함)이 기본,
+                        #   분할 실패면 face_crop, 그것도 안 되면 통째(fail-open). 실제로 쓴 것을 meta["before_ref"] 에 남긴다.
                         ref_b = before_b
-                        if _lpf.get("before_ref") == "face_crop" and pts is not None:
-                            _fc = landmarks.face_crop(before, pts)
+                        _mode_ref = _lpf.get("before_ref")
+                        if _mode_ref in ("head_crop", "face_crop") and pts is not None:
+                            _hc = await loop.run_in_executor(None, landmarks.head_crop, before, pts) if _mode_ref == "head_crop" else None
+                            _fc = _hc if _hc is not None else landmarks.face_crop(before, pts)
                             if _fc is not None:
                                 ref_b = _png(_fc)
-                                after_prompt = after_prompt + " " + FACE_CROP_LINE
-                                meta.setdefault("before_ref", {})[af["when"]] = "face_crop"
+                                after_prompt = after_prompt + " " + (HEAD_CROP_LINE if _hc is not None else FACE_CROP_LINE)
+                                meta.setdefault("before_ref", {})[af["when"]] = "head_crop" if _hc is not None else "face_crop"
                         after_b = await loop.run_in_executor(None, self.p_edit.generate, after_prompt, spec["aspect"], ref_b, after_refs, None)
                         after = Image.open(io.BytesIO(after_b))
                         cost = self.pricing[self.p_edit.name]["generate"]
@@ -351,6 +361,8 @@ class Batch:
                 # 2026-09-18: 종전엔 `effect_lowered`(강도를 낮춘 컷)만 봤다 — 직후 컷은 최종 강도인데
                 # 프롬프트가 흔적·붓기를 시켜서 같은 모양으로 떨어졌다. 사유·근거는 spec.build_after 주석.
                 ungate = ("effect_visible",) if af.get("effect_ungated") else ()
+                # 미모 프로필 기록 전용 항목(2026-09-22 연서님 "눈 가림 검사가 눈 멀쩡한 컷을 2점으로 탈락" → eyes_uncovered).
+                ungate = tuple(ungate) + tuple(x for x in (_lpf.get("ungate") or []) if x not in ungate)
                 outs.append((when, ab, Image.open(io.BytesIO(ab)), ungate))
 
             # ④ 검수 3단 — After 마다. 세트는 전부 통과해야 통과. 시점별 결과는 meta["after_results"][when] 에 남긴다

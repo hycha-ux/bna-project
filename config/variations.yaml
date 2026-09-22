@@ -147,6 +147,13 @@ looks_gates:
   context: {knit_cardigan: [attractive], white_blouse: [attractive], fitted_black_top: [attractive]}
   lighting: {golden_hour: [attractive]}
 
+# 미모 나이 시술별 (2026-09-22 연서님 v40 검수 "팔자 미모는 30대 중후반 중심(팔자가 어울리는 얼굴), 그 외 시술 미모는 20대").
+#   위 looks_gates.age(공통 20~30대) 뒤에 좁힌다 — 판정 = spec.allowed_values. 30대 중후반 문구는 looks_profile.age_text.
+#   되돌리기 = 이 블록 삭제(공통 20~30대로 돌아간다).
+looks_age_by_treatment:
+  nasolabial: ["30s"]
+  _default: [early_20s, late_20s]
+
 # 미모 프로필 (2026-09-21 빌디 제안·연서님 확인 "한 줄씩 열지 말고 미모 프로필로 한 번에 묶어 2세트 시험") —
 #   **실험 스위치 BNA_EXP_LOOKS_PROFILE=1 일 때만** 먹는다(spec.looks_profile 한 곳이 판정). 정식 경로는 종전 그대로.
 #   왜 묶었나: 미모 컷은 "strikingly pretty" 한 줄 뒤에 리얼리티 규칙(솔직한 나이·피곤·잡티·무보정·주름 뚜렷)이
@@ -187,6 +194,14 @@ looks_profile:
       korea: "with a classic Korean beauty look: fair, clear, luminous skin, a small face, clearly defined bright eyes and full lips"
     makeup: "natural makeup: soft mascara, a thin line of eyeliner and a tinted lip"
     severity: moderate
+    # 09-22 연서님 v40 검수 "팔자가 너무 심해 Before부터 가짜 — pronounced 로 찍혔는데 미모는 moderate 로 강제".
+    #   Before 강도(severity)는 이미 moderate 였고 pronounced 는 **효과 칸(effect_level)** 이었다 → 효과도 moderate 로 고정.
+    #   되돌리기 = 이 줄 삭제.
+    effect_level: moderate
+    # 같은 검수 — 팔자 미모 나이 = 30대 중후반(나이 칸은 30s 하나라 문구만 좁힌다, 추첨은 looks_age_by_treatment).
+    age_text: {"30s": "in their mid-to-late 30s"}
+    # 같은 검수 — "눈 가림 검사가 눈 멀쩡한 컷을 2점으로 탈락" → 미모 컷은 채점·기록만, 탈락 사유 아님. 되돌리기 = 이 줄 삭제.
+    ungate: [eyes_uncovered]
     before_condition:
       nasolabial:
         moderate: >
@@ -218,7 +233,9 @@ looks_profile:
     # 같은 날 — "Before는 얼굴만 오려서 넘기고 머리 스타일은 문장으로 유지". After 생성 참조를 Before 통째가 아니라
     #   얼굴 윤곽 안쪽만(qa/landmarks.face_crop, 눈 수평 정렬)으로 넘긴다. 얼굴 미검출이면 종전대로 통째(fail-open).
     #   되돌리기 = 이 줄 삭제.
-    before_ref: face_crop
+    # 09-22 v40 검수 "얼굴만 오리니 머리 스타일·두상이 달라져 다른 사람 같다" → 머리카락+얼굴(qa/landmarks.head_crop,
+    #   어깨·옷·배경 제외). 분할 실패면 face_crop 으로 물러난다. face_crop 으로 되돌리려면 값만 바꾼다.
+    before_ref: head_crop
     # 같은 날 — "미모 컷은 고개 차이 기준(0.015) 아래면 '너무 같음'으로 다시 그리게 게이트로 강제".
     #   종전 복붙 게이트는 표정 AND 고개(structure.copy_check)였다. 미모는 표정을 일부러 잠가 두므로 표정 조건이
     #   늘 참 → 고개 하나만 본다. 걸리면 Before 는 그대로 두고 After 만 다시 그린다(copy 는 REDO_BEFORE 밖).

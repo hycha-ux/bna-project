@@ -321,7 +321,10 @@ for _t in _T:
         _ak = {a: x["key"] for a, x in _af.items()}
         if _ak["context"] in (_V["framing_ban"].get(_ak["framing"]) or []): _viol[f"{_t} after framing_ban"] = _viol.get(f"{_t} after framing_ban", 0) + 1
         _sev = _sp["variation"]["before_severity"]["key"]; _lv = _sp["variation"]["effect_level"]["key"]
-        if _sev in _T[_t]["effect_by_severity"] and _lv not in _T[_t]["effect_by_severity"][_sev]: _viol[f"{_t} effect_pair"] = _viol.get(f"{_t} effect_pair", 0) + 1
+        # 미모 프로필 effect_level(09-22 연서님 "미모는 moderate 로 강제")은 짝표 위의 허가된 예외다(㊻가 따로 잰다).
+        _lp_c = looks_profile(_p.get("looks", {}).get("key"), None, _t)
+        if _sev in _T[_t]["effect_by_severity"] and _lv not in _T[_t]["effect_by_severity"][_sev] \
+                and _lv != _lp_c.get("effect_level"): _viol[f"{_t} effect_pair"] = _viol.get(f"{_t} effect_pair", 0) + 1
         if _r["expression_policy"] == "lock" and "Do not smile" not in _sp["after_prompt"]: _viol[f"{_t} expr_lock"] = _viol.get(f"{_t} expr_lock", 0) + 1
         if "the phone is not visible" not in _sp["after_prompt"]: _viol[f"{_t} after mode_extra"] = _viol.get(f"{_t} after mode_extra", 0) + 1
         if " ".join(str(_T[_t]["must_not_change"]).split())[:40] not in _sp["after_prompt"]: _viol[f"{_t} must_not_change"] = _viol.get(f"{_t} must_not_change", 0) + 1
@@ -490,8 +493,8 @@ ok(all(p["variation"]["before_severity"]["key"] != "mild" for p in _c15 if p["va
    "임상 30대 이상은 mild Before 를 뽑지 않는다 (20대는 나이 하향으로 mild 가 될 수 있고, 그때도 효과는 subtle 이 아니다)")
 ok("Edit this exact photo" not in _c15[0]["after_prompt"] and "must not be a copy" in _c15[0]["after_prompt"],
    "임상 After 는 '이 사진을 편집'이 아니라 '두 번째 사진' + 복사본 금지")
-ok(any(build_prompts("nasolabial", "selfie", sample_variation("selfie", s, treatment="nasolabial"), s)["variation"]["before_severity"]["key"] == "mild" for s in range(30)),
-   "셀카는 종전대로 mild 도 뽑힌다")
+ok(any(build_prompts("nasolabial", "selfie", sample_variation("selfie", s, treatment="nasolabial"), s)["variation"]["before_severity"]["key"] == "mild" for s in range(120)),
+   "셀카는 종전대로 mild 도 뽑힌다")   # 09-22 표본 30→120: 미모 팔자가 30대 고정되며 20대(나이 하향 mild)가 줄었다
 # 참조는 세트가 뽑은 리그와 같은 것만 (2026-09-15 티모 선결 B)
 from bna import refs as _refs15
 _v15 = build_prompts("lifting", "clinical", sample_variation("clinical", 5, treatment="lifting"), 5)["variation"]
@@ -2666,6 +2669,18 @@ _r45 = _st44.copy_check(_pb44, _pr45, "selfie", head_only=True, roll_deg=10)
 ok(_r45["passed"] is True and abs(_r45["roll_diff"] - 15) < 0.5, f"㊺ 기울기 10° 이상이면 '다름' — {_r45['roll_diff']}°")
 ok(_st44.copy_check(_pb44, _pb44, "selfie", head_only=True, roll_deg=10)["passed"] is False, "㊺ 똑같은 컷은 여전히 '너무 같음'")
 ok(load("variations.yaml")["looks_profile"]["attractive"].get("copy_roll_deg") == 10, "㊺ 미모 프로필에 기울기 10° 가 걸려 있다")
+# ㊻ (09-22 연서님 v40 검수 3건) — ① 미모 팔자 효과 moderate 고정 ② 미모 나이 시술별(팔자=30s·문구 30대 중후반, 그 외=20대)
+#   ③ 미모 컷 눈 가림은 기록 전용 ④ After 참조는 머리 전체(head_crop). 보통 인물은 전부 종전 그대로.
+_V46 = load("variations.yaml"); _P46 = _V46["looks_profile"]["attractive"]
+ok(all(r["afters"][-1]["effect_level"] == "moderate" for r in _r39on), f"㊻ 미모 팔자 효과는 moderate 고정 ({len(_r39on)}장)")
+ok({r["variation"]["age"]["key"] for r in _r39on} == {"30s"}, "㊻ 팔자 미모 나이는 30대만")
+ok(all("in their mid-to-late 30s" in r["before_prompt"] for r in _r39on), "㊻ 팔자 미모 인물 문구 = 30대 중후반")
+_o46 = [v for v in _pb38("selfie", 300, 4646, {}, treatment="skin_pores") if v["looks"]["key"] == "attractive"]
+ok(_o46 and {v["age"]["key"] for v in _o46} <= {"early_20s", "late_20s"}, f"㊻ 그 외 시술 미모는 20대만 — {sorted({v['age']['key'] for v in _o46})}")
+ok("eyes_uncovered" in (_P46.get("ungate") or []) and _P46.get("before_ref") == "head_crop",
+   "㊻ 미모 눈 가림 기록 전용 + 머리 전체 참조 설정")
+ok(any(r["afters"][-1]["effect_level"] != "moderate" for r in
+       [build_prompts("nasolabial", "selfie", v, 900 + i) for i, v in enumerate(_ord42)]), "㊻ 보통 인물 효과 추첨은 그대로")
 from PIL import Image as _Im44
 ok(_lm44.face_crop(_Im44.new("RGB", (64, 64)), None) is None, "㊹ 얼굴 못 찾으면 오리지 않는다(종전 통째 참조로 fail-open)")
 

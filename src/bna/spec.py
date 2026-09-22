@@ -136,6 +136,13 @@ def allowed_values(axis: str, keys: dict, mode: str, v: dict, tr: dict, base=Non
     lg = v.get("looks_gates", {}).get(axis) or {}
     if lg:
         allowed = [k for k in allowed if k not in lg or keys.get("looks") in lg[k]] or allowed
+    # 미모 나이 시술별 (2026-09-22 연서님 v40 검수 "팔자 미모는 30대 중후반 중심, 그 외 시술 미모는 20대").
+    #   공통 20~30대 게이트(looks_gates.age) **뒤에** 좁힌다. 시술을 모르면(None) _default 를 쓴다.
+    if axis == "age" and keys.get("looks") == "attractive":
+        lat = v.get("looks_age_by_treatment") or {}
+        want = lat.get(tr.get("name")) or lat.get("_default")
+        if want:
+            allowed = [k for k in allowed if k in want] or allowed
     _lpf = looks_profile(keys.get("looks"), v, tr.get("name"))
     pg = (_lpf.get("gates") or {}).get(axis) or (_lpf.get("gates_bg") if axis == "background" else None)
     if pg:                                            # 미모 프로필(스위치 켰을 때만): 피곤·잡티 계열·옆빛 못 내는 배경 빼기
@@ -214,11 +221,12 @@ def person_description(variation: dict, treatment: str = None) -> str:
     f = {k: (variation.get(k) or {}).get("text", "") for k in PERSON_AXES}
     # 미모는 인물 **맨 앞** 형용사 + 나이 바로 뒤 구체 특징 (2026-09-21 연서님 "미모가 나온 적이 없다" —
     #   맨 끝에 붙은 부정문은 앞선 리얼리티 묘사와 뒤따르는 '더 예쁘게 마라' 규칙 셋에 눌려 안 읽혔다).
-    head = " ".join(x for x in (f["looks"], f["country"], f["gender"], f["age"]) if x)
     lk = (variation.get("looks") or {}).get("key")
     detail = (load("variations.yaml").get("looks_detail") or {}).get(lk, "")
     prof = looks_profile(lk, None, treatment)                         # 미모 프로필(스위치 켰을 때만): 피부·머리 문장 교체 + 나라별 미인상 + 메이크업
     _k = lambda ax: (variation.get(ax) or {}).get("key")
+    age = (prof.get("age_text") or {}).get(_k("age"), f["age"])      # 09-22 팔자 미모 = 30대 중후반
+    head = " ".join(x for x in (f["looks"], f["country"], f["gender"], age) if x)
     skin = (prof.get("skin_text") or {}).get(_k("skin_condition"), f["skin_condition"])
     hair = (prof.get("hair_text") or {}).get(_k("hair_style"), f["hair_style"])
     detail = (prof.get("detail_by_country") or {}).get(_k("country"), detail)
@@ -764,6 +772,9 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         #   '연한 팔자가 또렷이 옅어짐'은 기록 사진에서 과장이 아니라 정상 범위다 (2026-09-15 저녁 결정).
         levels = [l for l in levels if l != "subtle"] or [l for l in t.get("effect_levels", ["moderate"]) if l != "subtle"] or list(levels)
     level = rng.choice(list(levels))
+    # 미모 프로필 효과 고정(2026-09-22 연서님 v40 "pronounced 로 찍혔는데 미모는 moderate 로 강제") — 추첨은 위에서 소비(rng 흐름 불변).
+    if _prof.get("effect_level") in (t.get("effect_levels") or []):
+        level = _prof["effect_level"]
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
     when = pts[-1] if pts else rng.choice(t.get("timeline", ["2w"]))
     # 미모 프로필 시점(2026-09-22 연서님 v37 검수 "패치가 AI 합성 느낌이 강하고 효과가 없어"): 직후 컷은
