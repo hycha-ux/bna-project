@@ -407,7 +407,11 @@ class Batch:
                     cc = structure.clinical_copy_check(st, idn.get("similarity"), load("clinical_rig.yaml").get("copy_gate"))
                     st["copy"] = cc
                     if cc.get("passed") is False:
-                        r["fail_reasons"].append("copy")
+                        # record_only(09-28 1회차 6/6 탈락 뒤) — 재고 남기되 탈락시키지 않는다. 판정은 원장 copy.passed 로 사후 대조.
+                        if (load("clinical_rig.yaml").get("copy_gate") or {}).get("record_only"):
+                            cc["record_only"] = True
+                        else:
+                            r["fail_reasons"].append("copy")
                 # '사람 확인 구간'(0.45~0.60)도 재시도로 돌린다 — 2026-09-10 성연서님 지시.
                 # 종전엔 gate="review" 를 hard_fail=False 로 흘려보내 기계가 통과시켰고,
                 # 그 컷(0910 실측 0.461 1건)이 "전·후가 다른 사람"으로 사람 눈에 걸렸다.

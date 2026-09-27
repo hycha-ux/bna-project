@@ -2756,8 +2756,11 @@ from bna.planner import plan_batch
 from bna.qa import structure as _st51
 from bna import refs as _rf51
 _cg51 = load("clinical_rig.yaml").get("copy_gate")
-ok(load("clinical_rig.yaml").get("after_style_refs") is True and _cg51 == {"sim_max": 0.82, "align_min_pct": 1.0, "roll_deg": 10},
+ok(load("clinical_rig.yaml").get("after_style_refs") is True
+   and {k: _cg51.get(k) for k in ("sim_max", "align_min_pct", "roll_deg")} == {"sim_max": 0.82, "align_min_pct": 1.0, "roll_deg": 10},
    "51 임상 After 참조 켜짐 + 너무 같음 자 0.82/1%/10°")
+ok(_cg51.get("record_only") is True and "record_only" in inspect.getsource(__import__("bna.batch", fromlist=["x"])),
+   "51 임상 너무 같음 자는 1회차 6/6 탈락 뒤 기록 전용(배치가 스위치를 읽는다)")
 _cc51 = lambda al, sim, rl=0.0: _st51.clinical_copy_check({"align_err_pct": al, "roll_diff": rl}, sim, _cg51)["passed"]  # noqa: E731
 ok(_cc51(2.65, 0.750) is True and _cc51(2.07, None) is True, "51 실제 참조 쌍(닮음 0.75·정렬 2~2.7%)은 통과")
 ok(_cc51(2.5, 0.86) is False, "51 닮음 0.86(09-15 생성 최소값)은 너무 같음")
@@ -2777,9 +2780,14 @@ ok(_r51["blue_backdrop"] < min(_r51["clinic_wall"], _r51["grey_studio"]), f"51 �
 ok("shadow edge" in load("clinical_rig.yaml")["rigs"]["blue_backdrop"]["lighting"], "51 플래시 리그에 그림자 경계 문장")
 _sel51 = build_prompts("nasolabial", "selfie", plan_batch("selfie", 1, 5, {"looks": "ordinary"}, treatment="nasolabial")[0], 5)
 ok(all(_rf51.clinical_after_style(s["afters"][-1]["after_variation"], "nasolabial", "k") for s in _s51),
-   "51 모든 리그에 같은 리그 실제 After 참조 1장이 붙는다")
+   "51 모든 리그에 같은 리그 실제 부스 사진 1장이 붙는다")
 ok(_rf51.clinical_after_style({"rig": {"key": "grey_studio"}}, "nasolabial", "k") == ["clinical/nasolabial_after2w_01.jpg"]
    and not _rf51.clinical_after_style({}, "nasolabial", "k"), "51 같은 시술 참조 우선 · 리그 없으면(셀카) 안 붙는다")
+ok(all("after" not in f for rg in ("blue_backdrop", "clinic_wall")
+       for f in _rf51.clinical_after_style({"rig": {"key": rg}}, "nasolabial", "k")),
+   "51 다른 시술 After(리프팅)는 안 붙는다 — 효과 전이(r1 턱선), 대신 같은 리그 시술 전 컷")
+_ang51 = _C51(s["variation"]["angle"]["key"] for s in _s51)
+ok(set(_ang51) <= set(load("treatments.yaml")["nasolabial"]["angles_clinical"]), f"51 임상 각도는 angles_clinical 안에서만 — {dict(_ang51)}")
 ok("never lower" in load("qa_checklist.yaml")["items_clinical"]["drift"], "51 임상 drift 는 다시 찍은 미세 차이를 감점 안 한다")
 
 print()

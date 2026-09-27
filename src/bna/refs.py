@@ -208,27 +208,30 @@ def pose_ref(before_pts, key: str):
 def clinical_after_style(variation: dict, treatment: str = None, key: str = "") -> list:
     """임상 After 스타일 참조 — **같은 리그의 실제 After 1장** 파일 이름 (2026-09-28 빌디 요청 ①).
 
-    `candidates` 와 다른 점 둘: 시술·시점으로 거르지 않는다(팔자 전용 After 는 grey_studio 한 장뿐이라 거르면
-    3리그 중 2리그가 참조 없이 나간다 — 이 참조는 효과가 아니라 '같은 부스에서 다시 찍은 사진의 느낌'을 옮긴다),
-    그리고 **시술 전(before) 전용 컷은 빼고 After 만** 쓴다. 리그 필터는 그대로 필터다(다른 리그면 그림체가 섞인다).
-    같은 시술 참조가 있으면 그게 먼저, 나머지는 컷 키 해시로 고정(재시도도 같은 장).
+    `candidates` 와 다른 점: 시점으로 거르지 않는다(이 참조는 효과가 아니라 '같은 부스에서 다시 찍은 사진의 느낌'을 옮긴다).
+    리그 필터는 그대로 필터다(다른 리그면 그림체가 섞인다). 후보가 여럿이면 컷 키 해시로 고정(재시도도 같은 장).
+    ⚠ 2026-09-28 1회차 교정: **다른 시술의 After 는 쓰지 않는다.** 리프팅 After(턱선·목 정리)를 팔자에 붙였더니
+      옆얼굴 컷 After 의 턱선·목이 같이 당겨졌다(v46 r1 0000 — 09-15 '볼 볼륨 전이'와 같은 뿌리). 효과가 찍힌 사진은
+      "사람은 1번"이라고 적어도 효과가 옮는다. → 순서 = ①같은 시술 After ②같은 리그 **시술 전(before) 컷**(효과가 없는
+      실제 부스 사진 — 촬영 느낌·다른 사람의 다른 자세만 준다) ③없으면 빈 목록(종전 1장 편집).
     """
     rig = _key(variation, "rig")
     if rig is None:
         return []
-    ok = []
+    same_tr, befores = [], []
     for r in check_index():
         if r.get("mode") != "clinical" or str(r.get("rig")) != str(rig):
             continue
         tl = _as_set(r.get("timeline"))
-        if not tl or "before" in tl:
-            continue
-        ok.append(r)
+        if "before" in tl:
+            befores.append(r)
+        elif tl and treatment and treatment in _as_set(r.get("treatment")):
+            same_tr.append(r)
+    ok = same_tr or befores
     if not ok:
         return []
     h = lambda r: hashlib.sha1(f"{key}|{r['file']}".encode("utf-8")).hexdigest()   # noqa: E731
-    ok.sort(key=lambda r: (0 if (treatment and treatment in _as_set(r.get("treatment"))) else 1, h(r)))
-    return [ok[0]["file"]]
+    return [sorted(ok, key=h)[0]["file"]]
 
 
 def pick(mode: str, variation: dict, k: int = 2, treatment: str = None, when: str = None) -> list:

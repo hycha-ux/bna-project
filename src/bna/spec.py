@@ -101,6 +101,10 @@ def treatment_rules(treatment: str, mode: str) -> dict:
         r["framing_weights"] = {str(k): float(v) for k, v in (t.get("framing_weights") or {}).items()}
         arc = t.get("lighting_arc") or {}
         r["lighting_arc"] = {k: list(arc.get(k) or []) for k in ("before", "after") if arc.get(k)}
+    elif t.get("angles_clinical"):
+        # 임상 각도 허용 (2026-09-28 티모). treatments.yaml `angles_clinical` 은 09-07부터 적혀 있었는데 **읽는 코드가 없었다** —
+        #   팔자 임상에 옆얼굴(side)이 뽑혀 팔자가 반만 보이고 얼굴 검출·정렬도 못 잰다(v46 1회차 0000 실측).
+        r["allow"]["angle"] = list(t["angles_clinical"])
     return r
 
 
