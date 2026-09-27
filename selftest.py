@@ -2661,6 +2661,15 @@ _r45 = _st44.copy_check(_pb44, _pr45, "selfie", head_only=True, roll_deg=10)
 ok(_r45["passed"] is True and abs(_r45["roll_diff"] - 15) < 0.5, f"㊺ 기울기 10° 이상이면 '다름' — {_r45['roll_diff']}°")
 ok(_st44.copy_check(_pb44, _pb44, "selfie", head_only=True, roll_deg=10)["passed"] is False, "㊺ 똑같은 컷은 여전히 '너무 같음'")
 ok(load("variations.yaml")["looks_profile"]["attractive"].get("copy_roll_deg") == 10, "㊺ 미모 프로필에 기울기 10° 가 걸려 있다")
+# ㊺-2 (09-28 연서님 "키는 걸로") — 미모 '너무 같음'은 닮음 ≥0.82 일 때만 탈락. 못 잰 닮음·통과 컷은 건드리지 않는다.
+_w45 = _st44.copy_sim_waive
+ok(load("variations.yaml")["looks_profile"]["attractive"].get("copy_sim_min") == 0.82, "㊺-2 미모 프로필에 닮음 0.82 가 걸려 있다")
+ok(_w45({"passed": False}, 0.70, 0.82) is True, "㊺-2 고개 같아도 닮음 0.70 이면 탈락 풀림")
+ok(_w45({"passed": False}, 0.85, 0.82) is False, "㊺-2 닮음 0.85 면 '너무 같음' 탈락 유지")
+ok(_w45({"passed": False}, None, 0.82) is False, "㊺-2 닮음 못 쟀으면 종전 판정(탈락) 유지")
+ok(_w45({"passed": False}, 0.70, None) is False, "㊺-2 키 없는 프로필(보통 인물)은 종전 그대로")
+ok(_w45({"passed": True}, 0.70, 0.82) is False, "㊺-2 통과 컷은 건드리지 않는다")
+ok("copy_sim_waive" in inspect.getsource(__import__("bna.batch", fromlist=["x"])), "㊺-2 배치가 이 판정을 실제로 부른다")
 # ㊻ (09-22 연서님 v40 검수 3건) — ① 미모 팔자 효과 moderate 고정 ② 미모 나이 시술별(팔자=30s·문구 30대 중후반, 그 외=20대)
 #   ③ 미모 컷 눈 가림은 기록 전용 ④ After 참조는 머리 전체(head_crop). 보통 인물은 전부 종전 그대로.
 _V46 = load("variations.yaml"); _P46 = _V46["looks_profile"]["attractive"]

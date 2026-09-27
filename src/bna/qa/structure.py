@@ -130,6 +130,19 @@ def pose_vector(pts) -> np.ndarray:
 COPY_EXPR_CUT, COPY_HEAD_CUT = 0.005, 0.015
 
 
+def copy_sim_waive(copy: dict, similarity, sim_min) -> bool:
+    """'너무 같음' 탈락을 닮음으로 풀어 주나 (2026-09-28 연서님 "키는 걸로" — 미모 프로필 `copy_sim_min`).
+
+    고개가 같아도 닮음 < sim_min 이면 베낀 그림이 아니라 다시 그린 얼굴로 본다 → 탈락 사유에서 뺀다(원장엔 남긴다).
+    근거(09-22 사람 판정 미모 After 79장, tools/copy_gate_mimo_audit.py): 고개 자만 = 채택 7/30·탈락 14/49 걸림(못 가름),
+    고개 AND 닮음≥0.82 = 채택 0/30·탈락 3/49. ⚠ 같은 원장으로 고르고 잰 낙관치라 새 회차로 다시 재라.
+    닮음을 못 쟀으면(None) 풀지 않는다 — 종전 판정 그대로.
+    """
+    if sim_min is None or similarity is None or (copy or {}).get("passed") is not False:
+        return False
+    return float(similarity) < float(sim_min)
+
+
 def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cut: float = None,
                head_only: bool = False, roll_deg: float = None) -> dict:
     """복붙 판정 한 벌. 셀카에서만 걸고, 임상·얼굴 미검출은 **못 잼**(None)으로 둔다.

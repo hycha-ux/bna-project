@@ -390,6 +390,11 @@ class Batch:
                 if (st.get("copy") or {}).get("passed") is False:
                     r["fail_reasons"].append("copy")
                 idn = identity.check(before_pp, after_pp); r["identity"] = idn
+                # 미모 '너무 같음'은 닮음도 높을 때만 탈락 (2026-09-28 연서님 "키는 걸로", 근거 structure.copy_sim_waive).
+                if "copy" in r["fail_reasons"] and structure.copy_sim_waive(st.get("copy"), idn.get("similarity"),
+                                                                            _lpf.get("copy_sim_min")):
+                    r["fail_reasons"].remove("copy")
+                    st["copy"]["waived"] = f"닮음 {idn['similarity']:.3f} < {_lpf['copy_sim_min']} — 다시 그린 얼굴로 봄(기록만)"
                 # '사람 확인 구간'(0.45~0.60)도 재시도로 돌린다 — 2026-09-10 성연서님 지시.
                 # 종전엔 gate="review" 를 hard_fail=False 로 흘려보내 기계가 통과시켰고,
                 # 그 컷(0910 실측 0.461 1건)이 "전·후가 다른 사람"으로 사람 눈에 걸렸다.
