@@ -32,6 +32,10 @@ ok('로컬파트 없음 거부', !emailAllowed('@medibuilder.com'));
 ok('빈 값 거부', !emailAllowed('') && !emailAllowed(null));
 ok('공백 낀 로컬파트 거부', !emailAllowed('a b@medibuilder.com'));
 ok('정규화', normEmail('  A@B.COM ') === 'a@b.com');
+ok('아이디만 적으면 회사 도메인을 붙인다 (2026-09-28)', normEmail(' YS.Seong ') === 'ys.seong@medibuilder.com');
+ok('아이디만으로 로그인 허용', emailAllowed('ys.seong'));
+ok('@ 가 있으면 안 붙인다 — 외부 메일은 여전히 거부', normEmail('someone@gmail.com') === 'someone@gmail.com' && !emailAllowed('someone@gmail.com'));
+ok('빈 값엔 안 붙인다', normEmail('') === '' && normEmail('   ') === '');
 
 // ── 시드 관리자 ─────────────────────────────────────────────────────────────
 ok('파트장 시드 관리자', isSeedAdmin('hy.cha@medibuilder.com'));

@@ -166,6 +166,8 @@ button.pri:disabled{opacity:.5;cursor:default}
 .msg.ok{color:#1F8F55}
 .alt{margin-top:16px;font-size:13px;color:#6B7684;text-align:center}
 a{color:#1F3A5F}
+
+.mail{display:flex;align-items:center;gap:6px}.mail input{flex:1;min-width:0}.mail span{color:#6B7684;font-size:14px;white-space:nowrap}
 `;
 
 const authPage = ({ title, sub, fields, button, script, alt }) => `<!doctype html>
@@ -194,13 +196,14 @@ const send=async()=>{
 };
 $('go').onclick=send;
 document.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter')send();}));
+const em=$('email');if(em)em.addEventListener('input',()=>{const v=em.value;const k=v.toLowerCase().indexOf('@medibuilder.com');if(k>=0)em.value=v.slice(0,k);});
 `;
 
 const LOGIN_PAGE = authPage({
   title: 'B&A 이미지',
   sub: '온리프 · 전후 사진 자동 생성',
   fields: `<label for="email">메디빌더 메일</label>
-<input id="email" type="email" placeholder="name@medibuilder.com" autofocus autocomplete="username">
+<div class="mail"><input id="email" type="text" placeholder="이름" autofocus autocomplete="username" spellcheck="false"><span>@medibuilder.com</span></div>
 <label for="pw">비밀번호</label>
 <input id="pw" type="password" autocomplete="current-password">`,
   button: '로그인',
@@ -212,7 +215,7 @@ const SIGNUP_PAGE = authPage({
   title: '회원가입',
   sub: '메디빌더 메일(@medibuilder.com)만 가입할 수 있습니다',
   fields: `<label for="email">메디빌더 메일</label>
-<input id="email" type="email" placeholder="name@medibuilder.com" autofocus autocomplete="username">
+<div class="mail"><input id="email" type="text" placeholder="이름" autofocus autocomplete="username" spellcheck="false"><span>@medibuilder.com</span></div>
 <label for="code">가입코드</label>
 <input id="code" type="password" placeholder="담당자에게 받은 코드">
 <label for="pw">비밀번호 (8자 이상)</label>

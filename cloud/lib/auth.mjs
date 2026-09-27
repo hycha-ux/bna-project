@@ -21,7 +21,12 @@ export const ROLE_LABEL = { admin: '관리자', member: '구성원' };
 /** 이 메일로 가입하면 관리자로 시작한다(2026-09-08 성연서님 지시). */
 export const SEED_ADMINS = ['hy.cha@medibuilder.com', 'ys.seong@medibuilder.com'];
 
-export const normEmail = (s) => String(s || '').trim().toLowerCase();
+// 아이디만 적으면 회사 도메인을 붙인다 (2026-09-28 연서님 "로그인할 때 @메디빌더 메일 자동으로").
+//   '@' 가 하나도 없을 때만 — 다른 도메인을 적은 건 그대로 두어 emailAllowed 가 거르게 한다.
+export const normEmail = (s) => {
+  const e = String(s || '').trim().toLowerCase();
+  return e && !e.includes('@') ? e + DOMAIN : e;
+};
 
 /** 도메인 판정 — 대소문자·앞뒤 공백만 흡수하고 넓히지 마라. */
 export function emailAllowed(email) {
