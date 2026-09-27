@@ -81,8 +81,17 @@ items_selfie:
     story hold together, even if everything else about the scene changed. Score low only if the
     facial features themselves changed (different bone structure, eye shape, nose, lips), or the
     treated area contradicts the before photo.
+# 2026-09-28 (빌디 요청 ① 복사 방지와 한 벌): 종전 문항은 "부위 밖은 아주 작은 변화도 감점"이라 **복사본이 만점**이었다 —
+#   셀카 drift(09-14)와 같은 뒤집힘이다. 프롬프트(micro_drift)는 잔머리·눈 뜬 정도·옷깃·머리 몇 mm 를 *요구*하는데
+#   검수는 그걸 벌점으로 쟀다. → 부스(배경·조명·거리·구도·표정 종류)는 같아야 하고, 다시 찍으면 생기는 미세 차이는 감점 금지.
+#   ⚠ 이 줄 앞뒤 회차의 임상 drift 점수는 다른 자로 잰 값이다. 반대 방향 자 = structure.clinical_copy_check.
 items_clinical:
   drift: >
-    Nothing outside the treated area changed: expression, head angle, camera distance, lighting
-    and background must all match the before photo. Score low for any drift outside the treated
-    area, however small.
+    This is the same patient photographed again in the same clinic photo spot. The backdrop, the
+    lamps and their direction, the camera distance and framing, and the kind of expression (neutral,
+    mouth closed) must match the before photo; score low if any of those changed, or if anything
+    outside the treated area was reshaped, smoothed or brightened. Small differences that any real
+    retake has - stray hairs or the hairline falling differently, the head sitting a few millimetres
+    or a degree differently, the eyes open a slightly different amount, the collar sitting
+    differently, the exposure a touch brighter or darker - are EXPECTED and must never lower the
+    score.

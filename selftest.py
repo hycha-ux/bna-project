@@ -2269,8 +2269,9 @@ ok("never lower the score" in _low and "expected" in _low,
    "셀카 drift 는 장면·표정 차이에 **감점하지 말라**고 명시한다(빌디 0914)")
 for _w in ("background", "lighting", "expression", "head angle"):
     ok(_w in _low, f"셀카 drift 가 '{_w}' 를 감점 대상에서 빼는 말을 담고 있다")
-ok("nothing outside the treated area" in _cli35["drift"].lower(),
-   "임상 drift 는 종전 뜻(부위 밖 변화 금지)을 그대로 지킨다")
+# 09-28 문구 교체(빌디 요청 ①): 부스·표정 종류는 같아야 하고 부위 밖을 고치면 감점 — 그 뜻은 유지, 미세 차이만 감점에서 뺐다(51 참조).
+ok("outside the treated area was reshaped" in _cli35["drift"].lower() and "backdrop" in _cli35["drift"].lower(),
+   "임상 drift 는 부스·부위 밖 손질 금지를 그대로 지킨다")
 
 
 # 심사에 실제로 그 문항이 가는지 — 설정만 갈라 놓고 provider 에 옛 문항을 넘기면 아무것도 안 바뀐다
@@ -2748,6 +2749,38 @@ ok("immediate_look" in (load("qa_checklist.yaml").get("thresholds") or {}), "㊿
 _a50 = [a for r in _m49 for a in r["afters"]]
 ok(all((a["qa_extra"] == "immediate") == (a["when"] == "immediate") and (a["when"] != "immediate" or a["effect_ungated"]) for a in _a50)
    and any(a["when"] == "immediate" for a in _a50), "㊿ 단발 직후 컷도 효과 기록만 + qa_extra=immediate (다른 시점은 없음)")
+
+# 51 (09-28 빌디 요청, 임상 묶음) — 복사 방지(참조·너무 같음 자) · 시점 가중 · 직후 자 · 리그 가중 · 임상 moderate.
+from collections import Counter as _C51
+from bna.planner import plan_batch
+from bna.qa import structure as _st51
+from bna import refs as _rf51
+_cg51 = load("clinical_rig.yaml").get("copy_gate")
+ok(load("clinical_rig.yaml").get("after_style_refs") is True and _cg51 == {"sim_max": 0.82, "align_min_pct": 1.0, "roll_deg": 10},
+   "51 임상 After 참조 켜짐 + 너무 같음 자 0.82/1%/10°")
+_cc51 = lambda al, sim, rl=0.0: _st51.clinical_copy_check({"align_err_pct": al, "roll_diff": rl}, sim, _cg51)["passed"]  # noqa: E731
+ok(_cc51(2.65, 0.750) is True and _cc51(2.07, None) is True, "51 실제 참조 쌍(닮음 0.75·정렬 2~2.7%)은 통과")
+ok(_cc51(2.5, 0.86) is False, "51 닮음 0.86(09-15 생성 최소값)은 너무 같음")
+ok(_cc51(0.33, 0.70) is False, "51 정렬 1% 미만은 닮음이 낮아도 픽셀 복사로 본다")
+ok(_cc51(2.5, 0.93, 12.0) is True, "51 기울기 10° 이상 다르면 인정")
+ok(_st51.clinical_copy_check({}, None, _cg51)["passed"] is None, "51 닮음·정렬 둘 다 못 재면 None(실패 아님)")
+ok("clinical_copy_check" in inspect.getsource(__import__("bna.batch", fromlist=["x"])), "51 배치가 임상 자를 실제로 부른다")
+_p51 = plan_batch("clinical", 120, 51, {}, treatment="nasolabial")
+_s51 = [build_prompts("nasolabial", "clinical", v, 51000 + i) for i, v in enumerate(_p51)]
+_w51 = _C51(s["afters"][-1]["when"] for s in _s51)
+ok(_w51["2w"] > _w51["1w"] > _w51["immediate"] > 0, f"51 임상 시점 가중 2주>1주>직후 — {dict(_w51)}")
+ok({s["afters"][-1]["effect_level"] for s in _s51} == {"moderate"}, "51 임상 효과 강도 moderate 고정(09-21 pronounced 가 안 샌다)")
+ok(all((s["afters"][-1]["qa_extra"] == "immediate") == (s["afters"][-1]["when"] == "immediate") for s in _s51),
+   "51 임상 직후 컷도 직후 흔적 자(immediate_look)로 판정")
+_r51 = _C51(s["variation"]["rig"]["key"] for s in _s51)
+ok(_r51["blue_backdrop"] < min(_r51["clinic_wall"], _r51["grey_studio"]), f"51 평평한 플래시 리그 가중 낮춤 — {dict(_r51)}")
+ok("shadow edge" in load("clinical_rig.yaml")["rigs"]["blue_backdrop"]["lighting"], "51 플래시 리그에 그림자 경계 문장")
+_sel51 = build_prompts("nasolabial", "selfie", plan_batch("selfie", 1, 5, {"looks": "ordinary"}, treatment="nasolabial")[0], 5)
+ok(all(_rf51.clinical_after_style(s["afters"][-1]["after_variation"], "nasolabial", "k") for s in _s51),
+   "51 모든 리그에 같은 리그 실제 After 참조 1장이 붙는다")
+ok(_rf51.clinical_after_style({"rig": {"key": "grey_studio"}}, "nasolabial", "k") == ["clinical/nasolabial_after2w_01.jpg"]
+   and not _rf51.clinical_after_style({}, "nasolabial", "k"), "51 같은 시술 참조 우선 · 리그 없으면(셀카) 안 붙는다")
+ok("never lower" in load("qa_checklist.yaml")["items_clinical"]["drift"], "51 임상 drift 는 다시 찍은 미세 차이를 감점 안 한다")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

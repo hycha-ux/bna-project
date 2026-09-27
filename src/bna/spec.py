@@ -589,6 +589,11 @@ def check_treatment_facts(treatment: str) -> None:
                 raise ValueError(f"{treatment}.timeline_weights.{m} 에 {w} 를 적었는데 timeline 에 없다 — 죽은 설정")
             if not float(x) > 0:
                 raise ValueError(f"{treatment}.timeline_weights.{m}.{w}={x} — 0 이하 금지(빼기는 timeline 이 할 일)")
+    for m, lv in (t.get("mode_effect_level") or {}).items():   # 모드별 효과 고정(2026-09-28) — 죽은 설정을 소리 내서 막는다
+        if m not in (t.get("modes") or []):
+            raise ValueError(f"{treatment}.mode_effect_level 에 {m} 모드를 적었는데 modes 에 없다 — 죽은 설정")
+        if lv not in (t.get("effect_levels") or []):
+            raise ValueError(f"{treatment}.mode_effect_level.{m}={lv!r} 이 effect_levels 에 없다")
     facts = t.get("facts")
     if facts is None:
         return
@@ -696,7 +701,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         # 리그 3벌 중 하나를 세트마다 뽑는다 (2026-09-15 v1). 세트 안(전·후)에서는 고정 — After 는 같은 rig 의
         #   retake 문장을 쓴다. 종전 `rig_default` 하나는 실제 병원 사진보다 너무 깨끗했다(clinical_rig.yaml 머리말).
         rig = load("clinical_rig.yaml")
-        rig_key = rng.choice(sorted(rig["rigs"]))
+        # 리그 가중(2026-09-28, clinical_rig.yaml `rig_weights`) — 없으면 종전 균등 추첨(rng 흐름까지 그대로).
+        _rks = sorted(rig["rigs"]); _rw = rig.get("rig_weights") or {}
+        rig_key = (rng.choices(_rks, weights=[float(_rw.get(k, 1)) for k in _rks], k=1)[0] if _rw
+                   else rng.choice(_rks))
         r = rig["rigs"][rig_key]
         variation = {**variation, "rig": {"key": rig_key, "text": r.get("label", rig_key)}}
         angle = rig["angles"].get({"front": "front", "three_quarter": "oblique_45", "side": "side"}.get(variation["angle"]["key"], "front"))
@@ -789,6 +797,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     # 미모 프로필 효과 고정(2026-09-22 연서님 v40 "pronounced 로 찍혔는데 미모는 moderate 로 강제") — 추첨은 위에서 소비(rng 흐름 불변).
     if _prof.get("effect_level") in (t.get("effect_levels") or []):
         level = _prof["effect_level"]
+    # 모드별 효과 고정(2026-09-28 빌디 요청 ⑥ — 임상 moderate). 09-21 pronounced 전환은 셀카 검수 결과인데 임상이 물려받았다.
+    _mel = (t.get("mode_effect_level") or {}).get(mode)
+    if _mel in (t.get("effect_levels") or []):
+        level = _mel
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
     # 시점 가중 (2026-09-22 연서님 v43 검수 "시간 지난 모습이 후기의 본체 — 팔자 셀카 2주 5·1주 3·직후 2, 미모는 직후 1"):
     #   treatments.yaml `timeline_weights: {모드: {시점: 가중}}` + 미모 프로필 `timeline_weights`(시점별 덮어쓰기).

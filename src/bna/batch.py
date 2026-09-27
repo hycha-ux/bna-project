@@ -259,9 +259,15 @@ class Batch:
                         #   고르기는 refs.pick 한 곳 — 리그·시점 필터가 거기 있다(여기서 다시 거르지 마라).
                         #   맞는 참조가 없으면 빈 목록 → 종전과 똑같은 1장 편집이고 문구도 안 붙는다.
                         #   스위치 = clinical_rig.yaml `after_style_refs` (켠 것/끈 것 동일인 점수 비교용).
-                        edit_refs = (self._refs(af.get("after_variation") or spec["variation"], af["when"])
-                                     if self.mode == "clinical" and self.p_edit.supports_style_refs
-                                     and load("clinical_rig.yaml").get("after_style_refs") else [])
+                        #   2026-09-28 빌디 요청 ①: 고르기가 refs.clinical_after_style 로 바뀌었다(같은 리그 실제 After 1장,
+                        #   시술·시점 무관). 무엇을 붙였는지 meta["after_style_ref"][시점] 에 남긴다(볼 전이 사후 대조용).
+                        _esf = (refs.clinical_after_style(af.get("after_variation") or spec["variation"], self.treatment,
+                                                          f"{self.batch_id}|{item_id}|{af['when']}")
+                                if self.mode == "clinical" and self.p_edit.supports_style_refs
+                                and load("clinical_rig.yaml").get("after_style_refs") else [])
+                        edit_refs = [(refs.REF_DIR / f).read_bytes() for f in _esf]
+                        if _esf:
+                            meta.setdefault("after_style_ref", {})[af["when"]] = _esf[0]
                         if edit_refs:
                             after_prompt = after_prompt + " " + " ".join(
                                 (ROOT / "config" / "prompts" / "edit_style_refs.md").read_text(encoding="utf-8").split())
@@ -395,6 +401,13 @@ class Batch:
                                                                             _lpf.get("copy_sim_min")):
                     r["fail_reasons"].remove("copy")
                     st["copy"]["waived"] = f"닮음 {idn['similarity']:.3f} < {_lpf['copy_sim_min']} — 다시 그린 얼굴로 봄(기록만)"
+                # 임상 '너무 같음' (2026-09-28 빌디 요청 ②) — 셀카 자(copy_check)는 임상에서 None 이다. 임상은 닮음 상한·정렬 하한·
+                #   기울기 인정으로 따로 잰다(근거·컷 = clinical_rig.yaml copy_gate). 사유 이름은 셀카와 같은 'copy'.
+                if self.mode == "clinical":
+                    cc = structure.clinical_copy_check(st, idn.get("similarity"), load("clinical_rig.yaml").get("copy_gate"))
+                    st["copy"] = cc
+                    if cc.get("passed") is False:
+                        r["fail_reasons"].append("copy")
                 # '사람 확인 구간'(0.45~0.60)도 재시도로 돌린다 — 2026-09-10 성연서님 지시.
                 # 종전엔 gate="review" 를 hard_fail=False 로 흘려보내 기계가 통과시켰고,
                 # 그 컷(0910 실측 0.461 1건)이 "전·후가 다른 사람"으로 사람 눈에 걸렸다.

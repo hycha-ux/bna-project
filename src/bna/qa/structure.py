@@ -28,6 +28,9 @@ def check(before: Image.Image, after: Image.Image, mode: str, region: str, copy_
     out["align_err_pct"] = float(np.linalg.norm(center_a - center_b) / ipd_b * 100)
     out["face_ratio_diff"] = float(abs(ipd_a - ipd_b) / ipd_b)
     out["luma_diff"] = float(abs(np.asarray(before.convert("L")).mean() - np.asarray(after.convert("L")).mean()) / 255)
+    # 눈 선 기울기 차(°) — 임상 '너무 같음'의 기울기 인정에 쓴다(2026-09-28, clinical_copy_check). 기록은 모든 모드.
+    _ang = lambda k: float(np.degrees(np.arctan2(*(k["eye_r"] - k["eye_l"])[::-1])))   # noqa: E731
+    out["roll_diff"] = round(abs((_ang(ka) - _ang(kb) + 180) % 360 - 180), 1)
 
     # 시술 부위가 프레임 안에 있는지 (아래 region_frame 머리말이 자의 근거다)
     out.update(region_frame(pa, region, after.size))
@@ -92,6 +95,8 @@ def region_frame(pts, region, size, in_cut=0.90, cov_cut=0.20) -> dict:
 #   **고개 방향·입 벌림·눈뜸**이고, 그건 랜드마크로 바로 잴 수 있다.
 # ⚠ 셀카 전용이다. 임상 컷은 조명·각도까지 맞춘 편집이라 닮은 게 정답이고, 거기 이 자를 걸면
 #   잘 만든 임상 컷이 통째로 떨어진다(방향이 반대인 두 모드에 한 자를 쓰면 한쪽은 반드시 틀린다).
+#   → 2026-09-28: 임상도 '너무 같음'이 실측됐다(09-15 21장 닮음 0.86~0.94, 전부 사람 reject). 다만 이 자세 벡터가 아니라
+#     **닮음 상한·정렬 하한**으로 따로 잰다 — clinical_copy_check(아래 copy_check 는 여전히 셀카 전용).
 UP_LIP, LOW_LIP = 13, 14
 EYE_L_T, EYE_L_B, EYE_R_T, EYE_R_B = 159, 145, 386, 374
 BROW_L, BROW_R, CHIN = 105, 334, 152
@@ -141,6 +146,39 @@ def copy_sim_waive(copy: dict, similarity, sim_min) -> bool:
     if sim_min is None or similarity is None or (copy or {}).get("passed") is not False:
         return False
     return float(similarity) < float(sim_min)
+
+
+def clinical_copy_check(st: dict, similarity, cfg: dict) -> dict:
+    """임상 '너무 같음' (2026-09-28 빌디 요청 ②). 셀카 copy_check 가 임상에서 None 인 자리를 채운다.
+
+    규칙 = 닮음 ≥ sim_max **또는** 정렬 오차 < align_min_pct(픽셀 복사) → 너무 같음. 단 눈 선 기울기 차 ≥ roll_deg 면 다름.
+    근거·컷 = clinical_rig.yaml `copy_gate` 머리말(실제 참조 3쌍 vs 09-15 생성 21장 — 가르는 축은 닮음).
+    3값: 닮음·정렬 둘 다 못 쟀으면 None(못 잼 — 실패 아님). cfg 가 비면 종전처럼 None.
+    `st` = check() 결과(align_err_pct·roll_diff 를 읽는다 — 랜드마크를 다시 뜨지 않는다). 순수 함수라 회귀가 값으로 직접 본다.
+    """
+    cfg = cfg or {}
+    cuts = {k: cfg.get(k) for k in ("sim_max", "align_min_pct", "roll_deg")}
+    if not cfg:
+        return {"passed": None, "measured": False, "cuts": cuts, "reason": "임상 copy_gate 설정 없음"}
+    al = st.get("align_err_pct")
+    sim = None if similarity is None else float(similarity)
+    rl = st.get("roll_diff")
+    if al is None and sim is None:
+        return {"passed": None, "measured": False, "cuts": cuts, "rule": "clinical",
+                "reason": "얼굴 미검출 — 닮음·정렬 둘 다 못 잼"}
+    why = []
+    if sim is not None and cfg.get("sim_max") is not None and sim >= float(cfg["sim_max"]):
+        why.append(f"닮음 {sim:.3f}≥{cfg['sim_max']}")
+    if al is not None and cfg.get("align_min_pct") is not None and al < float(cfg["align_min_pct"]):
+        why.append(f"정렬 {al:.2f}%<{cfg['align_min_pct']}%")
+    same = bool(why)
+    if same and rl is not None and cfg.get("roll_deg") is not None and rl >= float(cfg["roll_deg"]):
+        same = False
+    return {"passed": not same, "measured": True, "cuts": cuts, "rule": "clinical",
+            "sim": None if sim is None else round(sim, 3), "align_err_pct": None if al is None else round(al, 2),
+            "roll_diff": rl,
+            "reason": "" if not same else ("전·후가 너무 같다(" + " · ".join(why) +
+                                           ") — 같은 부스에서 다시 찍은 사진이 아니라 Before 를 거의 그대로 돌려준 컷")}
 
 
 def copy_check(before_pts, after_pts, mode: str, expr_cut: float = None, head_cut: float = None,
