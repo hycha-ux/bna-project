@@ -2839,6 +2839,21 @@ finally:
 _o55 = _np55.asarray(_out55).astype(float)
 ok(_i55["applied"] and _o55[100, 100].mean() > 125 and abs(_o55[100, 20].mean() - 180) < 3,
    f"55 들어올리기는 골만 밝히고 평평한 곳은 그대로 — 골 {_o55[100,100].mean():.0f}(원 120) · 바깥 {_o55[100,20].mean():.0f}(원 180)")
+# 56 (09-28 8차 연서님) — A 부위 = 코 옆 골 띠(nasal_fold) · 세기 = 목표 감소율(실제 쌍 -50%)로 이분 탐색.
+_Lm56 = __import__("bna.qa.landmarks", fromlist=["x"])
+ok(_fl55.REGION == "nasal_fold" and _Lm56.REGIONS["nasal_fold"] == "nasolabial_fold_l+nasolabial_fold_r"
+   and 49 in _Lm56.REGIONS["nasolabial_fold_l"] and 279 in _Lm56.REGIONS["nasolabial_fold_r"], "56 A 부위는 콧볼 옆(49·279)에서 시작하는 골 띠")
+_Lm56.region_mask, _orig56 = (lambda im, p, r, feather=0: __import__("PIL.Image", fromlist=["x"]).new("L", im.size, 255)), _Lm56.region_mask
+_Lm56.detect, _odet56 = (lambda im: _pts55), _Lm56.detect
+try:
+    _im56 = __import__("PIL.Image", fromlist=["x"]).fromarray(_img55)
+    _ref56 = _fl55.shade(_im56)
+    _o56, _i56 = _fl55.lift_to(_im56, -50, _ref56)
+    _got56 = _fl55.shade(_o56)
+finally:
+    _Lm56.region_mask, _Lm56.detect = _orig56, _odet56
+ok(_i56["applied"] and not _i56["capped"] and abs(_got56 / _ref56 - 0.5) < 0.05,
+   f"56 lift_to 는 골 그늘을 목표(-50%)에 맞춘다 — {_got56 / _ref56 - 1:+.1%} (세기 {_i56['strength']})")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

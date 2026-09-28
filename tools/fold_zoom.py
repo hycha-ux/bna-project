@@ -23,7 +23,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from bna.qa import landmarks as L  # noqa: E402
 from bna.qa.structure import region_points  # noqa: E402
 
-REGION = "nasolabial_marionette"
+# 8차(2026-09-28)부터 코 옆 골 띠(nasal_fold) — 연서님 기준 "코 옆 그늘". 7차까지 수치(v49~v52 확대)는 nasolabial_marionette 로 잰 값이다.
+REGION = "nasal_fold"
 STABLE = [33, 133, 263, 362, 70, 105, 300, 334, 10, 151, 9, 168, 6, 197, 234, 454, 127, 356]   # 눈·눈썹·이마·콧대·관자 — 필러가 안 건드리는 점
 CTRL = [116, 117, 118, 345, 346, 347, 10, 151, 108, 337]                                        # 대조 = 볼 윗부분·이마
 
