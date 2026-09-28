@@ -2757,13 +2757,14 @@ from bna.qa import structure as _st51
 from bna import refs as _rf51
 _cg51 = load("clinical_rig.yaml").get("copy_gate")
 ok(load("clinical_rig.yaml").get("after_style_refs") is True
-   and {k: _cg51.get(k) for k in ("sim_max", "align_min_pct", "roll_deg")} == {"sim_max": 0.82, "align_min_pct": 1.0, "roll_deg": 10},
-   "51 임상 After 참조 켜짐 + 너무 같음 자 0.82/1%/10°")
-ok(_cg51.get("record_only") is True and "record_only" in inspect.getsource(__import__("bna.batch", fromlist=["x"])),
-   "51 임상 너무 같음 자는 1회차 6/6 탈락 뒤 기록 전용(배치가 스위치를 읽는다)")
+   and {k: _cg51.get(k) for k in ("sim_max", "align_min_pct", "roll_deg")} == {"sim_max": 0.90, "align_min_pct": 1.0, "roll_deg": 10},
+   "51 임상 After 참조 켜짐 + 너무 같음 자 0.90/1%/10° (09-28 3차 연서님)")
+ok(_cg51.get("record_only") is False and "record_only" in inspect.getsource(__import__("bna.batch", fromlist=["x"])),
+   "51 임상 너무 같음 자는 게이트(09-28 3차 — 기록 전용 해제, 배치가 스위치를 읽는다)")
 _cc51 = lambda al, sim, rl=0.0: _st51.clinical_copy_check({"align_err_pct": al, "roll_diff": rl}, sim, _cg51)["passed"]  # noqa: E731
 ok(_cc51(2.65, 0.750) is True and _cc51(2.07, None) is True, "51 실제 참조 쌍(닮음 0.75·정렬 2~2.7%)은 통과")
-ok(_cc51(2.5, 0.86) is False, "51 닮음 0.86(09-15 생성 최소값)은 너무 같음")
+ok(_cc51(4.0, 0.886) is True and _cc51(7.1, 0.89) is True, "51 사람 채택 컷(닮음 0.88~0.89·정렬 4.0~7.1%)은 통과")
+ok(_cc51(2.5, 0.92) is False and _cc51(2.5, 0.942) is False, "51 닮음 0.92·0.942(버린 컷·v48 효과 없음)는 너무 같음")
 ok(_cc51(0.33, 0.70) is False, "51 정렬 1% 미만은 닮음이 낮아도 픽셀 복사로 본다")
 ok(_cc51(2.5, 0.93, 12.0) is True, "51 기울기 10° 이상 다르면 인정")
 ok(_st51.clinical_copy_check({}, None, _cg51)["passed"] is None, "51 닮음·정렬 둘 다 못 재면 None(실패 아님)")
@@ -2772,7 +2773,8 @@ _p51 = plan_batch("clinical", 120, 51, {}, treatment="nasolabial")
 _s51 = [build_prompts("nasolabial", "clinical", v, 51000 + i) for i, v in enumerate(_p51)]
 _w51 = _C51(s["afters"][-1]["when"] for s in _s51)
 ok(_w51["2w"] > _w51["1w"] > _w51["immediate"] > 0, f"51 임상 시점 가중 2주>1주>직후 — {dict(_w51)}")
-ok({s["afters"][-1]["effect_level"] for s in _s51} == {"moderate"}, "51 임상 효과 강도 moderate 고정(09-21 pronounced 가 안 샌다)")
+ok({s["afters"][-1]["effect_level"] for s in _s51} == {"pronounced"}, "51 임상 효과 강도 pronounced 고정(09-28 3차 연서님 — 효과 없음 4/7)")
+ok(load("clinical_rig.yaml")["tolerance"]["landmark_align_pct"] == 8.0, "51 임상 정렬 상한 8%(채택 컷 7.1%)")
 ok(all((s["afters"][-1]["qa_extra"] == "immediate") == (s["afters"][-1]["when"] == "immediate") for s in _s51),
    "51 임상 직후 컷도 직후 흔적 자(immediate_look)로 판정")
 _r51 = _C51(s["variation"]["rig"]["key"] for s in _s51)
@@ -2794,7 +2796,8 @@ _bs52 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
 ok(load("clinical_rig.yaml").get("structure_record_only") is True and "structure_record_only" in _bs52, "52 임상 구조 자 기록 전용(배치가 스위치를 읽는다)")
 ok('"retry_snapshot": True' in _bs52 and '-t{attempt}' in _bs52, "52 재시도 전 컷을 형제 항목 <id>-t<n> 으로 남긴다")
 _a52 = _s51[0]["after_prompt"]
-ok("Face width, exposure and skin tone stay exactly as in image 1" in _a52, "52 임상 After 에 얼굴 폭·노출·피부톤 한 줄이 실린다")
+ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
+   "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")
 ok(all("brighter or darker" not in x for x in (load("clinical_rig.yaml")["micro_drift"], _esr52))
    and "touch brighter" not in load("qa_checklist.yaml")["items_clinical"]["drift"],

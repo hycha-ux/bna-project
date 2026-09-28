@@ -105,7 +105,9 @@ after_style_refs: true
 #     즉 참조 2쌍(0.75)으로 잡은 0.82 는 편집 모델이 내는 '좋은 재촬영'까지 죽인다. → **기록 전용**으로 내리고(record_only)
 #     사람 판정(똑같음/얼굴/피부 메모)과 대 본 뒤 컷을 다시 정한다(09-18·09-21 '게이트는 분포를 본 다음'과 같은 순서).
 #     정렬 < 1% 도 같이 기록 전용이다(한 스위치). 되돌리기 = record_only: false.
-copy_gate: {sim_max: 0.82, align_min_pct: 1.0, roll_deg: 10, record_only: true}
+#   ⚠ 2026-09-28 3차 연서님 "0.90 켜줘" — 사람 채택 3장(v46 r1 0000·r2 0000-t2·0001-t2)이 닮음 0.88~0.89, 버린 22장 중 18장이 ≥0.90.
+#     게이트로 다시 켰다(record_only 해제). 컷 = 0.90. 채택이 3장뿐이라 여유가 0.01 이다 — 새 회차 사람 판정으로 다시 재라.
+copy_gate: {sim_max: 0.90, align_min_pct: 1.0, roll_deg: 10, record_only: false}
 
 # 구조 검사 임계값 (임상 모드에만 적용)
 # 정렬 허용 2% → 4% (2026-09-15 연서님 결정). 티모 실측: 연서님 레퍼런스의 **진짜 임상 쌍**이 눈 중심 이동
@@ -120,6 +122,7 @@ copy_gate: {sim_max: 0.82, align_min_pct: 1.0, roll_deg: 10, record_only: true}
 #   아래 tolerance 는 그대로 재고 meta.structure 에 남는다(record_only 표시). 되돌리기 = false.
 structure_record_only: true
 tolerance:
-  landmark_align_pct: 4.0     # 눈 중심 거리 대비 위치 오차 %
+  # 2026-09-28 연서님 4% → 8% — 사람 채택 컷이 정렬 4.0·7.1% 였다(진짜 임상 쌍 2.1~2.7% 보다 넓게 움직여도 채택). 구조 자는 기록 전용.
+  landmark_align_pct: 8.0     # 눈 중심 거리 대비 위치 오차 %
   face_ratio_diff: 0.03       # 얼굴 세로 비율 차이
   luma_diff: 0.05             # 평균 밝기 차이

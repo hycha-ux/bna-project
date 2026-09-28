@@ -54,7 +54,9 @@ nasolabial:
   # 모드별 효과 강도 고정 (2026-09-28 빌디 요청 ⑥). 09-21 의 pronounced 전환(effect_by_severity)은 셀카 검수 결과였는데
   #   임상은 effect_by_severity 를 그대로 물려받아 moderate·marked Before 가 전부 pronounced 로 나가고 있었다 → 임상은 moderate.
   #   추첨은 그대로 한 번 소비(rng 흐름 불변). 판정 정본 = spec.build_prompts. 되돌리기 = 이 줄 삭제.
-  mode_effect_level: {clinical: moderate}
+  #   2026-09-28 3차 연서님 "효과가 계속 안 보여 — 임상도 셀카 팔자처럼 pronounced, Before 주름 강도는 그대로" → pronounced.
+  #   (v46~v48 사람 판정 '효과 없음' 4/7). mild Before 도 이 줄이 덮으므로 pronounced 다(임상은 mild 를 원래 거의 안 뽑는다).
+  mode_effect_level: {clinical: pronounced}
   # 2026-09-11 성연서님 "B로 가자" — 필러는 여신티켓 3건 전부 "시술효과 약 3일 후"라
   #   직후·1주 컷이 **둘 다 최종 강도**다. 직후 한 칸만 올리면 1주가 직후보다 약해지는 역전이 생긴다.
   #   붓기·발적은 facts.immediate_marks(있으면) 또는 effects.yaml 의 immediate_final_note 가 얹는다.
