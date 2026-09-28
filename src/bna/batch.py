@@ -390,7 +390,12 @@ class Batch:
                                      copy_roll_deg=_lpf.get("copy_roll_deg")); r["structure"] = st
                 # passed 는 3값이다 — True(통과) / False(탈락) / None(못 잼). None 을 실패로 세면 같은 컷에 돈만 쓴다.
                 if st.get("passed") is False:
-                    r["fail_reasons"].append("structure")
+                    # 임상 구조 자 기록 전용 (2026-09-28 연서님 "기계가 먼저 버리지 말고 다 보여줘" — v47 r2 에서 연서님이 괜찮게 본
+                    #   1·2번 시도가 구조 자로 버려지고 3번째만 남았다). 수치는 meta 에 그대로, 탈락·재시도만 안 한다.
+                    if self.mode == "clinical" and load("clinical_rig.yaml").get("structure_record_only"):
+                        st["record_only"] = True
+                    else:
+                        r["fail_reasons"].append("structure")
                 # 복붙 게이트 — 구조와 **따로** 센다(같은 칸에 넣으면 "왜 떨어졌나"가 뭉개진다).
                 # 3값이라 None(임상·미검출)은 실패가 아니다. 근거·컷은 structure.copy_check 머리말.
                 if (st.get("copy") or {}).get("passed") is False:
@@ -465,6 +470,13 @@ class Batch:
             if meta["passed"]:
                 self._p(item_id, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
             meta["attempts_log"].append({"attempt": attempt, "fail_reasons": list(meta["fail_reasons"]), "at": time.time()})
+            if attempt < MAX_ATTEMPTS:
+                # 재시도 전 컷 보존 (2026-09-28 연서님 "재시도 전 컷도 검수함에 남게") — 다음 회차가 같은 이름 파일을 덮어쓰거나
+                #   조건을 다시 뽑아 옆에 쌓여도 화면은 마지막 쌍만 보여서, 사람이 본 컷이 사라졌다(v47 r2 0001).
+                #   형제 항목 `<id>-t<n>` 으로 따로 저장한다(검수함에 한 줄로 뜬다). 비용은 본 항목에 이미 있으니 0으로(이중 집계 금지).
+                snap = {**meta, "item_id": f"{item_id}-t{attempt}", "retry_snapshot": True, "snapshot_of": item_id,
+                        "passed": False, "cost": 0.0, "attempt": attempt}
+                self._save(snap["item_id"], snap, before_out, after_out, mask_img, after_outs if self.series else None)
             self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
             prev_fail = list(meta["fail_reasons"])      # 다음 회차가 "무엇을 다시 할지" 고르는 근거
         return meta

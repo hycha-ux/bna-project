@@ -2789,6 +2789,16 @@ ok(all("after" not in f for rg in ("blue_backdrop", "clinic_wall")
 _ang51 = _C51(s["variation"]["angle"]["key"] for s in _s51)
 ok(set(_ang51) <= set(load("treatments.yaml")["nasolabial"]["angles_clinical"]), f"51 임상 각도는 angles_clinical 안에서만 — {dict(_ang51)}")
 ok("never lower" in load("qa_checklist.yaml")["items_clinical"]["drift"], "51 임상 drift 는 다시 찍은 미세 차이를 감점 안 한다")
+# 52 (09-28 연서님 2차) — 임상 구조 자 기록 전용 · 재시도 전 컷 보존 · 얼굴 폭·노출·피부톤 한 줄(노출 흔들기 문구 전수 제거).
+_bs52 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok(load("clinical_rig.yaml").get("structure_record_only") is True and "structure_record_only" in _bs52, "52 임상 구조 자 기록 전용(배치가 스위치를 읽는다)")
+ok('"retry_snapshot": True' in _bs52 and '-t{attempt}' in _bs52, "52 재시도 전 컷을 형제 항목 <id>-t<n> 으로 남긴다")
+_a52 = _s51[0]["after_prompt"]
+ok("Face width, exposure and skin tone stay exactly as in image 1" in _a52, "52 임상 After 에 얼굴 폭·노출·피부톤 한 줄이 실린다")
+_esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")
+ok(all("brighter or darker" not in x for x in (load("clinical_rig.yaml")["micro_drift"], _esr52))
+   and "touch brighter" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
+   "52 '노출 살짝 다르게' 문구가 세 곳 모두에서 빠졌다(한 줄과 충돌)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

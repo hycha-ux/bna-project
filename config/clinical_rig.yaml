@@ -74,7 +74,7 @@ micro_drift: >
   little differently while the expression stays neutral. Clothes: the same clothes, but the collar,
   neckline, straps and folds sit differently - shifted, rumpled or straightened compared with the
   reference. Body: the head sits a few millimetres and a degree or two differently, the shoulders
-  are not in exactly the same place, and the exposure is a touch brighter or darker.
+  are not in exactly the same place.
   If the two photos overlap pixel for pixel outside the treated area, the result is wrong.
 
 # 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안). 켜면 같은 리그·같은 시점의 After 참조를 Before 뒤에
@@ -115,6 +115,10 @@ copy_gate: {sim_max: 0.82, align_min_pct: 1.0, roll_deg: 10, record_only: true}
 #   오른쪽 맞춤 가정 3.59% / 왼쪽 맞춤 14.8%(화면상 불가능) → 3.59% 로 읽는다(추정). 믿을 수 있는 값 중 4% 를 넘는 쌍은 없다.
 #   ⚠ 여유가 얇다(3.59 vs 4.0, 다른 날 촬영 clinic_wall). 실회차에서 '진짜 같은데 정렬로 탈락'이 나오면 5% 후보.
 #   luma_diff 0.05 그대로 (3쌍 실측 0.013·0.014·0.037) · face_ratio_diff 0.03 그대로 (3쌍 0.003·0.010·0.002).
+# 2026-09-28 연서님 "임상 구조 자는 탈락 시 자동 재시도 말고 기록 전용으로. 어차피 내가 검수하니까 다 보여줘".
+#   v47 r2: 얼굴 폭 4.3~4.5%·밝기 0.10 으로 3번씩 다시 그렸고, 연서님이 괜찮게 본 1·2번 시도가 사라졌다.
+#   아래 tolerance 는 그대로 재고 meta.structure 에 남는다(record_only 표시). 되돌리기 = false.
+structure_record_only: true
 tolerance:
   landmark_align_pct: 4.0     # 눈 중심 거리 대비 위치 오차 %
   face_ratio_diff: 0.03       # 얼굴 세로 비율 차이
