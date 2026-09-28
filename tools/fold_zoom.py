@@ -74,12 +74,20 @@ def one(d: Path, pass1=False):
     ctrl = (ctrl > 0) & ~mk
     ratio = float(diff[mk].mean() / max(diff[ctrl].mean(), 1e-6))
     sd_b, sd_a = float(gb[mk].std()), float(ga_n[mk].std())
+    # 골 그늘 깊이(2026-09-28 7차 — 연서님 기준 "코 옆 그늘이 실제로 옅어지나"): 부위 안에서 주변(큰 흐림)보다 어두운 양의 평균.
+    #   foldlift 와 같은 자(중간 흐림 − 큰 흐림의 음수 부분)다. 표준편차는 입술·수염까지 섞여 무뎠다.
+    def _shade(g):
+        w = g.shape[1]; ks = max(3, int(w * 0.012) | 1); kl = max(ks + 2, int(w * 0.12) | 1)
+        d = cv2.GaussianBlur(g, (ks, ks), 0) - cv2.GaussianBlur(g, (kl, kl), 0)
+        return float(-np.minimum(d, 0)[mk].mean())
+    sh_b, sh_a = _shade(gb), _shade(ga_n)
     crop = lambda im: Image.fromarray(im[y0:y1, x0:x1])  # noqa: E731
     heat = np.clip(diff / 40.0 * 255, 0, 255).astype(np.uint8)
     heat = cv2.applyColorMap(heat, cv2.COLORMAP_INFERNO)[:, :, ::-1]
     out = {"item": d.name + ("@pass1" if pass1 else ""), "when": (m.get("afters") or [{}])[-1].get("when"),
            "in_out": round(ratio, 2), "fold_sd_before": round(sd_b, 1), "fold_sd_after": round(sd_a, 1),
            "fold_sd_change_pct": round((sd_a - sd_b) / sd_b * 100, 1),
+           "shade_before": round(sh_b, 2), "shade_after": round(sh_a, 2), "shade_change_pct": round((sh_a - sh_b) / sh_b * 100, 1),
            "sim": round(float((m.get("identity") or {}).get("similarity") or 0), 3)}
     return out, [crop(B), crop(Aw), crop(np.ascontiguousarray(heat))]
 
@@ -110,7 +118,7 @@ def main():
     dr.text((12, 8), "팔자 부위 확대 — 전 | 후(전에 맞춰 정렬) | 바뀐 곳(밝을수록 많이)", fill="black", font=font)
     y = head
     for (o, _ims), s in zip(rows, sc):
-        dr.text((12, y + 4), f"{o['item']} · {o['when']} · {o['label']}   부위 쏠림 {o['in_out']}배 · 주름 골 대비 {o['fold_sd_change_pct']:+}% · 닮음 {o['sim']}",
+        dr.text((12, y + 4), f"{o['item']} · {o['when']} · {o['label']}   골 그늘 {o['shade_change_pct']:+}% · 부위 쏠림 {o['in_out']}배 · 닮음 {o['sim']}",
                 fill="black", font=fsm)
         x = 12
         for im in s:
