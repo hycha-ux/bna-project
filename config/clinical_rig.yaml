@@ -31,7 +31,8 @@ rigs:
     label: "병원 벽 · 천장등 · 헤어밴드"
     camera: "compact camera or phone used at the clinic front desk, everything in focus, ordinary consumer image quality"
     distance: "camera about 1m from the face, held at eye level"
-    lighting: "clinic ceiling fluorescent light from above, slightly flat, slightly yellow-green cast, mild shadows under the brows and chin"
+    # 2026-09-28 연서님 "Before 여섯 장 다 팔자가 얕아 — 측광 리그로 골이 읽히게": 위에서 오는 빛이 만드는 주름 그림자를 문장에 적었다.
+    lighting: "clinic ceiling fluorescent light from above and slightly to one side, slightly yellow-green cast, mild shadows under the brows and chin, and the light from above leaves a visible shadow line inside the creases beside the nose and down from the corners of the mouth"
     background: "plain painted clinic wall in an off-white or pale color, a corner or door frame edge may show"
     subject_setup: "hair held back with a plain fabric headband, no or very light everyday makeup, ordinary clothes, neutral expression, mouth closed, eyes to camera"
     processing: "straight out of camera, no retouching, ordinary consumer sharpness and a little noise"
@@ -39,7 +40,15 @@ rigs:
 # 리그 추첨 가중 (2026-09-28 빌디 요청 ⑤ "Before 에서 주름이 읽히게"). 천장등(clinic_wall)·좌우 소프트박스(grey_studio)는
 #   위·옆에서 빛이 와서 주름 그림자가 남고, 정면 플래시(blue_backdrop)는 평평해 주름이 덜 읽힌다 → 2:2:1.
 #   없으면 종전 균등 추첨. 0 은 쓰지 마라(빼기는 rigs 목록이 할 일). 정본 = spec.build_prompts 리그 추첨.
-rig_weights: {clinic_wall: 2, grey_studio: 2, blue_backdrop: 1}
+#   ⚠ 2026-09-28 5차 연서님 "Before 여섯 장 다 팔자가 얕아 — 측광 리그(clinic_wall) 가중 올리고 플래시 비중 낮춰" → 5:2:1
+#     (clinic_wall 62.5% · grey_studio 25% · blue_backdrop 12.5%).
+rig_weights: {clinic_wall: 5, grey_studio: 2, blue_backdrop: 1}
+
+# 임상 2단계 편집 (2026-09-28 연서님, 정본 = batch.one_after 임상 갈래). 1단계 = 다시 찍기(마스크 없음),
+#   2단계 = After 자신의 얼굴 점으로 만든 팔자·마리오네트 마스크 안에서만 골을 옅게(문안 = prompts/after_clinical_pass2.md).
+#   근거: v49 확대 비교(tools/fold_zoom.py) — 1단계만으로는 부위 쏠림 0.68~1.1배(팔자를 따로 안 건드림).
+#   비용: 컷당 편집 1회 추가. 되돌리기 = enabled: false.
+second_pass: {enabled: true, feather: 14}
 
 angles:
   front: "exact frontal view, head level, Frankfort plane horizontal"

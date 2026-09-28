@@ -43,29 +43,8 @@ def _jpg(img):
 
 
 def align(ref, moving):
-    """모델 출력(moving)을 입력(ref)에 픽셀로 겹친다 — 닮음 변환(이동·회전·배율), ORB 특징점 + RANSAC.
-
-    ⚠ 09-18 실측: 3/4 컷에서 편집 결과가 **구도를 살짝 옮겨** 돌아왔고, 그대로 부위 마스크로 합성하니
-      입술이 두 겹이 됐다(편집은 같은 크기 사진을 주지만 같은 자리를 보장하지 않는다).
-      못 맞추면(특징점 부족) 원래 것을 그대로 돌려준다 — 화면은 사람이 눈으로 보고 버린다."""
-    import cv2
-    import numpy as np
-    a = cv2.cvtColor(np.asarray(ref.convert("RGB")), cv2.COLOR_RGB2GRAY)
-    b = cv2.cvtColor(np.asarray(moving.convert("RGB")), cv2.COLOR_RGB2GRAY)
-    orb = cv2.ORB_create(4000)
-    ka, da = orb.detectAndCompute(a, None); kb, db = orb.detectAndCompute(b, None)
-    if da is None or db is None:
-        return moving, None
-    ms = sorted(cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True).match(db, da), key=lambda m: m.distance)[:800]
-    if len(ms) < 20:
-        return moving, None
-    src = np.float32([kb[m.queryIdx].pt for m in ms]); dst = np.float32([ka[m.trainIdx].pt for m in ms])
-    M, inl = cv2.estimateAffinePartial2D(src, dst, method=cv2.RANSAC, ransacReprojThreshold=3)
-    if M is None:
-        return moving, None
-    warped = cv2.warpAffine(np.asarray(moving.convert("RGB")), M, ref.size, borderMode=cv2.BORDER_REPLICATE)
-    shift = float(np.hypot(M[0, 2], M[1, 2])); scale = float(np.hypot(M[0, 0], M[1, 0]))
-    return Image.fromarray(warped), {"shift_px": round(shift, 1), "scale": round(scale, 4), "inliers": int(inl.sum())}
+    """정본 = bna.qa.landmarks.align_to (2026-09-28 임상 2단계 편집이 같이 쓰려고 옮겼다)."""
+    return landmarks.align_to(ref, moving)
 
 
 PLACE_TRIES = 3       # 빈(또는 반쪽) 원만 다시 그리는 횟수 상한

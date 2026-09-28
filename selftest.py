@@ -2796,6 +2796,20 @@ _bs52 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
 ok(load("clinical_rig.yaml").get("structure_record_only") is True and "structure_record_only" in _bs52, "52 임상 구조 자 기록 전용(배치가 스위치를 읽는다)")
 ok('"retry_snapshot": True' in _bs52 and '-t{attempt}' in _bs52, "52 재시도 전 컷을 형제 항목 <id>-t<n> 으로 남긴다")
 _a52 = _s51[0]["after_prompt"]
+# 53 (09-28 5차 연서님) — 측광 리그 5:2:1 · 임상 2단계 편집(부위 마스크 안에서만 골을 옅게).
+_rw53 = load("clinical_rig.yaml")["rig_weights"]
+ok(_rw53["clinic_wall"] > _rw53["grey_studio"] > _rw53["blue_backdrop"] and _r51["clinic_wall"] > _r51["grey_studio"] + _r51["blue_backdrop"],
+   f"53 측광 리그 가중이 제일 크다 — {dict(_r51)}")
+ok("shadow line inside the creases" in load("clinical_rig.yaml")["rigs"]["clinic_wall"]["lighting"], "53 측광 리그 문장이 주름 그림자를 적는다")
+_sp53 = [s["afters"][-1].get("second_pass_prompt") for s in _s51]
+ok(load("clinical_rig.yaml")["second_pass"]["enabled"] is True and all(_sp53) and "masked area" in _sp53[0],
+   "53 임상 컷마다 2단계 편집 문안이 실린다")
+ok(all(("patches" in s["afters"][-1]["second_pass_prompt"]) == (s["afters"][-1]["when"] == "immediate") for s in _s51),
+   "53 2단계는 직후 컷에만 '있던 패치 그대로'를 붙인다")
+ok(_sel51["afters"][-1].get("second_pass_prompt") is None, "53 셀카엔 2단계 문안이 없다")
+ok('meta.setdefault("second_pass"' in _bs52 and "landmarks.align_to" in _bs52, "53 배치가 2단계를 부르고 결과를 겹친 뒤 합성한다")
+ok("landmarks.align_to" in open(ROOT_T / "tools/patch_place.py", encoding="utf-8").read() if (ROOT_T := __import__("pathlib").Path("tools").resolve().parent).exists() else False,
+   "53 겹치기 정본은 landmarks.align_to 하나(patch_place 가 부른다)")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

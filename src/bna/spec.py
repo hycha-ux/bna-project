@@ -897,6 +897,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         lines_w = after_lines_at(w)
         avoid_after = lessons.avoid_text(lines_w)
         check_avoid_vs_facts(treatment, w, [s for _k, s in fact_spans(w)], lines_w)
+        pass2 = None                                   # 임상 2단계 편집 문안(아래 임상 갈래만 채운다)
         if mode == "clinical":
             a_var = variation
             # 다시 찍기 규정 (2026-09-15 v1): 같은 부스·같은 배경·같은 조명이되 **따로 찍은 사진**.
@@ -909,6 +910,14 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 identity_lock=identity, retake=retake, micro_drift=micro, after_change=chg, avoid=avoid_after)
             spans = [("identity", identity), ("retake", retake), ("drift", micro), ("change", t["after_change"]),
                      ("effect", eff["effect_levels"][lv]), ("must_not", t.get("must_not_change") or "")] + fact_spans(w) + [("avoid", avoid_after)]
+            # 2단계 편집 문안 (2026-09-28 연서님 — v49 확대 비교: 1장 편집은 팔자를 따로 안 건드린다, 부위 쏠림 0.68~1.1배).
+            #   1단계(위)가 '다시 찍기', 2단계가 부위 마스크 안에서 '골만 옅게'. 직후 흔적(패치)은 1단계가 그렸으니
+            #   2단계는 흔적 문장을 안 싣고 '있던 패치는 그대로'만 말한다. 쓰는 곳 = batch(스위치 clinical_rig.second_pass).
+            pass2 = (CFG / "prompts/after_clinical_pass2.md").read_text(encoding="utf-8").format(
+                after_change=" ".join(t["after_change"].split()), effect=eff["effect_levels"][lv] + ".",
+                must_not=" ".join(str(t.get("must_not_change") or "").split()),
+                keep_marks=("Any small clear round patches and tiny red needle dots already on the skin stay exactly as they are. "
+                            if w == "immediate" else ""))
         else:
             a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment, series=bool(pts),
                                 seen=series_seen)
@@ -1009,6 +1018,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         pgate = int(t.get("patch_gate") or 0) if w == "immediate" else 0
         return {"when": w, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
+                "second_pass_prompt": " ".join(pass2.split()) if pass2 else None,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}
 
     afters = []

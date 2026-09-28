@@ -281,6 +281,35 @@ class Batch:
                         if mask_img is not None and self.mode != "clinical":
                             after = landmarks.composite_outside_mask(before, after, mask_img)
                         cost = self.pricing[self.p_edit.name]["edit"]
+                        # ── 임상 2단계 편집 (2026-09-28 연서님) ─────────────────────────────────────────
+                        #   v49 확대 비교: 마스크 없는 1장 편집은 사진을 통째로 다시 찍을 뿐 팔자를 따로 안 건드린다
+                        #   (부위 쏠림 = 부위 안 변화 ÷ 밖 변화 0.68~1.1배, 채택 컷도 같음). 그래서 1단계 결과 위에
+                        #   **After 자신의 얼굴 점으로 만든 부위 마스크**로 한 번 더 편집해 골만 옅게 한다.
+                        #   합성은 마스크 안만 — 모델 출력은 자리가 살짝 밀려 오므로 먼저 겹친다(landmarks.align_to, 09-18).
+                        #   얼굴 점을 못 찾거나 겹치기 실패면 1단계 그대로(fail-open), 무엇이 일어났는지 meta["second_pass"] 에 남긴다.
+                        _sp = load("clinical_rig.yaml").get("second_pass") or {}
+                        if (self.mode == "clinical" and _sp.get("enabled") and af.get("second_pass_prompt")
+                                and self.p_edit.supports_mask and t["mask_region"] in landmarks.REGIONS):
+                            _rec = {"applied": False}
+                            _pa1 = await loop.run_in_executor(None, landmarks.detect, after)
+                            if _pa1 is None:
+                                _rec["reason"] = "1단계 After 얼굴 점 못 찾음"
+                            else:
+                                _m2 = landmarks.region_mask(after, _pa1, t["mask_region"], feather=int(_sp.get("feather", 14)))
+                                _b2 = await loop.run_in_executor(None, self.p_edit.edit, after_b,
+                                                                 self.p_edit.adapt_prompt(af["second_pass_prompt"], "after"),
+                                                                 _png(_m2), [], spec["aspect"])
+                                cost += self.pricing[self.p_edit.name]["edit"]
+                                _a2, _info = await loop.run_in_executor(None, landmarks.align_to, after, Image.open(io.BytesIO(_b2)))
+                                if _info is None:
+                                    _rec["reason"] = "2단계 결과 겹치기 실패 — 1단계 유지"
+                                else:
+                                    # 1단계 원본은 비교용으로 남긴다(검수 화면 파일 규칙 밖 이름 — 목록엔 안 뜬다)
+                                    _d = self.dir / item_id; _d.mkdir(parents=True, exist_ok=True)
+                                    after.convert("RGB").save(_d / f"pass1_{af['when']}_a{attempt}.jpg", quality=92)
+                                    after = Image.composite(_a2.convert("RGB"), after.convert("RGB"), _m2)
+                                    _rec = {"applied": True, **_info}
+                            meta.setdefault("second_pass", {})[af["when"]] = _rec
                     else:
                         # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)
                         after_refs = self._refs(af.get("after_variation") or variation, af["when"])

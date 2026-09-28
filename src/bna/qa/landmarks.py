@@ -272,6 +272,32 @@ def region_mask(img: Image.Image, pts: np.ndarray, region: str, feather: int = 1
     return mask.filter(ImageFilter.GaussianBlur(feather))
 
 
+def align_to(ref: Image.Image, moving: Image.Image):
+    """모델 출력(moving)을 입력(ref)에 픽셀로 겹친다 — 닮음 변환(이동·회전·배율), ORB 특징점 + RANSAC.
+
+    ⚠ 09-18 실측: 편집 결과가 **구도를 살짝 옮겨** 돌아왔고, 그대로 부위 마스크로 합성하니 입술이 두 겹이 됐다
+      (편집은 같은 크기 사진을 주지만 같은 자리를 보장하지 않는다). 정본은 여기 하나(tools/patch_place.py 가 부른다).
+      못 맞추면(특징점 부족) (원래 것, None) — 상위가 판단한다."""
+    import cv2
+    a = cv2.cvtColor(np.asarray(ref.convert("RGB")), cv2.COLOR_RGB2GRAY)
+    mv = moving.convert("RGB").resize(ref.size) if moving.size != ref.size else moving.convert("RGB")
+    b = cv2.cvtColor(np.asarray(mv), cv2.COLOR_RGB2GRAY)
+    orb = cv2.ORB_create(4000)
+    ka, da = orb.detectAndCompute(a, None); kb, db = orb.detectAndCompute(b, None)
+    if da is None or db is None:
+        return mv, None
+    ms = sorted(cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True).match(db, da), key=lambda m: m.distance)[:800]
+    if len(ms) < 20:
+        return mv, None
+    src = np.float32([kb[m.queryIdx].pt for m in ms]); dst = np.float32([ka[m.trainIdx].pt for m in ms])
+    M, inl = cv2.estimateAffinePartial2D(src, dst, method=cv2.RANSAC, ransacReprojThreshold=3)
+    if M is None:
+        return mv, None
+    warped = cv2.warpAffine(np.asarray(mv), M, ref.size, borderMode=cv2.BORDER_REPLICATE)
+    shift = float(np.hypot(M[0, 2], M[1, 2])); scale = float(np.hypot(M[0, 0], M[1, 0]))
+    return Image.fromarray(warped), {"shift_px": round(shift, 1), "scale": round(scale, 4), "inliers": int(inl.sum())}
+
+
 def composite_outside_mask(before: Image.Image, after: Image.Image, mask: Image.Image) -> Image.Image:
     """마스크 밖은 Before 원본 픽셀로 강제 복원 (임상 동일 조건 픽셀 보장)."""
     return Image.composite(after.convert("RGB"), before.convert("RGB"), mask)
