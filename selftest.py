@@ -2874,6 +2874,13 @@ try:
 finally:
     _fl55.edge_ratio = _orig58
 ok(_sd58 == {"l": -45.0, "r": -65.0, "gap": 20.0}, f"58 좌우 감소율·차 계산 — {_sd58}")
+# 59 (09-28 14차 연서님 "팔자 띠가 포토샵으로 지운 느낌") — 그늘 밝히기 끔 · 결 옮기기 · 밝기 묶기 · 띠 안팎 자(fold_band)
+_ff59 = load("clinical_rig.yaml").get("fold_fill") or {}
+ok("shade_pct" in _ff59 and _ff59["shade_pct"] is None and _fl55.TRANSPLANT, "59 그늘 밝히기 끔 + 결 옮기기 켜짐")
+ok(_fl55.band_gate({"measured": True, "dL": 1.0, "tex_ratio": 0.7, "spot_ratio": 0.5}, _ff59.get("band_gate"))
+   == ["bright", "clean", "spotless"] and _fl55.band_gate({"measured": False}, _ff59.get("band_gate")) == [],
+   "59 띠 자 판정 — 밝음·깨끗함·잡티 없음을 잡고, 못 재면 통과(fail-open)")
+ok('"fold_band"' in _bs58 and '_rec["band_final"]' in _bs58 and '_fi.pop("_wm"' in _bs58, "59 배치가 띠 자를 재고 게이트를 건다(띠 배열은 원장 밖)")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

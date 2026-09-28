@@ -401,9 +401,12 @@ class Batch:
                     if _eb and _sb:
                         _d = self.dir / item_id; _d.mkdir(parents=True, exist_ok=True)
                         after.convert("RGB").save(_d / f"fold_b_{af['when']}_a{attempt}.jpg", quality=92)
+                        # 14차: shade_pct: null = 그늘 밝히기 끔(연서님 "포토샵으로 지운 느낌")
+                        _sp = _ff.get("shade_pct")
                         _filled, _fi = await loop.run_in_executor(
                             None, lambda: _fl.fill_to(after, _eb * (1 + float(_ff["edge_pct"]) / 100.0),
-                                                      _sb * (1 + float(_ff.get("shade_pct", -50)) / 100.0)))
+                                                      None if _sp is None else _sb * (1 + float(_sp) / 100.0)))
+                        _wm = _fi.pop("_wm", None)           # 띠 지도(배열) — 원장에 넣지 않고 재촬영 뒤 띠 자에만 쓴다
                         _rec = {**_fi, "edge_before_img": round(_eb, 3), "edge_pct": _ff["edge_pct"]}
                         if _fi.get("applied") and _ff.get("side_gap_max") is not None:
                             # 좌우 자 ① (13차): 메운 직후 좌우 감소율 차가 크면 약한 쪽만 더 메운다(비용 0) — bna.foldlift.balance_sides
@@ -424,6 +427,9 @@ class Batch:
                             _rec["edge_final"] = round(await loop.run_in_executor(None, _fl.edge_ratio, after) or 0, 3)
                             # 좌우 자 ② (13차): 재촬영 뒤 최종 좌우 차 — 검수 단계가 이 값으로 'fold_asym' 을 건다(After 만 다시)
                             _rec["side_final"] = await loop.run_in_executor(None, _fl.side_drop, before, after)
+                            # 띠 안팎 자 (14차): 최종 컷을 메우기 때 찾은 같은 띠로 — 검수 단계가 band_gate 로 'fold_band' 를 건다
+                            if _wm is not None:
+                                _rec["band_final"] = await loop.run_in_executor(None, _fl.band_stats, after, _wm)
                     meta.setdefault("fold_fill", {})[af["when"]] = _rec
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
@@ -491,6 +497,15 @@ class Batch:
                 _gap = ((((meta.get("fold_fill") or {}).get(when) or {}).get("side_final")) or {}).get("gap")
                 if _gmax is not None and _gap is not None and _gap > float(_gmax):
                     r["fail_reasons"].append("fold_asym")
+                # 띠 안팎 자 (2026-09-28 14차 연서님 "띠 안팎 밝기 차·잡티 밀도 차를 재는 자 추가해서 튀면 다시"): 'fold_band' — After 만 다시.
+                #   못 쟀으면 걸지 않는다(fail-open). 문턱 = clinical_rig.yaml fold_fill.band_gate, 판정 = foldlift.band_gate 하나.
+                if self.mode == "clinical":
+                    from . import foldlift as _flg
+                    _bf = (((meta.get("fold_fill") or {}).get(when) or {}).get("band_final"))
+                    _bbad = _flg.band_gate(_bf, (load("clinical_rig.yaml").get("fold_fill") or {}).get("band_gate"))
+                    if _bbad:
+                        r["fail_reasons"].append("fold_band")
+                        r["fold_band"] = _bbad
                 idn = identity.check(before_pp, after_pp); r["identity"] = idn
                 # 미모 '너무 같음'은 닮음도 높을 때만 탈락 (2026-09-28 연서님 "키는 걸로", 근거 structure.copy_sim_waive).
                 if "copy" in r["fail_reasons"] and structure.copy_sim_waive(st.get("copy"), idn.get("similarity"),
