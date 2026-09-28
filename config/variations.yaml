@@ -468,7 +468,7 @@ expression_traits:
 mode_rules:
   clinical:
     country: [korea]      # 임상은 한국인만 (2026-09-15 저녁 연서님: "동양인 한국인만 보였으면"). 셀카는 전역 가중(한국 55%) 그대로
-    extras: [none, beard_light, beard_full, makeup_none, tired]  # 임상은 액세서리·화장 제외. 안경도 뺌 — 촬영 때 벗기고 찍는다 (2026-09-15 연서님)
+    extras: [none, makeup_none, tired]  # 임상은 액세서리·화장 제외. 안경도 뺌 — 촬영 때 벗기고 찍는다 (2026-09-15 연서님). 수염 2종도 뺌 — 팔자가 수염에 묻힌다(2026-09-28 6차 연서님 A, v50 0001)
     hair_style: [ponytail, bun, short, buzz]                                             # 머리 묶음 규정
     background: [clinic]
     angle: [front, three_quarter, side]

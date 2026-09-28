@@ -101,10 +101,15 @@ def treatment_rules(treatment: str, mode: str) -> dict:
         r["framing_weights"] = {str(k): float(v) for k, v in (t.get("framing_weights") or {}).items()}
         arc = t.get("lighting_arc") or {}
         r["lighting_arc"] = {k: list(arc.get(k) or []) for k in ("before", "after") if arc.get(k)}
-    elif t.get("angles_clinical"):
-        # 임상 각도 허용 (2026-09-28 티모). treatments.yaml `angles_clinical` 은 09-07부터 적혀 있었는데 **읽는 코드가 없었다** —
-        #   팔자 임상에 옆얼굴(side)이 뽑혀 팔자가 반만 보이고 얼굴 검출·정렬도 못 잰다(v46 1회차 0000 실측).
-        r["allow"]["angle"] = list(t["angles_clinical"])
+    else:
+        if t.get("angles_clinical"):
+            # 임상 각도 허용 (2026-09-28 티모). treatments.yaml `angles_clinical` 은 09-07부터 적혀 있었는데 **읽는 코드가 없었다** —
+            #   팔자 임상에 옆얼굴(side)이 뽑혀 팔자가 반만 보이고 얼굴 검출·정렬도 못 잰다(v46 1회차 0000 실측).
+            r["allow"]["angle"] = list(t["angles_clinical"])
+        if t.get("ages_clinical"):
+            # 임상 나이 허용 (2026-09-28 6차 연서님 A — Before marked 고정). marked 의 최소 나이(severity_min_age)보다
+            #   어린 인물이 뽑히면 강도가 도로 내려가 '깊은 골'이 안 나온다 → 임상은 그 나이 이상만 뽑는다.
+            r["allow"]["age"] = list(t["ages_clinical"])
     return r
 
 
@@ -709,6 +714,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         _rks = sorted(rig["rigs"]); _rw = rig.get("rig_weights") or {}
         rig_key = (rng.choices(_rks, weights=[float(_rw.get(k, 1)) for k in _rks], k=1)[0] if _rw
                    else rng.choice(_rks))
+        if rig.get("rig_fixed") in rig["rigs"]:          # 리그 고정(2026-09-28 6차 연서님 B) — 추첨은 위에서 소비(rng 흐름 불변)
+            rig_key = rig["rig_fixed"]
         r = rig["rigs"][rig_key]
         variation = {**variation, "rig": {"key": rig_key, "text": r.get("label", rig_key)}}
         angle = rig["angles"].get({"front": "front", "three_quarter": "oblique_45", "side": "side"}.get(variation["angle"]["key"], "front"))
@@ -744,6 +751,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         sev = _fs
     elif _prof.get("severity") in sevs:               # 미모 프로필: Before 강도 고정(추첨은 위에서 이미 소비 — rng 흐름 불변)
         sev = _prof["severity"]
+    elif (t.get("mode_severity") or {}).get(mode) in sevs:
+        # 모드별 Before 강도 고정(2026-09-28 6차 연서님 A "임상 Before 는 깊은 골") — 나이 하향은 아래 그대로라
+        #   ages_clinical 로 최소 나이 이상만 뽑아 둔다(안 그러면 조용히 moderate 로 내려간다).
+        sev = t["mode_severity"][mode]
     min_age = t.get("severity_min_age", {})
     if min_age:                                   # 인물 나이가 강도 최소 나이보다 어리면 한 단계씩 낮춤
         order = list(load("variations.yaml")["age"])

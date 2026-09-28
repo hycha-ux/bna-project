@@ -48,7 +48,13 @@ rig_weights: {clinic_wall: 5, grey_studio: 2, blue_backdrop: 1}
 #   2단계 = After 자신의 얼굴 점으로 만든 팔자·마리오네트 마스크 안에서만 골을 옅게(문안 = prompts/after_clinical_pass2.md).
 #   근거: v49 확대 비교(tools/fold_zoom.py) — 1단계만으로는 부위 쏠림 0.68~1.1배(팔자를 따로 안 건드림).
 #   비용: 컷당 편집 1회 추가. 되돌리기 = enabled: false.
-second_pass: {enabled: true, feather: 14}
+#   2026-09-28 6차 연서님 "실제 After 참조(nasolabial_after2w_01)를 '골 깊이는 이 정도로'라고 같이 붙여줘" → depth_ref.
+#     v50 에서 2단계가 골을 거의 안 바꿨다(0000 골 대비 -0.3%). 문장 대신 목표 사진을 준다(미모 v40~44: 사진이 문장보다 먹는다).
+#     ⚠ 이 참조는 서구 중안면 필러 사진이라 09-15 에 볼 볼륨이 옮았다 — 문구가 '골 깊이만'이라고 막고, 합성은 마스크 안만이다.
+second_pass: {enabled: true, feather: 14, depth_ref: clinical/nasolabial_after2w_01.jpg}
+
+# 리그 고정 (2026-09-28 6차 연서님 B "측광 리그 100%"). 있으면 rig_weights 추첨을 이긴다(추첨 rng 는 그대로 소비). 되돌리기 = 줄 삭제.
+rig_fixed: clinic_wall
 
 angles:
   front: "exact frontal view, head level, Frankfort plane horizontal"

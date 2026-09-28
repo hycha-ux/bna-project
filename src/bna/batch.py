@@ -296,9 +296,15 @@ class Batch:
                                 _rec["reason"] = "1단계 After 얼굴 점 못 찾음"
                             else:
                                 _m2 = landmarks.region_mask(after, _pa1, t["mask_region"], feather=int(_sp.get("feather", 14)))
+                                # 골 깊이 참조(2026-09-28 6차 연서님): 실제 After 1장을 2번 이미지로 — 마스크는 1번에만 걸린다(openai_img.edit).
+                                _dr = _sp.get("depth_ref")
+                                _refs2 = [(refs.REF_DIR / _dr).read_bytes()] if _dr and self.p_edit.supports_style_refs else []
+                                _p2 = af["second_pass_prompt"] + (" " + " ".join((ROOT / "config" / "prompts" / "pass2_depth_ref.md")
+                                                                              .read_text(encoding="utf-8").split()) if _refs2 else "")
                                 _b2 = await loop.run_in_executor(None, self.p_edit.edit, after_b,
-                                                                 self.p_edit.adapt_prompt(af["second_pass_prompt"], "after"),
-                                                                 _png(_m2), [], spec["aspect"])
+                                                                 self.p_edit.adapt_prompt(_p2, "after"),
+                                                                 _png(_m2), _refs2, spec["aspect"])
+                                _rec["depth_ref"] = _dr if _refs2 else None
                                 cost += self.pricing[self.p_edit.name]["edit"]
                                 _a2, _info = await loop.run_in_executor(None, landmarks.align_to, after, Image.open(io.BytesIO(_b2)))
                                 if _info is None:
@@ -308,7 +314,7 @@ class Batch:
                                     _d = self.dir / item_id; _d.mkdir(parents=True, exist_ok=True)
                                     after.convert("RGB").save(_d / f"pass1_{af['when']}_a{attempt}.jpg", quality=92)
                                     after = Image.composite(_a2.convert("RGB"), after.convert("RGB"), _m2)
-                                    _rec = {"applied": True, **_info}
+                                    _rec = {**_rec, "applied": True, **_info}
                             meta.setdefault("second_pass", {})[af["when"]] = _rec
                     else:
                         # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)

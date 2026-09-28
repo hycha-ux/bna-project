@@ -2778,7 +2778,9 @@ ok(load("clinical_rig.yaml")["tolerance"]["landmark_align_pct"] == 8.0, "51 임�
 ok(all((s["afters"][-1]["qa_extra"] == "immediate") == (s["afters"][-1]["when"] == "immediate") for s in _s51),
    "51 임상 직후 컷도 직후 흔적 자(immediate_look)로 판정")
 _r51 = _C51(s["variation"]["rig"]["key"] for s in _s51)
-ok(_r51["blue_backdrop"] < min(_r51["clinic_wall"], _r51["grey_studio"]), f"51 평평한 플래시 리그 가중 낮춤 — {dict(_r51)}")
+# 09-28 6차: rig_fixed=clinic_wall 이라 전량 측광이다(가중 표는 고정을 풀 때 다시 쓰인다 — 53 이 표 자체를 본다).
+ok(dict(_r51) == {"clinic_wall": len(_s51)} and load("clinical_rig.yaml").get("rig_fixed") == "clinic_wall",
+   f"51 임상 리그는 측광 고정(09-28 6차 B) — {dict(_r51)}")
 ok("shadow edge" in load("clinical_rig.yaml")["rigs"]["blue_backdrop"]["lighting"], "51 플래시 리그에 그림자 경계 문장")
 _sel51 = build_prompts("nasolabial", "selfie", plan_batch("selfie", 1, 5, {"looks": "ordinary"}, treatment="nasolabial")[0], 5)
 ok(all(_rf51.clinical_after_style(s["afters"][-1]["after_variation"], "nasolabial", "k") for s in _s51),
@@ -2810,6 +2812,14 @@ ok(_sel51["afters"][-1].get("second_pass_prompt") is None, "53 셀카엔 2단계
 ok('meta.setdefault("second_pass"' in _bs52 and "landmarks.align_to" in _bs52, "53 배치가 2단계를 부르고 결과를 겹친 뒤 합성한다")
 ok("landmarks.align_to" in open(ROOT_T / "tools/patch_place.py", encoding="utf-8").read() if (ROOT_T := __import__("pathlib").Path("tools").resolve().parent).exists() else False,
    "53 겹치기 정본은 landmarks.align_to 하나(patch_place 가 부른다)")
+# 54 (09-28 6차 연서님 A·B + 골 깊이 참조) — Before marked 고정·40대 이상·수염 제외·2단계 참조 사진.
+_v54 = [s["variation"] for s in _s51]
+ok({v["before_severity"]["key"] for v in _v54} == {"marked"}, "54 임상 Before 는 전량 marked(나이 하향으로 안 내려간다)")
+ok({v["age"]["key"] for v in _v54} <= {"40s", "50s", "60s"}, f"54 임상 나이 40대 이상 — {sorted({v['age']['key'] for v in _v54})}")
+ok(not ({v["extras"]["key"] for v in _v54} & {"beard_light", "beard_full"}), "54 임상 인물에 수염이 없다")
+_dr54 = load("clinical_rig.yaml")["second_pass"].get("depth_ref")
+ok(_dr54 and (__import__("bna.refs", fromlist=["x"]).REF_DIR / _dr54).exists() and "pass2_depth_ref.md" in _bs52 and "_refs2" in _bs52,
+   "54 2단계에 골 깊이 참조 사진이 붙는다(파일 실재 + 배치가 붙인다)")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

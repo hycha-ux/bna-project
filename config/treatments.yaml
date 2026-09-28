@@ -44,6 +44,11 @@ nasolabial:
   region: nasolabial folds and marionette lines (both sides)
   modes: [clinical, selfie]
   angles_clinical: [front, three_quarter]
+  # 2026-09-28 6차 연서님 A "Before 여섯 장 다 팔자가 얕다 — 임상 Before 는 marked(깊은 골) 고정". 옅게 할 골부터 있어야 효과가 보인다.
+  #   marked 의 최소 나이(severity_min_age: 40s) 아래가 뽑히면 강도가 도로 내려가므로 임상 나이도 40대 이상으로 묶는다(spec.treatment_rules).
+  #   되돌리기 = 두 줄 삭제.
+  mode_severity: {clinical: marked}
+  ages_clinical: ["40s", "50s", "60s"]
   mask_region: nasolabial_marionette
   timeline: [immediate, 1w, 2w]
   # 2026-09-22 연서님 v43 검수 "시간 지난 모습이 후기의 본체 — 2주 5·1주 3·직후 2, 직후는 빼지 말고 20%".
