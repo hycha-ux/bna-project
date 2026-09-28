@@ -168,6 +168,169 @@ def _skin_ok(rgb, pts, band_soft) -> np.ndarray:
     return _face_inner(rgb, pts, 0.05) & ~ex & (band_soft < 0.03)
 
 
+# ── 15차(2026-09-28 연서님 v55 검수 "모공이 도장 찍은 듯 같은 무늬가 반복돼") ──────────────────────────────────
+#   `_transplant` 는 띠 전체를 **한 방향·한 거리**의 옆 피부에서 통째로 옮겨 왔다 — 띠 모양 그대로 옆 볼 무늬가 한 번 더
+#   찍힌다(= 도장). → 작은 조각(w×2%)을 **여러 곳에서** 뽑아 회전·크기·밝기를 바꿔 창 가중으로 겹쳐 섞고(`_synth`),
+#   L 엔 노이즈로 합성한 모공(불규칙 크기·간격)을 PORE_NOISE 비율(분산 기준)로 섞는다. 끄면(STAMP_MIX=False) 14차 그대로.
+STAMP_MIX = True
+TILE_FRAC = 0.02           # 조각 한 변(w×) — 모공 몇십 개 크기. 크면 도장이 되고 작으면 결이 뭉개진다
+ROT_ANY = True             # 조각 회전 0~360°(모공은 방향이 없다)
+SCALE_RANGE = (0.8, 1.25)  # 조각 크기 배율
+GAIN_RANGE = (0.85, 1.15)  # 조각 결 세기(밝기 진폭) 배율
+PORE_NOISE = 0.3           # L 결 중 노이즈 합성 모공의 분산 비율(0 = 조각만)
+
+
+def _pore_noise(shape, w: int, rng) -> np.ndarray:
+    """모공 노이즈 — 대역 노이즈(잔결) + 불규칙 간격·크기의 어두운 점(모공). 평균 0·표준편차 1로 낸다."""
+    import cv2
+    h, W = shape
+    g = rng.standard_normal((h, W)).astype(np.float32)
+    s1, s2 = max(0.6, w * 0.0012), max(1.5, w * 0.004)
+    band = cv2.GaussianBlur(g, (0, 0), s1) - cv2.GaussianBlur(g, (0, 0), s2)
+    dots = np.zeros((h, W), np.float32)
+    n = int(h * W / max(20.0, (w * 0.012) ** 2))          # 평균 간격 w×1.2% — 위치는 균일 난수라 간격이 불규칙
+    ys, xs = rng.integers(0, h, n), rng.integers(0, W, n)
+    dots[ys, xs] = -rng.uniform(0.5, 1.5, n).astype(np.float32)
+    rad = rng.uniform(max(0.5, w * 0.0006), max(1.0, w * 0.0016))
+    dots = cv2.GaussianBlur(dots, (0, 0), rad)
+    out = band / max(float(band.std()), 1e-6) + 0.8 * dots / max(float(dots.std()), 1e-6)
+    return (out - out.mean()) / max(float(out.std()), 1e-6)
+
+
+def _synth(details: list, src_ok: np.ndarray, need: np.ndarray, w: int, seed: int) -> list:
+    """need 자리를 여러 곳에서 뽑은 조각(회전·크기·밝기 변형)으로 채운다. details = 채널별 결 지도(같은 조각을 세 채널에 같이).
+    겹침 창(Hann) 가중합 ÷ √(가중치 제곱합) — 서로 다른 조각을 섞어도 결 세기(표준편차)가 줄지 않는다.
+    반환 = 채널별 새 결(need 밖은 원래 결). 원천이 없으면 원래 결 그대로."""
+    import cv2
+    h, W = need.shape
+    rng = np.random.default_rng(seed)
+    T = max(8, int(w * TILE_FRAC))
+    step = max(2, T // 2)
+    win = np.outer(np.hanning(T + 2)[1:-1], np.hanning(T + 2)[1:-1]).astype(np.float32)
+    # 원천 중심 = 조각을 최대 배율·회전해도 원천 밖으로 안 나가는 자리
+    rr = int(np.ceil(T * SCALE_RANGE[1] * 0.75)) | 1
+    cand = cv2.erode(src_ok.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rr + 1,) * 2)) > 0
+    cy, cxs = np.nonzero(cand)
+    if len(cy) < 50:
+        return [d.copy() for d in details]
+    stack = np.dstack(details).astype(np.float32)
+    nc = stack.shape[2]
+    acc = np.zeros((h, W, nc), np.float32)
+    acc2 = np.zeros((h, W), np.float32)
+    ys, xs = np.nonzero(need)
+    y0, y1 = max(0, ys.min() - T), min(h, ys.max() + T)
+    x0, x1 = max(0, xs.min() - T), min(W, xs.max() + T)
+    for ty in range(y0, y1, step):
+        for tx in range(x0, x1, step):
+            if not need[ty:ty + T, tx:tx + T].any():
+                continue
+            k = int(rng.integers(len(cy)))
+            ang = float(rng.uniform(0, 360)) if ROT_ANY else 0.0
+            sc = float(rng.uniform(*SCALE_RANGE))
+            gn = float(rng.uniform(*GAIN_RANGE))
+            # 조각 좌표(u,v) 중심 (T/2) ← 원천 (cxs,cy) 둘레를 회전·축척해서 뜬다
+            M = cv2.getRotationMatrix2D((float(cxs[k]), float(cy[k])), ang, 1.0 / sc)
+            M[0, 2] += T / 2.0 - cxs[k]
+            M[1, 2] += T / 2.0 - cy[k]
+            p = cv2.warpAffine(stack, M, (T, T), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+            if p.ndim == 2:
+                p = p[:, :, None]
+            p = (p - p.reshape(-1, nc).mean(0)) * gn       # 조각마다 평균 0 — 조각 경계에 계단이 안 생기게
+            hh, ww = min(T, h - ty), min(T, W - tx)
+            wv = win[:hh, :ww]
+            acc[ty:ty + hh, tx:tx + ww] += p[:hh, :ww] * wv[:, :, None]
+            acc2[ty:ty + hh, tx:tx + ww] += wv * wv
+    ok = acc2 > 1e-4
+    outs = []
+    for c, d in enumerate(details):
+        o = d.copy()
+        o[ok & need] = (acc[:, :, c][ok & need] / np.sqrt(acc2[ok & need]))
+        outs.append(o)
+    if PORE_NOISE > 0:                                        # L 만 — 모공은 밝기 무늬다
+        sd = float(details[0][src_ok].std()) if src_ok.any() else 1.0
+        nz = _pore_noise((h, W), w, rng) * sd
+        m = need
+        outs[0][m] = np.sqrt(1 - PORE_NOISE) * outs[0][m] + np.sqrt(PORE_NOISE) * nz[m]
+    return outs
+
+
+REP_TILE = 0.03           # 반복 자 조각 한 변(w×)
+REP_HIT = 0.6             # 조각 하나가 얼굴 다른 곳과 이 상관 이상으로 닮으면 '도장 조각'
+
+
+def repeat_stats(img: Image.Image, core_map: np.ndarray = None, pts=None, n_face: int = 80, seed: int = 0) -> dict:
+    """반복 무늬 자(자기상관, 15차 연서님 "띠 안·얼굴 전체 둘 다 재고 튀면 다시").
+
+    결 지도(L − 흐림 w×DETAIL_SIGMA)에서 조각(w×REP_TILE)을 떠, 얼굴 맨살 **다른 자리**(조각 한 변 이상 떨어진 곳)와의
+    정규화 상관 최댓값(0~1)을 조각마다 잰다. 같은 무늬가 다른 자리에 한 번 더 찍혀 있으면 그 조각은 1 에 가깝다.
+    ⚠ 첫 판(얼굴 전체 FFT 자기상관 한 값)은 도장이 띠의 일부 조각에만 있어 전체 평균에 묻혔다(14차 OLD/NEW 차 0.01).
+      band = 띠(core_map>0.5) 안 조각 전수 / face = 얼굴 맨살에서 고르게 뽑은 조각 n_face 개.
+      *_p90 = 조각 최댓값의 상위 10% 값, *_hit = REP_HIT 이상인 조각 비율(= 도장 조각 비율)."""
+    import cv2
+    rgb = img.convert("RGB")
+    pts = L.detect(rgb) if pts is None else pts
+    if pts is None:
+        return {"measured": False}
+    w = rgb.size[0]
+    Lc = _L(rgb)[:, :, 0]
+    det = (Lc - cv2.GaussianBlur(Lc, (0, 0), max(1.0, w * DETAIL_SIGMA))).astype(np.float32)
+    m = _skin_ok(rgb, pts, np.zeros(Lc.shape, np.float32))
+    T = max(12, int(w * REP_TILE))
+    ys, xs = np.nonzero(m)
+    if len(ys) < 4 * T * T:
+        return {"measured": False}
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    S = det[y0:y1, x0:x1]
+    # 결과 지도의 (y,x) = 조각 왼쪽 위. 조각이 거의 맨살 안에 드는 자리만 후보
+    cover = cv2.boxFilter(m[y0:y1, x0:x1].astype(np.float32), -1, (T, T), normalize=True, anchor=(0, 0),
+                          borderType=cv2.BORDER_CONSTANT)[: S.shape[0] - T + 1, : S.shape[1] - T + 1] > 0.9
+    if not cover.any():
+        return {"measured": False}
+
+    def best(ty, tx):
+        tpl = S[ty:ty + T, tx:tx + T]
+        if tpl.std() < 1e-3:
+            return None
+        r = cv2.matchTemplate(S, tpl, cv2.TM_CCOEFF_NORMED)
+        r = np.where(cover, r, -1)
+        r[max(0, ty - T):ty + T + 1, max(0, tx - T):tx + T + 1] = -1   # 자기 자리·겹치는 자리는 뺀다
+        return float(r.max())
+
+    def summ(vals, key):
+        v = np.array([x for x in vals if x is not None])
+        if len(v) < 5:
+            return {}
+        return {f"{key}_p90": round(float(np.percentile(v, 90)), 3), f"{key}_hit": round(float((v >= REP_HIT).mean()), 3),
+                f"{key}_n": int(len(v))}
+
+    out = {"measured": True}
+    cy, cx = np.nonzero(cover)
+    rng = np.random.default_rng(seed)
+    pick = rng.choice(len(cy), size=min(n_face, len(cy)), replace=False)
+    out.update(summ([best(cy[i], cx[i]) for i in pick], "face"))
+    if core_map is not None:
+        b = (core_map[y0:y1, x0:x1] > 0.5)
+        bc = cv2.boxFilter(b.astype(np.float32), -1, (T, T), normalize=True, anchor=(0, 0),
+                           borderType=cv2.BORDER_CONSTANT)[: S.shape[0] - T + 1, : S.shape[1] - T + 1] > 0.5
+        by, bx = np.nonzero(bc & cover)
+        sel = [(y, x) for y, x in zip(by, bx) if y % max(1, T // 2) == 0 and x % max(1, T // 2) == 0]
+        out.update(summ([best(y, x) for y, x in sel], "band"))
+    return out
+
+
+def repeat_gate(stats: dict, cfg: dict) -> list:
+    """repeat_stats 가 문턱을 넘은 항목(빈 목록 = 통과). 못 쟀으면 [] (fail-open). 문턱 정본 = clinical_rig.yaml fold_fill.repeat_gate."""
+    if not stats or not stats.get("measured") or not cfg:
+        return []
+    bad = []
+    for k in ("band", "face"):
+        lim = cfg.get(f"{k}_hit_max")
+        v = stats.get(f"{k}_hit")
+        if lim is not None and v is not None and v > float(lim):
+            bad.append(f"repeat_{k}")
+    return bad
+
+
 def _transplant(detail: np.ndarray, src_ok: np.ndarray, need: np.ndarray, w: int, cx: float) -> np.ndarray:
     """need 자리마다 가까운 옆 피부(src_ok)의 결을 그대로 옮겨 온다(평균 내면 결이 죽으니 한 곳에서 통째로).
     방향 우선순위 = 바깥쪽(볼) 수평 → 바깥 위 → 위 → 바깥 아래 → 안쪽. 반환 = 옮긴 결(못 찾은 자리는 원래 결)."""
@@ -244,12 +407,17 @@ def _fill_patch(rgb, pts, cm: np.ndarray, strength: float, sf: float, fine: floa
                 keep[cc == j] = 1
         mole = cv2.GaussianBlur(cv2.dilate(keep, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))).astype(np.float32), (0, 0), w * 0.003)
         mole = np.clip(mole * 2, 0, 1)
+        if STAMP_MIX:
+            # 15차: 세 채널을 **같은 조각**으로 한꺼번에 합성한다(채널마다 따로 뽑으면 색 결과 밝기 결이 어긋난다)
+            _texs = [lab[:, :, c] - cv2.GaussianBlur(lab[:, :, c], (0, 0), s_det) for c in chans]
+            _seed = int(np.asarray(rgb, dtype=np.uint8)[::7, ::7].astype(np.int64).sum()) & 0x7FFFFFFF
+            _new = dict(zip(chans, _synth(_texs, src_ok, need, w, _seed)))
     for c in chans:
         C = lab[:, :, c]
         if TRANSPLANT:
             base = cv2.GaussianBlur(C, (0, 0), s_det)
             tex = C - base
-            tex_new = _transplant(tex, src_ok, need, w, cx)
+            tex_new = _new[c] if STAMP_MIX else _transplant(tex, src_ok, need, w, cx)
             lim = 3.5 * float(tex[src_ok].std()) if src_ok.any() else None
             if lim:                                       # 옮겨 온 결 중 튀는 덩어리(점 하나가 아니라 그림자)는 잘라 낸다
                 tex_new = np.clip(tex_new, -lim, lim)

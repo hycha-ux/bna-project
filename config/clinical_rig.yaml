@@ -77,7 +77,12 @@ after_generation: generate
 #   2026-09-28 14차 연서님 "P2 로 가자"(재촬영 유지 채택 3/5) + A: side_gate: false = 좌우 차는 탈락 사유가 아니라 기록만,
 #     대신 약한(먼) 쪽을 단계적으로 더 세게 메운다(foldlift.balance_sides STRONG_STEPS). 근거: 좌우 자로 떨어진 옛 시도 0001-t2 도 채택.
 fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15, side_gate: false,
-            band_gate: {dL_max: 0, tex_min: 0.85, spot_min: 0.6}}
+            band_gate: {dL_max: 0, tex_min: 0.85, spot_min: 0.6},
+            repeat_gate: {band_hit_max: 0.05, face_hit_max: 0.1}}
+# repeat_gate (15차 연서님 "반복 무늬 자 추가해서 띠 안·얼굴 전체 둘 다 재고 튀면 다시") = foldlift.repeat_stats 의 '도장 조각 비율'
+#   (조각이 얼굴 다른 자리와 상관 0.6 이상). 넘으면 'stamp' — After 만 다시. 근거(v56 5세트 메우기 직전 B 재메우기):
+#   14차 결 옮기기 band 6.7~23%, 15차 조각 섞기 0%, Before·B·실제 사진 band 0~1.6% / face 0~6.2%.
+#   ⚠ 참조 실사진 2장(lifting_*_02)은 face 25~30% — 사진 자체에 반복 영역이 있다. 문턱은 우리 생성물 기준 잠정값.
 
 # 리그 고정 (2026-09-28 6차 연서님 B "측광 리그 100%"). 있으면 rig_weights 추첨을 이긴다(추첨 rng 는 그대로 소비). 되돌리기 = 줄 삭제.
 rig_fixed: clinic_wall
@@ -115,6 +120,17 @@ retake:
 retake_keep_marks: >
   Any small clear round patches, tape and tiny red needle dots on the skin are part of this photo and
   stay exactly where they are, with the same size, shape and shine - do not remove or fade them.
+
+# 재촬영 결 참조 한 줄 (15차 연서님 "전 사진을 피부 결 참조로 같이 넣어 '이 결 그대로'로"). 쓰는 곳 = batch 재촬영 —
+#   이 칸이 있으면 Before 를 2번 이미지로 붙이고 이 문장을 더한다(비우면 종전 1장 재촬영).
+#   ⚠ Before 엔 깊은 골이 있다 — 결만 가져오고 골·그늘은 가져오지 말라고 못박았다. 골이 되살아나는지는 edge_final 로 잰다.
+retake_texture_ref: >
+  Image 2 is an earlier photo of the same person, attached only as a skin texture reference. Match
+  the skin texture of image 2 exactly - the same pore size, the same irregular pore spacing, the same
+  fine grain and the same small blemishes - so the skin reads as this person's own skin. Take nothing
+  else from image 2: not the lines, creases, folds or shadows beside the nose and mouth, not the face
+  shape, pose, expression, lighting, colour, clothes or hair. Image 1 decides everything except the
+  texture.
 
 # 옷 색 자 문턱(14차): 1주~ 컷에서 전·후 옷 영역 색 차(ΔE)가 이 값 미만이면 'same_clothes' — After 만 다시.
 #   근거: 옷이 실제로 같은 임상 쌍 50개(배치 814e·6462·de25·c505) ΔE 0~7.3. 검은 옷 → 검은 후디처럼 추첨이 우연히 같은 색이면

@@ -422,8 +422,16 @@ class Batch:
                                     # 14차 연서님 A: 직후 컷 재촬영이 투명 패치를 통째로 지웠다(v54 0003 immediate_look 2회 탈락).
                                     #   시점 판정은 spec 한 곳(retake_keep_marks) — 배치가 시점 이름을 다시 보지 않는다(selftest 규칙 두 벌 금지)
                                     _rp += " " + " ".join(str(load("clinical_rig.yaml").get("retake_keep_marks") or "").split())
+                                # 15차 연서님 "전 사진을 피부 결 참조로 같이 넣어 '이 결 그대로'로" — 칸이 있으면 Before 를 2번으로
+                                _tr = " ".join(str(load("clinical_rig.yaml").get("retake_texture_ref") or "").split())
+                                _refs = []
+                                if _tr:
+                                    _b2 = io.BytesIO(); before.convert("RGB").save(_b2, "PNG")
+                                    _refs = [_b2.getvalue()]
+                                    _rp += " " + _tr
                                 _rb = await loop.run_in_executor(None, self.p_edit.edit, _bb.getvalue(),
-                                                                 self.p_edit.adapt_prompt(_rp, "after"), None, [], spec["aspect"])
+                                                                 self.p_edit.adapt_prompt(_rp, "after"), None, _refs, spec["aspect"])
+                                _rec["retake_texture_ref"] = bool(_refs)
                                 cost += self.pricing[self.p_edit.name]["edit"]
                                 _ra = Image.open(io.BytesIO(_rb)).convert("RGB")
                                 after = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
@@ -434,6 +442,8 @@ class Batch:
                             # 띠 안팎 자 (14차): 최종 컷을 메우기 때 찾은 같은 띠로 — 검수 단계가 band_gate 로 'fold_band' 를 건다
                             if _wm is not None:
                                 _rec["band_final"] = await loop.run_in_executor(None, _fl.band_stats, after, _wm)
+                            # 반복 무늬 자 (15차): 띠 안·얼굴 전체 '도장 조각 비율' — 검수 단계가 repeat_gate 로 'stamp' 를 건다
+                            _rec["repeat_final"] = await loop.run_in_executor(None, _fl.repeat_stats, after, _wm)
                     meta.setdefault("fold_fill", {})[af["when"]] = _rec
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
@@ -523,6 +533,12 @@ class Batch:
                     if _bbad:
                         r["fail_reasons"].append("fold_band")
                         r["fold_band"] = _bbad
+                    # 반복 무늬 자 (15차 연서님 "튀면 다시"): 'stamp' — After 만 다시. 못 쟀으면 걸지 않는다(fail-open).
+                    _rf = (((meta.get("fold_fill") or {}).get(when) or {}).get("repeat_final"))
+                    _rbad = _flg.repeat_gate(_rf, (load("clinical_rig.yaml").get("fold_fill") or {}).get("repeat_gate"))
+                    if _rbad:
+                        r["fail_reasons"].append("stamp")
+                        r["stamp"] = _rbad
                 idn = identity.check(before_pp, after_pp); r["identity"] = idn
                 # 미모 '너무 같음'은 닮음도 높을 때만 탈락 (2026-09-28 연서님 "키는 걸로", 근거 structure.copy_sim_waive).
                 if "copy" in r["fail_reasons"] and structure.copy_sim_waive(st.get("copy"), idn.get("similarity"),

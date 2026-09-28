@@ -2944,6 +2944,29 @@ finally:
     if _old61 is not None:
         _os61.environ["BNA_EXP_LOOKS_PROFILE"] = _old61
 
+# 62 (09-28 15차 연서님 "모공이 도장 찍은 듯 반복") — 조각 섞기+노이즈 모공 · 재촬영 결 참조 · 반복 무늬 자(stamp)
+#    (09-29 리베이스: 빌디 61번과 번호가 겹쳐 62로 옮김)
+_rng62 = _np55.random.default_rng(3)
+_d62 = __import__("cv2").GaussianBlur(_rng62.standard_normal((200, 200)).astype(_np55.float32), (0, 0), 1.2)
+_d62 = _d62 / _d62.std()                                     # 실제 결처럼 몇 px 크기(백색 노이즈는 보간에 세기가 깎인다)
+_need62 = _np55.zeros((200, 200), bool); _need62[80:120, 60:140] = True
+_src62 = ~_need62
+_o62 = _fl55._synth([_d62, _d62 * 0.5], _src62, _need62, 400, 1)
+_sd62 = float(_o62[0][_need62].std())
+ok(0.8 < _sd62 < 1.25 and _np55.array_equal(_o62[0][~_need62], _d62[~_need62]),
+   f"62 조각 섞기 — 띠 안 결 세기 보존({_sd62:.2f}) · 띠 밖 그대로")
+_old62 = _fl55._transplant(_d62, _src62, _need62, 400, 100.0)
+_c62 = lambda o: float(_np55.isin(o[_need62], _d62[_src62]).mean())  # noqa: E731  옆 피부 값을 그대로 옮긴 픽셀 비율
+ok(_c62(_old62) > 0.5 and _c62(_o62[0]) < 0.05, f"62 옛 방식은 옆 피부 통째 복사({_c62(_old62):.2f}), 새 방식은 아님({_c62(_o62[0]):.2f})")
+ok(_fl55.repeat_gate({"measured": True, "band_hit": 0.2, "face_hit": 0.0}, {"band_hit_max": 0.05, "face_hit_max": 0.1}) == ["repeat_band"]
+   and _fl55.repeat_gate({"measured": False}, {"band_hit_max": 0.05}) == [], "62 반복 자 게이트 — 띠만 튐 / 못 재면 통과")
+_bs62 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok('"stamp"' in _bs62 and '_rec["repeat_final"]' in _bs62 and 'retake_texture_ref' in _bs62, "62 배치가 도장 자를 재고 게이트·결 참조를 건다")
+_rt62 = (ROOT / "config/prompts/retake_clinical.md").read_text(encoding="utf-8") if "ROOT" in dir() else open("config/prompts/retake_clinical.md", encoding="utf-8").read()
+ok("irregular" in _rt62 and "no repeating" in _rt62 and "folds" in load("clinical_rig.yaml")["retake_texture_ref"]
+   and load("clinical_rig.yaml")["fold_fill"]["repeat_gate"]["band_hit_max"] == 0.05 and _fl55.STAMP_MIX is True,
+   "62 재촬영 문안 '불규칙·반복 없음' + 결 참조는 골을 안 가져온다 + 문턱")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
