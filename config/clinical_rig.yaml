@@ -74,7 +74,9 @@ after_generation: generate
 #     컷 근거(결 크기 0.003w): v54 최종 5장(연서님 '포토샵') 결 0.74~0.94·잡티 0.44~0.80 / Before(자연 피부) 결 0.89~1.09·잡티 0.87~1.46.
 #     ⚠ 5장으로 잡은 잠정 컷이다 — 다음 회차 분포를 보고 다시 잡는다.
 #   retake 는 연서님 두 벌 비교(① 재촬영 없음 / ② 재촬영 유지) 선택으로 정한다(tools/band_compare.py).
-fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15,
+#   2026-09-28 14차 연서님 "P2 로 가자"(재촬영 유지 채택 3/5) + A: side_gate: false = 좌우 차는 탈락 사유가 아니라 기록만,
+#     대신 약한(먼) 쪽을 단계적으로 더 세게 메운다(foldlift.balance_sides STRONG_STEPS). 근거: 좌우 자로 떨어진 옛 시도 0001-t2 도 채택.
+fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15, side_gate: false,
             band_gate: {dL_max: 0, tex_min: 0.85, spot_min: 0.6}}
 
 # 리그 고정 (2026-09-28 6차 연서님 B "측광 리그 100%"). 있으면 rig_weights 추첨을 이긴다(추첨 rng 는 그대로 소비). 되돌리기 = 줄 삭제.
@@ -95,11 +97,45 @@ retake:
     the same lamps in the same positions, the same camera at the same distance and height, the same
     framing, the same clothes and the same hairstyle. It is a separate exposure, not a copy of
     the reference.
+  # ⚠ 2026-09-28 14차 연서님 v54 검수 "1주·2주 컷인데 옷이 같아 — 09-15 임상 규칙(직후=같은 옷·머리, 1주~=옷 다름·머리는
+  #   잔머리·헤어라인만 다름)이 B 에서 안 먹고 있어" → 09-15 저녁 '옷 같음'을 1주~ 에서 되돌린다. 옷은 clothes_after 에서
+  #   컷마다 추첨해 색·종류까지 적는다({clothes}, spec.build_after). 막연한 "다른 옷"은 모델이 무시한다(미모 v36~v44 와 같은 뿌리).
   different_day: >
-    This is a second photo taken in the same clinic photo spot on a later visit: the same backdrop,
-    the same lamps in the same positions, the same camera at the same distance and height, the same
-    framing, the same kind of clothes and the same hairstyle. It is a separate exposure taken on
-    another day, not a copy of the reference.
+    This is a second photo taken in the same clinic photo spot on a later visit, on another day: the
+    same backdrop, the same lamps in the same positions, the same camera at the same distance and
+    height, the same framing. It is another day, so the clothes are different: in this photo the
+    person is wearing {clothes} - not the top from the reference photo, a different colour and a
+    different garment. The hairstyle is the same (same length, colour and overall style), but on this
+    day it was done again: the loose strands, flyaways and the hairline edge fall differently and,
+    if the hair is tied, the tie sits a little higher or lower. It is a separate exposure, not a
+    copy of the reference.
+
+# 직후 컷 재촬영에 붙는 한 줄 (14차 연서님 A "직후 컷 재촬영에 '패치는 그대로' 한 줄"). v54 0003: 재촬영 문안의
+#   "fresh … no retouching" 이 직후 흔적(투명 패치·바늘 자국)을 지워 immediate_look 2회 탈락. 쓰는 곳 = batch 재촬영(직후만).
+retake_keep_marks: >
+  Any small clear round patches, tape and tiny red needle dots on the skin are part of this photo and
+  stay exactly where they are, with the same size, shape and shine - do not remove or fade them.
+
+# 옷 색 자 문턱(14차): 1주~ 컷에서 전·후 옷 영역 색 차(ΔE)가 이 값 미만이면 'same_clothes' — After 만 다시.
+#   근거: 옷이 실제로 같은 임상 쌍 50개(배치 814e·6462·de25·c505) ΔE 0~7.3. 검은 옷 → 검은 후디처럼 추첨이 우연히 같은 색이면
+#   그것도 거른다(연서님 "색·종류까지 다르게").
+clothes_gate: {dE_min: 10}
+
+# 1주~ 옷 추첨 목록 (14차). 색 + 종류를 같이 적는다 — 흔한 병원 방문 옷차림. 추첨은 컷마다 결정적(seed·시점).
+#   옷 색 비교 자(bna.qa.structure.clothes_diff, batch 'same_clothes')가 Before 와 색이 같으면 After 만 다시 그린다.
+clothes_after:
+  - "a heather-grey crew-neck sweatshirt"
+  - "a navy cardigan over a white T-shirt"
+  - "a mustard-yellow knit sweater"
+  - "a crisp white collared shirt"
+  - "a dusty-pink round-neck knit"
+  - "a black zip-up hoodie"
+  - "an olive-green casual shirt"
+  - "a light-blue and white striped shirt"
+  - "a cream turtleneck sweater"
+  - "a burgundy blouse"
+  - "a beige trench-style jacket over a black top"
+  - "a sky-blue denim shirt"
 
 # 두 시점 공통: '살짝 다름'을 **필수**로 요구한다.
 # 2026-09-15 저녁 첫 실회차 연서님 지적 3개를 항목으로 박았다 — ①잔머리 틀어짐 ②눈 뜬 정도·입 모양 ③옷 매무새.
@@ -110,11 +146,13 @@ micro_drift: >
   a strand that was tucked is now loose, a wisp sits on the other side, the parting is a few
   millimetres off. Face: the eyes are open a slightly different amount, the gaze is a hair off,
   the lips rest in a slightly different way, so the fine lines around the eyes and mouth read a
-  little differently while the expression stays neutral. Clothes: the same clothes, but the collar,
-  neckline, straps and folds sit differently - shifted, rumpled or straightened compared with the
-  reference. Body: the head sits a few millimetres and a degree or two differently, the shoulders
+  little differently while the expression stays neutral. {clothes_drift} Body: the head sits a few millimetres and a degree or two differently, the shoulders
   are not in exactly the same place.
   If the two photos overlap pixel for pixel outside the treated area, the result is wrong.
+# 옷 매무새 문장은 직후(같은 옷)에만 — 1주~ 는 옷이 바뀌므로 이 줄이 있으면 "같은 옷"을 다시 시킨다(14차).
+clothes_drift_same_day: >
+  Clothes: the same clothes, but the collar, neckline, straps and folds sit differently - shifted,
+  rumpled or straightened compared with the reference.
 
 # 임상 After 스타일 참조 (2026-09-15 티모, 연서님 결정 안). 켜면 같은 리그·같은 시점의 After 참조를 Before 뒤에
 #   붙이고 "얼굴은 1번 사진" 문구(prompts/edit_style_refs.md)를 더한다. 맞는 참조가 없으면 종전 1장 편집.

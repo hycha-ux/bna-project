@@ -418,6 +418,10 @@ class Batch:
                             if _ff.get("retake"):
                                 _bb = io.BytesIO(); after.convert("RGB").save(_bb, "PNG")
                                 _rp = " ".join((ROOT / "config" / "prompts" / "retake_clinical.md").read_text(encoding="utf-8").split())
+                                if af.get("retake_keep_marks"):
+                                    # 14차 연서님 A: 직후 컷 재촬영이 투명 패치를 통째로 지웠다(v54 0003 immediate_look 2회 탈락).
+                                    #   시점 판정은 spec 한 곳(retake_keep_marks) — 배치가 시점 이름을 다시 보지 않는다(selftest 규칙 두 벌 금지)
+                                    _rp += " " + " ".join(str(load("clinical_rig.yaml").get("retake_keep_marks") or "").split())
                                 _rb = await loop.run_in_executor(None, self.p_edit.edit, _bb.getvalue(),
                                                                  self.p_edit.adapt_prompt(_rp, "after"), None, [], spec["aspect"])
                                 cost += self.pricing[self.p_edit.name]["edit"]
@@ -495,10 +499,23 @@ class Batch:
                 #   side_gap_max(%p) 를 넘으면 'fold_asym' — After 만 다시 그린다. 못 쟀으면(None) 걸지 않는다(fail-open).
                 _gmax = (load("clinical_rig.yaml").get("fold_fill") or {}).get("side_gap_max") if self.mode == "clinical" else None
                 _gap = ((((meta.get("fold_fill") or {}).get(when) or {}).get("side_final")) or {}).get("gap")
-                if _gmax is not None and _gap is not None and _gap > float(_gmax):
+                # 14차 연서님 A: "좌우 자 대신 더 세게 메우기" + "좌우 자·3/4 탈락이 사람 눈보다 엄격해"(옛 시도 0001-t2 등 채택)
+                #   → side_gate: false 면 기록만(side_final 은 원장에 남는다).
+                _sg = (load("clinical_rig.yaml").get("fold_fill") or {}).get("side_gate", True)
+                if _sg and _gmax is not None and _gap is not None and _gap > float(_gmax):
                     r["fail_reasons"].append("fold_asym")
                 # 띠 안팎 자 (2026-09-28 14차 연서님 "띠 안팎 밝기 차·잡티 밀도 차를 재는 자 추가해서 튀면 다시"): 'fold_band' — After 만 다시.
                 #   못 쟀으면 걸지 않는다(fail-open). 문턱 = clinical_rig.yaml fold_fill.band_gate, 판정 = foldlift.band_gate 하나.
+                # 옷 색 자 (2026-09-28 14차 연서님 "1주 이후인데 같으면 After만 다시"): 옷을 추첨한 컷(1주~)만. 문턱 = clinical_rig
+                #   clothes_gate.dE_min — 같은 옷 실측 ΔE 0~7.3(임상 배치 4개 50쌍). 못 재면 걸지 않는다(fail-open).
+                _af_w = next((x for x in spec["afters"] if x["when"] == when), {})
+                _cg = load("clinical_rig.yaml").get("clothes_gate") or {} if self.mode == "clinical" else {}
+                if _af_w.get("clothes") and _cg.get("dE_min") is not None:
+                    from .qa import clothes as _qcl
+                    _cd = _qcl.clothes_diff(before_pp, after_pp)
+                    r["clothes"] = {**_cd, "wanted": _af_w["clothes"]}
+                    if _cd["dE"] is not None and _cd["dE"] < float(_cg["dE_min"]):
+                        r["fail_reasons"].append("same_clothes")
                 if self.mode == "clinical":
                     from . import foldlift as _flg
                     _bf = (((meta.get("fold_fill") or {}).get(when) or {}).get("band_final"))

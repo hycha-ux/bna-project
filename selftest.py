@@ -478,8 +478,12 @@ ok(_pc15["variation"]["rig"]["key"] in ("grey_studio", "blue_backdrop", "clinic_
 ok("plainer and more tired" not in _pc15["before_prompt"] and "greasy T-zone" not in _pc15["before_prompt"], "임상 Before 에 셀카용 '피곤·번들거림' 문장이 안 붙는다")
 ok("Keep identical" not in _pc15["after_prompt"] and "separate exposure" in _pc15["after_prompt"], "임상 After 는 복사본이 아니라 따로 찍은 사진(살짝 다름 요구)")
 ok("later the same day" in _pc15["afters"][0]["after_prompt"] and "later visit" in _pc15["afters"][1]["after_prompt"], "임상 다시 찍기: 직후 = 같은 날, 2주 = 다른 날")
-ok(all(k in _pc15["after_prompt"] for k in ("flyaways", "eyes are open a slightly different amount", "collar, neckline, straps and folds")) and "wearing is different" not in _pc15["after_prompt"],
-   "살짝 다름 3항목(잔머리·눈/입·옷 매무새)이 문안에 있고, 옷은 같은 옷 (2026-09-15 저녁 연서님)")
+# 09-28 14차 연서님이 09-15 저녁 '1주~ 도 같은 옷'을 되돌렸다 — 옷 매무새(같은 옷)는 직후 컷만, 1주~ 는 추첨한 다른 옷(selftest 60).
+_im15, _2w15 = _pc15["afters"][0]["after_prompt"], _pc15["afters"][1]["after_prompt"]
+ok(all(k in _im15 for k in ("flyaways", "eyes are open a slightly different amount", "collar, neckline, straps and folds"))
+   and all(k in _2w15 for k in ("flyaways", "eyes are open a slightly different amount", "clothes are different"))
+   and "collar, neckline, straps and folds" not in _2w15,
+   "살짝 다름 항목(잔머리·눈/입)은 두 컷 공통, 옷 매무새는 직후만·1주~ 는 다른 옷 (09-28 14차)")
 # 보통 인물 기준(09-21 미모 프로필은 미모 인물의 피부 읽힘을 따로 바꾼다 — ㊴가 그쪽을 잰다)
 #   구도도 얼굴 전체로 못박는다(바스트 컷은 피부 읽힘 문장이 따로다 — 시드에 맡기면 09-22 게이트 뒤 바스트가 뽑혔다)
 ok("tired" in build_prompts("nasolabial", "selfie", {**sample_variation("selfie", 5, treatment="nasolabial"),
@@ -2881,6 +2885,28 @@ ok(_fl55.band_gate({"measured": True, "dL": 1.0, "tex_ratio": 0.7, "spot_ratio":
    == ["bright", "clean", "spotless"] and _fl55.band_gate({"measured": False}, _ff59.get("band_gate")) == [],
    "59 띠 자 판정 — 밝음·깨끗함·잡티 없음을 잡고, 못 재면 통과(fail-open)")
 ok('"fold_band"' in _bs58 and '_rec["band_final"]' in _bs58 and '_fi.pop("_wm"' in _bs58, "59 배치가 띠 자를 재고 게이트를 건다(띠 배열은 원장 밖)")
+# 60 (09-28 14차 2라운드 연서님) — P2 확정 + 옷 추첨(1주~)·옷 색 자 · 콧볼 제외 경사 · 직후 재촬영 패치 유지 · 좌우 자 기록만
+_rig60 = load("clinical_rig.yaml")
+_sp60 = __import__("bna.spec", fromlist=["x"])
+_v60 = _sp60.sample_variation("clinical", seed=7, treatment="nasolabial")
+_b60 = _sp60.build_prompts("nasolabial", "clinical", _v60, seed=7, series=["immediate", "2w"])
+_af60 = {a["when"]: a for a in _b60["afters"]}
+ok(_af60["2w"]["clothes"] in _rig60["clothes_after"] and _af60["2w"]["clothes"] in _af60["2w"]["after_prompt"]
+   and "clothes are different" in _af60["2w"]["after_prompt"], f"60 1주~ 컷은 추첨 옷을 문장에 싣는다 — {_af60['2w']['clothes']}")
+ok(_af60["immediate"]["clothes"] is None and "the same clothes" in _af60["immediate"]["after_prompt"]
+   and "clothes are different" not in _af60["immediate"]["after_prompt"], "60 직후 컷은 같은 옷 + 매무새만")
+ok("{clothes" not in _af60["2w"]["after_prompt"] and "{clothes" not in _af60["immediate"]["after_prompt"], "60 자리표시자가 남지 않는다")
+_bs60 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok('"same_clothes"' in _bs60 and 'af.get("retake_keep_marks")' in _bs60 and 'get("side_gate", True)' in _bs60,
+   "60 배치 — 옷 색 자·직후 패치 유지 한 줄·좌우 자 스위치")
+ok(_rig60["fold_fill"]["retake"] is True and _rig60["fold_fill"]["side_gate"] is False and _rig60["clothes_gate"]["dE_min"] == 10,
+   "60 P2(재촬영 유지)·좌우 자 기록만·옷 색 문턱 10")
+_pts60 = _np55.zeros((478, 2)); _pts60[:, 0] = 100; _pts60[:, 1] = 100
+_pts60[_fl55.ALA_L] = [[60, 100], [70, 90], [70, 110], [60, 110]] * 3; _pts60[_fl55.ALA_R] = [[140, 100], [130, 90], [130, 110], [140, 110]] * 3
+_pts60[33], _pts60[263] = [10, 20], [190, 20]
+_r60 = _fl55.ala_ramp(__import__("PIL.Image", fromlist=["x"]).new("RGB", (200, 200)), _pts60)
+ok(_r60[100, 65] == 0 and _r60[100, 71] == 0 and 0 < _r60[125, 65] < 1 and _r60[190, 65] == 1,
+   f"60 콧볼 경사 — 콧볼·바로 옆 0 → 아래로 올라 1 ({_r60[125, 65]:.2f})")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

@@ -86,7 +86,33 @@ def _face_inner(rgb, pts, margin: float = 0.03) -> np.ndarray:
     return cv2.erode(m, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))) > 0
 
 
-INNER_MARGIN = 0.015   # 13차: 3% → 1.5%. 3/4 컷의 먼 쪽 띠가 윤곽에 붙어 3% 자르기에 대부분 잘렸다(v53 0001 사진 왼쪽 골 절반만 잡힘)
+# ── 콧볼 제외 (2026-09-28 14차 연서님 "콧볼이 뭉개져 — 콧볼 바깥 윤곽선이 사라져. 콧볼 윤곽 바깥 3~4mm 를 제외 마스크로,
+#   띠는 그 아래에서 시작, 세기는 시작점 0에서 아래로 갈수록 올라가는 경사로") ──
+#   mm 환산 = 눈 사이(33↔263, 눈꼬리 바깥) 거리 ÷ ALA_EYE_MM. 성인 눈꼬리 바깥 거리 약 90mm(동공 간 63mm 보다 넓다).
+ALA_L = [98, 64, 48, 219, 218, 237, 49, 129, 102, 240, 75, 235]
+ALA_R = [327, 294, 278, 439, 438, 457, 279, 358, 331, 460, 305, 455]
+ALA_EYE_MM = 90.0
+ALA_MARGIN_MM = 3.5        # 콧볼 윤곽 바깥 제외 폭
+ALA_RAMP_MM = 8.0          # 제외 경계에서 이만큼 내려가면 세기 100%
+ALA_MEASURE_MIN = 0.7      # 골 선 선명도는 경사 세기가 이 값 이상인 곳만 잰다
+ALA_EXCLUDE = True        # 끄면 13차까지처럼 콧볼 옆에서 바로 시작
+
+
+def ala_ramp(rgb: Image.Image, pts) -> np.ndarray:
+    """콧볼 제외·경사 지도(0~1): 콧볼 윤곽 + 3.5mm 안은 0, 거기서 멀어질수록 8mm 에 걸쳐 1 로 오른다."""
+    import cv2
+    h, w = rgb.size[1], rgb.size[0]
+    px_mm = _ipd(pts) / ALA_EYE_MM
+    ala = np.zeros((h, w), np.uint8)
+    for idx in (ALA_L, ALA_R):
+        cv2.fillPoly(ala, [cv2.convexHull(pts[idx].astype(np.int32))], 1)
+    r = max(3, int(2 * ALA_MARGIN_MM * px_mm) | 1)
+    ex = cv2.dilate(ala, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r)))
+    dist = cv2.distanceTransform((1 - ex).astype(np.uint8), cv2.DIST_L2, 5)
+    return np.clip(dist / max(ALA_RAMP_MM * px_mm, 1.0), 0, 1).astype(np.float32)
+
+
+INNER_MARGIN = 0.015  # 13차: 3% → 1.5%. 3/4 컷의 먼 쪽 띠가 윤곽에 붙어 3% 자르기에 대부분 잘렸다(v53 0001 사진 왼쪽 골 절반만 잡힘)
 
 
 def line_map(rgb: Image.Image, pts, pct: float = 75, width: float = 0.018, feather: float = 0.012,
@@ -114,7 +140,8 @@ def line_map(rgb: Image.Image, pts, pct: float = 75, width: float = 0.018, feath
     # 경계 페더 0.6% → 1.2% (11차 연서님 "띠 경계 페더 넓혀줘" — 1.5배 컷에서 콧볼 옆이 뭉갠 띠로 보였다)
     wm = cv2.GaussianBlur(cv2.dilate(keep, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))).astype(np.float32), (0, 0), w * feather)
     soft_inner = cv2.GaussianBlur(inner.astype(np.float32), (0, 0), w * 0.008)   # 페더를 넓혀도 윤곽 밖으로 번지지 않게
-    return np.clip(wm / max(float(wm.max()), 1e-6) * 1.2, 0, 1) * soft_inner
+    out = np.clip(wm / max(float(wm.max()), 1e-6) * 1.2, 0, 1) * soft_inner
+    return out * ala_ramp(rgb, pts) if ALA_EXCLUDE else out
 
 
 # ── 14차(2026-09-28 연서님 v54 검수 "팔자 띠가 포토샵으로 지운 느낌 — 주변보다 하얗고 너무 깨끗해") ──────────────
@@ -196,9 +223,12 @@ def _fill_patch(rgb, pts, cm: np.ndarray, strength: float, sf: float, fine: floa
         # 점·큰 잡티는 떠 오지 않는다 — 14차 첫 시험 v54 0001 에서 점(모반)이 띠 안에 여러 개 복제됐다(유령 점).
         #   결 지도(L)에서 −3σ 보다 어두운 덩어리와 그 둘레(w×1%)는 원천에서 뺀다. 잔 잡티(−2~−3σ)는 그대로 옮긴다.
         Lb = lab[:, :, 0] - cv2.GaussianBlur(lab[:, :, 0], (0, 0), s_det)
-        blob = (Lb < -3.0 * float(Lb[src_ok].std())) if src_ok.any() else np.zeros_like(src_ok)
-        r = max(3, int(w * 0.02)) | 1
-        blob_d = cv2.dilate(blob.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))) > 0
+        _sd = float(Lb[src_ok].std()) if src_ok.any() else 1.0
+        blob = Lb < -3.0 * _sd
+        # 원천에서 빼는 건 점급(−5σ 아래)과 그 둘레 w×0.6% 만 — −3σ·w×1% 로 넓게 빼니 잡티 있는 피부가 원천에서 통째로 빠져
+        #   띠가 오히려 깨끗해졌다(콧볼 제외 뒤 세기 1.0 컷에서 잡티 밀도 0.47 — 14차 2라운드 실측)
+        r = max(3, int(w * 0.012)) | 1
+        blob_d = cv2.dilate((Lb < -5.0 * _sd).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))) > 0
         src_ok = src_ok & ~blob_d
         # 띠 **안의** 점(모반)은 지우지 않는다 — 같은 시험에서 입꼬리 아래 점이 메우기에 같이 사라졌다(사람이 바뀐다).
         #   골 선은 길쭉하니 둥근 덩어리(가로·세로 w×2.5% 이하, 채움 40% 이상)만 점으로 본다.
@@ -220,7 +250,7 @@ def _fill_patch(rgb, pts, cm: np.ndarray, strength: float, sf: float, fine: floa
             base = cv2.GaussianBlur(C, (0, 0), s_det)
             tex = C - base
             tex_new = _transplant(tex, src_ok, need, w, cx)
-            lim = 2.5 * float(tex[src_ok].std()) if src_ok.any() else None
+            lim = 3.5 * float(tex[src_ok].std()) if src_ok.any() else None
             if lim:                                       # 옮겨 온 결 중 튀는 덩어리(점 하나가 아니라 그림자)는 잘라 낸다
                 tex_new = np.clip(tex_new, -lim, lim)
         else:
@@ -366,6 +396,8 @@ def erase_center(img: Image.Image, pts=None, zone=None, strength: float = 1.0):
     r = max(3, int(w * 0.006)) | 1
     cm = cv2.GaussianBlur(cv2.dilate(keep, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))).astype(np.float32), (0, 0), w * 0.004)
     cm = np.clip(cm / max(float(cm.max()), 1e-6) * 1.3, 0, 1)
+    if ALA_EXCLUDE:                                        # 14차: 실 선 지우기도 콧볼 옆은 경사로(넓은 띠와 같은 지도)
+        cm = cm * ala_ramp(rgb, pts)
     # 14차: 이 좁은 띠가 '결까지 지운 매끈한 줄'의 주범이었다(v54 0000 은 넓은 메우기 0.001 — 이것만으로 목표 도달).
     res = _fill_patch(rgb, pts, cm, strength, sf=w * 0.006, fine=0.8)
     return res, {"applied": True, "center_px": int((cm > 0.5).sum())}
@@ -388,6 +420,11 @@ def edge_ratio(img: Image.Image, pts=None, sf: float = 0.02, side: str = None):
     cv2.fillPoly(lip, [cv2.convexHull(pts[LIPS].astype(np.int32))], 1)
     r = max(3, int(ipd * 0.05)) | 1
     ex = cv2.dilate((ex | (lip > 0)).astype(np.uint8), np.ones((r, r), np.uint8)) > 0
+    if ALA_EXCLUDE:
+        # 14차: 콧볼 제외 구역은 메우지 않으니 재지도 않는다(재면 거기 남은 콧볼 윤곽 때문에 목표를 못 가고 아래를 과하게 메운다)
+        #   경사 구간 대부분(세기 < 0.7)도 뺀다 — 0.3 까지만 빼면 덜 메운 경사 구간이 남아 세기가 상한(1.0)에 붙고
+        #   -43% 에서 멈췄다(v54 0000·0004 재계산). 목표 %는 '메우는 구간'의 감소율이다.
+        ex = ex | (ala_ramp(rgb, pts) < ALA_MEASURE_MIN)
     mm = m & ~ex
     ck = np.zeros(m.shape, np.uint8)
     for c in (CHEEK_L, CHEEK_R):
@@ -472,7 +509,10 @@ def side_drop(before: Image.Image, after: Image.Image, pb=None, pa=None) -> dict
     return out
 
 
-def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0, pct: float = 55.0):
+STRONG_STEPS = ((55.0, 0.018), (40.0, 0.026), (25.0, 0.034))   # (선 찾기 문턱 백분위, 띠 폭 w×) — 뒤로 갈수록 세게
+
+
+def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0, pct: float = 55.0, strong: bool = True):
     """좌우 자 (2026-09-28 13차 연서님 "한쪽만 메워져서 티가 나 — 좌우 따로 재서 차이가 크면 다시").
 
     v53 0001(3/4 컷): 사진 왼쪽 -44% / 오른쪽 -67%(차 23%p) → 제외. 먼 쪽은 띠가 좁고 골이 옅게 찍혀 상위 25% 문턱에
@@ -490,22 +530,30 @@ def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0
     goal_pct = min(sd["l"], sd["r"])
     eb = edge_ratio(before, pb, side=weak)
     goal = eb * (1 + goal_pct / 100.0)
-    wm = line_map(rgb, pa, pct=pct, sides=(idx,))
-    lo, hi, best = 0.0, 1.0, rgb
-    o, _i = erase(rgb, pa, 1.0, wm=wm)
-    if edge_ratio(o, pa, side=weak) > goal:
-        best, k = o, 1.0
-    else:
-        for _ in range(10):
-            mid = (lo + hi) / 2
-            o, _i = erase(rgb, pa, mid, wm=wm)
-            if edge_ratio(o, pa, side=weak) > goal:
-                lo = mid
-            else:
-                hi = mid
-        best, _i = erase(rgb, pa, hi, wm=wm); k = hi
+    # 14차 연서님 A "3/4 먼 쪽은 좌우 자 대신 더 세게 메우기": v54 0001 은 문턱 55%·폭 1.8% 로 +10%p 밖에 못 맞췄다.
+    #   약한 쪽이 목표에 못 가면 문턱을 낮추고 띠를 넓혀 **겹쳐** 메운다(단계마다 앞 결과 위에). 비용 0.
+    best, steps = rgb, []
+    for p_, wd in STRONG_STEPS if strong else ((pct, 0.018),):
+        if edge_ratio(best, pa, side=weak) <= goal:
+            break
+        wm = line_map(best, pa, pct=p_, width=wd, sides=(idx,))
+        lo, hi = 0.0, 1.0
+        o, _i = erase(best, pa, 1.0, wm=wm)
+        if edge_ratio(o, pa, side=weak) > goal:
+            best, k = o, 1.0
+        else:
+            base_img = best
+            for _ in range(10):
+                mid = (lo + hi) / 2
+                o, _i = erase(base_img, pa, mid, wm=wm)
+                if edge_ratio(o, pa, side=weak) > goal:
+                    lo = mid
+                else:
+                    hi = mid
+            best, _i = erase(base_img, pa, hi, wm=wm); k = hi
+        steps.append({"pct": p_, "width": wd, "erase": round(k, 3)})
     after_sd = side_drop(before, best, pb, pa)
-    return best, {**rec, "balanced": True, "weak": weak, "erase": round(k, 3), "after": after_sd}
+    return best, {**rec, "balanced": True, "weak": weak, "steps": steps, "after": after_sd}
 
 
 # 8차 호환(세기 = 그늘 목표 감소율) — tools/fold_lift_pair.py --target 이 부른다.

@@ -909,14 +909,23 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         avoid_after = lessons.avoid_text(lines_w)
         check_avoid_vs_facts(treatment, w, [s for _k, s in fact_spans(w)], lines_w)
         pass2 = None                                   # 임상 2단계 편집 문안(아래 임상 갈래만 채운다)
+        clothes = None                                 # 임상 1주~ 추첨 옷(원장·옷 색 자 기록용)
         if mode == "clinical":
             a_var = variation
             # 다시 찍기 규정 (2026-09-15 v1): 같은 부스·같은 배경·같은 조명이되 **따로 찍은 사진**.
             #   직후 = 같은 날(옷·머리 같음), 1주 이후 = 다른 날(옷 다름, 머리 대략 같음). 두 시점 공통으로
             #   micro_drift 가 머리 위치 몇 mm·잔머리·미세 주름·노출의 '살짝 다름'을 **요구**한다 — 종전
             #   "Keep identical framing, head position, expression, headband, gown…" 은 복사본을 시켰다.
-            retake = " ".join(str(rig["retake"]["same_day" if w == "immediate" else "different_day"]).split())
-            micro = " ".join(str(rig["micro_drift"]).split())
+            # 1주~ 옷 추첨 (2026-09-28 14차 연서님 "1주·2주 컷은 옷을 다른 옷으로 추첨해서 색·종류까지 구체적으로").
+            #   전용 난수(seed·시점)라 기존 rng 흐름(인물·리그 추첨)을 건드리지 않는다. 직후는 같은 옷 + 매무새만.
+            if w != "immediate":
+                # ⚠ seed 가 None 이면 문자열 "None-…" 이 전 세트 같은 옷을 뽑는다 — 그땐 비결정 난수
+                clothes = (random.Random(f"{seed}-{w}-clothes") if seed is not None else random.Random()).choice(list(rig.get("clothes_after") or ["a different everyday top"]))
+            retake = " ".join(str(rig["retake"]["same_day" if w == "immediate" else "different_day"]).split()).replace(
+                "{clothes}", clothes or "")
+            micro = " ".join(str(rig["micro_drift"]).split()).replace(
+                "{clothes_drift}", " ".join(str(rig.get("clothes_drift_same_day") or "").split()) if w == "immediate" else "")
+            micro = " ".join(micro.split())
             txt = (CFG / "prompts/after_clinical.md").read_text(encoding="utf-8").format(
                 identity_lock=identity, retake=retake, micro_drift=micro, after_change=chg, avoid=avoid_after)
             spans = [("identity", identity), ("retake", retake), ("drift", micro), ("change", t["after_change"]),
@@ -1027,7 +1036,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         qa_extra = "immediate" if w == "immediate" else None
         # 직후 패치 위치 게이트 횟수 (2026-09-18 C안) — 배치가 시점 이름을 다시 보지 않게 여기서 실어 보낸다(규칙 두 벌 금지).
         pgate = int(t.get("patch_gate") or 0) if w == "immediate" else 0
-        return {"when": w, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
+        return {"when": w, "clothes": clothes, "retake_keep_marks": mode == "clinical" and w == "immediate", "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "second_pass_prompt": " ".join(pass2.split()) if pass2 else None,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}
