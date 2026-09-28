@@ -2862,6 +2862,18 @@ ok("_fl.fill_to" in _bsrc57 and "retake_clinical.md" in _bsrc57 and 'meta.setdef
    "57 배치가 메우기·재촬영을 부르고 원장에 남긴다")
 ok(_bsrc57.index("_fl.fill_to") < _bsrc57.index("④ 검수 3단"), "57 메우기·재촬영은 게이트(검수) 앞이다")
 ok("retake_clinical.md" in open("tools/retake_pass.py", encoding="utf-8").read(), "57 재촬영 문안은 config 한 벌(도구·배치 공용)")
+# 58 (09-28 13차 연서님) — 좌우 자: 메운 직후 약한 쪽 더 메우기 + 재촬영 뒤 차가 크면 fold_asym. 윤곽 자르기 1.5%.
+ok((load("clinical_rig.yaml").get("fold_fill") or {}).get("side_gap_max") == 15, "58 좌우 차 상한 15%p(채택 3·3·12 / 제외 23)")
+ok(_fl55.INNER_MARGIN == 0.015, "58 윤곽 자르기 1.5%(3% 는 3/4 컷 먼 쪽 골을 잘랐다)")
+_bs58 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok("_fl.balance_sides" in _bs58 and '"fold_asym"' in _bs58 and '_rec["side_final"]' in _bs58, "58 배치가 좌우 맞춤·최종 좌우 차·게이트를 건다")
+_orig58 = _fl55.edge_ratio
+_fl55.edge_ratio = lambda im, pts=None, sf=0.02, side=None: {"B": {"l": 2.0, "r": 2.0}, "A": {"l": 1.1, "r": 0.7}}[im][side]  # noqa: E731
+try:
+    _sd58 = _fl55.side_drop("B", "A", pb=1, pa=1)
+finally:
+    _fl55.edge_ratio = _orig58
+ok(_sd58 == {"l": -45.0, "r": -65.0, "gap": 20.0}, f"58 좌우 감소율·차 계산 — {_sd58}")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

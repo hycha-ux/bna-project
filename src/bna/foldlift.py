@@ -86,15 +86,20 @@ def _face_inner(rgb, pts, margin: float = 0.03) -> np.ndarray:
     return cv2.erode(m, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))) > 0
 
 
-def line_map(rgb: Image.Image, pts, pct: float = 75, width: float = 0.018, feather: float = 0.012) -> np.ndarray:
-    """골 선을 따라가는 좁은 띠(0~1). 좌우 따로 문턱(상위 15%)을 잡고, 작은 점 덩어리(모공·잡티)는 버린다."""
+INNER_MARGIN = 0.015   # 13차: 3% → 1.5%. 3/4 컷의 먼 쪽 띠가 윤곽에 붙어 3% 자르기에 대부분 잘렸다(v53 0001 사진 왼쪽 골 절반만 잡힘)
+
+
+def line_map(rgb: Image.Image, pts, pct: float = 75, width: float = 0.018, feather: float = 0.012,
+             sides=(0, 1), margin: float = None) -> np.ndarray:
+    """골 선을 따라가는 좁은 띠(0~1). 좌우 따로 문턱(상위 25%)을 잡고, 작은 점 덩어리(모공·잡티)는 버린다.
+    sides = 찾을 쪽(0 = 사진 왼쪽 l, 1 = 오른쪽 r) — 좌우 자(13차)가 한쪽만 더 메울 때 쓴다."""
     import cv2
     w = rgb.size[0]
     Lc = _L(rgb)[:, :, 0]
     valley = -np.minimum(cv2.GaussianBlur(Lc, (0, 0), w * 0.006) - cv2.GaussianBlur(Lc, (0, 0), w * 0.03), 0)
     keep = np.zeros(Lc.shape, np.uint8)
-    inner = _face_inner(rgb, pts)
-    for i in range(len(SIDES)):
+    inner = _face_inner(rgb, pts, INNER_MARGIN if margin is None else margin)
+    for i in sides:
         band = (np.asarray(L.region_mask(rgb, pts, f"_fold_side{i}", feather=2)) > 127) & inner
         if not band.any():
             continue
@@ -177,15 +182,18 @@ def erase_center(img: Image.Image, pts=None, zone=None, strength: float = 1.0):
     return res, {"applied": True, "center_px": int((cm > 0.5).sum())}
 
 
-def edge_ratio(img: Image.Image, pts=None, sf: float = 0.02):
-    """골 선 선명도 = 골 띠(코·입술 제외) 안 밝기 경사 상위 10% ÷ 볼 맨살 경사 상위 10%. 경사 흐림 = IPD×sf."""
+def edge_ratio(img: Image.Image, pts=None, sf: float = 0.02, side: str = None):
+    """골 선 선명도 = 골 띠(코·입술 제외) 안 밝기 경사 상위 10% ÷ 볼 맨살 경사 상위 10%. 경사 흐림 = IPD×sf.
+
+    side = "l" | "r" 면 그쪽 코 옆 띠(nasolabial_fold_l/_r)만 잰다 — 좌우 한쪽만 메워지는 사고(v53 0001)를 잡는 자.
+    ⚠ l/r 은 MediaPipe 점 이름이라 **사진의 왼쪽**(49·129 쪽)이 l 이다(인물 기준 오른쪽). 볼 대조는 양쪽 그대로."""
     import cv2
     rgb = img.convert("RGB")
     pts = L.detect(rgb) if pts is None else pts
     if pts is None:
         return None
     ipd = _ipd(pts)
-    m = np.asarray(L.region_mask(rgb, pts, REGION, feather=1)) > 127
+    m = np.asarray(L.region_mask(rgb, pts, REGION if side is None else f"nasolabial_fold_{side}", feather=1)) > 127
     ex = np.asarray(L.region_mask(rgb, pts, "nose", feather=1)) > 0
     lip = np.zeros(m.shape, np.uint8)
     cv2.fillPoly(lip, [cv2.convexHull(pts[LIPS].astype(np.int32))], 1)
@@ -253,6 +261,55 @@ def fill_to(img: Image.Image, edge_goal: float, shade_goal: float = None, cap: f
             info["lift"] = round(hi, 3)
         info.update(shade_goal=round(shade_goal, 3), shade_after=round(shade(out, pts), 3))
     return out, {"applied": True, **info}
+
+
+def side_drop(before: Image.Image, after: Image.Image, pb=None, pa=None) -> dict:
+    """좌우 골 선 감소율(%, Before 대비) — {"l": -44.0, "r": -67.0, "gap": 23.0}. 못 재면 값 None."""
+    pb = L.detect(before.convert("RGB")) if pb is None else pb
+    pa = L.detect(after.convert("RGB")) if pa is None else pa
+    out = {}
+    for s in ("l", "r"):
+        eb = edge_ratio(before, pb, side=s) if pb is not None else None
+        ea = edge_ratio(after, pa, side=s) if pa is not None else None
+        out[s] = None if not (eb and ea) else round((ea - eb) / eb * 100, 1)
+    out["gap"] = None if None in (out["l"], out["r"]) else round(abs(out["l"] - out["r"]), 1)
+    return out
+
+
+def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0, pct: float = 55.0):
+    """좌우 자 (2026-09-28 13차 연서님 "한쪽만 메워져서 티가 나 — 좌우 따로 재서 차이가 크면 다시").
+
+    v53 0001(3/4 컷): 사진 왼쪽 -44% / 오른쪽 -67%(차 23%p) → 제외. 먼 쪽은 띠가 좁고 골이 옅게 찍혀 상위 25% 문턱에
+    골 위쪽만 걸렸다. 차가 gap_max 를 넘으면 **약한 쪽만** 문턱을 낮춰(상위 45%) 선을 다시 찾고, 그쪽 감소율이 강한 쪽에
+    닿을 때까지 메우기 세기를 탐색한다(비용 0). 채택된 v53 3장의 좌우 차는 3·3·12%p — 15%p 는 그 위, 0001(23) 아래다.
+    반환 (사진, 기록). 기록의 gap_after 가 여전히 크면 상위(배치)가 게이트로 다시 그리게 한다."""
+    rgb = after.convert("RGB")
+    pb, pa = L.detect(before.convert("RGB")), L.detect(rgb)
+    sd = side_drop(before, rgb, pb, pa)
+    rec = {"before": sd}
+    if pa is None or sd["gap"] is None or sd["gap"] <= gap_max:
+        return rgb, {**rec, "balanced": False}
+    weak = "l" if sd["l"] > sd["r"] else "r"                 # 덜 줄어든(값이 큰) 쪽
+    idx = 0 if weak == "l" else 1
+    goal_pct = min(sd["l"], sd["r"])
+    eb = edge_ratio(before, pb, side=weak)
+    goal = eb * (1 + goal_pct / 100.0)
+    wm = line_map(rgb, pa, pct=pct, sides=(idx,))
+    lo, hi, best = 0.0, 1.0, rgb
+    o, _i = erase(rgb, pa, 1.0, wm=wm)
+    if edge_ratio(o, pa, side=weak) > goal:
+        best, k = o, 1.0
+    else:
+        for _ in range(10):
+            mid = (lo + hi) / 2
+            o, _i = erase(rgb, pa, mid, wm=wm)
+            if edge_ratio(o, pa, side=weak) > goal:
+                lo = mid
+            else:
+                hi = mid
+        best, _i = erase(rgb, pa, hi, wm=wm); k = hi
+    after_sd = side_drop(before, best, pb, pa)
+    return best, {**rec, "balanced": True, "weak": weak, "erase": round(k, 3), "after": after_sd}
 
 
 # 8차 호환(세기 = 그늘 목표 감소율) — tools/fold_lift_pair.py --target 이 부른다.

@@ -405,6 +405,11 @@ class Batch:
                             None, lambda: _fl.fill_to(after, _eb * (1 + float(_ff["edge_pct"]) / 100.0),
                                                       _sb * (1 + float(_ff.get("shade_pct", -50)) / 100.0)))
                         _rec = {**_fi, "edge_before_img": round(_eb, 3), "edge_pct": _ff["edge_pct"]}
+                        if _fi.get("applied") and _ff.get("side_gap_max") is not None:
+                            # 좌우 자 ① (13차): 메운 직후 좌우 감소율 차가 크면 약한 쪽만 더 메운다(비용 0) — bna.foldlift.balance_sides
+                            _filled, _bi = await loop.run_in_executor(
+                                None, lambda: _fl.balance_sides(before, _filled, float(_ff["side_gap_max"])))
+                            _rec["side_fill"] = _bi
                         if _fi.get("applied"):
                             after = _filled
                             if _ff.get("retake"):
@@ -417,6 +422,8 @@ class Batch:
                                 after = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
                                 _rec["retake"] = True
                             _rec["edge_final"] = round(await loop.run_in_executor(None, _fl.edge_ratio, after) or 0, 3)
+                            # 좌우 자 ② (13차): 재촬영 뒤 최종 좌우 차 — 검수 단계가 이 값으로 'fold_asym' 을 건다(After 만 다시)
+                            _rec["side_final"] = await loop.run_in_executor(None, _fl.side_drop, before, after)
                     meta.setdefault("fold_fill", {})[af["when"]] = _rec
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
@@ -478,6 +485,12 @@ class Batch:
                 # 3값이라 None(임상·미검출)은 실패가 아니다. 근거·컷은 structure.copy_check 머리말.
                 if (st.get("copy") or {}).get("passed") is False:
                     r["fail_reasons"].append("copy")
+                # 좌우 자 ② (2026-09-28 13차 연서님 "한쪽만 메워져서 티가 나 — 차이가 크면 다시"): 재촬영 뒤 좌우 골 선 감소율 차가
+                #   side_gap_max(%p) 를 넘으면 'fold_asym' — After 만 다시 그린다. 못 쟀으면(None) 걸지 않는다(fail-open).
+                _gmax = (load("clinical_rig.yaml").get("fold_fill") or {}).get("side_gap_max") if self.mode == "clinical" else None
+                _gap = ((((meta.get("fold_fill") or {}).get(when) or {}).get("side_final")) or {}).get("gap")
+                if _gmax is not None and _gap is not None and _gap > float(_gmax):
+                    r["fail_reasons"].append("fold_asym")
                 idn = identity.check(before_pp, after_pp); r["identity"] = idn
                 # 미모 '너무 같음'은 닮음도 높을 때만 탈락 (2026-09-28 연서님 "키는 걸로", 근거 structure.copy_sim_waive).
                 if "copy" in r["fail_reasons"] and structure.copy_sim_waive(st.get("copy"), idn.get("similarity"),
