@@ -1049,7 +1049,11 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             "before_parts": before_parts, "after_parts": last["after_parts"],
             "treatment": treatment, "mode": mode, "aspect": load("variations.yaml").get("output", {}).get("aspect", "4:5"),
             "variation": variation, "after_variation": last["after_variation"],
-            "after_changed_axes": last["after_changed_axes"], "generation": "edit" if mode == "clinical" else "identity_reference",
+            # 임상 After 새로 그리기(2026-09-28 7차 연서님 B — clinical_rig.yaml `after_generation: generate`):
+            #   v50·v51 에서 편집은 문장·마스크·목표 사진 어느 쪽으로도 팔자를 안 옅게 했다. 셀카처럼 Before 를 참조로 새로 그린다.
+            "after_changed_axes": last["after_changed_axes"],
+            "generation": ("edit" if (load("clinical_rig.yaml").get("after_generation") or "edit") == "edit" else "identity_reference")
+                          if mode == "clinical" else "identity_reference",
             "series": pts or None, "afters": afters,          # 시리즈면 시점별 After 목록(배치·화면이 이걸 돈다). after_* 는 마지막 시점
             "before_prompt": " ".join(before.split()), "after_prompt": last["after_prompt"],
             "experiment": experiment_flags(as_meta=True)}          # 켠 실험 스위치(없으면 None) — 회차 비교 때 갈라 읽는다

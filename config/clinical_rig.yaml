@@ -53,6 +53,11 @@ rig_weights: {clinic_wall: 5, grey_studio: 2, blue_backdrop: 1}
 #     ⚠ 이 참조는 서구 중안면 필러 사진이라 09-15 에 볼 볼륨이 옮았다 — 문구가 '골 깊이만'이라고 막고, 합성은 마스크 안만이다.
 second_pass: {enabled: true, feather: 14, depth_ref: clinical/nasolabial_after2w_01.jpg}
 
+# 임상 After 만드는 법 (2026-09-28 7차 연서님 B "임상 After도 셀카처럼 새로 그리기"). edit = 종전(Before 를 고쳐 그림, 2단계 편집 포함) /
+#   generate = Before 를 참조로 새로 그림(셀카 경로 — 2단계 편집은 edit 갈래에만 있어 자동으로 꺼진다).
+#   근거: v50·v51 편집은 문장·마스크·목표 사진 어느 쪽으로도 팔자를 안 옅게 했다(골 대비 변화 ±0.4%, 5컷). 되돌리기 = edit.
+after_generation: generate
+
 # 리그 고정 (2026-09-28 6차 연서님 B "측광 리그 100%"). 있으면 rig_weights 추첨을 이긴다(추첨 rng 는 그대로 소비). 되돌리기 = 줄 삭제.
 rig_fixed: clinic_wall
 

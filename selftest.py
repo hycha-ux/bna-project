@@ -2820,6 +2820,25 @@ ok(not ({v["extras"]["key"] for v in _v54} & {"beard_light", "beard_full"}), "54
 _dr54 = load("clinical_rig.yaml")["second_pass"].get("depth_ref")
 ok(_dr54 and (__import__("bna.refs", fromlist=["x"]).REF_DIR / _dr54).exists() and "pass2_depth_ref.md" in _bs52 and "_refs2" in _bs52,
    "54 2단계에 골 깊이 참조 사진이 붙는다(파일 실재 + 배치가 붙인다)")
+# 55 (09-28 7차 연서님 B·A) — 임상 After 새로 그리기 · 팔자 그림자 들어올리기(모델 밖, 비용 0).
+ok(load("clinical_rig.yaml").get("after_generation") == "generate" and {s["generation"] for s in _s51} == {"identity_reference"},
+   "55 임상 After 는 새로 그리기(identity_reference) 경로")
+ok(_sel51["generation"] == "identity_reference", "55 셀카 경로는 그대로")
+ok('if self.mode == "clinical":' in _bs52 and "clinical_after_style" in _bs52.split("after_refs = self._refs(")[1][:900],
+   "55 새로 그리기 갈래도 같은 부스 사진 참조를 붙인다")
+import numpy as _np55
+from bna import foldlift as _fl55
+_img55 = _np55.full((200, 200, 3), 180, _np55.uint8); _img55[:, 98:102] = 120        # 가운데 세로 골(어두운 줄)
+_pts55 = _np55.array([[x, y] for y in range(0, 200, 20) for x in range(0, 200, 20)], float)
+_orig_rm55 = _fl55.L.region_mask
+_fl55.L.region_mask = lambda im, p, r, feather=0: __import__("PIL.Image", fromlist=["x"]).new("L", im.size, 255)  # 전 화면 = 부위(가짜 마스크)
+try:
+    _out55, _i55 = _fl55.lift(__import__("PIL.Image", fromlist=["x"]).fromarray(_img55), pts=_pts55)
+finally:
+    _fl55.L.region_mask = _orig_rm55
+_o55 = _np55.asarray(_out55).astype(float)
+ok(_i55["applied"] and _o55[100, 100].mean() > 125 and abs(_o55[100, 20].mean() - 180) < 3,
+   f"55 들어올리기는 골만 밝히고 평평한 곳은 그대로 — 골 {_o55[100,100].mean():.0f}(원 120) · 바깥 {_o55[100,20].mean():.0f}(원 180)")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")

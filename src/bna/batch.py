@@ -319,6 +319,16 @@ class Batch:
                     else:
                         # After 는 그 시점 전용 참조까지 받는다(직후 컷엔 직후 실사진이 붙는다)
                         after_refs = self._refs(af.get("after_variation") or variation, af["when"])
+                        if self.mode == "clinical":
+                            # 임상 새로 그리기(2026-09-28 7차 연서님 B) — 편집 경로와 같은 부스 사진 1장을 2번 이미지로(고르기 = refs.clinical_after_style).
+                            _esf = (refs.clinical_after_style(af.get("after_variation") or spec["variation"], self.treatment,
+                                                              f"{self.batch_id}|{item_id}|{af['when']}")
+                                    if load("clinical_rig.yaml").get("after_style_refs") else [])
+                            after_refs = [(refs.REF_DIR / f).read_bytes() for f in _esf]
+                            if _esf:
+                                meta.setdefault("after_style_ref", {})[af["when"]] = _esf[0]
+                                after_prompt = after_prompt + " " + " ".join(
+                                    (ROOT / "config" / "prompts" / "edit_style_refs.md").read_text(encoding="utf-8").split())
                         # 미모 After 참조 = 얼굴만 오린 Before (2026-09-22 연서님, variations.yaml `before_ref: face_crop`).
                         #   통째 Before 는 고개·자세·화면 위치까지 따라 그리게 했다(v39 복붙 5/6). 얼굴 미검출이면 종전대로.
                         #   재시도(After 만 다시)도 같은 참조를 쓴다 — ref_b 는 이 함수 안에서만 산다.
