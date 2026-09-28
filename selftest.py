@@ -2759,8 +2759,8 @@ _cg51 = load("clinical_rig.yaml").get("copy_gate")
 ok(load("clinical_rig.yaml").get("after_style_refs") is True
    and {k: _cg51.get(k) for k in ("sim_max", "align_min_pct", "roll_deg")} == {"sim_max": 0.90, "align_min_pct": 1.0, "roll_deg": 10},
    "51 임상 After 참조 켜짐 + 너무 같음 자 0.90/1%/10° (09-28 3차 연서님)")
-ok(_cg51.get("record_only") is False and "record_only" in inspect.getsource(__import__("bna.batch", fromlist=["x"])),
-   "51 임상 너무 같음 자는 게이트(09-28 3차 — 기록 전용 해제, 배치가 스위치를 읽는다)")
+ok(_cg51.get("record_only") is True and "record_only" in inspect.getsource(__import__("bna.batch", fromlist=["x"])),
+   "51 임상 너무 같음 자는 기록 전용(09-28 4차 — 채택 0002 가 0.943, 기준은 닮음이 아니라 효과)")
 _cc51 = lambda al, sim, rl=0.0: _st51.clinical_copy_check({"align_err_pct": al, "roll_diff": rl}, sim, _cg51)["passed"]  # noqa: E731
 ok(_cc51(2.65, 0.750) is True and _cc51(2.07, None) is True, "51 실제 참조 쌍(닮음 0.75·정렬 2~2.7%)은 통과")
 ok(_cc51(4.0, 0.886) is True and _cc51(7.1, 0.89) is True, "51 사람 채택 컷(닮음 0.88~0.89·정렬 4.0~7.1%)은 통과")
