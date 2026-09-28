@@ -90,6 +90,11 @@ def one(d: Path, pass1=False):
            "fold_sd_change_pct": round((sd_a - sd_b) / sd_b * 100, 1),
            "shade_before": round(sh_b, 2), "shade_after": round(sh_a, 2), "shade_change_pct": round((sh_a - sh_b) / sh_b * 100, 1),
            "sim": round(float((m.get("identity") or {}).get("similarity") or 0), 3)}
+    # 골 선 선명도(9차, bna.foldlift.edge_ratio — 사진마다 자기 얼굴 점, 볼 맨살 대비) 전→후
+    from bna.foldlift import edge_ratio
+    eb, ea = edge_ratio(bi), edge_ratio(ai)
+    if eb and ea:
+        out.update(edge_before=round(eb, 3), edge_after=round(ea, 3), edge_change_pct=round((ea - eb) / eb * 100, 1))
     return out, [crop(B), crop(Aw), crop(np.ascontiguousarray(heat))]
 
 
@@ -119,7 +124,7 @@ def main():
     dr.text((12, 8), "팔자 부위 확대 — 전 | 후(전에 맞춰 정렬) | 바뀐 곳(밝을수록 많이)", fill="black", font=font)
     y = head
     for (o, _ims), s in zip(rows, sc):
-        dr.text((12, y + 4), f"{o['item']} · {o['when']} · {o['label']}   골 그늘 {o['shade_change_pct']:+}% · 부위 쏠림 {o['in_out']}배 · 닮음 {o['sim']}",
+        dr.text((12, y + 4), f"{o['item']} · {o['when']} · {o['label']}   골 선 {o.get('edge_change_pct', 0):+}% · 골 그늘 {o['shade_change_pct']:+}% · 부위 쏠림 {o['in_out']}배 · 닮음 {o['sim']}",
                 fill="black", font=fsm)
         x = 12
         for im in s:

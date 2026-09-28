@@ -1,6 +1,6 @@
 """B+A 나란히 만들기 (2026-09-28 7차 연서님 "B 결과 위에 A를 얹은 버전을 같이 — B만 / B+A 나란히").
 
-  python tools/fold_lift_pair.py <batch_id> [--target -50] [--suffix BA50]
+  python tools/fold_lift_pair.py <batch_id> [--target -50 | --edge -43.7] [--suffix BA50]
 
 배치의 각 항목(재시도 전 컷 `-t<n>`·이미 만든 A 항목 제외)의 최종 After 에 팔자 그림자 들어올리기(bna.foldlift, 비용 0)를
 얹어 형제 항목 `<id>-<suffix>` 로 저장한다 — 검수함에 한 줄로 뜬다. Before 는 같은 파일, 원 항목은 그대로 둔다.
@@ -19,12 +19,13 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from bna.api import stem_of  # noqa: E402
-from bna.foldlift import lift, lift_to, shade  # noqa: E402
+from bna.foldlift import edge_ratio, fill_to, lift, lift_to, shade  # noqa: E402
 
 A = sys.argv[1:]
 BID = A[0]
 TARGET = float(A[A.index("--target") + 1]) if "--target" in A else None
 SUFFIX = A[A.index("--suffix") + 1] if "--suffix" in A else "BA"
+EDGE = float(A[A.index("--edge") + 1]) if "--edge" in A else None   # 9차: 골 선 선명도 목표(Before 대비 %)
 
 
 def main():
@@ -39,7 +40,13 @@ def main():
         a = d / f"{st}_after.jpg"
         if not (b.exists() and a.exists()):
             print(iid, "파일 짝 없음 — 건너뜀"); continue
-        if TARGET is None:
+        if EDGE is not None:
+            # 9차: 골 선 선명도를 Before 대비 EDGE%(실제 쌍 -43.7%)로 — 메우기(주) + 그늘 Before 대비 -50%(보조)
+            bi = Image.open(b)
+            eb, sb = edge_ratio(bi), shade(bi)
+            res, info = fill_to(Image.open(a), eb * (1 + EDGE / 100.0), sb * 0.5)
+            info = {**info, "edge_target_pct": EDGE}
+        elif TARGET is None:
             res, info = lift(Image.open(a), region="nasolabial_marionette")
         else:
             ref = shade(Image.open(b))
