@@ -58,6 +58,12 @@ second_pass: {enabled: true, feather: 14, depth_ref: clinical/nasolabial_after2w
 #   근거: v50·v51 편집은 문장·마스크·목표 사진 어느 쪽으로도 팔자를 안 옅게 했다(골 대비 변화 ±0.4%, 5컷). 되돌리기 = edit.
 after_generation: generate
 
+# 골 메우기 + 재촬영 (2026-09-28 12차 연서님 "11차 설정을 임상 기본으로"). 정본 = batch.one_after 임상 갈래 끝 + bna.foldlift.fill_to.
+#   edge_pct = 골 선 선명도 목표(이 세트 Before 대비 %) — 실제 쌍 -43.7%(목표)와 1.5배 -65.6% 의 사이. shade_pct = 그늘 보조 목표.
+#   retake = 메운 뒤 편집 모델 '그대로 다시 촬영' 1회(컷당 편집 1회 추가 비용). 근거·시행착오 = LESSONS 09-28 7~11차.
+#   되돌리기 = enabled: false (B 새로 그리기만 남는다).
+fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: -50, retake: true}
+
 # 리그 고정 (2026-09-28 6차 연서님 B "측광 리그 100%"). 있으면 rig_weights 추첨을 이긴다(추첨 rng 는 그대로 소비). 되돌리기 = 줄 삭제.
 rig_fixed: clinic_wall
 

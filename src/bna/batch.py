@@ -385,6 +385,39 @@ class Batch:
                                 "inside": gr.get("inside"), "n": gr.get("n"), "outside": gr.get("outside"),
                                 "total": gr.get("total"), "unmeasured": gr.get("unmeasured"), "scale": gr.get("scale"),
                                 "offsets": gr.get("offsets")}
+                # ── 임상 골 메우기 + 재촬영 (2026-09-28 12차 연서님 "11차 설정을 임상 기본으로: B → 골 메우기 목표~1.5배 → 재촬영 → 게이트") ──
+                #   B(새로 그린 After)는 '다른 날 사진' 역할만 하고 효과는 여기서 낸다 — 편집·생성 모델은 팔자를 옅게 하지 않았다(v49~v52).
+                #   ① bna.foldlift.fill_to: 골 선 선명도를 **이 세트 Before 대비** edge_pct(실제 쌍 -43.7% 와 1.5배 -65.6% 의 사이 -54.6%)로,
+                #      그늘은 Before 대비 -50% 까지만 보조. 콧볼 바로 옆 그늘은 원래 남는다(11차 연서님 — 지우지 않는다: 띠·문턱 그대로).
+                #   ② 편집 모델 '그대로 다시 촬영'(prompts/retake_clinical.md) — 메운 자리의 매끈함을 모공 결로 되돌린다(10차: 골은 거의 안 되살아남).
+                #   얼굴 점을 못 찾으면 ①은 건너뛰고(fail-open) ②도 안 한다. 무엇을 했는지 meta["fold_fill"][시점] 에 남긴다.
+                #   메우기 직전 B 원본은 fold_b_<시점>_a<회차>.jpg 로 보존(검수 화면 파일 규칙 밖 이름).
+                _ff = load("clinical_rig.yaml").get("fold_fill") or {}
+                if self.mode == "clinical" and _ff.get("enabled"):
+                    from . import foldlift as _fl
+                    _eb = await loop.run_in_executor(None, _fl.edge_ratio, before)
+                    _sb = await loop.run_in_executor(None, _fl.shade, before)
+                    _rec = {"applied": False}
+                    if _eb and _sb:
+                        _d = self.dir / item_id; _d.mkdir(parents=True, exist_ok=True)
+                        after.convert("RGB").save(_d / f"fold_b_{af['when']}_a{attempt}.jpg", quality=92)
+                        _filled, _fi = await loop.run_in_executor(
+                            None, lambda: _fl.fill_to(after, _eb * (1 + float(_ff["edge_pct"]) / 100.0),
+                                                      _sb * (1 + float(_ff.get("shade_pct", -50)) / 100.0)))
+                        _rec = {**_fi, "edge_before_img": round(_eb, 3), "edge_pct": _ff["edge_pct"]}
+                        if _fi.get("applied"):
+                            after = _filled
+                            if _ff.get("retake"):
+                                _bb = io.BytesIO(); after.convert("RGB").save(_bb, "PNG")
+                                _rp = " ".join((ROOT / "config" / "prompts" / "retake_clinical.md").read_text(encoding="utf-8").split())
+                                _rb = await loop.run_in_executor(None, self.p_edit.edit, _bb.getvalue(),
+                                                                 self.p_edit.adapt_prompt(_rp, "after"), None, [], spec["aspect"])
+                                cost += self.pricing[self.p_edit.name]["edit"]
+                                _ra = Image.open(io.BytesIO(_rb)).convert("RGB")
+                                after = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
+                                _rec["retake"] = True
+                            _rec["edge_final"] = round(await loop.run_in_executor(None, _fl.edge_ratio, after) or 0, 3)
+                    meta.setdefault("fold_fill", {})[af["when"]] = _rec
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
             #   나머지 시점은 취소도 안 된 채 계속 도는데, 그 장들은 **이미 돈을 쓴 호출**이라 meta["cost"] 에

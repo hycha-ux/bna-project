@@ -21,13 +21,8 @@ from bna.api import stem_of  # noqa: E402
 from bna.foldlift import edge_ratio, shade  # noqa: E402
 from bna.spec import load  # noqa: E402
 
-PROMPT = (
-    "Retake this exact photo as a fresh, straight-out-of-camera clinic record photo of the same person: the same pose, "
-    "framing, head position, expression, clothes, hair, background and lighting, and exactly the same face shape. "
-    "The skin beside the nose and around the mouth stays smooth and even exactly as it is in this photo. "
-    "Render natural, real skin texture evenly across the whole face, including beside the nose and mouth: visible pores, "
-    "faint peach fuzz and ordinary skin grain, the same density everywhere. No retouching, no smoothing, no beauty filter."
-)
+# 문안 정본 = config/prompts/retake_clinical.md (12차부터 배치도 같은 파일을 읽는다 — 두 벌로 갈리지 않게)
+PROMPT = " ".join((ROOT / "config" / "prompts" / "retake_clinical.md").read_text(encoding="utf-8").split())
 
 
 def main():

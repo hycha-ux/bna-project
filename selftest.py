@@ -2854,6 +2854,14 @@ finally:
     _Lm56.region_mask, _Lm56.detect = _orig56, _odet56
 ok(_i56["applied"] and not _i56["capped"] and abs(_got56 / _ref56 - 0.5) < 0.05,
    f"56 lift_to 는 골 그늘을 목표(-50%)에 맞춘다 — {_got56 / _ref56 - 1:+.1%} (세기 {_i56['strength']})")
+# 57 (09-28 12차 연서님) — 임상 기본 순서: B → 골 메우기(-54.6%) → 재촬영 → 게이트. 문안 정본 한 벌.
+_ff57 = load("clinical_rig.yaml").get("fold_fill") or {}
+ok(_ff57.get("enabled") is True and _ff57.get("edge_pct") == -54.6 and _ff57.get("retake") is True, "57 임상 골 메우기+재촬영 켜짐(-54.6%)")
+_bsrc57 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok("_fl.fill_to" in _bsrc57 and "retake_clinical.md" in _bsrc57 and 'meta.setdefault("fold_fill"' in _bsrc57,
+   "57 배치가 메우기·재촬영을 부르고 원장에 남긴다")
+ok(_bsrc57.index("_fl.fill_to") < _bsrc57.index("④ 검수 3단"), "57 메우기·재촬영은 게이트(검수) 앞이다")
+ok("retake_clinical.md" in open("tools/retake_pass.py", encoding="utf-8").read(), "57 재촬영 문안은 config 한 벌(도구·배치 공용)")
 ok("Face width, exposure and skin tone" not in _a52 and "narrower or slimmer" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 v48 '얼굴 폭·노출·피부톤 그대로' 줄은 뺐다(09-28 3차 — 닮음 0.93~0.94·효과 잠김), 폭·밝기는 구조 자로 기록만")
 _esr52 = (__import__("bna.spec", fromlist=["x"]).CFG / "prompts/edit_style_refs.md").read_text(encoding="utf-8")
