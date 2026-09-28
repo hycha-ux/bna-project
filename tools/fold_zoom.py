@@ -28,10 +28,16 @@ STABLE = [33, 133, 263, 362, 70, 105, 300, 334, 10, 151, 9, 168, 6, 197, 234, 45
 CTRL = [116, 117, 118, 345, 346, 347, 10, 151, 108, 337]                                        # 대조 = 볼 윗부분·이마
 
 
-def pair(d: Path):
+def pair(d: Path, pass1=False):
+    """전·후 한 쌍. 파일 짝은 meta 의 현재 인물(stem) 기준 — 재시도로 옛 인물 파일이 남아 있어도 안 섞인다.
+    pass1=True 면 '전' 자리에 2단계 편집 직전(1단계) 사진을 놓는다 — 2단계가 무엇을 바꿨는지만 본다."""
+    from bna.api import stem_of
     m = json.loads((d / "meta.json").read_text(encoding="utf-8"))
-    b = sorted(d.glob("*_before.jpg"))[0]
+    st = stem_of(m)
+    b = next((p for p in sorted(d.glob("*_before.jpg")) if st and p.name.startswith(st + "_")), None) or sorted(d.glob("*_before.jpg"))[0]
     a = b.with_name(b.name.replace("_before.jpg", "_after.jpg"))
+    if pass1:
+        b = sorted(d.glob("pass1_*.jpg"), key=lambda p: p.stat().st_mtime)[-1]
     return m, Image.open(b).convert("RGB"), Image.open(a).convert("RGB")
 
 
@@ -45,8 +51,8 @@ def poly_mask(shape, pts, idx_region):
     return mk
 
 
-def one(d: Path):
-    m, bi, ai = pair(d)
+def one(d: Path, pass1=False):
+    m, bi, ai = pair(d, pass1)
     B, A = np.asarray(bi), np.asarray(ai.resize(bi.size))
     pb, pa = L.detect(bi), L.detect(Image.fromarray(A))
     if pb is None or pa is None:
@@ -71,7 +77,7 @@ def one(d: Path):
     crop = lambda im: Image.fromarray(im[y0:y1, x0:x1])  # noqa: E731
     heat = np.clip(diff / 40.0 * 255, 0, 255).astype(np.uint8)
     heat = cv2.applyColorMap(heat, cv2.COLORMAP_INFERNO)[:, :, ::-1]
-    out = {"item": d.name, "when": (m.get("afters") or [{}])[-1].get("when"),
+    out = {"item": d.name + ("@pass1" if pass1 else ""), "when": (m.get("afters") or [{}])[-1].get("when"),
            "in_out": round(ratio, 2), "fold_sd_before": round(sd_b, 1), "fold_sd_after": round(sd_a, 1),
            "fold_sd_change_pct": round((sd_a - sd_b) / sd_b * 100, 1),
            "sim": round(float((m.get("identity") or {}).get("similarity") or 0), 3)}
@@ -89,7 +95,7 @@ def main():
     items = [x.split("=")[0] for x in items]
     rows, res = [], []
     for it in items:
-        r = one(ROOT / "outputs" / bid / it)
+        r = one(ROOT / "outputs" / bid / it.split("@")[0], it.endswith("@pass1"))
         if r is None:
             res.append({"item": it, "error": "얼굴 점 못 찾음"}); continue
         o, ims = r; o["label"] = labels.get(it, ""); res.append(o); rows.append((o, ims))
