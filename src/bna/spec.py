@@ -1066,7 +1066,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         _np = w == "immediate" and experiment_flags()["no_patch"] and bool(t.get("immediate_marks_nopatch"))
         if _np:                                               # 21차 — 없는 패치를 재지 않는다(experiment_flags 머리말)
             pgate, qa_extra = 0, None
-        return {"when": w, "clothes": clothes, "retake_keep_marks": mode == "clinical" and w == "immediate" and not _np, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
+        return {"when": w, "clothes": clothes, "retake_keep_marks": mode == "clinical" and w == "immediate" and not _np, "patch_film": _np, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "second_pass_prompt": " ".join(pass2.split()) if pass2 else None,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}

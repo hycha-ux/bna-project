@@ -3005,14 +3005,21 @@ try:
        "64 스위치 켜면 패치·바늘 문장 없음 · 붓기는 남음")
     ok('"patch_gate": 0' in _ons64 and '"retake_keep_marks": false' in _ons64 and '"no_patch": true' in _ons64,
        "64 스위치 켜면 패치 게이트 0 · 재촬영 '패치 그대로' 끔 · meta 에 no_patch 기록")
+    ok('"patch_film": true' in _ons64 and '"patch_film": true' not in _off64, "64 스위치 켠 직후 컷만 배치가 막을 얹는다(patch_film)")
 finally:
     for _k64, _x64 in _keep64.items():
         _os64.environ.pop(_k64, None)
         if _x64 is not None:
             _os64.environ[_k64] = _x64
-_pf64 = open("tools/patch_film.py", encoding="utf-8").read()
-ok("skin_mask" in _pf64 and "NEEDLE_FAINT" in _pf64 and "GLINT_JIT" in _pf64,
-   "64 patch_film — 피부 위에만 · 패치마다 반사 자리 흔들림 · 바늘 자국 하나는 거의 안 보이게")
+_pf64 = __import__("bna.patchfilm", fromlist=["x"])
+_pfs64 = inspect.getsource(_pf64)
+ok("skin_mask" in _pfs64 and _pf64.NEEDLE_FAINT < 0.2 and _pf64.GLINT_JIT > 0 and "lift_idx" in _pfs64,
+   "64 patchfilm — 피부 위에만 · 패치마다 반사 자리 흔들림 · 바늘 자국 하나는 거의 안 보이게 · 들뜸 최소 1개")
+_blank64 = __import__("PIL.Image", fromlist=["x"]).new("RGB", (64, 80), (200, 170, 150))
+_r64, _rec64 = _pf64.apply(_blank64)
+ok(_rec64 == {"applied": False, "why": "no_face"} and _r64.tobytes() == _blank64.tobytes(), "64 얼굴 못 찾으면 원본 그대로(fail-open)")
+ok(_pf64.seed_for("b", "0000") == _pf64.seed_for("b", "0000") != _pf64.seed_for("b", "0001"), "64 세트 seed 재현 가능(hash() 금지)")
+ok("patchfilm.apply(" in inspect.getsource(__import__("bna.batch", fromlist=["x"])), "64 배치가 직후 After 에 막을 얹는다(대시보드에 합성본)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

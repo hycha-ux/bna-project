@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
-from . import postprocess, refs, providers, seedbank
+from . import postprocess, refs, providers, seedbank, patchfilm
 from .qa import structure, identity, dedup, vision, landmarks, patchgate
 from .stats import summarize, write_manifest
 from .version import prompt_version
@@ -445,6 +445,12 @@ class Batch:
                             # 반복 무늬 자 (15차): 띠 안·얼굴 전체 '도장 조각 비율' — 검수 단계가 repeat_gate 로 'stamp' 를 건다
                             _rec["repeat_final"] = await loop.run_in_executor(None, _fl.repeat_stats, after, _wm)
                     meta.setdefault("fold_fill", {})[af["when"]] = _rec
+                if af.get("patch_film"):
+                    # 21차 (09-29 연서님): 패치 문장 없이 그린 직후 컷에 막을 얹는다 — 자 계측 뒤·검수와 저장 앞이라
+                    #   검수함·대시보드에 합성본이 뜬다(첫 시험은 tools 에서만 얹어 대시보드엔 원본이 떴다). 실패는 원본 그대로(fail-open).
+                    after, _pf = await loop.run_in_executor(
+                        None, lambda: patchfilm.apply(after, patchfilm.seed_for(self.batch_id, item_id, attempt)))
+                    meta.setdefault("patch_film", {})[af["when"]] = _pf
                 return af["when"], af, after, cost
             # ⚠ `return_exceptions=True` 로 받는다 (2026-09-15 티모). 기본값이면 첫 예외가 **즉시** 올라오고
             #   나머지 시점은 취소도 안 된 채 계속 도는데, 그 장들은 **이미 돈을 쓴 호출**이라 meta["cost"] 에
