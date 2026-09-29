@@ -172,6 +172,52 @@ def swap(before: Image.Image, after: Image.Image, band_w: float = BAND_W, pb=Non
     return _rgb(out), rec
 
 
+SIG_BAND, SIG_OUT = 0.008, 0.02   # 19차: 팔자 띠 안 8px(골 보호) / 띠 밖 20px(그물 칸 8~12px 까지 잔결로) — 1024 폭 기준, w× 비율
+
+
+def merge_var(src: Image.Image, dst: Image.Image, sig_band: float = SIG_BAND, sig_out: float = SIG_OUT, pb=None, pa=None):
+    """자리마다 자르는 폭이 다른 합치기(19차, 2026-09-29 연서님 "합친 뒤에도 확대하면 도장 — 폭 8px 이 그물 무늬(8~12px)와
+    겹쳐 그 무늬가 큰 층으로 B 에서 넘어왔다 → 팔자 띠 밖은 16~24px, 띠 안만 8px, 경계는 부드럽게").
+
+    src = 잔결 원천(재촬영), dst = 바탕(메운 B). 잔결 = 띠 지도(band_map, 넓힌 뒤 페더) 로 두 폭을 섞은 고역 층:
+      fine = band·(원본 − 흐림 sig_band) + (1−band)·(원본 − 흐림 sig_out)
+    out = dst − fine(dst) + fine(src 를 dst 모양으로 휜 것). 눈·눈썹·입술은 face_weight 로, 윤곽·점은 8px 층 구조 가드로 뺀다.
+    (None, 기록) = 얼굴 점 못 찾음·고개 차이 큼."""
+    import cv2
+    s, d = src.convert("RGB"), dst.convert("RGB")
+    if s.size != d.size:
+        s = s.resize(d.size, Image.LANCZOS)
+    pb = L.detect(s) if pb is None else pb
+    pa = L.detect(d) if pa is None else pa
+    if pb is None or pa is None:
+        return None, {"applied": False, "skip": "no_face"}
+    pose = pose_diff(pb, pa)
+    if pose["yaw"] > POSE_YAW_MAX or pose["res"] > POSE_RES_MAX:
+        return None, {"pose": pose, "applied": False, "skip": "pose"}
+    W = d.size[0]
+    ls, ld = _lab(s), _lab(d)
+    mx, my = warp_maps(pb, pa, d.size)
+    lw = np.dstack([cv2.remap(np.ascontiguousarray(ls[:, :, i]), mx, my, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT) for i in range(3)])
+    band = band_map(d, pa)[..., None]
+
+    def fine(lab):
+        return band * (lab - cv2.GaussianBlur(lab, (0, 0), W * sig_band)) + (1 - band) * (lab - cv2.GaussianBlur(lab, (0, 0), W * sig_out))
+
+    fs, fd = fine(lw), fine(ld)
+    fw = face_weight(d.size, pa)
+    skin = fw > 0.9
+    # 구조 가드는 8px 층으로 잰다(20px 층은 코·볼 음영까지 커서 가드가 얼굴 절반을 뺀다)
+    g8s = lw[:, :, 0] - cv2.GaussianBlur(lw[:, :, 0], (0, 0), W * sig_band)
+    g8d = ld[:, :, 0] - cv2.GaussianBlur(ld[:, :, 0], (0, 0), W * sig_band)
+    sd = max(float(g8d[skin].std()), float(g8s[skin].std()), 1e-6)
+    big = np.maximum(np.abs(g8d), np.abs(g8s)) / sd
+    struct = cv2.GaussianBlur(np.clip(STRUCT_K + 1 - big, 0, 1).astype(np.float32), (0, 0), 1.5)
+    wmap = (fw * struct)[..., None]
+    out = ld + (fs - fd) * wmap
+    return _rgb(out), {"pose": pose, "applied": True, "sig_band": sig_band, "sig_out": sig_out,
+                       "struct_kept": round(float(1 - struct[skin].mean()), 4)}
+
+
 def pore_stats(img: Image.Image, pts=None) -> dict:
     """모공 불규칙 자 — 얼굴 맨살 잔결(L)에서 어두운 점(−1σ 아래 덩어리)의 크기·이웃 간격 변동계수(표준편차÷평균).
     진짜 피부는 크기·간격이 제각각(값이 크다), '같은 크기·같은 간격' 도장은 값이 작다. 15차 반복 자(repeat_stats)는

@@ -1,6 +1,6 @@
 """배치 오케스트레이션: 생성 → After → 후처리 → 3단 검수 → 판정/재시도 → 저장.
 asyncio 워커 풀, 이어하기(state.json), 프롬프트 버전 기록."""
-import asyncio, io, json, time, uuid
+import asyncio, io, json, os, time, uuid
 from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
@@ -11,7 +11,7 @@ from .stats import summarize, write_manifest
 from .version import prompt_version
 from .progress import Progress
 
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = int(os.environ.get("BNA_EXP_MAX_ATTEMPTS") or 3)   # 09-29 고해상도 시험: 한 장이 5배 비싸 2회로 묶는다
 BEFORE_PRECHECK_TRIES = 3     # 비포 선검사(콜라주)로 다시 그리는 최대 장수 — 3장 다 콜라주면 그대로 진행해 게이트가 잡는다
 
 # ── 재시도 정책 (2026-09-10) ────────────────────────────────────────────────
