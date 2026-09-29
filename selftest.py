@@ -2967,6 +2967,26 @@ ok("irregular" in _rt62 and "no repeating" in _rt62 and "folds" in load("clinica
    and load("clinical_rig.yaml")["fold_fill"]["repeat_gate"]["band_hit_max"] == 0.05 and _fl55.STAMP_MIX is True,
    "62 재촬영 문안 '불규칙·반복 없음' + 결 참조는 골을 안 가져온다 + 문턱")
 
+# 63 (09-29 연서님 v57 "15차 뒤에도 모공 도장 — 재촬영이 얼굴 전체 모공을 다시 그린다") — 모공은 Before 에서 가져오기(texswap)
+_ts63 = __import__("bna.texswap", fromlist=["x"])
+_rg63 = _np55.random.default_rng(63)
+_lab63 = _rg63.random((64, 80, 3)).astype(_np55.float32) * [100, 40, 40]
+_b63, _f63 = _ts63.split(_lab63, 80)
+ok(_np55.allclose(_b63 + _f63, _lab63, atol=1e-4) and _f63.std() > 0, "63 큰 층 + 잔결 층 = 원본(나눠도 잃는 것 없음)")
+_p63 = _np55.c_[_rg63.uniform(100, 900, 478), _rg63.uniform(100, 1100, 478)]
+_mx63, _my63 = _ts63.warp_maps(_p63, _p63, (1024, 1280))
+_gx63, _gy63 = _np55.meshgrid(_np55.arange(1024), _np55.arange(1280))
+ok(float(_np55.abs(_mx63 - _gx63).max()) < 0.01 and float(_np55.abs(_my63 - _gy63).max()) < 0.01, "63 같은 얼굴 점이면 휘기 지도 = 제자리")
+ok(_ts63.pose_diff(_p63, _p63) == {"yaw": 0.0, "res": 0.0}, "63 같은 얼굴 점이면 고개 차이 0")
+_q63 = _p63.copy(); _q63[_ts63.L.NOSE_TIP] += [60, 0]
+_im63 = __import__("PIL.Image", fromlist=["x"]).new("RGB", (1024, 1280))
+_n63, _r63 = _ts63.swap(_im63, _im63, pb=_p63, pa=_q63)
+ok(_n63 is None and _r63["skip"] == "pose" and _r63["pose"]["yaw"] > _ts63.POSE_YAW_MAX, "63 고개 차이가 크면 건너뛰고 기록만(4번)")
+ok(_ts63.FINE_SIGMA == 0.008 and _ts63.BAND_STEPS[-1] == 0.0 and _ts63.BAND_W == _ts63.BAND_STEPS[0],
+   "63 잔결 폭 8px(4px 는 그물 무늬를 못 옮겼다) · 팔자 띠는 약하게 시작해 0 까지 내린다")
+_ap63 = open("tools/texswap_apply.py", encoding="utf-8").read()
+ok("fold_grad(n, pa)" in _ap63 and "EDGE_BACK_MAX" in _ap63, "63 띠 비중 판정은 골 자리 경사(분자)로 — 비율 자는 볼 결이 같이 바뀌어 못 쓴다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
