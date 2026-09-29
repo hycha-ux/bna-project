@@ -330,12 +330,31 @@ def looks_profile(looks_key, v: dict = None, treatment: str = None) -> dict:
     p = (v.get("looks_profile") or {}).get(looks_key) or {}
     # 시술 범위(2026-09-21 정식 반영 때 실측): 전역으로 켜자 피부 3종의 '전=센 빛' 조명 호가 옆빛 강제에 깨졌다(회귀 4건).
     #   프로필은 팔자에서만 시험했으니 `treatments` 목록 밖이면 끈다. 시술을 모르면(None) 끈다 — 닫는 쪽(fail-closed).
-    if p.get("treatments") and treatment not in p["treatments"]:
-        return {}
     sw = experiment_flags()["looks_profile"]
+    # 시험 시술(2026-09-29 빌디, 연서님 "미모형 다음 단계 = 20대 피부 시술"): `trial_treatments` 는 스위치를 "1" 로 켠
+    #   회차에서만 열린다(설정 enabled 로는 안 열림) — 실생성 전 dry·selftest 로 문장만 본다.
+    trial = sw is True and treatment in (p.get("trial_treatments") or [])
+    if p.get("treatments") and treatment not in p["treatments"] and not trial:
+        return {}
     # 2026-09-21 정식 반영(연서님 "①~③ OK"): 설정 `enabled: true` 면 스위치 없이 켜진다. 환경변수 "0" 은 강제로 끈다.
     on = sw if sw is not None else bool(p.get("enabled"))
-    return p if on else {}
+    if not on:
+        return {}
+    # 시술별 덮어쓰기(by_treatment.<시술>) — 팔자 전용 칸(옆빛 강제·빛 잠금·팔자 문장·30대 문구)을 피부 시술에서 걷어낸다.
+    #   값 null = 그 칸 삭제. gates 는 축 단위로 합친다(축 null = 그 축 게이트 삭제). 팔자는 덮어쓰기가 없어 종전 그대로.
+    ov = (p.get("by_treatment") or {}).get(treatment)
+    if not ov:
+        return p
+    out = {k: val for k, val in p.items() if k != "by_treatment"}
+    for k, val in ov.items():
+        if k == "gates" and isinstance(val, dict):
+            g = {**(out.get("gates") or {}), **val}
+            out["gates"] = {a: x for a, x in g.items() if x is not None}
+        elif val is None:
+            out.pop(k, None)
+        else:
+            out[k] = val
+    return out
 
 
 def drift_after(variation: dict, mode: str, rng, timeline: str = "2w", treatment=None, series: bool = False,

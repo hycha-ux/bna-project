@@ -2914,6 +2914,36 @@ ok(all("brighter or darker" not in x for x in (load("clinical_rig.yaml")["micro_
    and "touch brighter" not in load("qa_checklist.yaml")["items_clinical"]["drift"],
    "52 '노출 살짝 다르게' 문구가 세 곳 모두에서 빠졌다(한 줄과 충돌)")
 
+# 61 (09-29 빌디, 미모형 다음 단계 준비) — 20대 피부 3종 미모 프로필은 스위치 "1" 회차에서만, 팔자 전용 칸은 걷어낸다.
+import os as _os61
+_lp61 = __import__("bna.spec", fromlist=["x"]).looks_profile
+_SK61 = ["skinbooster_embo", "skin_pores", "skin_redness"]
+_old61 = _os61.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
+try:
+    ok(all(_lp61("attractive", None, t) == {} for t in _SK61), "61 스위치 없으면 피부 3종 미모 프로필 꺼짐(정식 경로 불변)")
+    _nl61 = _lp61("attractive", None, "nasolabial")
+    ok(_nl61.get("before_force") and "lighting" in (_nl61.get("lock_after") or []) and _nl61.get("after_note"),
+       "61 팔자 프로필은 종전 그대로(옆빛 강제·빛 잠금·팔자 문장)")
+    _os61.environ["BNA_EXP_LOOKS_PROFILE"] = "1"
+    _sp61 = {t: _lp61("attractive", None, t) for t in _SK61}
+    ok(all(p and not any(k in p for k in ("before_force", "lock_after", "after_note", "severity", "effect_level", "age_text", "skin_text", "skin_read", "by_treatment"))
+           for p in _sp61.values()), "61 스위치 켜면 피부 3종 — 팔자 전용 칸 전부 빠짐")
+    ok(all("skin_condition" not in p["gates"] and p["gates"]["framing"] == ["full_face", "forehead_cut"]
+           and p["gates"].get("hair_style") and p.get("pose_ref") and p.get("copy_sim_min") for p in _sp61.values()),
+       "61 피부 3종 — '맑은 피부' 게이트 없음 · 구도 얼굴 전체/이마 잘림 · 머리·자세 참조·너무 같음 자는 v37 그대로")
+    ok(_lp61("attractive", None, "filler_nose") == {}, "61 시험 목록 밖 시술은 스위치를 켜도 꺼짐")
+    _pl61 = __import__("bna.planner", fromlist=["x"]).plan_batch
+    for _t61 in _SK61:
+        _vs61 = [x for x in _pl61("selfie", 120, 61, {}, treatment=_t61) if x["looks"]["key"] == "attractive"]
+        _arc61 = load("treatments.yaml")[_t61]["lighting_arc"]["before"]
+        ok(_vs61 and all(x["lighting"]["key"] in _arc61 and x["framing"]["key"] in ("full_face", "forehead_cut")
+                         and x["skin_condition"]["key"] != "clear" for x in _vs61),
+           f"61 {_t61} 미모 Before = 조명 호 '센 빛' 유지 · 구도 두 칸 · 맑은 피부 없음 ({len(_vs61)}장)")
+finally:
+    _os61.environ.pop("BNA_EXP_LOOKS_PROFILE", None)
+    if _old61 is not None:
+        _os61.environ["BNA_EXP_LOOKS_PROFILE"] = _old61
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

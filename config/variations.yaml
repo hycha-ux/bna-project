@@ -264,6 +264,35 @@ looks_profile:
       The skin reads clear and even in this light, with real texture still visible; a natural, healthy
       look as it is on a good day - no beauty filter, no smoothing, no glass-skin sheen.
     face_refs: 3
+    # ── 20대 피부 시술 시험 (2026-09-29 빌디 준비, 0922 결론 "미모+뚜렷한 팔자 = 이질감 → 20대 시술 집중") ──
+    #   ⚠ 실생성 전이다. BNA_EXP_LOOKS_PROFILE=1 회차에서만 열린다(spec.looks_profile). 채택되면 treatments 로 옮긴다.
+    #   위 칸 중 팔자 전용인 것만 걷어낸다 — 얼굴·머리·소품·참조·너무 같음 자는 v37 그대로.
+    trial_treatments: [skinbooster_embo, skin_pores, skin_redness]
+    by_treatment:
+      _skin: &looks_skin
+        # 피부 3종은 '전=센 빛 · 후=부드러운 빛' 조명 호가 효과의 절반이다(treatments.yaml ②). 옆빛 강제·빛 잠금은
+        #   09-21 전역 켰을 때 이 호를 깬 바로 그 칸(회귀 4건) → 뺀다.
+        #   표정 잠금도 뺀다 — 팔자는 웃음이 골 깊이를 바꿔서 잠갔고, 피부는 expression_policy: free 라 잠그면 After 에
+        #   "같은 표정 키 + clearly different" 가 한 문장에 같이 나간다(09-29 dry 실측, spec 09-18 머리말과 같은 모순).
+        before_force: null
+        lock_after: null
+        # 팔자 전용 문장·강도·나이 문구 — 피부는 시술 설정(강도 mild·marked, 효과 짝, 20대 추첨)을 그대로 쓴다.
+        after_note: null
+        severity: null
+        effect_level: null
+        age_text: null
+        # '맑은 피부'는 시술 전 상태(홍조·모공·잔결)와 모순 — 시술 axis_ban 과 같은 이유. 피부 낱말을 미인상 문장에서도 뺀다.
+        gates: {skin_condition: null, framing: [full_face, forehead_cut]}   # head_to_bust 는 피부 framing_allow 밖. forehead_cut = 가깝고 눈은 프레임 안
+        weights: {framing: {full_face: 2}}
+        skin_text: null
+        skin_read: null
+        detail_by_country:
+          korea: "with a classic Korean beauty look: a small face, clearly defined bright eyes and full lips"
+        # 파운데이션·컨실러가 홍조·모공을 가린다(시술 axis_ban makeup_light 와 같은 이유) — 눈 화장만.
+        makeup: "bare skin with no foundation or concealer; only soft mascara and a lip balm"
+      skinbooster_embo: *looks_skin
+      skin_pores: *looks_skin
+      skin_redness: *looks_skin
 
 background:
   clinic: "plain light clinic wall"
