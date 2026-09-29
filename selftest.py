@@ -1,8 +1,22 @@
 """회귀 — 설정·라우팅이 조용히 되돌아가는 걸 막는다.
 실행: PYTHONPATH=src python selftest.py   (키 불필요, 네트워크 호출 0)
 """
+import os
 import sys
 sys.stdout.reconfigure(encoding="utf-8")   # Windows 콘솔 기본 CP949 라 한글·— 가 터진다
+# 22차(09-29) 부터 직후 컷 기본 = 패치 없음. 이 파일의 옛 패치 회귀(자리·개수·게이트·immediate_look·2단계 '패치 그대로')는
+#   **옛 패치 경로가 스위치 0 으로 살아 있는지**를 지키므로 전역을 0 으로 두고, 새 기본값은 64번이 스위치를 비운 채 잰다.
+os.environ["BNA_EXP_NO_PATCH"] = "0"
+
+
+def _xp(e):
+    """meta['experiment'] 에서 위 전역 스위치(no_patch=False)만 걷어낸 값 — 다른 스위치 회귀가 그 칸에 안 흔들리게."""
+    if not e:
+        return e
+    e = {k: v for k, v in e.items() if not (k == "no_patch" and v is False)}
+    return None if e == {"relax": [], "severity": None, "when": None} else e
+
+
 from bna.spec import defaults_for, load, build_prompts, sample_variation
 
 fails = []
@@ -785,6 +799,7 @@ ok("nothing is resting on it" not in _mx_src and "the treatment description belo
 _mk = "small skin-coloured dressing patches beside each corner of the mouth"
 import bna.spec as _sm
 _t2 = dict(_tr_all["nasolabial"]); _t2["facts"] = {"immediate_marks": _mk}
+_t2["immediate_patchless"] = False     # 이 묶음은 '사실 카드' 배관을 잰다 — 22차 패치 없음 기본값과 따로(64번이 그쪽)
 _ol = _sm.load
 _sm.load = lambda n: {**_ol(n), "nasolabial": _t2} if n == "treatments.yaml" else _ol(n)
 try:
@@ -803,11 +818,22 @@ ok("only part of the treated line or fold changed" in _qa_src,
    "검수 effect_visible 은 일부 구간만 바뀐 컷을 감점해야 한다(부분 소거는 시술이 아니라 지우개)")
 ok("entire length of the fold" in _tr_all["nasolabial"]["after_change"],
    "팔자 시술 문장이 콧볼~입꼬리 전 구간을 못 박는다")
-# 살아 있는 카드(팔자 필러)가 실제 프롬프트에 실리는가
-_pn = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
+# 살아 있는 카드(팔자 필러)가 실제 프롬프트에 실리는가 — 22차(09-29)부터 기본은 패치 없음, 옛 패치는 BNA_EXP_NO_PATCH=0
+import os as _os807
+_k807 = _os807.environ.pop("BNA_EXP_NO_PATCH", None)
+try:
+    _pn0 = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
+    _os807.environ["BNA_EXP_NO_PATCH"] = "0"
+    _pn = build_prompts("nasolabial", "selfie", _v, 5, series=["immediate", "2w"])
+finally:
+    _os807.environ.pop("BNA_EXP_NO_PATCH", None)
+    if _k807 is not None:
+        _os807.environ["BNA_EXP_NO_PATCH"] = _k807
+ok("hydrocolloid" not in _pn0["afters"][0]["after_prompt"] and "slightly puffy" in _pn0["afters"][0]["after_prompt"],
+   "팔자 직후 컷 기본 = 패치 없이 붓기만(22차 연서님)")
 ok("hydrocolloid dressings" in _pn["afters"][0]["after_prompt"]
    and "hydrocolloid" not in _pn["afters"][1]["after_prompt"],
-   "팔자 직후 컷에만 패치·바늘 자국이 실린다(2주 컷에 남으면 그게 더 큰 사고)")
+   "BNA_EXP_NO_PATCH=0 이면 팔자 직후 컷에만 패치·바늘 자국이 실린다(2주 컷에 남으면 그게 더 큰 사고)")
 # 2026-09-11 저녁엔 패치를 통째로 뺐었다("티나게 붙어 더 AI 같다"). 2026-09-17 성연서님이 실사진 탭
 #   강남언니 #118(정면 D+0)을 보고 뒤집었다 — "투명한 패치가 있어, 시술 직후는 보여야 해, 그 병원에서
 #   시술한 모습이니까". 이제 직후 컷엔 패치가 **있어야** 하고, 2주 컷엔 여전히 없어야 한다.
@@ -2510,8 +2536,8 @@ _mina37 = (load("treatments.yaml")["nasolabial"].get("severity_min_age") or {}).
 _ok_age37 = [(v, r) for v, r in _on37 if not _mina37 or _ages37.index(v["age"]["key"]) >= _ages37.index(_mina37)]
 ok(_ok_age37 and all(r["variation"]["before_severity"]["key"] == "moderate" for _v, r in _ok_age37),
    f"BNA_EXP_SEVERITY=moderate — 나이가 허락하는 {len(_ok_age37)}장 전부 Before 강도가 moderate")
-ok(all(r["experiment"] == {"relax": ["expression"], "severity": "moderate", "when": None} for _v, r in _on37)
-   and all(r["experiment"] is None for _v, r in _off37), "meta['experiment'] — 켠 회차만 스위치가 남고 끈 회차는 None")
+ok(all(_xp(r["experiment"]) == {"relax": ["expression"], "severity": "moderate", "when": None} for _v, r in _on37)
+   and all(_xp(r["experiment"]) is None for _v, r in _off37), "meta['experiment'] — 켠 회차만 스위치가 남고 끈 회차는 None")
 # ㊲-2 (09-21 2차) 시점 고정 + 켠 축은 주사위 건너뛰기. 1차는 시점이 섞이고(직후 2 vs 직후1·2주1)
 #   스위치를 켜도 주사위에 빠져 실험 2장 중 1장만 표정이 바뀌어 판정이 안 났다.
 _on37b = _run37({"BNA_EXP_RELAX": "expression", "BNA_EXP_SEVERITY": "moderate", "BNA_EXP_WHEN": "2w"})
@@ -2566,7 +2592,7 @@ ok(all(_st39 in r["before_prompt"] for r in _r39off) and not any("natural makeup
    "미모 프로필을 강제로 끄면(=되돌리기) 종전 그대로 — 질감 문장 원문·메이크업 없음·외모 참조 없음")
 # 정식 반영(09-21 "①~③ OK"): 스위치 없이도 켜지고, meta 실험 칸은 비어 있다(정식 경로라서)
 _v39def, _r39def, _f39def = _run39(None)
-ok(_r39def and all("natural makeup" in r["before_prompt"] and r["experiment"] is None for r in _r39def) and len(_f39def) == 3,
+ok(_r39def and all("natural makeup" in r["before_prompt"] and _xp(r["experiment"]) is None for r in _r39def) and len(_f39def) == 3,
    "미모 프로필 정식 반영 — 스위치 없이 켜지고 meta 실험 칸은 None")
 ok(all("obvious at a glance" in a["after_prompt"] for r in _r39def for a in r["afters"] if a["when"] != "immediate"),
    "미모 프로필 ④ — 미모 컷 After(직후 제외)에 '한눈에 보인다' 한 줄")
@@ -2987,25 +3013,32 @@ ok(_ts63.FINE_SIGMA == 0.008 and _ts63.BAND_STEPS[-1] == 0.0 and _ts63.BAND_W ==
 _ap63 = open("tools/texswap_apply.py", encoding="utf-8").read()
 ok("fold_grad(n, pa)" in _ap63 and "EDGE_BACK_MAX" in _ap63, "63 띠 비중 판정은 골 자리 경사(분자)로 — 비율 자는 볼 결이 같이 바뀌어 못 쓴다")
 
-# 64 (09-29 21차 연서님 "패치도 우리가 직접 얹어보자") — BNA_EXP_NO_PATCH 켠 회차만 직후 컷 패치·점 문장이 빠지고
-#   패치 게이트·재촬영 '패치 그대로'·immediate_look 이 꺼진다. 안 켜면 종전 그대로(v58).
+# 64 (09-29 21차 "패치도 우리가 직접 얹어보자" → 22차 "직후 컷은 패치 없이 가자") — 기본 = 패치 없음(설정 immediate_patchless).
+#   BNA_EXP_NO_PATCH=0 이면 옛 패치 문장(v58) · 막 합성은 BNA_EXP_PATCH_FILM=1 일 때만.
 import json as _js64, os as _os64
 _sp64 = __import__("bna.spec", fromlist=["x"])
 _pl64 = __import__("bna.planner", fromlist=["x"]).plan_batch
-_keep64 = {k: _os64.environ.pop(k, None) for k in ("BNA_EXP_NO_PATCH", "BNA_EXP_WHEN")}
+_keep64 = {k: _os64.environ.pop(k, None) for k in ("BNA_EXP_NO_PATCH", "BNA_EXP_WHEN", "BNA_EXP_PATCH_FILM")}
 try:
     _os64.environ["BNA_EXP_WHEN"] = "immediate"
     _v64 = _pl64("clinical", 1, 64, {}, treatment="nasolabial")[0]
-    _off64 = _js64.dumps(_sp64.build_prompts("nasolabial", "clinical", _v64, 64000), ensure_ascii=False)
-    _os64.environ["BNA_EXP_NO_PATCH"] = "1"
-    _on64 = _sp64.build_prompts("nasolabial", "clinical", _v64, 64000)
-    _ons64 = _js64.dumps(_on64, ensure_ascii=False)
-    ok("hydrocolloid" in _off64 and "needle" in _off64, "64 스위치 없으면 직후 패치·바늘 문장 그대로(v58)")
+    _b64 = lambda: _js64.dumps(_sp64.build_prompts("nasolabial", "clinical", _v64, 64000), ensure_ascii=False)  # noqa: E731
+    _ons64 = _b64()                                     # 기본
+    _os64.environ["BNA_EXP_NO_PATCH"] = "0"
+    _off64 = _b64()                                     # 옛 패치 강제
+    _os64.environ.pop("BNA_EXP_NO_PATCH")
+    _os64.environ["BNA_EXP_PATCH_FILM"] = "1"
+    _film64 = _b64()
+    ok("hydrocolloid" in _off64 and "needle" in _off64 and '"retake_keep_marks": true' in _off64,
+       "64 BNA_EXP_NO_PATCH=0 이면 직후 패치·바늘 문장·재촬영 '패치 그대로' 그대로(v58)")
     ok("hydrocolloid" not in _ons64 and "needle" not in _ons64 and "slightly puffy" in _ons64,
-       "64 스위치 켜면 패치·바늘 문장 없음 · 붓기는 남음")
-    ok('"patch_gate": 0' in _ons64 and '"retake_keep_marks": false' in _ons64 and '"no_patch": true' in _ons64,
-       "64 스위치 켜면 패치 게이트 0 · 재촬영 '패치 그대로' 끔 · meta 에 no_patch 기록")
-    ok('"patch_film": true' in _ons64 and '"patch_film": true' not in _off64, "64 스위치 켠 직후 컷만 배치가 막을 얹는다(patch_film)")
+       "64 기본 = 패치·바늘 문장 없음 · 붓기는 남음(22차)")
+    ok('"patch_gate": 0' in _ons64 and '"retake_keep_marks": false' in _ons64 and '"qa_extra": null' in _ons64,
+       "64 기본 = 패치 게이트 0 · 재촬영 '패치 그대로' 끔 · immediate_look 끔")
+    ok('"patch_film": false' in _ons64 and '"patch_film": true' in _film64 and '"patch_film": true' not in _off64,
+       "64 막 합성은 기본 끔 — BNA_EXP_PATCH_FILM=1 이고 패치 없는 회차에서만")
+    ok(_sp64.patchless({"immediate_marks_nopatch": "x"}) is False and _sp64.patchless({"immediate_patchless": True}) is False,
+       "64 붓기 문장이 없는 시술은 설정을 켜도 패치 없음 판정 안 함")
 finally:
     for _k64, _x64 in _keep64.items():
         _os64.environ.pop(_k64, None)
