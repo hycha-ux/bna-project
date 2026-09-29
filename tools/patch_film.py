@@ -25,10 +25,11 @@ from bna.qa import landmarks  # noqa: E402
 SIZE_JIT = (0.85, 1.15)     # 반지름 = 홍채 반지름 × 이 범위
 ASPECT_JIT = (0.82, 1.0)    # 패치 자체 타원 정도(세로/가로) — 볼 눌림(sx) 위에 곱한다
 TILT_JIT = 35.0             # 타원 기울기 흔들림(도)
-FILM_LIFT = 0.024          # 막 안 밝기 올림(0~1 비율) — '거의 안 보이는' 막 (0.012 는 확대해도 안 보였다)
+FILM_LIFT = 0.030         # 막 안 밝기 올림(0~1 비율) — '거의 안 보이는' 막 (0.012 는 확대해도 안 보였다)
 FILM_DESAT = 0.04           # 막 안 채도 빠짐
 EDGE_SD = 0.035             # 테두리 굵기(반지름 비)
-GLINT_GAIN = (0.11, 0.19)   # 한쪽 반사 세기(흰색 쪽으로 섞는 비율 최대값) — 가는 선(1차)은 펜 자국, 0.07~0.14 띠(3차)는 확대해도 안 보였다
+GLINT_GAIN = (0.14, 0.24)   # 한쪽 반사 세기(흰색 쪽으로 섞는 비율 최대값) — 가는 선(1차)은 펜 자국, 0.07~0.14 띠(3차)는 확대해도 안 보였다,
+                            #   0.11~0.19 는 결 굵은 v59 피부에서 셋 중 둘이 확대해도 안 보였다
 GLINT_ARC = (55.0, 110.0)   # 반사 호 길이(도)
 GLINT_JIT = 50.0            # 반사 자리 = 빛 쪽 ± 이만큼
 LIFT_P = 0.6                # 들뜬 곳이 있을 확률
@@ -79,6 +80,8 @@ def film(img, spots, seed=0, light=-90.0, debug=None, skin=None):
     H, W = a.shape[:2]
     out = a.copy()
     faint_idx = int(rng.integers(len(spots))) if spots else -1
+    # 들뜬 곳은 최소 한 패치 — 확률만 두니 v59 첫 합성에서 셋 다 안 들떴다(요청 "들뜬 곳 약간"이 빠짐)
+    lift_idx = int(rng.integers(len(spots))) if spots else -1
     log = []
     for i, s in enumerate(spots):
         r = s["r"] * rng.uniform(*SIZE_JIT)
@@ -118,7 +121,7 @@ def film(img, spots, seed=0, light=-90.0, debug=None, skin=None):
         shade = edge * _arc_w(theta, g_c + 180, 120) * rng.uniform(0.01, 0.03)
         # ③ 들뜬 곳
         lift_log = None
-        if rng.random() < LIFT_P:
+        if rng.random() < LIFT_P or i == lift_idx:
             l_c = rng.uniform(0, 360); l_span = rng.uniform(*LIFT_ARC)
             lw = _arc_w(theta, l_c, l_span)
             thick = np.exp(-((rad - 0.97) ** 2) / (2 * (EDGE_SD * 2.2) ** 2)) * lw
