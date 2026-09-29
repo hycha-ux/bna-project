@@ -40,7 +40,7 @@ def alpha_mask(mask_png: bytes) -> bytes:
     return b.getvalue()
 
 API = "https://api.openai.com/v1"
-TIMEOUT = int(os.environ.get("BNA_EXP_TIMEOUT") or 300)   # 09-29 고해상도 시험(2304×2880)은 한 장이 5배라 600 으로 연다
+TIMEOUT = 300   # 기본. 임상 고해상도(2304×2880)는 한 장이 5배라 배치가 인스턴스 timeout 을 600 으로 연다(clinical_rig.hires)
 # 429(한도)·5xx(일시 장애) 재시도 대기(초). 이미지 1콜이 실측 ~108초라 이 정도 기다림은 회차를 못 망친다 —
 # 기다리지 않는 쪽이 비싸다(그 예외 하나가 배치 전체를 죽인다). 소진되면 종전대로 오류를 올린다.
 RETRY_WAITS_S = (10, 30, 60)
@@ -103,6 +103,8 @@ class OpenAIProvider(Provider):
             if _IMAGE_GATE is None:
                 _IMAGE_GATE = _StartGate(self.cfg.get("images_per_minute"))
         self.gate = _IMAGE_GATE
+        # 임상 고해상도(09-30 빌디·연서님 "시험 조합을 임상 기본값으로"): 배치가 clinical_rig.yaml `hires` 로 채운다.
+        self.size_4x5, self.timeout = None, TIMEOUT
 
     # --- 공통 ---
     def _headers(self, json_body: bool):
@@ -123,12 +125,11 @@ class OpenAIProvider(Provider):
         if aspect not in sizes:
             # 조용히 다른 비율로 내보내지 않는다 — 세트 안에서 비율이 갈리면 전후 비교가 깨진다.
             raise ValueError(f"지원하지 않는 aspect: {aspect} (providers.yaml aspect_size 에 추가해라)")
-        # 고해상도 시험 스위치(2026-09-29 연서님 "도장 느낌의 근본 원인은 해상도 — 임상 4:5 를 2304×2880 으로 1세트").
-        #   BNA_EXP_SIZE_4X5=2304x2880 이면 4:5 만 그 크기로(Before·B·재촬영이 모두 이 함수를 지나 한 세트 안에서 갈리지 않는다).
+        # 임상 고해상도(2026-09-29 시험 → 09-30 임상 기본). 배치가 임상 모드에서 size_4x5 를 채우면 4:5 만 그 크기로
+        #   (Before·B·재촬영이 모두 이 함수를 지나 한 세트 안에서 갈리지 않는다). 셀카는 None 이라 종전 크기.
         #   gpt-image-2 한도 = 두 변 16의 배수·긴 변 ≤3840·총 픽셀 ≤829만 — 어기면 API 가 400 으로 알려준다(여기서 다시 검사 안 함).
-        _hr = os.environ.get("BNA_EXP_SIZE_4X5")
-        if _hr and aspect == "4:5":
-            return _hr
+        if self.size_4x5 and aspect == "4:5":
+            return self.size_4x5
         return sizes[aspect]
 
     def _log_usage(self, path, payload, extra):
@@ -169,9 +170,9 @@ class OpenAIProvider(Provider):
                 stream.seek(0)
             if path.startswith("/images/"):              # 출발 간격 — 채점(chat)은 한도 버킷이 달라 안 태운다
                 self.gate.wait()
-            r = (requests.post(f"{API}{path}", headers=self._headers(False), files=files, data=data, timeout=TIMEOUT)
+            r = (requests.post(f"{API}{path}", headers=self._headers(False), files=files, data=data, timeout=self.timeout)
                  if files is not None else
-                 requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=TIMEOUT))
+                 requests.post(f"{API}{path}", headers=self._headers(True), json=body, timeout=self.timeout))
             if not (r.status_code == 429 or r.status_code >= 500) or i >= len(RETRY_WAITS_S):
                 return r
             # 서버가 알려 준 대기 시간이 있으면 그걸 따른다(우리 값보다 길 수 있다).

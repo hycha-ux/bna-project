@@ -81,14 +81,23 @@ after_generation: generate
 #       입꼬리 구역은 골 중심선만·재료는 볼 쪽만, 수염 자리 누르기 약하게, 팔자 3구간×좌우 기록·아래 구간 약한 쪽만 더). false 면 24차 그대로.
 #     merge_lip_grow: 0.002 = 23차 합치기의 입술·입꼬리선 제외 여유를 FEAT_GROW(0.02)에서 입술 경계선만큼으로(피부 쪽 결 되돌리기).
 #     근거 = 24차 5세트 재적용(tools/round25_apply.py, 새 생성 0): 입술색 번짐·입꼬리 멍이 사라지고 골 선은 -19.8~-54.5 → -24.1~-56.9%.
+#   2026-09-30 빌디·연서님 "팔자 임상 마무리 — 지금 시험 스위치 조합을 임상 기본값으로 굳혀"(확인 배치 09-29 채택 2·AI 티 반려 4·자동 탈락 1):
+#     retake_prompt = 재촬영 문안(22차 후보 v17, 결 참조 사진 없음 — 종전 retake_clinical.md + retake_texture_ref 경로는 지웠다).
+#     retake_merge: true = 재촬영 뒤 23차 안전 합치기(texswap.merge_safe) — 종전 스위치 BNA_EXP_RETAKE / BNA_EXP_RETAKE_MERGE 는 지웠다.
+#     남은 한계(고치지 않고 기록만): 잡티가 절반쯤 사라짐(47→23, 46→28) · 가끔 입꼬리·마리오네트·이마까지 같이 펴짐(82cb, 2202).
 fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15, side_gate: false,
-            guard: true, merge_lip_grow: 0.002,
+            guard: true, merge_lip_grow: 0.002, retake_prompt: retake_clinical_v17.md, retake_merge: true,
             band_gate: {dL_max: 0, tex_min: 0.85, spot_min: 0.6},
             repeat_gate: {band_hit_max: 0.05, face_hit_max: 0.1}}
 # repeat_gate (15차 연서님 "반복 무늬 자 추가해서 띠 안·얼굴 전체 둘 다 재고 튀면 다시") = foldlift.repeat_stats 의 '도장 조각 비율'
 #   (조각이 얼굴 다른 자리와 상관 0.6 이상). 넘으면 'stamp' — After 만 다시. 근거(v56 5세트 메우기 직전 B 재메우기):
 #   14차 결 옮기기 band 6.7~23%, 15차 조각 섞기 0%, Before·B·실제 사진 band 0~1.6% / face 0~6.2%.
 #   ⚠ 참조 실사진 2장(lifting_*_02)은 face 25~30% — 사진 자체에 반복 영역이 있다. 문턱은 우리 생성물 기준 잠정값.
+
+# 임상 고해상도 (2026-09-29 20차 시험 스위치 BNA_EXP_SIZE_4X5·MAX_ATTEMPTS·TIMEOUT → 09-30 임상 기본). 쓰는 곳 = batch.Batch.__init__(임상 모드만).
+#   size_4x5 = 4:5 컷 크기(Before·B·재촬영 공통) · max_attempts = 한 장 5배 비용이라 3→2 · timeout = 한 콜 초(300→600).
+#   되돌리기 = 이 줄 삭제(1024×1280·3회·300초). 셀카는 안 탄다.
+hires: {size_4x5: "2304x2880", max_attempts: 2, timeout: 600}
 
 # 리그 고정 (2026-09-28 6차 연서님 B "측광 리그 100%"). 있으면 rig_weights 추첨을 이긴다(추첨 rng 는 그대로 소비). 되돌리기 = 줄 삭제.
 rig_fixed: clinic_wall
@@ -126,17 +135,6 @@ retake:
 retake_keep_marks: >
   Any small clear round patches, tape and tiny red needle dots on the skin are part of this photo and
   stay exactly where they are, with the same size, shape and shine - do not remove or fade them.
-
-# 재촬영 결 참조 한 줄 (15차 연서님 "전 사진을 피부 결 참조로 같이 넣어 '이 결 그대로'로"). 쓰는 곳 = batch 재촬영 —
-#   이 칸이 있으면 Before 를 2번 이미지로 붙이고 이 문장을 더한다(비우면 종전 1장 재촬영).
-#   ⚠ Before 엔 깊은 골이 있다 — 결만 가져오고 골·그늘은 가져오지 말라고 못박았다. 골이 되살아나는지는 edge_final 로 잰다.
-retake_texture_ref: >
-  Image 2 is an earlier photo of the same person, attached only as a skin texture reference. Match
-  the skin texture of image 2 exactly - the same pore size, the same irregular pore spacing, the same
-  fine grain and the same small blemishes - so the skin reads as this person's own skin. Take nothing
-  else from image 2: not the lines, creases, folds or shadows beside the nose and mouth, not the face
-  shape, pose, expression, lighting, colour, clothes or hair. Image 1 decides everything except the
-  texture.
 
 # 옷 색 자 문턱(14차): 1주~ 컷에서 전·후 옷 영역 색 차(ΔE)가 이 값 미만이면 'same_clothes' — After 만 다시.
 #   근거: 옷이 실제로 같은 임상 쌍 50개(배치 814e·6462·de25·c505) ΔE 0~7.3. 검은 옷 → 검은 후디처럼 추첨이 우연히 같은 색이면

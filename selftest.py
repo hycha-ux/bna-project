@@ -1121,8 +1121,8 @@ ok('idn.get("gate") == "review"' in _bsrc2 and 'identity_review' in _bsrc2,
    "batch 가 review 구간을 재시도 사유로 올려야 한다")
 _rd, _rb = _retry_plan(["identity_review"])
 ok((not _rd) and _rb, "review 구간은 조건은 그대로 두고 Before 부터 다시 그려야 한다")
-ok("identity_review" in _bsrc2.split("attempt < MAX_ATTEMPTS")[0].rsplit("gate", 1)[-1] or
-   'attempt < MAX_ATTEMPTS' in _bsrc2,
+ok("identity_review" in _bsrc2.split("attempt < self.max_attempts")[0].rsplit("gate", 1)[-1] or
+   'attempt < self.max_attempts' in _bsrc2,
    "마지막 회차에서는 review 를 통과시켜야 한다(애매한 걸 버리지 않는다)")
 
 # ③ 구도 중복: 과거 회차와 프레이밍·각도·배경 조합이 겹치지 않게
@@ -2888,7 +2888,7 @@ ok(_i56["applied"] and not _i56["capped"] and abs(_got56 / _ref56 - 0.5) < 0.05,
 _ff57 = load("clinical_rig.yaml").get("fold_fill") or {}
 ok(_ff57.get("enabled") is True and _ff57.get("edge_pct") == -54.6 and _ff57.get("retake") is True, "57 임상 골 메우기+재촬영 켜짐(-54.6%)")
 _bsrc57 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
-ok("_fl.fill_to" in _bsrc57 and "retake_clinical.md" in _bsrc57 and 'meta.setdefault("fold_fill"' in _bsrc57,
+ok("_fl.fill_to" in _bsrc57 and '_ff.get("retake_prompt")' in _bsrc57 and 'meta.setdefault("fold_fill"' in _bsrc57,
    "57 배치가 메우기·재촬영을 부르고 원장에 남긴다")
 ok(_bsrc57.index("_fl.fill_to") < _bsrc57.index("④ 검수 3단"), "57 메우기·재촬영은 게이트(검수) 앞이다")
 ok("retake_clinical.md" in open("tools/retake_pass.py", encoding="utf-8").read(), "57 재촬영 문안은 config 한 벌(도구·배치 공용)")
@@ -2987,11 +2987,11 @@ ok(_c62(_old62) > 0.5 and _c62(_o62[0]) < 0.05, f"62 옛 방식은 옆 피부 �
 ok(_fl55.repeat_gate({"measured": True, "band_hit": 0.2, "face_hit": 0.0}, {"band_hit_max": 0.05, "face_hit_max": 0.1}) == ["repeat_band"]
    and _fl55.repeat_gate({"measured": False}, {"band_hit_max": 0.05}) == [], "62 반복 자 게이트 — 띠만 튐 / 못 재면 통과")
 _bs62 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
-ok('"stamp"' in _bs62 and '_rec["repeat_final"]' in _bs62 and 'retake_texture_ref' in _bs62, "62 배치가 도장 자를 재고 게이트·결 참조를 건다")
+ok('"stamp"' in _bs62 and '_rec["repeat_final"]' in _bs62 and 'retake_texture_ref' not in _bs62, "62 배치가 도장 자를 재고 게이트를 건다(결 참조 경로는 09-30 삭제)")
 _rt62 = (ROOT / "config/prompts/retake_clinical.md").read_text(encoding="utf-8") if "ROOT" in dir() else open("config/prompts/retake_clinical.md", encoding="utf-8").read()
-ok("irregular" in _rt62 and "no repeating" in _rt62 and "folds" in load("clinical_rig.yaml")["retake_texture_ref"]
+ok("irregular" in _rt62 and "no repeating" in _rt62 and "retake_texture_ref" not in load("clinical_rig.yaml")
    and load("clinical_rig.yaml")["fold_fill"]["repeat_gate"]["band_hit_max"] == 0.05 and _fl55.STAMP_MIX is True,
-   "62 재촬영 문안 '불규칙·반복 없음' + 결 참조는 골을 안 가져온다 + 문턱")
+   "62 옛 재촬영 문안(도구용) '불규칙·반복 없음' 유지 + 결 참조 칸 삭제(09-30) + 문턱")
 
 # 63 (09-29 연서님 v57 "15차 뒤에도 모공 도장 — 재촬영이 얼굴 전체 모공을 다시 그린다") — 모공은 Before 에서 가져오기(texswap)
 _ts63 = __import__("bna.texswap", fromlist=["x"])
@@ -3044,26 +3044,34 @@ finally:
         _os64.environ.pop(_k64, None)
         if _x64 is not None:
             _os64.environ[_k64] = _x64
-_keep65 = {k: _os64.environ.pop(k, None) for k in ("BNA_EXP_RETAKE", "BNA_EXP_RETAKE_MERGE")}
+# 65 (09-30 빌디·연서님 "팔자 임상 마무리 — 시험 스위치 조합을 임상 기본값으로 굳혀"): 스위치 없이 v17·안전 합치기·고해상도
+_keep65 = {k: _os64.environ.pop(k, None) for k in ("BNA_EXP_RETAKE", "BNA_EXP_RETAKE_MERGE", "BNA_EXP_SIZE_4X5")}
 try:
+    _os64.environ.update({"BNA_EXP_RETAKE": "v99", "BNA_EXP_RETAKE_MERGE": "0"})   # 지운 스위치 — 켜도 끄도 아무 일 없어야
     _x65 = _sp64.experiment_flags()
-    ok(_x65["retake"] is None and _x65["retake_merge"] is False, "65 22차 재촬영 후보 스위치 기본 끔(정본 retake_clinical.md 불변)")
-    _os64.environ.update({"BNA_EXP_RETAKE": "v17", "BNA_EXP_RETAKE_MERGE": "1"})
-    _m65 = _sp64.experiment_flags(as_meta=True)
-    ok(_m65.get("retake") == "v17" and _m65.get("retake_merge") is True, "65 켜면 meta 실험 칸에 retake·retake_merge 가 남는다")
-    _os64.environ["BNA_EXP_RETAKE"] = "v99"
-    try:
-        _sp64.experiment_flags(); ok(False, "65 모르는 재촬영 문안 값은 죽어야 한다")
-    except ValueError:
-        ok(True, "65 모르는 재촬영 문안 값은 소리 내고 죽는다(조용히 정본으로 떨어지지 않게)")
+    ok("retake" not in _x65 and "retake_merge" not in _x65 and "retake" not in (_sp64.experiment_flags(as_meta=True) or {}),
+       "65 옛 재촬영 스위치(BNA_EXP_RETAKE·_MERGE)는 지워졌다 — 환경변수가 남아 있어도 무시")
 finally:
     for _k65, _x65v in _keep65.items():
         _os64.environ.pop(_k65, None)
         if _x65v is not None:
             _os64.environ[_k65] = _x65v
+_ff65 = load("clinical_rig.yaml")["fold_fill"]; _hr65 = load("clinical_rig.yaml").get("hires") or {}
+ok(_ff65.get("retake_prompt") == "retake_clinical_v17.md" and _ff65.get("retake_merge") is True
+   and _ff65.get("guard") is True and (_P("config/prompts") / _ff65["retake_prompt"]).exists(),
+   "65 임상 기본: 재촬영 문안 v17 · 안전 합치기 · 입꼬리 보호(25차)")
+ok(_hr65 == {"size_4x5": "2304x2880", "max_attempts": 2, "timeout": 600}, f"65 임상 고해상도 기본 2304×2880·2회·600초 — {_hr65}")
+ok(load("treatments.yaml")["nasolabial"].get("immediate_patchless") is True,
+   "65 직후 컷 패치 없음(22차) 기본 유지")
+from bna.providers.openai_img import OpenAIProvider as _OP65
+_o65 = _OP65.__new__(_OP65); _o65.cfg = load("providers.yaml")["openai"]; _o65.size_4x5 = None
+_s0 = _o65._size("4:5"); _o65.size_4x5 = "2304x2880"
+ok(_s0 == "1024x1280" and _o65._size("4:5") == "2304x2880" and _o65._size("1:1") == "1024x1024",
+   "65 프로바이더: 크기 칸이 비면 종전(셀카) · 임상이 채우면 4:5 만 고해상도")
 _bsrc65 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
-ok("retake_clinical_v17.md" in _bsrc65 and "texswap.merge_safe(_ra, after, lip_grow=" in _bsrc65 and '_xf["retake"] == "v17" else' in _bsrc65,
-   "65 배치: v17 문안·결 참조 없음 · 합치기 = 잔결 원천 재촬영 / 바탕 메운 B(23차 안전판)")
+ok('_ff.get("retake_prompt")' in _bsrc65 and "texswap.merge_safe(_ra, after, lip_grow=" in _bsrc65 and "experiment_flags()" not in _bsrc65
+   and 'mode == "clinical"' in _bsrc65 and '_p.size_4x5 = ' in _bsrc65 and 'environ.get("BNA_EXP' not in _bsrc65,
+   "65 배치: 설정의 문안·결 참조 없음 · 안전 합치기 · 임상만 고해상도 · 실험 스위치 안 읽음")
 ok('retake_{af[\'when\']}_a{attempt}.jpg' in _bsrc65 and 'filled_{af[\'when\']}_a{attempt}.jpg' in _bsrc65,
    "66 합치기 회차는 재촬영 원본·메운 B 를 남긴다(다시 걸 재료)")
 

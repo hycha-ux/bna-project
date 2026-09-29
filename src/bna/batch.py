@@ -6,13 +6,12 @@ from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
 from . import postprocess, refs, providers, seedbank, patchfilm, texswap, pigment
-from .spec import experiment_flags
 from .qa import structure, identity, dedup, vision, landmarks, patchgate
 from .stats import summarize, write_manifest
 from .version import prompt_version
 from .progress import Progress
 
-MAX_ATTEMPTS = int(os.environ.get("BNA_EXP_MAX_ATTEMPTS") or 3)   # 09-29 고해상도 시험: 한 장이 5배 비싸 2회로 묶는다
+MAX_ATTEMPTS = 3   # 기본. 임상은 clinical_rig.yaml `hires.max_attempts`(2 — 고해상도 한 장이 5배)가 이긴다 → Batch.max_attempts
 BEFORE_PRECHECK_TRIES = 3     # 비포 선검사(콜라주)로 다시 그리는 최대 장수 — 3장 다 콜라주면 그대로 진행해 게이트가 잡는다
 
 # ── 재시도 정책 (2026-09-10) ────────────────────────────────────────────────
@@ -90,6 +89,17 @@ class Batch:
             self.avoid = {"lines": {}, "weights": {}}       # 학습이 실패해도 생성은 돈다(fail-open)
         self.pricing = load("pricing.yaml")
         self.p_gen, self.p_edit, self.p_qa = providers.get(gen), providers.get(edit), providers.get(qa)
+        # 임상 고해상도 (09-29 시험 스위치 BNA_EXP_SIZE_4X5·MAX_ATTEMPTS·TIMEOUT → 09-30 빌디·연서님 "임상 기본값으로 굳혀").
+        #   정본 = clinical_rig.yaml `hires`. 셀카는 안 탄다(종전 1024×1280·3회·300초). 되돌리기 = hires 줄 삭제.
+        self.max_attempts = MAX_ATTEMPTS
+        _hr = (load("clinical_rig.yaml").get("hires") or {}) if mode == "clinical" else {}
+        if _hr:
+            for _p in (self.p_gen, self.p_edit):
+                if _hr.get("size_4x5"):
+                    _p.size_4x5 = str(_hr["size_4x5"])
+                if _hr.get("timeout"):
+                    _p.timeout = int(_hr["timeout"])
+            self.max_attempts = int(_hr.get("max_attempts") or MAX_ATTEMPTS)
         self.registry = dedup.Registry()
         self.ab_prompt = ab_prompt   # A6: 실험용 대체 프롬프트 파일 접미사 (예: "v2")
         self.state_path = self.dir / "state.json"
@@ -152,7 +162,7 @@ class Batch:
         prev_fail = []
         meta["redrawn"] = []                           # 조건을 다시 뽑은 회차 (통계가 계획과 갈리는 걸 드러낸다)
         meta["attempts_log"] = []                      # 회차별 {attempt, fail_reasons, seconds} — "22분 중 어디서 샜나"의 근거 (2026-09-15)
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        for attempt in range(1, self.max_attempts + 1):
             meta["attempt"] = attempt; meta["fail_reasons"] = []
             loop = asyncio.get_event_loop()
 
@@ -390,7 +400,7 @@ class Batch:
                 #   B(새로 그린 After)는 '다른 날 사진' 역할만 하고 효과는 여기서 낸다 — 편집·생성 모델은 팔자를 옅게 하지 않았다(v49~v52).
                 #   ① bna.foldlift.fill_to: 골 선 선명도를 **이 세트 Before 대비** edge_pct(실제 쌍 -43.7% 와 1.5배 -65.6% 의 사이 -54.6%)로,
                 #      그늘은 Before 대비 -50% 까지만 보조. 콧볼 바로 옆 그늘은 원래 남는다(11차 연서님 — 지우지 않는다: 띠·문턱 그대로).
-                #   ② 편집 모델 '그대로 다시 촬영'(prompts/retake_clinical.md) — 메운 자리의 매끈함을 모공 결로 되돌린다(10차: 골은 거의 안 되살아남).
+                #   ② 편집 모델 '그대로 다시 촬영'(fold_fill.retake_prompt — 09-30부터 retake_clinical_v17.md) — 메운 자리의 매끈함을 모공 결로 되돌린다(10차: 골은 거의 안 되살아남).
                 #   얼굴 점을 못 찾으면 ①은 건너뛰고(fail-open) ②도 안 한다. 무엇을 했는지 meta["fold_fill"][시점] 에 남긴다.
                 #   메우기 직전 B 원본은 fold_b_<시점>_a<회차>.jpg 로 보존(검수 화면 파일 규칙 밖 이름).
                 _ff = load("clinical_rig.yaml").get("fold_fill") or {}
@@ -425,29 +435,21 @@ class Batch:
                             after = _filled
                             if _ff.get("retake"):
                                 _bb = io.BytesIO(); after.convert("RGB").save(_bb, "PNG")
-                                _xf = experiment_flags()                 # 22차 후보 스위치(spec.experiment_flags 머리말)
-                                _rpf = "retake_clinical_v17.md" if _xf["retake"] == "v17" else "retake_clinical.md"
+                                # 재촬영 문안 = fold_fill.retake_prompt (09-30 빌디·연서님: 22차 후보 v17 을 임상 기본으로 — 결 참조 사진 없음,
+                                #   종전 BNA_EXP_RETAKE 스위치·retake_clinical.md + 결 참조(15차) 경로는 지웠다)
+                                _rpf = str(_ff.get("retake_prompt") or "retake_clinical_v17.md")
                                 _rp = " ".join((ROOT / "config" / "prompts" / _rpf).read_text(encoding="utf-8").split())
                                 _rec["retake_prompt"] = _rpf
                                 if af.get("retake_keep_marks"):
                                     # 14차 연서님 A: 직후 컷 재촬영이 투명 패치를 통째로 지웠다(v54 0003 immediate_look 2회 탈락).
                                     #   시점 판정은 spec 한 곳(retake_keep_marks) — 배치가 시점 이름을 다시 보지 않는다(selftest 규칙 두 벌 금지)
                                     _rp += " " + " ".join(str(load("clinical_rig.yaml").get("retake_keep_marks") or "").split())
-                                # 15차 연서님 "전 사진을 피부 결 참조로 같이 넣어 '이 결 그대로'로" — 칸이 있으면 Before 를 2번으로
-                                #   17차 후보(v17)는 결 참조 사진 없이 쟀다 — 같은 조건으로 돌린다(두 축을 한 번에 바꾸지 않게)
-                                _tr = "" if _xf["retake"] == "v17" else " ".join(str(load("clinical_rig.yaml").get("retake_texture_ref") or "").split())
-                                _refs = []
-                                if _tr:
-                                    _b2 = io.BytesIO(); before.convert("RGB").save(_b2, "PNG")
-                                    _refs = [_b2.getvalue()]
-                                    _rp += " " + _tr
                                 _rb = await loop.run_in_executor(None, self.p_edit.edit, _bb.getvalue(),
-                                                                 self.p_edit.adapt_prompt(_rp, "after"), None, _refs, spec["aspect"])
-                                _rec["retake_texture_ref"] = bool(_refs)
+                                                                 self.p_edit.adapt_prompt(_rp, "after"), None, [], spec["aspect"])
                                 cost += self.pricing[self.p_edit.name]["edit"]
                                 _ra = Image.open(io.BytesIO(_rb)).convert("RGB")
                                 _ra = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
-                                if _xf["retake_merge"]:
+                                if _ff.get("retake_merge", True):          # 09-30 임상 기본(종전 BNA_EXP_RETAKE_MERGE 스위치)
                                     # 18차 층 합치기: 재촬영이 노출을 올려 배경까지 밝아졌다 → 큰 층(밝기·색·그늘·팔자·배경)=메운 B,
                                     #   잔결 층(모공)만 재촬영.
                                     # 23차(09-29 연서님 "콧구멍 윗선 두 겹"): 삼각망만으로 휘면 윤곽이 2~5px 어긋나 두 겹이 됐다 →
@@ -612,7 +614,7 @@ class Batch:
                 # 그 컷(0910 실측 0.461 1건)이 "전·후가 다른 사람"으로 사람 눈에 걸렸다.
                 # 마지막 회차까지 review 면 그때는 통과시킨다 — 애매한 걸 버리는 것보다
                 # 사람에게 보이는 쪽이 낫다(사진은 남아 있고 최종 판단은 사람이 한다).
-                if idn.get("gate") == "review" and attempt < MAX_ATTEMPTS:
+                if idn.get("gate") == "review" and attempt < self.max_attempts:
                     r["fail_reasons"].append("identity_review")
                 if idn["hard_fail"]:
                     r["fail_reasons"].append("identity")
@@ -660,14 +662,14 @@ class Batch:
             if meta["passed"]:
                 self._p(item_id, "passed", passed=True, fail_reasons=[], cost=meta["cost"]); break
             meta["attempts_log"].append({"attempt": attempt, "fail_reasons": list(meta["fail_reasons"]), "at": time.time()})
-            if attempt < MAX_ATTEMPTS:
+            if attempt < self.max_attempts:
                 # 재시도 전 컷 보존 (2026-09-28 연서님 "재시도 전 컷도 검수함에 남게") — 다음 회차가 같은 이름 파일을 덮어쓰거나
                 #   조건을 다시 뽑아 옆에 쌓여도 화면은 마지막 쌍만 보여서, 사람이 본 컷이 사라졌다(v47 r2 0001).
                 #   형제 항목 `<id>-t<n>` 으로 따로 저장한다(검수함에 한 줄로 뜬다). 비용은 본 항목에 이미 있으니 0으로(이중 집계 금지).
                 snap = {**meta, "item_id": f"{item_id}-t{attempt}", "retry_snapshot": True, "snapshot_of": item_id,
                         "passed": False, "cost": 0.0, "attempt": attempt}
                 self._save(snap["item_id"], snap, before_out, after_out, mask_img, after_outs if self.series else None)
-            self._p(item_id, "retry" if attempt < MAX_ATTEMPTS else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
+            self._p(item_id, "retry" if attempt < self.max_attempts else "failed", passed=False, fail_reasons=list(meta["fail_reasons"]), cost=meta["cost"])
             prev_fail = list(meta["fail_reasons"])      # 다음 회차가 "무엇을 다시 할지" 고르는 근거
         return meta
 
@@ -743,7 +745,7 @@ class Batch:
         n_after = len(self.series) if self.series else 1      # 시리즈는 After 마다 생성·검수 호출이 든다
         per_try = (self.pricing[self.p_gen.name]["generate"]
                    + n_after * (self.pricing[self.p_edit.name]["edit" if self.mode == "clinical" else "generate"] + self.pricing[self.p_qa.name]["qa"]))
-        tries = self.count * min(MAX_ATTEMPTS, 1 / max(expected_pass_rate, 0.05))
+        tries = self.count * min(self.max_attempts, 1 / max(expected_pass_rate, 0.05))
         return {"items": self.count, "expected_calls": round(tries), "expected_cost_usd": round(per_try * tries, 2)}
 
 
