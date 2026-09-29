@@ -404,12 +404,19 @@ class Batch:
                         after.convert("RGB").save(_d / f"fold_b_{af['when']}_a{attempt}.jpg", quality=92)
                         # 14차: shade_pct: null = 그늘 밝히기 끔(연서님 "포토샵으로 지운 느낌")
                         _sp = _ff.get("shade_pct")
-                        _filled, _fi = await loop.run_in_executor(
-                            None, lambda: _fl.fill_to(after, _eb * (1 + float(_ff["edge_pct"]) / 100.0),
-                                                      None if _sp is None else _sb * (1 + float(_sp) / 100.0)))
+                        _goal = _eb * (1 + float(_ff["edge_pct"]) / 100.0)
+                        _sg = None if _sp is None else _sb * (1 + float(_sp) / 100.0)
+                        if _ff.get("guard"):
+                            # 25차(09-29 연서님 "입꼬리 주변에서 계속 흔들려"): 보호 마스크·입꼬리 중심선·볼 쪽 재료·수염 누르기 약하게·
+                            #   아래 구간 좌우 — 판정 정본 bna.foldguard. 좌우 자(balance_sides)도 그 안에서 같은 보호로 돈다.
+                            from . import foldguard as _fg
+                            _filled, _fi = await loop.run_in_executor(
+                                None, lambda: _fg.fill_guarded(before, after, _goal, _sg, side_gap_max=_ff.get("side_gap_max")))
+                        else:
+                            _filled, _fi = await loop.run_in_executor(None, lambda: _fl.fill_to(after, _goal, _sg))
                         _wm = _fi.pop("_wm", None)           # 띠 지도(배열) — 원장에 넣지 않고 재촬영 뒤 띠 자에만 쓴다
                         _rec = {**_fi, "edge_before_img": round(_eb, 3), "edge_pct": _ff["edge_pct"]}
-                        if _fi.get("applied") and _ff.get("side_gap_max") is not None:
+                        if _fi.get("applied") and _ff.get("side_gap_max") is not None and not _ff.get("guard"):
                             # 좌우 자 ① (13차): 메운 직후 좌우 감소율 차가 크면 약한 쪽만 더 메운다(비용 0) — bna.foldlift.balance_sides
                             _filled, _bi = await loop.run_in_executor(
                                 None, lambda: _fl.balance_sides(before, _filled, float(_ff["side_gap_max"])))
@@ -450,7 +457,9 @@ class Batch:
                                     _d = self.dir / item_id; _d.mkdir(parents=True, exist_ok=True)
                                     _ra.save(_d / f"retake_{af['when']}_a{attempt}.jpg", quality=92)
                                     after.convert("RGB").save(_d / f"filled_{af['when']}_a{attempt}.jpg", quality=92)
-                                    _mg, _mr = await loop.run_in_executor(None, lambda: texswap.merge_safe(_ra, after))
+                                    # 25차: 입술·입꼬리선 제외는 입술 경계선만큼(fold_fill.merge_lip_grow) — None 이면 23차 그대로
+                                    _mg, _mr = await loop.run_in_executor(
+                                        None, lambda: texswap.merge_safe(_ra, after, lip_grow=_ff.get("merge_lip_grow")))
                                     _rec["retake_merge"] = {k: v for k, v in (_mr or {}).items() if not k.startswith("_")}
                                     _rec["retake_merge"]["applied"] = _mg is not None
                                     if _mg is not None:
@@ -460,6 +469,9 @@ class Batch:
                             _rec["edge_final"] = round(await loop.run_in_executor(None, _fl.edge_ratio, after) or 0, 3)
                             # 좌우 자 ② (13차): 재촬영 뒤 최종 좌우 차 — 검수 단계가 이 값으로 'fold_asym' 을 건다(After 만 다시)
                             _rec["side_final"] = await loop.run_in_executor(None, _fl.side_drop, before, after)
+                            if _ff.get("guard"):                 # 25차 기록: 팔자 위·중간·아래 × 좌우 감소율(최종 컷)
+                                from . import foldguard as _fg
+                                _rec["seg_final"] = await loop.run_in_executor(None, _fg.seg_drop, before, after)
                             # 띠 안팎 자 (14차): 최종 컷을 메우기 때 찾은 같은 띠로 — 검수 단계가 band_gate 로 'fold_band' 를 건다
                             if _wm is not None:
                                 _rec["band_final"] = await loop.run_in_executor(None, _fl.band_stats, after, _wm)
@@ -524,7 +536,9 @@ class Batch:
                     try:
                         if "before" not in meta["pigment"]:
                             meta["pigment"]["before"] = pigment.count(before_pp)
+                            meta["pigment"]["band_before"] = pigment.count(before_pp, region="band")   # 25차: 띠 안(잡티 n·트러블 red)
                         meta["pigment"][when] = pigment.count(after_pp)
+                        meta["pigment"][f"band_{when}"] = pigment.count(after_pp, region="band")
                     except Exception as _pe:                      # noqa: BLE001 — 기록 자가 배치를 죽이면 안 된다
                         meta.setdefault("pigment", {})[when] = {"measured": False, "error": repr(_pe)[:200]}
                 st = structure.check(before_pp, after_pp, self.mode, t["mask_region"],

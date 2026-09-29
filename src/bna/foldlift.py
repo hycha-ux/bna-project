@@ -362,15 +362,19 @@ def _transplant(detail: np.ndarray, src_ok: np.ndarray, need: np.ndarray, w: int
     return out
 
 
-def _fill_patch(rgb, pts, cm: np.ndarray, strength: float, sf: float, fine: float):
+def _fill_patch(rgb, pts, cm: np.ndarray, strength: float, sf: float, fine: float, excl: np.ndarray = None):
     """cm(0~1) 자리를 옆 피부로 메운다 — 14차 공용 루틴(erase·erase_center).
     바탕(흐림 fine) = 띠 밖 피부의 정규화 흐림(sf)으로, 결(원본 − 바탕) = TRANSPLANT 면 옆 피부에서 옮겨 온 결로.
-    세 채널(L·a·b) 모두. TRANSPLANT 가 꺼져 있으면 13차 그대로(L 바탕만 채움)."""
+    세 채널(L·a·b) 모두. TRANSPLANT 가 꺼져 있으면 13차 그대로(L 바탕만 채움).
+    excl(불리언, 25차) = 재료로 쓰지 않을 자리(입술·콧볼·점·트러블·수염 점·입꼬리 안쪽) — 메울 값·옮길 결 둘 다에서 뺀다.
+      메우는 범위에서 빼는 건 부르는 쪽(foldguard)이 cm 에 이미 반영한다."""
     import cv2
     w = rgb.size[0]
     lab = _L(rgb)
     a = np.clip(strength, 0, 1) * cm
     valid = np.clip(1.0 - cm * 1.5, 0, 1)
+    if excl is not None:
+        valid = valid * (~excl).astype(np.float32)
     if TRANSPLANT:
         # 채울 값도 얼굴 안 피부로만 — 14차 첫 시험에서 턱선·3/4 먼 쪽 띠가 배경(회청색)까지 평균 내 멍 같은 얼룩이 됐다
         #   (13차까지는 L 만 채워 색이 안 옮았고 윤곽 자르기가 가렸다. a·b 까지 채우자 드러났다)
@@ -379,6 +383,8 @@ def _fill_patch(rgb, pts, cm: np.ndarray, strength: float, sf: float, fine: floa
     chans = (0, 1, 2) if TRANSPLANT else (0,)
     if TRANSPLANT:
         src_ok = _skin_ok(rgb, pts, cm)
+        if excl is not None:
+            src_ok = src_ok & ~excl
         need = cm > 0.02
         cx = float(pts[1][0])
         s_det = max(1.0, w * DETAIL_SIGMA)
@@ -518,7 +524,7 @@ def clamp_dark(img: Image.Image, core_map: np.ndarray, pts=None, margin: float =
     return Image.fromarray(cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2RGB)), {"applied": True, "lowered": round(over, 2)}
 
 
-def erase(img: Image.Image, pts=None, strength: float = 1.0, wm=None):
+def erase(img: Image.Image, pts=None, strength: float = 1.0, wm=None, excl=None):
     """골 선 지우기(주) — 선 띠를 **옆 피부로 메운다**. strength 0~1(1 = 띠 한가운데를 옆 피부 값으로 완전히 대체).
 
     바탕(잔결 흐림)만 바꾸고 잔결(원본 − 바탕: 모공·솜털)은 되얹는다. 메울 값 = 띠 밖 피부의 가중 평균(정규화 흐림) —
@@ -531,11 +537,11 @@ def erase(img: Image.Image, pts=None, strength: float = 1.0, wm=None):
         return rgb, {"applied": False, "reason": "얼굴 점 못 찾음"}
     w = rgb.size[0]
     wm = line_map(rgb, pts) if wm is None else wm
-    res = _fill_patch(rgb, pts, wm, strength, sf=w * 0.02, fine=max(1.0, w * 0.0015))
+    res = _fill_patch(rgb, pts, wm, strength, sf=w * 0.02, fine=max(1.0, w * 0.0015), excl=excl)
     return res, {"applied": True, "erase": round(float(strength), 3), "line_px": int((wm > 0.5).sum())}
 
 
-def erase_center(img: Image.Image, pts=None, zone=None, strength: float = 1.0):
+def erase_center(img: Image.Image, pts=None, zone=None, strength: float = 1.0, excl=None, cm_mul=None):
     """골 한가운데 가는 접힌 선 지우기 (2026-09-28 11차 연서님 "넓은 그늘은 메워졌는데 중심 접힌 선이 남는다 — 좁은 폭으로 한 번 더").
 
     넓은 메우기(erase)는 바탕을 w×0.02 흐림으로 채워 **넓은 그늘**은 지우지만, 폭 2~4px 짜리 실 선은 잔결(tex) 쪽으로 분류돼
@@ -567,7 +573,9 @@ def erase_center(img: Image.Image, pts=None, zone=None, strength: float = 1.0):
     if ALA_EXCLUDE:                                        # 14차: 실 선 지우기도 콧볼 옆은 경사로(넓은 띠와 같은 지도)
         cm = cm * ala_ramp(rgb, pts)
     # 14차: 이 좁은 띠가 '결까지 지운 매끈한 줄'의 주범이었다(v54 0000 은 넓은 메우기 0.001 — 이것만으로 목표 도달).
-    res = _fill_patch(rgb, pts, cm, strength, sf=w * 0.006, fine=0.8)
+    if cm_mul is not None:                                 # 25차: 보호 마스크 앞 세기 0(경사로) — foldguard 가 준다
+        cm = cm * cm_mul
+    res = _fill_patch(rgb, pts, cm, strength, sf=w * 0.006, fine=0.8, excl=excl)
     return res, {"applied": True, "center_px": int((cm > 0.5).sum())}
 
 
@@ -604,7 +612,7 @@ def edge_ratio(img: Image.Image, pts=None, sf: float = 0.02, side: str = None):
 
 
 def fill_to(img: Image.Image, edge_goal: float, shade_goal: float = None, cap: float = 1.0, center: bool = True,
-            clamp: bool = True):
+            clamp: bool = True, wm=None, excl=None, cm_mul=None, clamp_w=None):
     """골 선 선명도가 edge_goal 이하가 되도록 메우기 세기를 이분 탐색(주), 이어서 그늘이 shade_goal 을 넘으면 밝히기(보조).
 
     상한 cap(1.0 = 띠 한가운데를 옆 피부로 완전히 대체)에서도 못 가면 capped=True. 목표 = 실제 쌍 After 의 선명도(tools/fold_shade_ref.py)."""
@@ -612,14 +620,15 @@ def fill_to(img: Image.Image, edge_goal: float, shade_goal: float = None, cap: f
     pts = L.detect(rgb)
     if pts is None:
         return rgb, {"applied": False, "reason": "얼굴 점 못 찾음"}
-    wm = line_map(rgb, pts)
+    # 25차: wm·excl·cm_mul·clamp_w 는 foldguard(보호 마스크·입꼬리 규칙)가 준다. 안 주면 종전 그대로.
+    wm = line_map(rgb, pts) if wm is None else wm
     _erase = erase
     def erase_(im, p, k):
         """선 띠는 한 번만 찾는다(세기만 바꿔 가며). 중심선 지우기(11차)도 **탐색 안에서** 같이 건다 —
         밖에서 나중에 얹으면 목표를 넘어가 버린다(첫 실행: 0001 목표 -55% 인데 -72% 로 나갔다)."""
-        o, i = _erase(im, p, k, wm=wm)
+        o, i = _erase(im, p, k, wm=wm, excl=excl)
         if center:
-            o, ci = erase_center(o, p, zone=wm, strength=1.0)   # 실 선은 늘 끝까지 — 세기 탐색은 넓은 메우기만
+            o, ci = erase_center(o, p, zone=wm, strength=1.0, excl=excl, cm_mul=cm_mul)   # 실 선은 늘 끝까지 — 세기 탐색은 넓은 메우기만
             i = {**i, "center": ci.get("center_px")}
         return o, i
     e0 = edge_ratio(rgb, pts)
@@ -642,7 +651,7 @@ def fill_to(img: Image.Image, edge_goal: float, shade_goal: float = None, cap: f
         info.update(erase=round(k, 3), capped=capped)
     if clamp:
         # 14차: 메운 자리가 주변보다 밝으면 그만큼 내린다(선명도 탐색 뒤 — 내리기는 단차를 만들지 않게 띠 모양대로)
-        out, ci = clamp_dark(out, wm, pts)
+        out, ci = clamp_dark(out, wm if clamp_w is None else wm * clamp_w, pts)
         info["clamp"] = ci
     info["edge_after"] = round(edge_ratio(out, pts), 3)
     info["band"] = band_stats(out, wm, pts)
@@ -680,7 +689,8 @@ def side_drop(before: Image.Image, after: Image.Image, pb=None, pa=None) -> dict
 STRONG_STEPS = ((55.0, 0.018), (40.0, 0.026), (25.0, 0.034))   # (선 찾기 문턱 백분위, 띠 폭 w×) — 뒤로 갈수록 세게
 
 
-def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0, pct: float = 55.0, strong: bool = True):
+def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0, pct: float = 55.0, strong: bool = True,
+                  wm_hook=None, excl=None):
     """좌우 자 (2026-09-28 13차 연서님 "한쪽만 메워져서 티가 나 — 좌우 따로 재서 차이가 크면 다시").
 
     v53 0001(3/4 컷): 사진 왼쪽 -44% / 오른쪽 -67%(차 23%p) → 제외. 먼 쪽은 띠가 좁고 골이 옅게 찍혀 상위 25% 문턱에
@@ -705,20 +715,22 @@ def balance_sides(before: Image.Image, after: Image.Image, gap_max: float = 15.0
         if edge_ratio(best, pa, side=weak) <= goal:
             break
         wm = line_map(best, pa, pct=p_, width=wd, sides=(idx,))
+        if wm_hook is not None:                            # 25차: 보호 마스크·입꼬리 중심선(foldguard) — 24차는 여기서 입가가 다시 번졌다
+            wm = wm_hook(wm)
         lo, hi = 0.0, 1.0
-        o, _i = erase(best, pa, 1.0, wm=wm)
+        o, _i = erase(best, pa, 1.0, wm=wm, excl=excl)
         if edge_ratio(o, pa, side=weak) > goal:
             best, k = o, 1.0
         else:
             base_img = best
             for _ in range(10):
                 mid = (lo + hi) / 2
-                o, _i = erase(base_img, pa, mid, wm=wm)
+                o, _i = erase(base_img, pa, mid, wm=wm, excl=excl)
                 if edge_ratio(o, pa, side=weak) > goal:
                     lo = mid
                 else:
                     hi = mid
-            best, _i = erase(base_img, pa, hi, wm=wm); k = hi
+            best, _i = erase(base_img, pa, hi, wm=wm, excl=excl); k = hi
         steps.append({"pct": p_, "width": wd, "erase": round(k, 3)})
     after_sd = side_drop(before, best, pb, pa)
     return best, {**rec, "balanced": True, "weak": weak, "steps": steps, "after": after_sd}

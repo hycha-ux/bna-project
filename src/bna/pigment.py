@@ -26,10 +26,11 @@ DL_MIN = 15.0          # 주변보다 이만큼 어두워야(L 0~255). 모공·�
 DB_MIN = 2.0           # b 가 주변보다 이만큼 이상 (그늘은 b 도 내려간다. 잡티 +2.5~4.7)
 DA_MAX = 8.0           # a 가 이보다 더 오르면 붉은 자국(여드름·홍조)이라 뺀다
 ELONG_MAX = 3.0
+RED_MIN = 6.0          # 트러블 = a 가 주변보다 이만큼 넘게 붉다(OpenCV a 0~255)
 WORK_W = 2048
 
 
-def count(img: Image.Image, pts=None) -> dict:
+def count(img: Image.Image, pts=None, region: str = None) -> dict:
     """{"measured", "n", "large", "area_pct"} — area_pct = 잡티 면적 ÷ 맨살 면적 × 100."""
     import cv2
     from . import texswap
@@ -52,10 +53,13 @@ def count(img: Image.Image, pts=None) -> dict:
     for idx in (texswap.EYE_L, texswap.EYE_R):                          # 눈꺼풀 주름·눈꼬리 그늘(잡티 아님) — 눈 둘레 EYE_PAD_MM 더 뺀다
         skin &= ~texswap._poly((H, W), pts, idx, int(EYE_PAD_MM * mm))
     # 팔자·마리오네트 골 띠는 뺀다 — 골 선 토막이 점으로 끊겨 잡티로 세졌다(2202 Before 실측). 이 자리는 골 수치가 따로 잰다.
+    #   region="band"(25차 연서님 "띠 안 잡티·트러블 개수 Before/After") 면 거꾸로 띠 안만 잰다. 붉은 자국(트러블)은 `red` 로 따로 센다.
     from . import foldlift
+    band = np.zeros(skin.shape, bool)
     for i in range(len(foldlift.SIDES)):
-        skin &= np.asarray(L.region_mask(rgb, pts, f"_fold_side{i}", feather=0)) < 128
-    if skin.sum() < 5000:
+        band |= np.asarray(L.region_mask(rgb, pts, f"_fold_side{i}", feather=0)) >= 128
+    skin = (skin & band) if region == "band" else (skin & ~band)
+    if skin.sum() < (500 if region == "band" else 5000):
         return {"measured": False}
     lab = cv2.cvtColor(np.asarray(rgb), cv2.COLOR_RGB2LAB).astype(np.float32)
     s = max(2.0, BG_MM * mm)
@@ -86,4 +90,13 @@ def count(img: Image.Image, pts=None) -> dict:
                 continue
         cnt += 1; area += a
         big += a >= a_big
-    return {"measured": True, "n": int(cnt), "large": int(big), "area_pct": round(100.0 * area / float(skin.sum()), 3)}
+    # 트러블·붉은 자국(25차) = a 가 주변보다 RED_MIN 넘게 붉은 둥근 덩어리(같은 크기 범위). 갈색 잡티와 따로 센다.
+    red = 0
+    n2, cc2, st2, _ = cv2.connectedComponentsWithStats((skin & (da > RED_MIN)).astype(np.uint8))
+    for i in range(1, n2):
+        a = st2[i, cv2.CC_STAT_AREA]
+        w_, h_ = st2[i, cv2.CC_STAT_WIDTH], st2[i, cv2.CC_STAT_HEIGHT]
+        if a_min <= a <= a_max and max(w_, h_) / max(1, min(w_, h_)) <= ELONG_MAX:
+            red += 1
+    return {"measured": True, "n": int(cnt), "large": int(big), "red": int(red),
+            "area_pct": round(100.0 * area / float(skin.sum()), 3)}

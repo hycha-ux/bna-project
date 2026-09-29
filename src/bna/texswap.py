@@ -187,14 +187,19 @@ GHOST_MAX = 0.02          # 두 겹 자 상한 — 09-29 실측: 두 겹이 눈�
 GHOST_RING = 0.012        # 두 겹을 재는 고리 폭(w×) — 윤곽 경계 안팎
 
 
-def feature_mask(size, pts, img=None) -> np.ndarray:
-    """윤곽 부위(True) = 눈·눈썹·입술·입꼬리선·코 아래(콧구멍·콧볼)·헤어라인. img 를 주면 머리카락 분할로 헤어라인을 잡는다."""
+def feature_mask(size, pts, img=None, lip_grow: float = None) -> np.ndarray:
+    """윤곽 부위(True) = 눈·눈썹·입술·입꼬리선·코 아래(콧구멍·콧볼)·헤어라인. img 를 주면 머리카락 분할로 헤어라인을 잡는다.
+    lip_grow(w×, 25차) = 입술·입꼬리선만 이 여유로 좁힌다 — 23차는 FEAT_GROW(2304 에서 46px)로 입꼬리 옆 피부까지 통째로 빼
+      메운 B 의 흔적이 결 복원 없이 남았다(연서님 24차 검수). None 이면 종전 그대로."""
     import cv2
     W, H = size
     g = int(W * FEAT_GROW)
+    gl = g if lip_grow is None else max(1, int(W * lip_grow))
     m = np.zeros((H, W), bool)
-    for idx in (EYE_L, EYE_R, BROW_L, BROW_R, LIPS, MOUTH_LINE, NOSE):
+    for idx in (EYE_L, EYE_R, BROW_L, BROW_R, NOSE):
         m |= _poly((H, W), pts, idx, g)
+    for idx in (LIPS, MOUTH_LINE):
+        m |= _poly((H, W), pts, idx, gl)
     if img is not None:
         seg = L._segmenter()
         if seg is not None:
@@ -247,7 +252,7 @@ def ghost_score(out: Image.Image, base: Image.Image, pts, feat: np.ndarray = Non
     return round(float((eo & ~near).sum() / max(eb.sum(), 1)), 4)
 
 
-def merge_safe(src: Image.Image, dst: Image.Image, pb=None, pa=None):
+def merge_safe(src: Image.Image, dst: Image.Image, pb=None, pa=None, lip_grow: float = None):
     """18차 합치기의 안전판(23차): 큰 층 = dst(메운 B), 잔결 = src(재촬영) — 피부 면에만, 정렬 뒤, 두 겹이면 건너뜀.
     (새 After | None, 기록). None = 얼굴 점 없음·고개 차이 큼·두 겹 검사 걸림(기록에 ghost 값)."""
     import cv2
@@ -273,7 +278,7 @@ def merge_safe(src: Image.Image, dst: Image.Image, pb=None, pa=None):
     rec["align"] = frec
     _, fs = split(lw, W)
     base_d, fd = split(ld, W)
-    feat = feature_mask(d.size, pa, d)                                             # ①
+    feat = feature_mask(d.size, pa, d, lip_grow=lip_grow)                          # ① (25차: 입술 경계선만큼)
     fw = face_weight(d.size, pa) * cv2.GaussianBlur((~feat).astype(np.float32), (0, 0), W * 0.004)
     skin = fw > 0.9
     sd = max(float(fd[:, :, 0][skin].std()), float(fs[:, :, 0][skin].std()), 1e-6)

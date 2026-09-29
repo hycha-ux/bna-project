@@ -3062,7 +3062,7 @@ finally:
         if _x65v is not None:
             _os64.environ[_k65] = _x65v
 _bsrc65 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
-ok("retake_clinical_v17.md" in _bsrc65 and "texswap.merge_safe(_ra, after)" in _bsrc65 and '_xf["retake"] == "v17" else' in _bsrc65,
+ok("retake_clinical_v17.md" in _bsrc65 and "texswap.merge_safe(_ra, after, lip_grow=" in _bsrc65 and '_xf["retake"] == "v17" else' in _bsrc65,
    "65 배치: v17 문안·결 참조 없음 · 합치기 = 잔결 원천 재촬영 / 바탕 메운 B(23차 안전판)")
 ok('retake_{af[\'when\']}_a{attempt}.jpg' in _bsrc65 and 'filled_{af[\'when\']}_a{attempt}.jpg' in _bsrc65,
    "66 합치기 회차는 재촬영 원본·메운 B 를 남긴다(다시 걸 재료)")
@@ -3098,6 +3098,24 @@ _bs67 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
 _blk67 = _bs67[_bs67.index('meta["pigment"] = {}'):_bs67.index("st = structure.check(before_pp")]
 ok("pigment.count(before_pp)" in _blk67 and "pigment.count(after_pp)" in _blk67 and '"fail_reasons"].append' not in _blk67,
    "67 배치: Before·After 잡티 개수를 원장에만 적고 탈락 사유엔 안 넣는다")
+
+# 68 (09-29 25차 연서님 "입꼬리 주변에서 계속 흔들려") — 보호 마스크·입꼬리 중심선·볼 쪽 재료·아래 구간 좌우·합치기 입술 경계선만큼
+_fg68 = __import__("bna.foldguard", fromlist=["x"])
+_I68 = __import__("PIL.Image", fromlist=["x"])
+_o68, _r68 = _fg68.fill_guarded(_I68.new("RGB", (64, 80)), _I68.new("RGB", (64, 80)), 1.0)
+ok(_r68.get("applied") is False, "68 얼굴 점 없으면 메우기 건너뜀(fail-open)")
+_fls68 = inspect.getsource(__import__("bna.foldlift", fromlist=["x"]))
+ok("valid = valid * (~excl)" in _fls68 and "src_ok = src_ok & ~excl" in _fls68 and "wm_hook(wm)" in _fls68,
+   "68 foldlift: 보호 자리는 메울 값·옮길 결 둘 다에서 빠지고, 좌우 자도 같은 보호로 돈다")
+_bs68 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok("_fg.fill_guarded(" in _bs68 and 'lip_grow=_ff.get("merge_lip_grow")' in _bs68 and 'region="band"' in _bs68,
+   "68 배치: guard 스위치면 fill_guarded · 합치기 입술 여유 설정값 · 띠 안 잡티 기록")
+_ts68 = __import__("bna.texswap", fromlist=["x"])
+_p68 = _np55.c_[_np55.linspace(20, 180, 478), _np55.linspace(20, 180, 478)]
+ok(_ts68.feature_mask((200, 200), _p68, lip_grow=0.002).sum() <= _ts68.feature_mask((200, 200), _p68).sum(),
+   "68 입술 경계선만큼 좁힌 제외 마스크는 23차 것보다 크지 않다")
+_rig68 = __import__("bna.spec", fromlist=["x"]).load("clinical_rig.yaml").get("fold_fill") or {}
+ok(_rig68.get("guard") is True and float(_rig68.get("merge_lip_grow") or 1) < 0.02, "68 설정: 25차 보호 메우기 켜짐 · 합치기 입술 여유 < 23차(0.02)")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")

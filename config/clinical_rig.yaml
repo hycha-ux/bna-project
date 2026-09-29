@@ -76,7 +76,13 @@ after_generation: generate
 #   retake 는 연서님 두 벌 비교(① 재촬영 없음 / ② 재촬영 유지) 선택으로 정한다(tools/band_compare.py).
 #   2026-09-28 14차 연서님 "P2 로 가자"(재촬영 유지 채택 3/5) + A: side_gate: false = 좌우 차는 탈락 사유가 아니라 기록만,
 #     대신 약한(먼) 쪽을 단계적으로 더 세게 메운다(foldlift.balance_sides STRONG_STEPS). 근거: 좌우 자로 떨어진 옛 시도 0001-t2 도 채택.
+#   2026-09-29 25차 연서님 "골 메우기가 입꼬리 주변에서 계속 흔들려"(24차 검수 ①멍·얼룩 ②트러블 소실 ③입술색 번짐 ④한쪽 골 끝 남음):
+#     guard: true = bna.foldguard.fill_guarded(보호 마스크[입술+2px·콧볼·튀는 점]은 범위·재료 둘 다 제외·경계 앞 세기 0,
+#       입꼬리 구역은 골 중심선만·재료는 볼 쪽만, 수염 자리 누르기 약하게, 팔자 3구간×좌우 기록·아래 구간 약한 쪽만 더). false 면 24차 그대로.
+#     merge_lip_grow: 0.002 = 23차 합치기의 입술·입꼬리선 제외 여유를 FEAT_GROW(0.02)에서 입술 경계선만큼으로(피부 쪽 결 되돌리기).
+#     근거 = 24차 5세트 재적용(tools/round25_apply.py, 새 생성 0): 입술색 번짐·입꼬리 멍이 사라지고 골 선은 -19.8~-54.5 → -24.1~-56.9%.
 fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15, side_gate: false,
+            guard: true, merge_lip_grow: 0.002,
             band_gate: {dL_max: 0, tex_min: 0.85, spot_min: 0.6},
             repeat_gate: {band_hit_max: 0.05, face_hit_max: 0.1}}
 # repeat_gate (15차 연서님 "반복 무늬 자 추가해서 띠 안·얼굴 전체 둘 다 재고 튀면 다시") = foldlift.repeat_stats 의 '도장 조각 비율'
