@@ -172,6 +172,123 @@ def swap(before: Image.Image, after: Image.Image, band_w: float = BAND_W, pb=Non
     return _rgb(out), rec
 
 
+# ── 23차 안전 합치기 (2026-09-29 연서님 "60대 여 정면 직후 컷 콧구멍 윗선이 두 겹 — 재촬영이 몇 px 움직인 채 잔결이 얹혔다") ──
+#   18차 swap 은 얼굴 점 삼각망으로만 휘어서 윤곽에서 2~5px 어긋났고, 코·헤어라인은 빼는 칸이 없었다. 세 겹으로 막는다:
+#   ① 윤곽 부위(콧구멍·콧볼·눈·눈썹·입술·입꼬리선·헤어라인)는 합치기에서 빼고 바탕(B) 그대로 — 잔결은 피부 면에만
+#   ② 합치기 전에 원천을 바탕에 정렬: 얼굴 점 삼각망 → 촘촘한 광학 흐름(DIS)으로 남은 몇 px 을 맞춘다(흐름 상한 FLOW_MAX)
+#   ③ 합친 뒤 두 겹 자(ghost_score): 윤곽 둘레 고리에서 '바탕엔 없는 센 선'의 비율이 GHOST_MAX 를 넘으면 합치기를 건너뛰고 기록만
+NOSE = [129, 358, 64, 294, 98, 327, 2, 94, 19, 1, 4, 45, 275, 48, 278, 219, 439, 240, 460, 75, 305, 97, 326]
+MOUTH_LINE = [57, 287, 61, 291, 146, 375, 185, 409]    # 입꼬리선이 입술 외곽보다 옆으로 뻗는다(09-29 정면 컷 입꼬리선이 길어짐)
+FEAT_GROW = 0.02          # 윤곽 부위 여유(w×) — 1024 에서 20px, 2304 에서 46px
+HAIR_GROW = 0.015         # 머리카락(분할 1) 둘레 여유(w×) — 헤어라인
+FLOW_MAX = 0.006          # 광학 흐름 보정 상한(w×) — 넘는 자리는 흐름을 믿지 않는다(다른 물체를 맞춰 끌고 온다)
+GHOST_MAX = 0.02          # 두 겹 자 상한 — 09-29 실측: 두 겹이 눈에 보인 18차 결과 0.045(정면)·0.066(3/4),
+                          #   안전 합치기 0.0008·0.0025. 첫 잠정값 0.12 는 보이는 두 겹을 통과시켰다 → 그 사이로 내렸다(표본 2장)
+GHOST_RING = 0.012        # 두 겹을 재는 고리 폭(w×) — 윤곽 경계 안팎
+
+
+def feature_mask(size, pts, img=None) -> np.ndarray:
+    """윤곽 부위(True) = 눈·눈썹·입술·입꼬리선·코 아래(콧구멍·콧볼)·헤어라인. img 를 주면 머리카락 분할로 헤어라인을 잡는다."""
+    import cv2
+    W, H = size
+    g = int(W * FEAT_GROW)
+    m = np.zeros((H, W), bool)
+    for idx in (EYE_L, EYE_R, BROW_L, BROW_R, LIPS, MOUTH_LINE, NOSE):
+        m |= _poly((H, W), pts, idx, g)
+    if img is not None:
+        seg = L._segmenter()
+        if seg is not None:
+            import mediapipe as mp
+            cat = np.squeeze(seg.segment(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.asarray(img.convert("RGB"))))
+                             .category_mask.numpy_view())
+            hair = (cat == 1).astype(np.uint8)
+            r = int(W * HAIR_GROW) | 1
+            m |= cv2.dilate(hair, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))) > 0
+    return m
+
+
+def _flow_align(src_l: np.ndarray, dst_l: np.ndarray, W: int):
+    """src(이미 삼각망으로 휜 L) 를 dst L 에 맞추는 흐름 지도 (mx, my, 기록). 상한 넘는 흐름은 0 으로."""
+    import cv2
+    to8 = lambda x: np.clip(x * 2.55, 0, 255).astype(np.uint8)  # noqa: E731  L 0~100 → 0~255
+    dis = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
+    fl = dis.calc(to8(dst_l), to8(src_l), None)                  # dst 좌표 → src 에서 가져올 위치 차
+    mag = np.hypot(fl[..., 0], fl[..., 1])
+    cap = W * FLOW_MAX
+    fl[mag > cap] = 0
+    fl = cv2.GaussianBlur(fl, (0, 0), max(1.0, W * 0.002))
+    H = dst_l.shape[0]
+    gx, gy = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32))
+    return gx + fl[..., 0], gy + fl[..., 1], {"flow_p50": round(float(np.median(mag)), 2),
+                                              "flow_p95": round(float(np.percentile(mag, 95)), 2),
+                                              "flow_capped": round(float((mag > cap).mean()), 4)}
+
+
+def ghost_score(out: Image.Image, base: Image.Image, pts, feat: np.ndarray = None) -> float:
+    """윤곽 둘레 고리에서 out 에만 있는 센 선의 비율(0~1). 바탕의 센 선 ±2px 안에 있는 선은 같은 선으로 친다.
+    값이 크면 윤곽이 두 겹(어긋난 선이 하나 더). 고리 = 윤곽 부위 경계 ± GHOST_RING."""
+    import cv2
+    W = out.size[0]
+    feat = feature_mask(out.size, pts) if feat is None else feat
+    r = int(W * GHOST_RING) | 1
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (r, r))
+    f8 = feat.astype(np.uint8)
+    ring = (cv2.dilate(f8, k) > 0) & ~(cv2.erode(f8, k) > 0)
+
+    def edges(img):
+        l = _lab(img)[:, :, 0]
+        hp = l - cv2.GaussianBlur(l, (0, 0), W * 0.004)
+        g = np.hypot(cv2.Sobel(hp, cv2.CV_32F, 1, 0), cv2.Sobel(hp, cv2.CV_32F, 0, 1))
+        return g
+    go, gb = edges(out), edges(base)
+    t = float(np.percentile(gb[ring], 90))
+    eo, eb = (go > t) & ring, (gb > t) & ring
+    near = cv2.dilate(eb.astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+    return round(float((eo & ~near).sum() / max(eb.sum(), 1)), 4)
+
+
+def merge_safe(src: Image.Image, dst: Image.Image, pb=None, pa=None):
+    """18차 합치기의 안전판(23차): 큰 층 = dst(메운 B), 잔결 = src(재촬영) — 피부 면에만, 정렬 뒤, 두 겹이면 건너뜀.
+    (새 After | None, 기록). None = 얼굴 점 없음·고개 차이 큼·두 겹 검사 걸림(기록에 ghost 값)."""
+    import cv2
+    s, d = src.convert("RGB"), dst.convert("RGB")
+    if s.size != d.size:
+        s = s.resize(d.size, Image.LANCZOS)
+    pb = L.detect(s) if pb is None else pb
+    pa = L.detect(d) if pa is None else pa
+    if pb is None or pa is None:
+        return None, {"applied": False, "skip": "no_face"}
+    pose = pose_diff(pb, pa)
+    rec = {"pose": pose}
+    if pose["yaw"] > POSE_YAW_MAX or pose["res"] > POSE_RES_MAX:
+        return None, {**rec, "applied": False, "skip": "pose"}
+    W = d.size[0]
+    ls, ld = _lab(s), _lab(d)
+    mx, my = warp_maps(pb, pa, d.size)                                             # ② 삼각망
+    rm = lambda lab, x, y: np.dstack([cv2.remap(np.ascontiguousarray(lab[:, :, i]), x, y, cv2.INTER_CUBIC,  # noqa: E731
+                                                borderMode=cv2.BORDER_REFLECT) for i in range(3)])
+    lw = rm(ls, mx, my)
+    fx, fy, frec = _flow_align(lw[:, :, 0], ld[:, :, 0], W)                         # ② 촘촘한 흐름
+    lw = rm(lw, fx, fy)
+    rec["align"] = frec
+    _, fs = split(lw, W)
+    base_d, fd = split(ld, W)
+    feat = feature_mask(d.size, pa, d)                                             # ①
+    fw = face_weight(d.size, pa) * cv2.GaussianBlur((~feat).astype(np.float32), (0, 0), W * 0.004)
+    skin = fw > 0.9
+    sd = max(float(fd[:, :, 0][skin].std()), float(fs[:, :, 0][skin].std()), 1e-6)
+    big = np.maximum(np.abs(fd[:, :, 0]), np.abs(fs[:, :, 0])) / sd
+    struct = cv2.GaussianBlur(np.clip(STRUCT_K + 1 - big, 0, 1).astype(np.float32), (0, 0), 1.5)
+    wmap = (fw * struct)[..., None]
+    out = _rgb(base_d + fd * (1 - wmap) + fs * wmap)
+    gh = ghost_score(out, d, pa, feat)                                             # ③
+    rec.update(ghost=gh, ghost_max=GHOST_MAX, skin_frac=round(float(skin.mean()), 4),
+               struct_kept=round(float(1 - struct[skin].mean()), 4))
+    if gh > GHOST_MAX:
+        return None, {**rec, "applied": False, "skip": "ghost"}
+    return out, {**rec, "applied": True}
+
+
 SIG_BAND, SIG_OUT = 0.008, 0.02   # 19차: 팔자 띠 안 8px(골 보호) / 띠 밖 20px(그물 칸 8~12px 까지 잔결로) — 1024 폭 기준, w× 비율
 
 

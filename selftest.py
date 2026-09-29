@@ -3062,8 +3062,25 @@ finally:
         if _x65v is not None:
             _os64.environ[_k65] = _x65v
 _bsrc65 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
-ok("retake_clinical_v17.md" in _bsrc65 and "texswap.swap(_ra, after, band_w=1.0)" in _bsrc65 and '_xf["retake"] == "v17" else' in _bsrc65,
-   "65 배치: v17 문안·결 참조 없음 · 합치기 = 잔결 원천 재촬영 / 바탕 메운 B(18차와 같은 방향)")
+ok("retake_clinical_v17.md" in _bsrc65 and "texswap.merge_safe(_ra, after)" in _bsrc65 and '_xf["retake"] == "v17" else' in _bsrc65,
+   "65 배치: v17 문안·결 참조 없음 · 합치기 = 잔결 원천 재촬영 / 바탕 메운 B(23차 안전판)")
+ok('retake_{af[\'when\']}_a{attempt}.jpg' in _bsrc65 and 'filled_{af[\'when\']}_a{attempt}.jpg' in _bsrc65,
+   "66 합치기 회차는 재촬영 원본·메운 B 를 남긴다(다시 걸 재료)")
+
+# 66 (09-29 23차 연서님 "콧구멍 윗선 두 겹") — 안전 합치기: 윤곽 부위 제외 · 흐름 정렬 · 두 겹 자
+_ts66 = __import__("bna.texswap", fromlist=["x"])
+_I66 = __import__("PIL.Image", fromlist=["x"])
+_n66, _r66 = _ts66.merge_safe(_I66.new("RGB", (64, 80)), _I66.new("RGB", (64, 80)))
+ok(_n66 is None and _r66["skip"] == "no_face", "66 얼굴 점 없으면 합치기 건너뜀(fail-open)")
+ok(all(i in _ts66.NOSE for i in (2, 98, 327, 129, 358)) and _ts66.GHOST_MAX < 0.045,
+   "66 코 아래(콧구멍·콧볼) 제외 목록 · 두 겹 상한은 09-29 보인 두 겹(0.045)보다 낮게")
+_rng66 = _np55.random.default_rng(66)
+_base66 = _I66.fromarray((_rng66.random((200, 200, 3)) * 60 + 120).astype("uint8"))
+_pts66 = _np55.c_[_rng66.uniform(40, 160, 478), _rng66.uniform(40, 160, 478)]
+_arr66 = _np55.asarray(_base66).copy(); _arr66[100:103, 20:180] = 0          # 바탕엔 없는 센 선 하나
+_fm66 = _np55.zeros((200, 200), bool); _fm66[80:120, 30:170] = True
+ok(_ts66.ghost_score(_base66, _base66, _pts66, _fm66) == 0.0, "66 같은 사진이면 두 겹 자 0")
+ok(_ts66.ghost_score(_I66.fromarray(_arr66), _base66, _pts66, _fm66) > 0, "66 바탕에 없는 선이 윤곽 고리에 생기면 두 겹 자가 오른다")
 _pf64 = __import__("bna.patchfilm", fromlist=["x"])
 _pfs64 = inspect.getsource(_pf64)
 ok("skin_mask" in _pfs64 and _pf64.NEEDLE_FAINT < 0.2 and _pf64.GLINT_JIT > 0 and "lift_idx" in _pfs64,

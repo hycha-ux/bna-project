@@ -442,9 +442,15 @@ class Batch:
                                 _ra = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
                                 if _xf["retake_merge"]:
                                     # 18차 층 합치기: 재촬영이 노출을 올려 배경까지 밝아졌다 → 큰 층(밝기·색·그늘·팔자·배경)=메운 B,
-                                    #   잔결 층(모공)만 재촬영. 식은 tools/retake_merge.py 와 같다(texswap.swap, 띠 비중 1.0).
-                                    #   합치기 실패(고개 차이·얼굴 점 없음)는 재촬영 그대로(fail-open) + 사유 기록.
-                                    _mg, _mr = await loop.run_in_executor(None, lambda: texswap.swap(_ra, after, band_w=1.0))
+                                    #   잔결 층(모공)만 재촬영.
+                                    # 23차(09-29 연서님 "콧구멍 윗선 두 겹"): 삼각망만으로 휘면 윤곽이 2~5px 어긋나 두 겹이 됐다 →
+                                    #   texswap.merge_safe = 윤곽 부위(코·눈·눈썹·입·입꼬리선·헤어라인)는 B 그대로 · 흐름 정렬 ·
+                                    #   두 겹 자가 튀면 합치기를 건너뛴다. 실패(고개 차이·얼굴 점 없음·두 겹)는 재촬영 그대로(fail-open) + 사유 기록.
+                                    #   다시 걸 수 있게 재촬영 원본·메운 B 를 남긴다(23차 재적용 때 원본이 없어 최종 After 를 대역으로 썼다).
+                                    _d = self.dir / item_id; _d.mkdir(parents=True, exist_ok=True)
+                                    _ra.save(_d / f"retake_{af['when']}_a{attempt}.jpg", quality=92)
+                                    after.convert("RGB").save(_d / f"filled_{af['when']}_a{attempt}.jpg", quality=92)
+                                    _mg, _mr = await loop.run_in_executor(None, lambda: texswap.merge_safe(_ra, after))
                                     _rec["retake_merge"] = {k: v for k, v in (_mr or {}).items() if not k.startswith("_")}
                                     _rec["retake_merge"]["applied"] = _mg is not None
                                     if _mg is not None:
