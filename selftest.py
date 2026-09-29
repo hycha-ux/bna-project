@@ -3091,6 +3091,14 @@ ok(_rec64 == {"applied": False, "why": "no_face"} and _r64.tobytes() == _blank64
 ok(_pf64.seed_for("b", "0000") == _pf64.seed_for("b", "0000") != _pf64.seed_for("b", "0001"), "64 세트 seed 재현 가능(hash() 금지)")
 ok("patchfilm.apply(" in inspect.getsource(__import__("bna.batch", fromlist=["x"])), "64 배치가 직후 After 에 막을 얹는다(대시보드에 합성본)")
 
+# 67 (09-29 24차 연서님 "잡티 개수 기록만 — 탈락 사유로는 걸지 말아줘")
+_pg67 = __import__("bna.pigment", fromlist=["x"])
+ok(_pg67.count(__import__("PIL.Image", fromlist=["x"]).new("RGB", (64, 80))) == {"measured": False}, "67 잡티 자: 얼굴 없으면 못 잼(fail-open)")
+_bs67 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+_blk67 = _bs67[_bs67.index('meta["pigment"] = {}'):_bs67.index("st = structure.check(before_pp")]
+ok("pigment.count(before_pp)" in _blk67 and "pigment.count(after_pp)" in _blk67 and '"fail_reasons"].append' not in _blk67,
+   "67 배치: Before·After 잡티 개수를 원장에만 적고 탈락 사유엔 안 넣는다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

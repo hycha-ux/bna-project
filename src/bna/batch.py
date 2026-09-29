@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
-from . import postprocess, refs, providers, seedbank, patchfilm, texswap
+from . import postprocess, refs, providers, seedbank, patchfilm, texswap, pigment
 from .spec import experiment_flags
 from .qa import structure, identity, dedup, vision, landmarks, patchgate
 from .stats import summarize, write_manifest
@@ -515,8 +515,18 @@ class Batch:
             # ④ 검수 3단 — After 마다. 세트는 전부 통과해야 통과. 시점별 결과는 meta["after_results"][when] 에 남긴다
             self._p(item_id, "qa")
             meta["after_results"] = {}
+            meta["pigment"] = {}                           # 회차마다 새로 — 다시 그린 회차의 Before 와 짝이 맞게
             for when, ab, after_pp, ungate in outs:
                 r = {"fail_reasons": []}
+                if self.mode == "clinical":
+                    # 잡티 개수 자 (24차 09-29 연서님 "갈색 잡티·검버섯 개수를 재서 원장에 기록만. 탈락 사유로는 걸지 말아줘").
+                    #   기록 전용 — fail_reasons 에 절대 넣지 않는다. 실패는 {"measured": False, "error"} 로 남기고 넘어간다.
+                    try:
+                        if "before" not in meta["pigment"]:
+                            meta["pigment"]["before"] = pigment.count(before_pp)
+                        meta["pigment"][when] = pigment.count(after_pp)
+                    except Exception as _pe:                      # noqa: BLE001 — 기록 자가 배치를 죽이면 안 된다
+                        meta.setdefault("pigment", {})[when] = {"measured": False, "error": repr(_pe)[:200]}
                 st = structure.check(before_pp, after_pp, self.mode, t["mask_region"],
                                      copy_head_only=_lpf.get("copy_gate") == "head",
                                      copy_roll_deg=_lpf.get("copy_roll_deg")); r["structure"] = st
