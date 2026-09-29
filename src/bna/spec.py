@@ -319,6 +319,13 @@ def experiment_flags(as_meta: bool = False):
     nopatch = True if _nv in ("1", "true", "on") else (False if _nv in ("0", "false", "off") else None)
     # BNA_EXP_PATCH_FILM=1 — 패치 없는 직후 컷에 막 합성(patchfilm)을 얹는다. 22차 연서님: 기본은 끔(패치 은행과 함께 보류).
     film = os.environ.get("BNA_EXP_PATCH_FILM", "").strip().lower() in ("1", "true", "on")
+    # 22차 2세트 (09-29 연서님 "고해상도 + 17차 재촬영 문안 + 18차 합치기 + 패치 없음"): 둘 다 후보라 배치 기본은 그대로.
+    #   BNA_EXP_RETAKE=v17 — 재촬영 문안 = prompts/retake_clinical_v17.md, 결 참조 사진 없음(17차 후보와 같은 조건)
+    #   BNA_EXP_RETAKE_MERGE=1 — 재촬영 뒤 큰 층=메운 B·잔결 층=재촬영(texswap.swap band_w 1.0, 18차 retake_merge 와 같은 식)
+    rtk = os.environ.get("BNA_EXP_RETAKE", "").strip().lower() or None
+    if rtk not in (None, "v17"):
+        raise ValueError(f"BNA_EXP_RETAKE={rtk} — 아는 값은 v17 뿐")
+    merge = os.environ.get("BNA_EXP_RETAKE_MERGE", "").strip().lower() in ("1", "true", "on")
     if as_meta:
         out = {"relax": sorted(relax), "severity": sev, "when": when}
         if prof is not None:                           # 새 칸은 환경변수로 켜거나 껐을 때만 — 옛 회차 meta 와 모양이 같게
@@ -327,8 +334,13 @@ def experiment_flags(as_meta: bool = False):
             out["no_patch"] = nopatch
         if film:
             out["patch_film"] = True
-        return out if (relax or sev or when or prof is not None or nopatch is not None or film) else None
-    return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof, "no_patch": nopatch, "patch_film": film}
+        if rtk:
+            out["retake"] = rtk
+        if merge:
+            out["retake_merge"] = True
+        return out if (relax or sev or when or prof is not None or nopatch is not None or film or rtk or merge) else None
+    return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof, "no_patch": nopatch, "patch_film": film,
+            "retake": rtk, "retake_merge": merge}
 
 
 def patchless(t: dict) -> bool:

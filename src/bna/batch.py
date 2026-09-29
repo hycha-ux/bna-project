@@ -5,7 +5,8 @@ from pathlib import Path
 from PIL import Image
 from .spec import ROOT, load, build_prompts, defaults_for
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
-from . import postprocess, refs, providers, seedbank, patchfilm
+from . import postprocess, refs, providers, seedbank, patchfilm, texswap
+from .spec import experiment_flags
 from .qa import structure, identity, dedup, vision, landmarks, patchgate
 from .stats import summarize, write_manifest
 from .version import prompt_version
@@ -417,13 +418,17 @@ class Batch:
                             after = _filled
                             if _ff.get("retake"):
                                 _bb = io.BytesIO(); after.convert("RGB").save(_bb, "PNG")
-                                _rp = " ".join((ROOT / "config" / "prompts" / "retake_clinical.md").read_text(encoding="utf-8").split())
+                                _xf = experiment_flags()                 # 22차 후보 스위치(spec.experiment_flags 머리말)
+                                _rpf = "retake_clinical_v17.md" if _xf["retake"] == "v17" else "retake_clinical.md"
+                                _rp = " ".join((ROOT / "config" / "prompts" / _rpf).read_text(encoding="utf-8").split())
+                                _rec["retake_prompt"] = _rpf
                                 if af.get("retake_keep_marks"):
                                     # 14차 연서님 A: 직후 컷 재촬영이 투명 패치를 통째로 지웠다(v54 0003 immediate_look 2회 탈락).
                                     #   시점 판정은 spec 한 곳(retake_keep_marks) — 배치가 시점 이름을 다시 보지 않는다(selftest 규칙 두 벌 금지)
                                     _rp += " " + " ".join(str(load("clinical_rig.yaml").get("retake_keep_marks") or "").split())
                                 # 15차 연서님 "전 사진을 피부 결 참조로 같이 넣어 '이 결 그대로'로" — 칸이 있으면 Before 를 2번으로
-                                _tr = " ".join(str(load("clinical_rig.yaml").get("retake_texture_ref") or "").split())
+                                #   17차 후보(v17)는 결 참조 사진 없이 쟀다 — 같은 조건으로 돌린다(두 축을 한 번에 바꾸지 않게)
+                                _tr = "" if _xf["retake"] == "v17" else " ".join(str(load("clinical_rig.yaml").get("retake_texture_ref") or "").split())
                                 _refs = []
                                 if _tr:
                                     _b2 = io.BytesIO(); before.convert("RGB").save(_b2, "PNG")
@@ -434,7 +439,17 @@ class Batch:
                                 _rec["retake_texture_ref"] = bool(_refs)
                                 cost += self.pricing[self.p_edit.name]["edit"]
                                 _ra = Image.open(io.BytesIO(_rb)).convert("RGB")
-                                after = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
+                                _ra = _ra if _ra.size == after.size else _ra.resize(after.size, Image.LANCZOS)
+                                if _xf["retake_merge"]:
+                                    # 18차 층 합치기: 재촬영이 노출을 올려 배경까지 밝아졌다 → 큰 층(밝기·색·그늘·팔자·배경)=메운 B,
+                                    #   잔결 층(모공)만 재촬영. 식은 tools/retake_merge.py 와 같다(texswap.swap, 띠 비중 1.0).
+                                    #   합치기 실패(고개 차이·얼굴 점 없음)는 재촬영 그대로(fail-open) + 사유 기록.
+                                    _mg, _mr = await loop.run_in_executor(None, lambda: texswap.swap(_ra, after, band_w=1.0))
+                                    _rec["retake_merge"] = {k: v for k, v in (_mr or {}).items() if not k.startswith("_")}
+                                    _rec["retake_merge"]["applied"] = _mg is not None
+                                    if _mg is not None:
+                                        _ra = _mg
+                                after = _ra
                                 _rec["retake"] = True
                             _rec["edge_final"] = round(await loop.run_in_executor(None, _fl.edge_ratio, after) or 0, 3)
                             # 좌우 자 ② (13차): 재촬영 뒤 최종 좌우 차 — 검수 단계가 이 값으로 'fold_asym' 을 건다(After 만 다시)

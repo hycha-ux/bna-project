@@ -3044,6 +3044,26 @@ finally:
         _os64.environ.pop(_k64, None)
         if _x64 is not None:
             _os64.environ[_k64] = _x64
+_keep65 = {k: _os64.environ.pop(k, None) for k in ("BNA_EXP_RETAKE", "BNA_EXP_RETAKE_MERGE")}
+try:
+    _x65 = _sp64.experiment_flags()
+    ok(_x65["retake"] is None and _x65["retake_merge"] is False, "65 22차 재촬영 후보 스위치 기본 끔(정본 retake_clinical.md 불변)")
+    _os64.environ.update({"BNA_EXP_RETAKE": "v17", "BNA_EXP_RETAKE_MERGE": "1"})
+    _m65 = _sp64.experiment_flags(as_meta=True)
+    ok(_m65.get("retake") == "v17" and _m65.get("retake_merge") is True, "65 켜면 meta 실험 칸에 retake·retake_merge 가 남는다")
+    _os64.environ["BNA_EXP_RETAKE"] = "v99"
+    try:
+        _sp64.experiment_flags(); ok(False, "65 모르는 재촬영 문안 값은 죽어야 한다")
+    except ValueError:
+        ok(True, "65 모르는 재촬영 문안 값은 소리 내고 죽는다(조용히 정본으로 떨어지지 않게)")
+finally:
+    for _k65, _x65v in _keep65.items():
+        _os64.environ.pop(_k65, None)
+        if _x65v is not None:
+            _os64.environ[_k65] = _x65v
+_bsrc65 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok("retake_clinical_v17.md" in _bsrc65 and "texswap.swap(_ra, after, band_w=1.0)" in _bsrc65 and '_xf["retake"] == "v17" else' in _bsrc65,
+   "65 배치: v17 문안·결 참조 없음 · 합치기 = 잔결 원천 재촬영 / 바탕 메운 B(18차와 같은 방향)")
 _pf64 = __import__("bna.patchfilm", fromlist=["x"])
 _pfs64 = inspect.getsource(_pf64)
 ok("skin_mask" in _pfs64 and _pf64.NEEDLE_FAINT < 0.2 and _pf64.GLINT_JIT > 0 and "lift_idx" in _pfs64,
