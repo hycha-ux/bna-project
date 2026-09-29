@@ -312,12 +312,18 @@ def experiment_flags(as_meta: bool = False):
     _pv = os.environ.get("BNA_EXP_LOOKS_PROFILE", "").strip().lower()
     # 3값: "1" 강제 켬 · "0" 강제 끔(회귀·되돌리기 비교용) · 빈 값 = 설정(looks_profile.<looks>.enabled)을 따른다
     prof = True if _pv in ("1", "true", "on") else (False if _pv in ("0", "false", "off") else None)
+    # BNA_EXP_NO_PATCH=1 (2026-09-29 21차 연서님 "패치도 우리가 직접 얹어보자"): 직후 컷의 흔적 문장을 시술의
+    #   `immediate_marks_nopatch`(붓기만)로 바꾸고, 패치 위치 게이트·재촬영 '패치 그대로'·immediate_look 을 끈다.
+    #   패치·바늘 자국은 모델 밖(tools/patch_film.py)이 얹는다. 게이트를 켜 두면 없는 패치를 찾아 재시도에 돈을 태운다.
+    nopatch = os.environ.get("BNA_EXP_NO_PATCH", "").strip().lower() in ("1", "true", "on")
     if as_meta:
         out = {"relax": sorted(relax), "severity": sev, "when": when}
         if prof is not None:                           # 새 칸은 환경변수로 켜거나 껐을 때만 — 옛 회차 meta 와 모양이 같게
             out["looks_profile"] = prof
-        return out if (relax or sev or when or prof is not None) else None
-    return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof}
+        if nopatch:
+            out["no_patch"] = True
+        return out if (relax or sev or when or prof is not None or nopatch) else None
+    return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof, "no_patch": nopatch}
 
 
 def looks_profile(looks_key, v: dict = None, treatment: str = None) -> dict:
@@ -890,6 +896,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             # 두 모드 공통 자리다 — 임상 프롬프트엔 after_day/skin_state 가 아예 안 붙어서,
             # 여기 말고 mode_extra 쪽에 넣으면 임상 직후 컷만 조용히 사실 카드를 못 받는다.
             marks = [(t.get("facts") or {}).get(k) for k in FACT_KEYS_PROMPT]
+            if experiment_flags()["no_patch"] and t.get("immediate_marks_nopatch"):
+                marks = [t["immediate_marks_nopatch"]]          # 21차 — 패치는 모델 밖에서 얹는다(experiment_flags 머리말)
             if not any(marks) and not lowered:
                 # 카드가 아직 없는 필러 — 최종 강도로 그리면서 직후 티가 하나도 없으면 "2주 컷"과 구별이 안 된다.
                 # 시술별 흔적은 추정할 수 없으니(테이프 자리는 시술마다 다르다) 주사 공통인 붓기·발적만 얹는다.
@@ -956,7 +964,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                 after_change=" ".join(t["after_change"].split()), effect=eff["effect_levels"][lv] + ".",
                 must_not=" ".join(str(t.get("must_not_change") or "").split()),
                 keep_marks=("Any small clear round patches and tiny red needle dots already on the skin stay exactly as they are. "
-                            if w == "immediate" else ""))
+                            if w == "immediate" and not experiment_flags()["no_patch"] else ""))
         else:
             a_var = drift_after(variation, mode, rng, timeline=w, treatment=treatment, series=bool(pts),
                                 seen=series_seen)
@@ -1055,7 +1063,10 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         qa_extra = "immediate" if w == "immediate" else None
         # 직후 패치 위치 게이트 횟수 (2026-09-18 C안) — 배치가 시점 이름을 다시 보지 않게 여기서 실어 보낸다(규칙 두 벌 금지).
         pgate = int(t.get("patch_gate") or 0) if w == "immediate" else 0
-        return {"when": w, "clothes": clothes, "retake_keep_marks": mode == "clinical" and w == "immediate", "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
+        _np = w == "immediate" and experiment_flags()["no_patch"] and bool(t.get("immediate_marks_nopatch"))
+        if _np:                                               # 21차 — 없는 패치를 재지 않는다(experiment_flags 머리말)
+            pgate, qa_extra = 0, None
+        return {"when": w, "clothes": clothes, "retake_keep_marks": mode == "clinical" and w == "immediate" and not _np, "effect_level": lv, "effect_lowered": lowered, "effect_ungated": ungated, "qa_extra": qa_extra, "patch_gate": pgate,
                 "after_prompt": " ".join(txt.split()), "after_variation": a_var,
                 "second_pass_prompt": " ".join(pass2.split()) if pass2 else None,
                 "after_changed_axes": [k for k in a_var if a_var[k]["key"] != variation[k]["key"]], "after_parts": segments(txt, spans)}

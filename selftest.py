@@ -2987,6 +2987,33 @@ ok(_ts63.FINE_SIGMA == 0.008 and _ts63.BAND_STEPS[-1] == 0.0 and _ts63.BAND_W ==
 _ap63 = open("tools/texswap_apply.py", encoding="utf-8").read()
 ok("fold_grad(n, pa)" in _ap63 and "EDGE_BACK_MAX" in _ap63, "63 띠 비중 판정은 골 자리 경사(분자)로 — 비율 자는 볼 결이 같이 바뀌어 못 쓴다")
 
+# 64 (09-29 21차 연서님 "패치도 우리가 직접 얹어보자") — BNA_EXP_NO_PATCH 켠 회차만 직후 컷 패치·점 문장이 빠지고
+#   패치 게이트·재촬영 '패치 그대로'·immediate_look 이 꺼진다. 안 켜면 종전 그대로(v58).
+import json as _js64, os as _os64
+_sp64 = __import__("bna.spec", fromlist=["x"])
+_pl64 = __import__("bna.planner", fromlist=["x"]).plan_batch
+_keep64 = {k: _os64.environ.pop(k, None) for k in ("BNA_EXP_NO_PATCH", "BNA_EXP_WHEN")}
+try:
+    _os64.environ["BNA_EXP_WHEN"] = "immediate"
+    _v64 = _pl64("clinical", 1, 64, {}, treatment="nasolabial")[0]
+    _off64 = _js64.dumps(_sp64.build_prompts("nasolabial", "clinical", _v64, 64000), ensure_ascii=False)
+    _os64.environ["BNA_EXP_NO_PATCH"] = "1"
+    _on64 = _sp64.build_prompts("nasolabial", "clinical", _v64, 64000)
+    _ons64 = _js64.dumps(_on64, ensure_ascii=False)
+    ok("hydrocolloid" in _off64 and "needle" in _off64, "64 스위치 없으면 직후 패치·바늘 문장 그대로(v58)")
+    ok("hydrocolloid" not in _ons64 and "needle" not in _ons64 and "slightly puffy" in _ons64,
+       "64 스위치 켜면 패치·바늘 문장 없음 · 붓기는 남음")
+    ok('"patch_gate": 0' in _ons64 and '"retake_keep_marks": false' in _ons64 and '"no_patch": true' in _ons64,
+       "64 스위치 켜면 패치 게이트 0 · 재촬영 '패치 그대로' 끔 · meta 에 no_patch 기록")
+finally:
+    for _k64, _x64 in _keep64.items():
+        _os64.environ.pop(_k64, None)
+        if _x64 is not None:
+            _os64.environ[_k64] = _x64
+_pf64 = open("tools/patch_film.py", encoding="utf-8").read()
+ok("skin_mask" in _pf64 and "NEEDLE_FAINT" in _pf64 and "GLINT_JIT" in _pf64,
+   "64 patch_film — 피부 위에만 · 패치마다 반사 자리 흔들림 · 바늘 자국 하나는 거의 안 보이게")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

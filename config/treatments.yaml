@@ -211,6 +211,13 @@ nasolabial:
   #        긍정형으로 한 문장 더했다(0910 교훈: 금지 나열은 그리게 만든다). 게이트·계산 자리·허용 반경은 **안 건드렸다** —
   #        한 회차에 한 축만 움직여야 다음 회차가 비교가 된다(09-18 6세트 교훈).
   patch_gate: 3
+  # 21차 실험 (2026-09-29 연서님 "패치도 우리가 직접 얹어보자") — BNA_EXP_NO_PATCH=1 일 때만 facts.immediate_marks 대신 실린다.
+  #   v58 까지 문장을 바꿔도 모델의 '패치 아이콘'(같은 원판·같은 반사·같은 점)이 안 바뀌어서, 패치·바늘 자국은
+  #   tools/patch_film.py 가 landmarks.patch_spots 자리에 얇은 막으로 얹는다. 모델에겐 붓기만 시킨다. 긍정형만.
+  immediate_marks_nopatch: >
+    Right after the injections the skin tone of the cheeks is the same ordinary, even tone as in the
+    reference, and all of the skin is bare. The treated folds are slightly puffy, as they are in the
+    first hours after a filler injection.
   # 2026-09-18: moderate 에서 subtle 을 뺐다. subtle 문구는 "문제가 아직 남아 있고 나란히 놓고 비교할 때나
   #   눈에 띈다"라서, 필러가 직후부터 최종 강도인 시술인데도 2주 컷이 판정선(6) 아래로 떨어졌다
   #   (09-17 실측: 6세트 중 5세트가 subtle, 2주 effect_visible 2.0·3.0·3.0). moderate 문구 자체가
