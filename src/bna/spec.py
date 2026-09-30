@@ -616,7 +616,19 @@ FACT_KEYS_PROMPT = ("immediate_marks", "immediate_avoid")   # 직후 컷에 그�
 #     (selftest ㉜ 가 "임상 After 에 광 문장 없음"을 이미 지키고 있다, 같은 이유).
 FACT_KEYS_AFTER = ("after_reference",)
 FACT_KEYS_HUMAN = ("onset", "extent", "later")              # 사람이 읽는 근거 칸 (한국어 가능)
-FACT_KEYS_ALL = FACT_KEYS_PROMPT + FACT_KEYS_AFTER + FACT_KEYS_HUMAN
+# 2026-09-30 빌디·연서님(엠보 임상 착수): 임상 직후 컷 전용 문장. 셀카 직후(격자 볼록·매트)와 병원 사진 직후
+#   (붉은 점이 주인공·볼록은 낮고 불규칙·진정 겔 젖은 광)가 달라, 임상이고 이 칸이 있으면 **그 칸을 대신 싣는다**.
+#   고르는 자리는 `immediate_fact_keys` 하나 — 프롬프트(change_for)와 화면 칸(fact_spans)이 같이 읽는다.
+FACT_KEYS_CLINICAL = {"immediate_marks": "immediate_marks_clinical"}
+FACT_KEYS_ALL = FACT_KEYS_PROMPT + FACT_KEYS_AFTER + FACT_KEYS_HUMAN + tuple(FACT_KEYS_CLINICAL.values())
+
+
+def immediate_fact_keys(facts, mode) -> tuple:
+    """직후 컷에 실을 사실 카드 칸. 임상이고 임상 전용 칸이 채워져 있으면 그 칸으로 바꾼다(없으면 셀카 칸 그대로)."""
+    facts = facts or {}
+    if mode != "clinical":
+        return FACT_KEYS_PROMPT
+    return tuple(FACT_KEYS_CLINICAL[k] if facts.get(FACT_KEYS_CLINICAL.get(k, "")) else k for k in FACT_KEYS_PROMPT)
 
 
 def check_treatment_facts(treatment: str) -> None:
@@ -663,6 +675,13 @@ def check_treatment_facts(treatment: str) -> None:
     for k in FACT_KEYS_PROMPT:
         if facts.get(k) and not has_imm:
             raise ValueError(f"{treatment}.facts.{k} 는 직후 컷에만 실리는데 timeline 에 immediate 가 없다 — 죽은 설정")
+    for base, k in FACT_KEYS_CLINICAL.items():
+        if facts.get(k) and not has_imm:
+            raise ValueError(f"{treatment}.facts.{k} 는 임상 직후 컷에만 실리는데 timeline 에 immediate 가 없다 — 죽은 설정")
+        if facts.get(k) and "clinical" not in (t.get("modes") or []):
+            raise ValueError(f"{treatment}.facts.{k} 는 임상 전용인데 modes 에 clinical 이 없다 — 죽은 설정")
+        if facts.get(k) and patchless(t):
+            raise ValueError(f"{treatment}.facts.{k} 는 patchless 시술에선 붓기 문장에 가려 안 실린다 — 죽은 설정")
     for k in FACT_KEYS_AFTER:
         # 직후가 아닌 After 컷에만 실린다 — 시점이 직후뿐이면 아무 데도 안 붙는다(적은 사람은 붙은 줄 안다).
         if facts.get(k) and not [w for w in tl if w != "immediate"]:
@@ -919,7 +938,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             # 직후 흔적·금지는 **사실 카드**에서 온다(시술마다 무엇이 어디에 남는지가 다르다).
             # 두 모드 공통 자리다 — 임상 프롬프트엔 after_day/skin_state 가 아예 안 붙어서,
             # 여기 말고 mode_extra 쪽에 넣으면 임상 직후 컷만 조용히 사실 카드를 못 받는다.
-            marks = [(t.get("facts") or {}).get(k) for k in FACT_KEYS_PROMPT]
+            marks = [(t.get("facts") or {}).get(k) for k in immediate_fact_keys(t.get("facts"), mode)]
             if patchless(t):
                 marks = [t["immediate_marks_nopatch"]]          # 22차 — 직후 컷은 패치 없이 붓기만(patchless 머리말)
             if not any(marks) and not lowered:
@@ -948,7 +967,7 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     def fact_spans(w):
         """그 컷에 실린 사실 카드 문장 — 화면에서 '이 문장 어디서 왔나'가 template 로 뭉개지지 않게 칸을 준다."""
         f = t.get("facts") or {}
-        keys = FACT_KEYS_PROMPT if w == "immediate" else (FACT_KEYS_AFTER if mode == "selfie" else ())
+        keys = immediate_fact_keys(f, mode) if w == "immediate" else (FACT_KEYS_AFTER if mode == "selfie" else ())
         return [("facts", " ".join(str(f[k]).split())) for k in keys if f.get(k)]
 
     series_seen = {}            # 시리즈 컷들이 이미 쓴 값 {축: {키…}} — drift_after 의 seen (2026-09-18)

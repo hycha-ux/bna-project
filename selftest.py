@@ -2090,6 +2090,21 @@ ok(not _EMBO33, f"엠보 직후 컷은 격자 볼록이 보이고 광 마감은 
 ok(_n33 and _soft33 < _n33, f"직후 컷은 부드러운 빛으로 몰리지 않는다(같은 날 병원 빛) — 부드러운 빛 {_soft33}/{_n33}")
 ok(_tr_all["skinbooster_embo"]["timeline"][0] == "immediate", "엠보 timeline 에 immediate 가 맨 앞에 있다")
 
+# ㉝-b 2026-09-30 빌디·연서님 — 엠보 임상 직후는 셀카 직후와 다른 문장(facts.immediate_marks_clinical).
+#   임상 직후 = 새 문장만, 셀카 직후 = 기존 격자 문장만. 화면 칸(fact_spans)도 같은 문장이어야 한다(고르는 자리 하나).
+from bna.spec import immediate_fact_keys as _ifk
+_EMBOC = []
+for _mc, _want, _not in (("clinical", "red pinpoint dots, the most", "grid of small raised bumps"),
+                         ("selfie", "grid of small raised bumps", "red pinpoint dots, the most")):
+    for _s in range(6):
+        _spc = build_prompts("skinbooster_embo", _mc, _pb26(_mc, 1, seed=_s, treatment="skinbooster_embo")[0], 33600 + _s, series=["immediate"])
+        _a = _spc["afters"][0]
+        if _want not in _a["after_prompt"] or _not in _a["after_prompt"]: _EMBOC.append(f"{_mc}{_s}:프롬프트")
+        if not any(_want in (p.get("t") or p.get("text") or "") for p in _a["after_parts"] if p.get("k") == "facts"): _EMBOC.append(f"{_mc}{_s}:화면칸")
+ok(not _EMBOC, f"엠보 직후 문장은 임상=임상 전용·셀카=기존 격자로 갈린다 — {_EMBOC}")
+ok(_ifk({"immediate_marks": "a"}, "clinical") == ("immediate_marks", "immediate_avoid"),
+   "임상 전용 칸이 없는 시술은 임상에서도 기존 직후 문장을 쓴다(팔자 등 무변화)")
+
 
 
 # ㉞ 2026-09-14 승격 두 사고 — ①승격이 주석을 통째로 지웠다 ②승격이 커밋을 안 해 git 이 되돌렸다.

@@ -485,6 +485,15 @@ skinbooster_embo:
       flushed pink, with a few tiny pinpoint blood dots at some injection points. The cheek surface
       looks finely lumpy and uneven, matte with no glow yet; the only things on the skin are these
       bumps, the pink flush and the pinpoint dots.
+    # ── 임상 직후 전용 (2026-09-30 빌디·연서님, 참조 samples/reference/clinical/skinbooster_embo_immediate_01.jpg) ──
+    #   병원 사진 직후는 위 셀카 문장과 다르다: 붉은 점(수십 개)이 가장 눈에 띄고, 볼록은 낮고 불규칙,
+    #   얼굴 전체가 진정 겔로 젖은 광. 임상 직후 컷엔 위 immediate_marks 대신 **이 문장**이 실린다(spec.immediate_fact_keys).
+    immediate_marks_clinical: >
+      Right after the skin booster injections, both cheeks show many tiny red pinpoint dots, the most
+      visible marks, scattered across the cheeks from beside the nose to the jaw. Under them the cheek
+      surface is faintly lumpy: low, irregular raised spots that read as an uneven texture rather than
+      distinct bumps. A mild pink flush sits on the cheeks. The whole face has a wet, glossy sheen from
+      the soothing gel applied after the procedure.
     # 2026-09-14 빌디 전달(연서님 기준). 종전 "1~2일"은 추정이었고, 실제 경과는 3일·7일 두 마디다.
     later: 볼록·붉은 점은 약 3일에 가라앉고, 7일차에 흔적 없이 촉촉한 물광이 된다. 그 뒤(2·4주)는 7일차 상태가 이어진다
     # ⚠ '후'의 기준은 7일차다(연서님 확정) — 엠보·붉은 점 없음, 모공·솜털은 **보이되** 촉촉한 물광.
