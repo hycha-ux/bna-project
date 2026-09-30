@@ -3,7 +3,7 @@ asyncio 워커 풀, 이어하기(state.json), 프롬프트 버전 기록."""
 import asyncio, io, json, os, time, uuid
 from pathlib import Path
 from PIL import Image
-from .spec import ROOT, load, build_prompts, defaults_for
+from .spec import ROOT, load, build_prompts, defaults_for, rig_on as _rig_on
 from .planner import plan_batch, past_signatures, past_scene_signatures, remember
 from . import postprocess, refs, providers, seedbank, patchfilm, texswap, pigment
 from .qa import structure, identity, dedup, vision, landmarks, patchgate
@@ -299,7 +299,7 @@ class Batch:
                         #   합성은 마스크 안만 — 모델 출력은 자리가 살짝 밀려 오므로 먼저 겹친다(landmarks.align_to, 09-18).
                         #   얼굴 점을 못 찾거나 겹치기 실패면 1단계 그대로(fail-open), 무엇이 일어났는지 meta["second_pass"] 에 남긴다.
                         _sp = load("clinical_rig.yaml").get("second_pass") or {}
-                        if (self.mode == "clinical" and _sp.get("enabled") and af.get("second_pass_prompt")
+                        if (self.mode == "clinical" and _rig_on(_sp, self.treatment) and af.get("second_pass_prompt")
                                 and self.p_edit.supports_mask and t["mask_region"] in landmarks.REGIONS):
                             _rec = {"applied": False}
                             _pa1 = await loop.run_in_executor(None, landmarks.detect, after)
@@ -404,7 +404,7 @@ class Batch:
                 #   얼굴 점을 못 찾으면 ①은 건너뛰고(fail-open) ②도 안 한다. 무엇을 했는지 meta["fold_fill"][시점] 에 남긴다.
                 #   메우기 직전 B 원본은 fold_b_<시점>_a<회차>.jpg 로 보존(검수 화면 파일 규칙 밖 이름).
                 _ff = load("clinical_rig.yaml").get("fold_fill") or {}
-                if self.mode == "clinical" and _ff.get("enabled"):
+                if self.mode == "clinical" and _rig_on(_ff, self.treatment):
                     from . import foldlift as _fl
                     _eb = await loop.run_in_executor(None, _fl.edge_ratio, before)
                     _sb = await loop.run_in_executor(None, _fl.shade, before)

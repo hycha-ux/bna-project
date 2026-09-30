@@ -51,7 +51,8 @@ rig_weights: {clinic_wall: 5, grey_studio: 2, blue_backdrop: 1}
 #   2026-09-28 6차 연서님 "실제 After 참조(nasolabial_after2w_01)를 '골 깊이는 이 정도로'라고 같이 붙여줘" → depth_ref.
 #     v50 에서 2단계가 골을 거의 안 바꿨다(0000 골 대비 -0.3%). 문장 대신 목표 사진을 준다(미모 v40~44: 사진이 문장보다 먹는다).
 #     ⚠ 이 참조는 서구 중안면 필러 사진이라 09-15 에 볼 볼륨이 옮았다 — 문구가 '골 깊이만'이라고 막고, 합성은 마스크 안만이다.
-second_pass: {enabled: true, feather: 14, depth_ref: clinical/nasolabial_after2w_01.jpg}
+#   2026-09-30 엠보 임상 착수: 팔자 깊이 참조 사진을 쓰므로 fold_fill 과 같이 팔자만(treatments, 판정 = batch._rig_on).
+second_pass: {enabled: true, treatments: [nasolabial], feather: 14, depth_ref: clinical/nasolabial_after2w_01.jpg}
 
 # 임상 After 만드는 법 (2026-09-28 7차 연서님 B "임상 After도 셀카처럼 새로 그리기"). edit = 종전(Before 를 고쳐 그림, 2단계 편집 포함) /
 #   generate = Before 를 참조로 새로 그림(셀카 경로 — 2단계 편집은 edit 갈래에만 있어 자동으로 꺼진다).
@@ -85,7 +86,9 @@ after_generation: generate
 #     retake_prompt = 재촬영 문안(22차 후보 v17, 결 참조 사진 없음 — 종전 retake_clinical.md + retake_texture_ref 경로는 지웠다).
 #     retake_merge: true = 재촬영 뒤 23차 안전 합치기(texswap.merge_safe) — 종전 스위치 BNA_EXP_RETAKE / BNA_EXP_RETAKE_MERGE 는 지웠다.
 #     남은 한계(고치지 않고 기록만): 잡티가 절반쯤 사라짐(47→23, 46→28) · 가끔 입꼬리·마리오네트·이마까지 같이 펴짐(82cb, 2202).
-fold_fill: {enabled: true, edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15, side_gate: false,
+#   2026-09-30 빌디·연서님 엠보 임상 착수: treatments = 이 스위치가 켜지는 시술(판정 = batch._rig_on 하나). 목록 밖 시술은
+#     메우기·재촬영·합치기가 통째로 안 돌고 meta.fold_fill 이 안 생겨 좌우·띠·반복 무늬 자도 못 재서 안 걸린다(fail-open).
+fold_fill: {enabled: true, treatments: [nasolabial], edge_pct: -54.6, shade_pct: null, retake: true, side_gap_max: 15, side_gate: false,
             guard: true, merge_lip_grow: 0.002, retake_prompt: retake_clinical_v17.md, retake_merge: true,
             band_gate: {dL_max: 0, tex_min: 0.85, spot_min: 0.6},
             repeat_gate: {band_hit_max: 0.05, face_hit_max: 0.1}}

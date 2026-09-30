@@ -332,6 +332,15 @@ def experiment_flags(as_meta: bool = False):
     return {"relax": relax, "severity": sev, "when": when, "looks_profile": prof, "no_patch": nopatch, "patch_film": film}
 
 
+def rig_on(cfg, treatment) -> bool:
+    """clinical_rig 의 시술 전용 스위치(fold_fill·second_pass)가 이 시술에 켜졌나 — 판정은 여기 하나(batch·spec 이 같이 읽는다).
+    `treatments` 목록이 있으면 그 안의 시술만, 없으면 전 시술(종전). 2026-09-30 빌디·연서님 엠보 임상 착수 —
+    팔자 골 메우기·재촬영·합치기·2단계 '골만 옅게' 편집이 `mode == clinical` 만 보고 엠보 사진에도 붙을 뻔했다."""
+    cfg = cfg or {}
+    tl = cfg.get("treatments")
+    return bool(cfg.get("enabled")) and (tl is None or treatment in tl)
+
+
 def patchless(t: dict) -> bool:
     """이 시술의 직후 컷을 패치 없이 그리나 (22차 09-29 연서님 "직후 컷은 패치 없이 가자" — 패치가 09-11·17·18·29 네 번
     AI 티 1순위였고, 패치 뗀 직후 실사진(#1)도 있다). 붓기 문장(`immediate_marks_nopatch`)이 없는 시술은 늘 False."""
@@ -975,7 +984,9 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
             # 2단계 편집 문안 (2026-09-28 연서님 — v49 확대 비교: 1장 편집은 팔자를 따로 안 건드린다, 부위 쏠림 0.68~1.1배).
             #   1단계(위)가 '다시 찍기', 2단계가 부위 마스크 안에서 '골만 옅게'. 직후 흔적(패치)은 1단계가 그렸으니
             #   2단계는 흔적 문장을 안 싣고 '있던 패치는 그대로'만 말한다. 쓰는 곳 = batch(스위치 clinical_rig.second_pass).
-            pass2 = (CFG / "prompts/after_clinical_pass2.md").read_text(encoding="utf-8").format(
+            #   09-30 엠보 임상: 문안이 '골(folds)만 옅게'라 second_pass.treatments 밖 시술엔 만들지 않는다(enabled 는 batch 가 본다).
+            _sp2 = rig.get("second_pass") or {}
+            pass2 = None if not rig_on({**_sp2, "enabled": True}, treatment) else (CFG / "prompts/after_clinical_pass2.md").read_text(encoding="utf-8").format(
                 after_change=" ".join(t["after_change"].split()), effect=eff["effect_levels"][lv] + ".",
                 must_not=" ".join(str(t.get("must_not_change") or "").split()),
                 keep_marks=("Any small clear round patches and tiny red needle dots already on the skin stay exactly as they are. "

@@ -3125,6 +3125,29 @@ ok(_ts68.feature_mask((200, 200), _p68, lip_grow=0.002).sum() <= _ts68.feature_m
 _rig68 = __import__("bna.spec", fromlist=["x"]).load("clinical_rig.yaml").get("fold_fill") or {}
 ok(_rig68.get("guard") is True and float(_rig68.get("merge_lip_grow") or 1) < 0.02, "68 설정: 25차 보호 메우기 켜짐 · 합치기 입술 여유 < 23차(0.02)")
 
+# 69 (09-30 빌디·연서님 엠보 임상 착수 "팔자 골 메우기가 시술 구분 없이 켜진다") — 팔자 전용 스위치는 팔자에서만
+_sp69 = __import__("bna.spec", fromlist=["x"])
+_rig69 = load("clinical_rig.yaml")
+ok(_rig69["fold_fill"].get("treatments") == ["nasolabial"] and _rig69["second_pass"].get("treatments") == ["nasolabial"],
+   "69 설정: fold_fill·second_pass 는 팔자(nasolabial)만")
+ok(_sp69.rig_on(_rig69["fold_fill"], "nasolabial") and not _sp69.rig_on(_rig69["fold_fill"], "skinbooster_embo")
+   and not _sp69.rig_on(_rig69["second_pass"], "skinbooster_embo"),
+   "69 판정: 팔자는 켜지고 엠보는 꺼진다(메우기·재촬영·합치기·2단계 편집)")
+ok(_sp69.rig_on({"enabled": True}, "skinbooster_embo") and not _sp69.rig_on({"enabled": False, "treatments": ["x"]}, "x"),
+   "69 판정: 목록 없으면 전 시술(종전) · enabled false 면 목록 안이어도 꺼짐")
+_bs69 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok('_ff.get("enabled")' not in _bs69 and '_sp.get("enabled")' not in _bs69 and _bs69.count("_rig_on(") >= 2,
+   "69 배치: 두 스위치 모두 _rig_on 한 곳으로 판정(enabled 만 보는 옛 줄 부활 금지)")
+_fl69 = __import__("bna.foldlift", fromlist=["x"])
+ok(_fl69.band_gate(None, _rig69["fold_fill"]["band_gate"]) == [] and _fl69.repeat_gate(None, _rig69["fold_fill"]["repeat_gate"]) == [],
+   "69 팔자 전용 자: 메우기 기록이 없으면(엠보) 띠·반복 무늬 자는 안 건다")
+_pe69 = build_prompts("skinbooster_embo", "clinical", sample_variation("clinical", seed=930, treatment="skinbooster_embo"), 930000)
+_pn69 = build_prompts("nasolabial", "clinical", sample_variation("clinical", seed=930, treatment="nasolabial"), 930000)
+ok(all(a.get("second_pass_prompt") is None for a in _pe69["afters"])
+   and "nasolabial" not in _json.dumps(_pe69, ensure_ascii=False).lower()
+   and all(a.get("second_pass_prompt") for a in _pn69["afters"]),
+   "69 문안: 엠보 임상엔 2단계 '골만 옅게' 문안·nasolabial 단어가 없고, 팔자엔 그대로 있다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)
