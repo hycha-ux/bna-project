@@ -239,10 +239,16 @@ refs:
   note: 두 달 뒤(2019-02-22) After — 같은 벽·헤어밴드, 잔머리 다름, 볼에 발적 자국. 울트라실 리프팅.
 # ── 엠보 임상 직후 (2026-09-30 성연서님 제공, 병원 자료) ── 내부 스타일 참조 전용, 외부 노출 금지.
 #   셀카 직후 문장(immediate_marks)과 다르다: 볼록은 낮고 불규칙, 붉은 점이 가장 눈에 띄고, 표면은 젖은 광(진정 겔·연고).
-#   리그 태그 없음 = 배경이 안 보여 리그를 모른다. 짝(같은 사람 Before·1주) 없음. 426×426 작은 컷.
+#   리그 태그 없음 = 리그를 모른다. 짝 = 아래 2주 후 컷(같은 사람). Before 는 없다. 둘 다 426×426 작은 컷.
 - file: clinical/skinbooster_embo_immediate_01.jpg
   mode: clinical
   treatment: skinbooster_embo
   timeline: [immediate]
   tags: {lighting: flash, quality: mid, background: clinic}
   note: 정면 코끝~턱 컷, 눈 없음, 평평한 플래시. 양볼 붉은 점 수십 개·낮고 불규칙한 볼록·은은한 홍조, 얼굴 전체 번들거리는 젖은 광.
+- file: clinical/skinbooster_embo_after2w_01.jpg
+  mode: clinical
+  treatment: skinbooster_embo
+  timeline: [1w, 4w]
+  tags: {lighting: flash, quality: mid, background: clinic}
+  note: 같은 사람 2주 후(엠보 시점표엔 2w 가 없어 '7일차 기준'을 공유하는 1w·4w 로 태그). 붉은 점·볼록·홍조 없음, 톤 고름, 코·볼에 은은한 광, 모공은 보일락 말락(매끈한 리터칭 아님). 배경 짙은 회색(맞는 리그 없음).
