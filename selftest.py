@@ -1996,7 +1996,8 @@ for _t27 in ("skin_pores", "skinbooster_embo", "skin_redness"):
             _seen27[_r27["file"]] += 1
         for _r27 in _R26._rank(_R26.candidates("selfie", _t27, _w27), _sp27["after_variation"], _w27)[:2]:
             _seen27[_r27["file"]] += 1
-_skinrefs27 = [r["file"] for r in _R26.check_index() if "skin" in r["file"]]
+# 셀카만 굴리므로 셀카 참조만 센다 — 임상 After 참조는 edit 경로라 지금은 안 붙는다(samples_index 임상 머리말, 09-30 엠보 직후 추가 때)
+_skinrefs27 = [r["file"] for r in _R26.check_index() if "skin" in r["file"] and r.get("mode") == "selfie"]
 _never27 = [f for f in _skinrefs27 if _seen27[f] == 0]
 ok(not _never27, f"피부 3종 참조는 한 장도 빠짐없이 실제로 붙어야 한다 — 한 번도 안 붙은 것 {_never27}")
 
