@@ -53,14 +53,16 @@ def cheek_zoom(img, pts, side=0):
 
 
 def grid(rows, heads, title):
-    pad, hh, lw = 10, 44, 110
+    pad, lw = 10, 110
+    hh = 16 + 30 * max(len(h.split("\n")) for h in heads)      # 제목 여러 줄(10-06 빌디 3차 "시험작·목표 예시"가 길다)
     W = lw + len(heads) * (TILE + pad) + pad
     H = 60 + hh + len(rows) * (TILE + pad) + pad
     cv = Image.new("RGB", (W, H), "white")
     d = ImageDraw.Draw(cv)
     d.text((pad, 14), title, fill="black", font=font(28))
     for j, h in enumerate(heads):
-        d.text((lw + pad + j * (TILE + pad) + 8, 66), h, fill="black", font=font(24))
+        for k, line in enumerate(h.split("\n")):
+            d.text((lw + pad + j * (TILE + pad) + 8, 64 + 30 * k), line, fill="black" if k == 0 else "#555", font=font(24 if k == 0 else 20))
     for i, (lab, tiles) in enumerate(rows):
         y = 60 + hh + i * (TILE + pad)
         d.text((pad, y + TILE // 2 - 14), lab, fill="black", font=font(24))
@@ -73,10 +75,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="tmp/marks_0930")
     ap.add_argument("--delta", type=float, default=None, help="볼 붉은 기 올릴 양. 없으면 참조 직후−2주 후로 잰다")
-    ap.add_argument("--spots", type=int, default=40)
     ap.add_argument("--gloss", type=float, default=1.6)
-    ap.add_argument("--bumps", type=float, default=0.08)
+    ap.add_argument("--bumps", type=float, default=0.34)
     ap.add_argument("--prev", default=None, help="지난 회차 얹은 결과 폴더({i}_marked.jpg) — 있으면 [지난|이번|참조] 판")
+    ap.add_argument("--prev-name", default="지난 회차", help="판 제목: 지난 회차 이름(예: 2차)")
+    ap.add_argument("--name", default="이번 회차", help="판 제목: 이번 회차 이름(예: 3차)")
     a = ap.parse_args()
     out = ROOT / a.out
     out.mkdir(parents=True, exist_ok=True)
@@ -84,8 +87,8 @@ def main():
     ref_i = Image.open(REF / "skinbooster_embo_immediate_01.jpg").convert("RGB")
     ref_w = Image.open(REF / "skinbooster_embo_after2w_01.jpg").convert("RGB")
     ri, rw = M.measure_ref(ref_i), M.measure_ref(ref_w)
-    # 10-06 빌디 "세기는 지금보다 낮게": 기본 = 참조 직후−2주 후 차의 0.6배(지난 회차는 1배를 양볼 합쳐서 맞췄다)
-    delta = a.delta if a.delta is not None else round(0.6 * (ri["red"] - rw["red"]), 2)
+    # 기본 = 참조 직후−2주 후 차의 0.8배(10-06 빌디 2차 0.6배 → 3차 "너무 약하다" 0.8배)
+    delta = a.delta if a.delta is not None else round(0.8 * (ri["red"] - rw["red"]), 2)
     stats = dict(ref_immediate=ri, ref_after2w=rw, delta=delta, canvases={})
     ref_tile = ref_i.resize((TILE, TILE), Image.LANCZOS)
     ref_zoom = ref_i.crop((0, 30, 170, 200)).resize((TILE, TILE), Image.LANCZOS)
@@ -95,7 +98,7 @@ def main():
     for i, (lab, rel) in enumerate(CANVAS):
         im = Image.open(ROOT / rel).convert("RGB")
         pts = L.detect(im)
-        res, rec = M.overlay(im, pts, flush_delta=delta, n_spots=a.spots, gloss=a.gloss, bumps=a.bumps, seed=100 + i)
+        res, rec = M.overlay(im, pts, flush_delta=delta, gloss=a.gloss, bumps=a.bumps, seed=100 + i)
         res.save(out / f"{i}_marked.jpg", quality=95)
         rec.update(src=rel, before=M.measure(im, pts), after=M.measure(res, pts))
         stats["canvases"][lab] = rec
@@ -105,10 +108,13 @@ def main():
                             cheek_zoom(res, pts, 1), ref_zoom]))
         print(lab, rec["before"]["side"], "->", rec["after"]["side"], rec)
 
-    h0 = "지난 회차 (09-30)" if prev else "얹기 전 (팔자 Before)"
-    heads = [h0, "이번 회차", "직후 참조 (병원 사진)"]
+    # 10-06 빌디 3차: 1·2열이 팔자 Before 를 빌린 시험작이고 3열은 다른 사람의 실제 사진임을 제목에 박는다(연서님 혼동)
+    p0, p1 = (a.prev_name, a.name) if prev else ("얹기 전", a.name)
+    sub = "시험작(팔자 Before 위에 얹음)"
+    heads = [f"{p0}\n{sub if prev else '(팔자 Before 원본)'}", f"{p1}\n{sub}", "목표 예시\n(다른 사람, 실제 엠보 직후)"]
     grid(rows, heads, f"임상 직후 흔적 얹기 — 비용 0 시험 (볼마다 붉은 기 +{delta})").save(out / "board.jpg", quality=90)
-    zh = [h0.split(" (")[0] + "·왼볼", "이번·왼볼", h0.split(" (")[0] + "·오른볼", "이번·오른볼", "직후 참조"]
+    zh = [f"{p0}·왼볼\n시험작", f"{p1}·왼볼\n시험작", f"{p0}·오른볼\n시험작", f"{p1}·오른볼\n시험작",
+          "목표 예시\n(다른 사람, 실제 엠보 직후)"]
     grid(zrows, zh, "볼 확대 (사진 기준 왼볼·오른볼)").save(out / "zoom.jpg", quality=90)
     json.dump(stats, open(out / "stats.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=float)
 
