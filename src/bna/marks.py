@@ -116,9 +116,10 @@ def _soft(mask: np.ndarray, sig: float) -> np.ndarray:
     return np.clip(cv2.GaussianBlur(mask.astype(np.float32), (0, 0), sig), 0, 1)
 
 
-def overlay(img: Image.Image, pts=None, *, flush_delta: float = 8.0, n_spots: int = 45, gloss: float = 0.22,
-            seed: int = 0, layers=("flush", "spots", "gloss")) -> tuple:
-    """(결과, 기록). flush_delta = 볼 붉은 기(R−(G+B)/2) 올릴 양. n_spots = 한쪽 볼 점 수(대략)."""
+def overlay(img: Image.Image, pts=None, *, flush_delta: float = 5.0, n_spots: int = 40, gloss: float = 1.6,
+            bumps: float = 0.08, seed: int = 0, layers=("flush", "spots", "bumps", "gloss")) -> tuple:
+    """(결과, 기록). flush_delta = 볼마다 붉은 기(R−(G+B)/2) 올릴 양. n_spots = 한쪽 볼 점 수(대략).
+    bumps = 볼록 그림자 세기(0 이면 끔). 기본값 = 10-06 빌디 2차 보정(홍조 낮게·광 세게·볼록 아주 약하게)."""
     import cv2
     rng = np.random.default_rng(seed)
     pts = L.detect(img) if pts is None else pts
@@ -133,21 +134,32 @@ def overlay(img: Image.Image, pts=None, *, flush_delta: float = 8.0, n_spots: in
     rec = dict(face_w=round(fw, 1))
 
     if "flush" in layers:
-        # 홍조: 넓게 흐린 볼 지도 × 저주파 얼룩(0.6~1.4) → G·B 를 곱으로 낮춘다(피 색 = 초록·파랑 흡수). 결은 곱이라 그대로
-        base = _soft(both, fw * 0.09)
-        base = base / (base.max() + 1e-6)
-        blot = np.clip(1 + 0.25 * _lowfreq_noise((H, W), fw * 0.10, rng), 0.6, 1.4)
-        wmap = base * blot * keep
-        r0 = redness(out * 255)[both].mean()
-        k = 0.0
-        for _ in range(12):          # 목표 붉은 기에 맞춰 세기 k 를 찾는다(곱 → 선형 아님)
-            k2 = k + (flush_delta - (redness(_tint(out, wmap, k) * 255)[both].mean() - r0)) / 180.0
-            k = float(np.clip(k2, 0, 0.6))
-        out = _tint(out, wmap, k)
-        rec["flush_k"] = round(k, 4)
+        # 홍조(10-06 빌디: 한쪽만 둥글게 진함=블러셔 → 양볼 고르게·넓게·경계 없이·약하게).
+        #  볼마다 따로 넓은 평평한 지도(가운데 봉우리 금지 — 흐린 뒤 1.8배 잘라 윗면을 평평하게)를 만들고,
+        #  볼마다 세기 k 를 따로 맞춰 3/4 컷에서도 먼 볼·가까운 볼의 붉은 기 증가가 같게 한다. 얼룩 흔들림은 ±8% 로만
+        blot = np.clip(1 + 0.08 * _lowfreq_noise((H, W), fw * 0.18, rng), 0.85, 1.15)
+        ks = []
+        for m in ms:
+            if m.sum() == 0:
+                ks.append(0.0)
+                continue
+            grow = cv2.dilate(m.astype(np.uint8), np.ones((int(fw * 0.05) | 1,) * 2, np.uint8)) > 0
+            base = np.clip(_soft(grow, fw * 0.07) * 1.8, 0, 1)
+            wmap = base * blot * keep
+            r0 = redness(out * 255)[m].mean()
+            k = 0.0
+            for _ in range(12):      # 목표 붉은 기에 맞춰 세기 k 를 찾는다(곱 → 선형 아님)
+                k2 = k + (flush_delta - (redness(_tint(out, wmap, k) * 255)[m].mean() - r0)) / 180.0
+                k = float(np.clip(k2, 0, 0.6))
+            out = _tint(out, wmap, k)
+            ks.append(round(k, 4))
+        rec["flush_k"] = ks
 
     if "spots" in layers:
         out, rec["spots_drawn"] = _spots(out, ms, fw, n_spots, rng, keep)
+
+    if "bumps" in layers and bumps > 0:
+        out, rec["bumps_drawn"] = _bumps(out, ms, fw, bumps, rng, keep)
 
     if "gloss" in layers and gloss > 0:
         # 젖은 광: 큰 층 밝기(튀어나온 면) 상위를 부드럽게 골라 스크린. 광 세기 × (1 + 잔결) → 모공은 광 아래 어둡게 남는다
@@ -158,11 +170,18 @@ def overlay(img: Image.Image, pts=None, *, flush_delta: float = 8.0, n_spots: in
         face = _soft(cv2.erode(oval, np.ones((int(fw * 0.03) | 1,) * 2, np.uint8)) > 0, fw * 0.02)
         vals = big[oval > 0]
         lo, hi = np.percentile(vals, 45), np.percentile(vals, 99)
-        hl = np.clip((big - lo) / (hi - lo + 1e-6), 0, 1) ** 2.2
+        hl = np.clip((big - lo) / (hi - lo + 1e-6), 0, 1) ** 1.6
+        # 10-06 빌디 "거의 안 보인다 — 코·볼 위쪽에 하이라이트": 콧등·코끝·광대 위에 자리 지도를 얹어 그쪽만 세게
+        spot = np.zeros((H, W), np.float32)
+        for i, rad in ((6, 0.05), (197, 0.05), (195, 0.05), (5, 0.05), (4, 0.06), (116, 0.07), (345, 0.07), (117, 0.06), (346, 0.06)):
+            cv2.circle(spot, tuple(int(v) for v in pts[i]), max(2, int(fw * rad)), 1.0, -1)
+        spot = np.clip(_soft(spot > 0, fw * 0.05) * 1.5, 0, 1)
+        where = 0.35 + 0.65 * spot
         streak = np.clip(0.75 + 0.35 * _lowfreq_noise((H, W), fw * 0.025, rng), 0.3, 1.3)   # 겔이 고르지 않게
         fine = Lm - cv2.GaussianBlur(Lm, (0, 0), fw * 0.004)
-        fine = np.clip(1 + fine / (fine[oval > 0].std() + 1e-6) * 0.25, 0.4, 1.6)
-        s = np.clip(gloss * hl * streak * fine * face * keep, 0, 0.6)[..., None]
+        fine = np.clip(1 + fine / (fine[oval > 0].std() + 1e-6) * 0.6, 0.1, 2.0)   # 모공은 광 아래 어둡게 남는다
+        # 상한 0.42: 2.2배·상한 0.7 시험에서 눈 밑·콧등이 결 없는 하얀 판이 됐다(09-29 v59 얼룩과 같은 꼴) — 상한은 잔결 곱 앞에 건다
+        s = np.clip(np.clip(gloss * hl * where * streak * face * keep, 0, 0.42) * fine, 0, 0.6)[..., None]
         s = s * np.array([1.0, 0.99, 0.97], np.float32)      # 조명 색 거의 흰색
         out = 1 - (1 - out) * (1 - s)
         rec["gloss_mean"] = round(float(s[oval > 0].mean()), 4)
@@ -211,20 +230,50 @@ def _spots(arr, ms, fw, n, rng, keep):
                 continue
             placed.append((y, x))
         for y, x in placed:
-            # 지름: 대부분 아주 작고(0.8~2.2‰ 얼굴 폭) 가끔 큰 점
-            d = fw * (rng.uniform(0.003, 0.006) if rng.random() < 0.9 else rng.uniform(0.006, 0.01))   # 참조 실측 2~5px/얼굴폭 460
-            sig = max(0.6, d / 2.3)
+            # 10-06 빌디 "너무 작고 갈색 → 모공·잡티로 읽힌다": 지름 약 1.7배(0.5~0.9% 얼굴 폭, 가끔 1.1~1.5%),
+            # 색은 보랏빛 붉은색(핏자국) — R 은 거의 안 빼고 G 를 많이·B 는 덜 뺀다(R·B 를 같이 빼면 갈색이 된다),
+            # 가장자리는 번지게 — 심을 넓은 가우스로 그리고 둘레 번짐을 모든 점에 깐다
+            #  (1차 시도 R 거의 안 빼기·진하기 0.35~0.7 = 형광 분홍 얼룩 → 와인빛 실측 비(R×0.6·G×0.3·B×0.5)로 되돌림)
+            d = fw * (rng.uniform(0.0045, 0.0075) if rng.random() < 0.88 else rng.uniform(0.008, 0.011))
+            sig = max(0.8, d / 2.0)
             r = int(sig * 8) + 2
             y0, y1, x0, x1 = max(0, int(y) - r), min(H, int(y) + r + 1), max(0, int(x) - r), min(W, int(x) + r + 1)
-            g = np.exp(-(((yy[y0:y1, x0:x1] - y) ** 2 + ((xx[y0:y1, x0:x1] - x) * rng.uniform(0.8, 1.25)) ** 2) / (2 * sig * sig)))
-            a = rng.uniform(0.15, 0.5) * keep[y0:y1, x0:x1]     # 참조 점은 옅다 — 진하면 멍·자반처럼 보인다
-            # 색: 짙은 빨강 ~ 분홍 — G·B 를 많이 빼고 R 은 조금
-            hue = rng.uniform(0, 1)
-            absorb = np.array([0.22 + 0.2 * (1 - hue), 0.5 + 0.15 * (1 - hue), 0.36 + 0.14 * (1 - hue)], np.float32)   # 자주~분홍(참조: 와인빛)
-            w = (g * a)[..., None]
-            if rng.random() < 0.5:     # 절반은 둘레가 옅게 붉다(바늘 자리 주변 반응)
-                halo = np.exp(-(((yy[y0:y1, x0:x1] - y) ** 2 + (xx[y0:y1, x0:x1] - x) ** 2) / (2 * (sig * 2.6) ** 2)))
-                w = w + (halo * 0.18 * keep[y0:y1, x0:x1])[..., None] * 0.6
+            ys_, xs_ = yy[y0:y1, x0:x1] - y, (xx[y0:y1, x0:x1] - x) * rng.uniform(0.8, 1.25)
+            g = np.exp(-(ys_ ** 2 + xs_ ** 2) / (2 * sig * sig))
+            kp = keep[y0:y1, x0:x1]
+            a = rng.uniform(0.25, 0.5) * kp
+            hue = rng.uniform(0, 1)                # 0 = 보랏빛 짙은 핏자국, 1 = 붉은 쪽
+            absorb = np.array([0.34 - 0.10 * hue, 0.66, 0.42 + 0.10 * hue], np.float32)   # B 를 G 보다 덜 빼야 보랏빛(같이 빼면 갈색)
+            halo = np.exp(-(ys_ ** 2 + xs_ ** 2) / (2 * (sig * rng.uniform(2.0, 2.8)) ** 2))   # 바늘 자리 둘레 번짐
+            w = (g * a + halo * rng.uniform(0.05, 0.10) * kp)[..., None]
             out[y0:y1, x0:x1] = out[y0:y1, x0:x1] * (1 - np.clip(w, 0, 1) * absorb)
             drawn += 1
     return out, drawn
+
+
+def _bumps(arr, ms, fw, amp, rng, keep):
+    """볼록(10-06 빌디 "아주 낮은 세기로"): 낮고 불규칙한 융기를 그림자로만 — 높이 지도를 만들고 위에서 오는 빛으로 음영.
+    격자·도장 금지: 위치는 무작위·크기·길쭉함·기울기 제각각, 서로 붙어 덩어리지기도. 피부는 곱으로만 바뀐다(결 유지)."""
+    import cv2
+    H, W = arr.shape[:2]
+    h = np.zeros((H, W), np.float32)
+    drawn = 0
+    for m in ms:
+        ys, xs = np.nonzero(m)
+        if len(ys) == 0:
+            continue
+        area = m.sum() / (fw * fw)
+        cnt = int(26 * float(np.clip(area / 0.05, 0.25, 1.3)) * rng.uniform(0.8, 1.2))
+        for _ in range(cnt):
+            i = rng.integers(len(ys))
+            c = (int(xs[i]), int(ys[i]))
+            ax = (max(2, int(fw * rng.uniform(0.006, 0.016))), max(2, int(fw * rng.uniform(0.004, 0.010))))
+            cv2.ellipse(h, c, ax, float(rng.uniform(0, 180)), 0, 360, float(rng.uniform(0.4, 1.0)), -1)
+            drawn += 1
+    h = cv2.GaussianBlur(h, (0, 0), fw * 0.004)
+    gy = cv2.Sobel(h, cv2.CV_32F, 0, 1, ksize=3)
+    gx = cv2.Sobel(h, cv2.CV_32F, 1, 0, ksize=3)
+    sh = -(gy * 0.9 + gx * 0.3)                        # 빛은 위·약간 왼쪽에서 — 윗면 밝고 아랫면 어둡게
+    sh = sh / (np.abs(sh).max() + 1e-6)
+    lift = 1 + amp * sh * keep + amp * 0.3 * h * keep    # 융기 윗면은 조금 밝게(부어 오른 면)
+    return np.clip(arr * lift[..., None], 0, 1), drawn

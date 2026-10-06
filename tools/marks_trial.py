@@ -74,7 +74,9 @@ def main():
     ap.add_argument("--out", default="tmp/marks_0930")
     ap.add_argument("--delta", type=float, default=None, help="볼 붉은 기 올릴 양. 없으면 참조 직후−2주 후로 잰다")
     ap.add_argument("--spots", type=int, default=40)
-    ap.add_argument("--gloss", type=float, default=0.7)
+    ap.add_argument("--gloss", type=float, default=1.6)
+    ap.add_argument("--bumps", type=float, default=0.08)
+    ap.add_argument("--prev", default=None, help="지난 회차 얹은 결과 폴더({i}_marked.jpg) — 있으면 [지난|이번|참조] 판")
     a = ap.parse_args()
     out = ROOT / a.out
     out.mkdir(parents=True, exist_ok=True)
@@ -82,26 +84,32 @@ def main():
     ref_i = Image.open(REF / "skinbooster_embo_immediate_01.jpg").convert("RGB")
     ref_w = Image.open(REF / "skinbooster_embo_after2w_01.jpg").convert("RGB")
     ri, rw = M.measure_ref(ref_i), M.measure_ref(ref_w)
-    delta = a.delta if a.delta is not None else round(ri["red"] - rw["red"], 2)
+    # 10-06 빌디 "세기는 지금보다 낮게": 기본 = 참조 직후−2주 후 차의 0.6배(지난 회차는 1배를 양볼 합쳐서 맞췄다)
+    delta = a.delta if a.delta is not None else round(0.6 * (ri["red"] - rw["red"]), 2)
     stats = dict(ref_immediate=ri, ref_after2w=rw, delta=delta, canvases={})
     ref_tile = ref_i.resize((TILE, TILE), Image.LANCZOS)
     ref_zoom = ref_i.crop((0, 30, 170, 200)).resize((TILE, TILE), Image.LANCZOS)
+    prev = ROOT / a.prev if a.prev else None
 
     rows, zrows = [], []
     for i, (lab, rel) in enumerate(CANVAS):
         im = Image.open(ROOT / rel).convert("RGB")
         pts = L.detect(im)
-        res, rec = M.overlay(im, pts, flush_delta=delta, n_spots=a.spots, gloss=a.gloss, seed=100 + i)
+        res, rec = M.overlay(im, pts, flush_delta=delta, n_spots=a.spots, gloss=a.gloss, bumps=a.bumps, seed=100 + i)
         res.save(out / f"{i}_marked.jpg", quality=95)
         rec.update(src=rel, before=M.measure(im, pts), after=M.measure(res, pts))
         stats["canvases"][lab] = rec
-        rows.append((lab, [lower_face(im, pts), lower_face(res, pts), ref_tile]))
-        zrows.append((lab, [cheek_zoom(im, pts), cheek_zoom(res, pts), ref_zoom]))
-        print(lab, rec["before"]["red"], "->", rec["after"]["red"], rec)
+        first = Image.open(prev / f"{i}_marked.jpg").convert("RGB") if prev else im
+        rows.append((lab, [lower_face(first, pts), lower_face(res, pts), ref_tile]))
+        zrows.append((lab, [cheek_zoom(first, pts, 0), cheek_zoom(res, pts, 0), cheek_zoom(first, pts, 1),
+                            cheek_zoom(res, pts, 1), ref_zoom]))
+        print(lab, rec["before"]["side"], "->", rec["after"]["side"], rec)
 
-    heads = ["얹기 전 (팔자 Before)", "얹은 후 (점·홍조·광)", "직후 참조 (병원 사진)"]
-    grid(rows, heads, f"임상 직후 흔적 얹기 — 비용 0 시험 (볼 붉은 기 +{delta})").save(out / "board.jpg", quality=90)
-    grid(zrows, heads, "볼 한쪽 확대").save(out / "zoom.jpg", quality=90)
+    h0 = "지난 회차 (09-30)" if prev else "얹기 전 (팔자 Before)"
+    heads = [h0, "이번 회차", "직후 참조 (병원 사진)"]
+    grid(rows, heads, f"임상 직후 흔적 얹기 — 비용 0 시험 (볼마다 붉은 기 +{delta})").save(out / "board.jpg", quality=90)
+    zh = [h0.split(" (")[0] + "·왼볼", "이번·왼볼", h0.split(" (")[0] + "·오른볼", "이번·오른볼", "직후 참조"]
+    grid(zrows, zh, "볼 확대 (사진 기준 왼볼·오른볼)").save(out / "zoom.jpg", quality=90)
     json.dump(stats, open(out / "stats.json", "w", encoding="utf-8"), ensure_ascii=False, indent=1, default=float)
 
 
