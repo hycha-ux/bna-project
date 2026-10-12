@@ -742,10 +742,12 @@ SKIN_TEXTURE = ("Real skin with visible pores, faint peach fuzz, minor blemishes
 
 
 def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=None, series=None,
-                  avoid_not_at=None) -> dict:
+                  avoid_not_at=None, pin=None) -> dict:
     """avoid: {"before": [...], "after": [...]} — 제외 사유에서 배운 금지문(lessons.active).
     None 이면 붙이지 않는다(dry-run·테스트가 과거와 같은 문장을 내게).
-    avoid_not_at: {금지문: [붙이지 않을 시점…]} — lessons.active 의 `not_at`."""
+    avoid_not_at: {금지문: [붙이지 않을 시점…]} — lessons.active 의 `not_at`.
+    pin: {"rig"|"before_severity"|"effect_level": 키} — 추첨 대신 이 값 (2026-10-12 기존 인물 시점 추가, bna.extend).
+         추첨은 그대로 한 번 소비한다(rng 흐름 불변). 설정이 그 뒤 바뀌어 원본 사진과 다른 값이 뽑히는 걸 막는다."""
     from . import lessons
     av = avoid or {}
     not_at = avoid_not_at or {}
@@ -784,6 +786,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
                    else rng.choice(_rks))
         if rig.get("rig_fixed") in rig["rigs"]:          # 리그 고정(2026-09-28 6차 연서님 B) — 추첨은 위에서 소비(rng 흐름 불변)
             rig_key = rig["rig_fixed"]
+        if (pin or {}).get("rig") in rig["rigs"]:        # 기존 인물 시점 추가 — 원본 Before 가 찍힌 리그
+            rig_key = pin["rig"]
         r = rig["rigs"][rig_key]
         variation = {**variation, "rig": {"key": rig_key, "text": r.get("label", rig_key)}}
         angle = rig["angles"].get({"front": "front", "three_quarter": "oblique_45", "side": "side"}.get(variation["angle"]["key"], "front"))
@@ -823,6 +827,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
         # 모드별 Before 강도 고정(2026-09-28 6차 연서님 A "임상 Before 는 깊은 골") — 나이 하향은 아래 그대로라
         #   ages_clinical 로 최소 나이 이상만 뽑아 둔다(안 그러면 조용히 moderate 로 내려간다).
         sev = t["mode_severity"][mode]
+    if (pin or {}).get("before_severity") in sevs:     # 기존 인물 시점 추가 — 원본 Before 의 강도(나이 하향도 이미 반영된 값)
+        sev = pin["before_severity"]
     min_age = t.get("severity_min_age", {})
     if min_age:                                   # 인물 나이가 강도 최소 나이보다 어리면 한 단계씩 낮춤
         order = list(load("variations.yaml")["age"])
@@ -884,6 +890,8 @@ def build_prompts(treatment: str, mode: str, variation: dict, seed=None, avoid=N
     _mel = (t.get("mode_effect_level") or {}).get(mode)
     if _mel in (t.get("effect_levels") or []):
         level = _mel
+    if (pin or {}).get("effect_level") in eff["effect_levels"]:   # 기존 인물 시점 추가 — 원본 세트의 최종 강도
+        level = pin["effect_level"]
     pts = series_points(treatment, series)               # 경과 시리즈(직후·2주…)면 시점 목록, 아니면 빈 목록
     # 시점 가중 (2026-09-22 연서님 v43 검수 "시간 지난 모습이 후기의 본체 — 팔자 셀카 2주 5·1주 3·직후 2, 미모는 직후 1"):
     #   treatments.yaml `timeline_weights: {모드: {시점: 가중}}` + 미모 프로필 `timeline_weights`(시점별 덮어쓰기).

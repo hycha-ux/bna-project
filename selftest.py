@@ -3164,6 +3164,30 @@ ok(all(a.get("second_pass_prompt") is None for a in _pe69["afters"])
    and all(a.get("second_pass_prompt") for a in _pn69["afters"]),
    "69 문안: 엠보 임상엔 2단계 '골만 옅게' 문안·nasolabial 단어가 없고, 팔자엔 그대로 있다")
 
+# 70 (10-12 연서님 "만든 사람에서 2주·4주를 더 뽑고 싶어") — 기존 인물 시점 추가(bna.extend): 원본 값 고정 · Before 안 그림
+_v70 = sample_variation("clinical", seed=1012, treatment="skinbooster_embo")
+_o70 = build_prompts("skinbooster_embo", "clinical", _v70, 1012000, series=["immediate"])
+_pin70 = {k: _o70["variation"][k]["key"] for k in ("rig", "before_severity", "effect_level")}
+_e70 = [build_prompts("skinbooster_embo", "clinical", _v70, sd, series=["1w", "4w"], pin=_pin70) for sd in (None, 1, 2, 3)]
+ok(all({k: e["variation"][k]["key"] for k in _pin70} == _pin70 for e in _e70) and all([a["when"] for a in e["afters"]] == ["1w", "4w"] for e in _e70),
+   "70 pin: 씨앗이 달라도 리그·Before 강도·효과 강도는 원본 그대로, 시점은 요청한 것만")
+_bs70 = inspect.getsource(__import__("bna.batch", fromlist=["x"]))
+ok("redraw = redo_before = False" in _bs70 and "not self.base" in _bs70 and 'self.base["before_b"] if self.base' in _bs70,
+   "70 배치: 기존 인물은 조건 재추첨·Before 다시 그리기·Before 재후처리·중복 검사를 안 한다")
+import tempfile as _tf70
+_d70 = Path(_tf70.mkdtemp()) / "b" / "0003"; _d70.mkdir(parents=True)
+(_d70 / "meta.json").write_text(_json.dumps({**_o70, "item_id": "0003", "batch_id": "b"}, ensure_ascii=False))
+(_d70 / "x_0003_before.jpg").write_bytes(b"jpg")
+_ex70 = __import__("bna.extend", fromlist=["x"])
+_pl70 = _ex70.plan(str(_d70), ["4w", "1w"])
+try:
+    _ex70.plan(str(_d70), ["2w"]); _bad70 = False
+except SystemExit:
+    _bad70 = True
+ok(_pl70["whens"] == ["1w", "4w"] and _pl70["base"]["pin"] == _pin70 and _pl70["base"]["item_id"] == "0003"
+   and not any(k in _pl70["variation"] for k in _ex70.DERIVED) and _bad70,
+   "70 extend.plan: 시간순 정렬 · 원본 고정값 · 파생 칸 제거 · 시술에 없는 시점(엠보 2주)은 막는다")
+
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
 sys.exit(1 if fails else 0)

@@ -66,7 +66,7 @@ def _retry_plan(fail_reasons):
 
 class Batch:
     def __init__(self, treatment, mode, count, seed=None, fixed=None, gen=None, edit=None, qa=None, ab_prompt=None,
-                 target_pass=None, cost_cap=None, series=None):
+                 target_pass=None, cost_cap=None, series=None, base=None):
         # 프로바이더 기본값은 모드가 정한다 (config/providers.yaml). 여기에 벤더 이름을 박지 마라.
         d = defaults_for(mode)
         gen, edit, qa = gen or d["gen"], edit or d["edit"], qa or d["qa"]
@@ -110,6 +110,10 @@ class Batch:
         # 세트(item) 하나가 통과하려면 After 전부가 통과해야 한다 — 한 장이라도 이상하면 후기로 못 쓴다.
         from .spec import series_points
         self.series = series_points(treatment, series) or None
+        # 기존 인물 시점 추가 (2026-10-12 연서님 "만든 사람에서 2주·4주를 더 뽑고 싶어") — 정본 = bna.extend.
+        #   {"before_b", "variation", "pin", "src"} 가 오면 Before 를 **그리지 않고** 이 사진을 기준으로 After 만 만든다.
+        #   재시도도 After 만(조건 재추첨·Before 다시 그리기 없음) — 그 둘은 곧 다른 사람이라 시점 추가의 뜻이 없어진다.
+        self.base = base
 
     def _refs(self, variation: dict, when: str = None) -> list:
         """이 컷에 붙일 참조 사진. `when=None` = 시술 전(Before) 컷 (2026-09-11 A1 축 신설)."""
@@ -145,8 +149,8 @@ class Batch:
     async def run_item(self, idx: int, variation: dict) -> dict:
         spec = build_prompts(self.treatment, self.mode, variation, None if self.seed is None else self.seed * 1000 + idx,
                              avoid=(self.avoid or {}).get("lines"), series=self.series,
-                             avoid_not_at=(self.avoid or {}).get("not_at"))
-        item_id = f"{idx:04d}"
+                             avoid_not_at=(self.avoid or {}).get("not_at"), pin=(self.base or {}).get("pin"))
+        item_id = (self.base or {}).get("item_id") or f"{idx:04d}"
         # 프로바이더를 같이 적는다 — 버전 성적표가 prompt_version(=config 해시)으로만 묶여서,
         # 같은 버전을 다른 모델로 돌리면 두 모델의 성적이 한 줄에 섞인다(조용히 비교가 무의미해진다).
         meta = {**spec, "item_id": item_id, "batch_id": self.batch_id, "prompt_version": self.pv,
@@ -159,6 +163,13 @@ class Batch:
         style_refs = self._refs(spec["variation"])      # spec 의 변주에 임상 리그(rig)가 들어 있다 — 참조 리그 필터용 (2026-09-15)
 
         before_b = before = pts = mask_img = None      # 재시도 때 Before 를 물려받는 자리
+        if self.base:
+            # 기존 인물 — 저장된 Before(후처리까지 끝난 사진)를 그대로 기준으로 쓴다. 후처리 전 원본은 저장 안 돼 있다.
+            meta["extends"] = self.base["src"]
+            before_b = self.base["before_b"]
+            before = Image.open(io.BytesIO(before_b)); before.load()
+            pts = landmarks.detect(before)
+            mask_img = landmarks.region_mask(before, pts, t["mask_region"]) if pts is not None and t["mask_region"] in landmarks.REGIONS else None
         prev_fail = []
         meta["redrawn"] = []                           # 조건을 다시 뽑은 회차 (통계가 계획과 갈리는 걸 드러낸다)
         meta["attempts_log"] = []                      # 회차별 {attempt, fail_reasons, seconds} — "22분 중 어디서 샜나"의 근거 (2026-09-15)
@@ -168,6 +179,8 @@ class Batch:
 
             # ── 재시도 정책: 사유를 보고 무엇을 다시 할지 고른다 (위 _retry_plan 주석이 근거) ──
             redraw, redo_before = (False, True) if attempt == 1 else _retry_plan(prev_fail)
+            if self.base:
+                redraw = redo_before = False             # 기존 인물은 After 만 다시 (위 __init__ base 주석)
             if redraw:
                 # 조건이 원인이면 같은 조건으로 다시 그리지 않는다 — 사람·장면을 다시 뽑는다.
                 # 씨앗은 회차마다 갈라야 한다(안 갈면 같은 변주가 다시 나와 재추첨이 무의미하다).
@@ -510,7 +523,8 @@ class Batch:
             self._p(item_id, "postprocess")
             pp_seed = hash((self.batch_id, item_id, attempt)) & 0xFFFF
             q_before = variation["quality"]["key"]
-            before_out = postprocess.apply(before, q_before, self.mode, pp_seed)
+            # 기존 인물의 Before 는 이미 후처리된 사진 — 한 번 더 걸면 원본 세트와 다른 사진이 된다
+            before_out = self.base["before_b"] if self.base else postprocess.apply(before, q_before, self.mode, pp_seed)
             before_pp = Image.open(io.BytesIO(before_out))
             outs = []                                        # [(when, bytes, img, ungate)]
             for when, af, after in afters_out:
@@ -648,7 +662,7 @@ class Batch:
             meta["structure"], meta["identity"] = last["structure"], last["identity"]
             if "vision" in last:
                 meta["vision"] = last["vision"]
-            if not meta["fail_reasons"]:
+            if not meta["fail_reasons"] and not self.base:     # 기존 인물은 원본 세트와 같은 Before 라 중복이 정상
                 dd = dedup.check(before_pp, f"{self.batch_id}/{item_id}", self.registry); meta["dedup"] = dd
                 if not dd["passed"]:
                     meta["fail_reasons"].append("duplicate")
@@ -741,9 +755,30 @@ class Batch:
         self.progress.finish(stopped=self.stopped)
         return s
 
+    async def extend(self, variation: dict) -> dict:
+        """기존 인물에 시점 추가 — 세트 1개짜리 회차 (정본 = bna.extend, 인자는 거기서 만든다).
+
+        run() 과 달리 계획을 뽑지 않고 `remember` 도 안 한다(새 사람이 아니다). 결과는 새 회차 폴더에
+        원본과 같은 항목 번호로 남고, meta["extends"] 가 원본 세트를 가리킨다."""
+        from concurrent.futures import ThreadPoolExecutor
+        asyncio.get_running_loop().set_default_executor(ThreadPoolExecutor(max_workers=32))
+        self._slots(self.p_gen); self._slots(self.p_edit)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.progress = Progress(self.dir, 1)
+        try:
+            m = await self.run_item(int(self.base.get("idx") or 0), variation)
+        except Exception as e:
+            self.progress.finish(error=repr(e)); raise
+        write_manifest(self.dir, [m])
+        s = summarize([m]); s["extends"] = self.base["src"]
+        (self.dir / "stats.json").write_text(json.dumps(s, ensure_ascii=False, indent=1))
+        self.progress.finish()
+        return s
+
     def estimate(self, expected_pass_rate=0.5) -> dict:
         n_after = len(self.series) if self.series else 1      # 시리즈는 After 마다 생성·검수 호출이 든다
-        per_try = (self.pricing[self.p_gen.name]["generate"]
+        per_try = (0 if self.base else self.pricing[self.p_gen.name]["generate"])   # 기존 인물은 Before 를 안 그린다
+        per_try = (per_try
                    + n_after * (self.pricing[self.p_edit.name]["edit" if self.mode == "clinical" else "generate"] + self.pricing[self.p_qa.name]["qa"]))
         tries = self.count * min(self.max_attempts, 1 / max(expected_pass_rate, 0.05))
         return {"items": self.count, "expected_calls": round(tries), "expected_cost_usd": round(per_try * tries, 2)}
