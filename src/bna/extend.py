@@ -15,7 +15,7 @@ After 를 다음 기준으로 쓰면 얼굴이 흘러간다). 그래서 저장�
 """
 import argparse, asyncio, json
 from pathlib import Path
-from .spec import ROOT, load, build_prompts, defaults_for, TIMELINE_ORDER
+from .spec import ROOT, load, build_prompts, defaults_for, rig_on, TIMELINE_ORDER
 
 # 원본 meta 의 variation 에서 build_prompts 가 다시 만드는 칸 — 넘기지 않고 pin 으로 고정한다
 DERIVED = ("rig", "before_severity", "effect_level", "timeline")
@@ -60,6 +60,38 @@ def plan(path, whens) -> dict:
             "had": [w for w in had if w], "base": base, "variation": variation, "before_path": str(it["before_path"])}
 
 
+def estimate(pl, edit, qa, pass_rate=0.5) -> dict:
+    """예상 호출·비용 — 키 없이 설정만 읽는다 (10-12 티모 흠 ① "돈 안 쓰는데 키 없으면 죽음").
+
+    Batch.estimate 는 생성자가 공급자를 잡아야 해서 키가 필요하고, 시점마다 그리기 1장만 셌다.
+    여기는 After 한 장에 실제로 나가는 호출을 다 센다: 그리기(편집/새로 그리기) + 임상 2단계 편집 + 골 메우기 뒤 재촬영 + 검수.
+    '시도'(세트를 다시 하는 횟수)와 '호출'(공급자에 나가는 콜)을 따로 적는다 (흠 ② expected_calls 가 시도 수였다).
+    빠진 것: 직후 컷 패치 위치 게이트의 재그리기(직후를 추가할 때만, 어림 불가) — 그래서 '최소'다."""
+    from .batch import MAX_ATTEMPTS
+    price, rig = load("pricing.yaml"), load("clinical_rig.yaml")
+    spec = build_prompts(pl["treatment"], pl["mode"], pl["variation"], None, series=pl["whens"], pin=pl["base"]["pin"])
+    clin = pl["mode"] == "clinical"
+    main_key = "edit" if spec["generation"] == "edit" else "generate"
+    ff, sp = rig.get("fold_fill") or {}, rig.get("second_pass") or {}
+    per_when, img_calls, cost = {}, 0, 0.0
+    for af in spec["afters"]:
+        c = {main_key: 1}
+        if clin and main_key == "edit" and rig_on(sp, pl["treatment"]) and af.get("second_pass_prompt"):
+            c["2단계 편집"] = 1
+        if clin and rig_on(ff, pl["treatment"]) and ff.get("retake"):
+            c["재촬영"] = 1
+        n = sum(c.values())
+        usd = price[edit][main_key] + (n - 1) * price[edit]["edit"] + price[qa]["qa"]
+        per_when[af["when"]] = {"이미지 호출": c, "검수 호출": 1, "1회 비용": round(usd, 3)}
+        img_calls += n; cost += usd
+    max_att = int(((rig.get("hires") or {}).get("max_attempts") or MAX_ATTEMPTS) if clin else MAX_ATTEMPTS)
+    tries = min(max_att, 1 / max(pass_rate, 0.05))
+    return {"시점별": per_when, "예상 시도(세트)": round(tries, 1), "최대 시도": max_att,
+            "예상 이미지 호출": round(img_calls * tries), "예상 검수 호출": round(len(per_when) * tries),
+            "예상 비용(USD, 최소)": round(cost * tries, 2), "최대 비용(USD)": round(cost * max_att, 2),
+            "근거": f"통과율 {pass_rate:.0%} 가정 · 단가 pricing.yaml({edit}/{qa}, 추정치) · 직후 위치 게이트 재그리기 제외"}
+
+
 def main():
     p = argparse.ArgumentParser(description="기존 인물에 시점 추가 (Before 재사용, After 만 생성)")
     p.add_argument("item", help="항목 폴더 — outputs/<회차>/<항목> 또는 <회차>/<항목>")
@@ -80,12 +112,12 @@ def main():
         head["고정 확인"] = {k: (spec["variation"].get(k) or {}).get("key") for k in pl["base"]["pin"]}
         head["After"] = [{"시점": af["when"], "프롬프트": af["after_prompt"]} for af in spec["afters"]]
         print(json.dumps(head, ensure_ascii=False, indent=1)); return
-    from .batch import Batch
     d = defaults_for(pl["mode"])
+    if a.estimate:
+        print(json.dumps({**head, **estimate(pl, a.edit or d["edit"], a.qa or d["qa"])}, ensure_ascii=False, indent=1)); return
+    from .batch import Batch
     b = Batch(pl["treatment"], pl["mode"], 1, None, None, d["gen"], a.edit or d["edit"], a.qa or d["qa"],
               series=pl["whens"], base=pl["base"])
-    if a.estimate:
-        print(json.dumps({**head, **b.estimate()}, ensure_ascii=False, indent=1)); return
     print(json.dumps({**head, "회차": b.batch_id, **asyncio.run(b.extend(pl["variation"]))}, ensure_ascii=False, indent=1))
 
 

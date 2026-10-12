@@ -3187,6 +3187,16 @@ except SystemExit:
 ok(_pl70["whens"] == ["1w", "4w"] and _pl70["base"]["pin"] == _pin70 and _pl70["base"]["item_id"] == "0003"
    and not any(k in _pl70["variation"] for k in _ex70.DERIVED) and _bad70,
    "70 extend.plan: 시간순 정렬 · 원본 고정값 · 파생 칸 제거 · 시술에 없는 시점(엠보 2주)은 막는다")
+_src70 = inspect.getsource(_ex70.main)
+_es70 = _ex70.estimate(_pl70, "openai", "openai")
+_vn70 = sample_variation("clinical", seed=1012, treatment="nasolabial")
+_on70 = build_prompts("nasolabial", "clinical", _vn70, 1012000, series=["2w"])
+(_d70 / "meta.json").write_text(_json.dumps({**_on70, "item_id": "0003", "batch_id": "b"}, ensure_ascii=False))
+_esn70 = _ex70.estimate(_ex70.plan(str(_d70), ["1w"]), "openai", "openai")
+ok(_src70.index("if a.estimate") < _src70.index("Batch(") and "재촬영" not in _es70["시점별"]["1w"]["이미지 호출"]
+   and _esn70["시점별"]["1w"]["이미지 호출"].get("재촬영") == 1
+   and _esn70["예상 이미지 호출"] == round(2 * _esn70["예상 시도(세트)"]) and _esn70["예상 검수 호출"] == round(_esn70["예상 시도(세트)"]),
+   "70 extend.estimate: 키 없이(Batch 전) · 팔자 임상은 재촬영까지 세고 엠보는 안 셈 · 시도와 호출을 따로 센다")
 
 print()
 print(f"{'실패 ' + str(len(fails)) + '건' if fails else '전부 통과'}")
